@@ -7,8 +7,8 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyiron_module_template"
-description = "pyiron_module_template - Your pyiron-like module."
+name = "uniton"
+description = "uniton - Your pyiron-like module."
 readme = "docs/README.md"
 keywords = [ "pyiron",]
 requires-python = ">=3.9, <3.13"
@@ -36,18 +36,18 @@ file = "LICENSE"
 
 [project.urls]
 Homepage = "https://pyiron.org/"
-Documentation = "https://pyiron_module_template.readthedocs.io"
-Repository = "https://github.com/pyiron/pyiron_module_template"
+Documentation = "https://uniton.readthedocs.io"
+Repository = "https://github.com/pyiron/uniton"
 
 [tool.versioneer]
 VCS = "git"
 style = "pep440-pre"
-versionfile_source = "pyiron_module_template/_version.py"
-parentdir_prefix = "pyiron_module_template"
-tag_prefix = "pyiron_module_template-"
+versionfile_source = "uniton/_version.py"
+parentdir_prefix = "uniton"
+tag_prefix = "uniton-"
 
 [tool.setuptools.packages.find]
-include = [ "pyiron_module_template*",]
+include = [ "uniton*",]
 
 [tool.setuptools.dynamic.version]
-attr = "pyiron_module_template.__version__"
+attr = "uniton.__version__"

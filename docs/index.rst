@@ -1,4 +1,4 @@
-.. pyiron_module_template documentation master file
+.. uniton documentation master file
 
 .. _index:
 
