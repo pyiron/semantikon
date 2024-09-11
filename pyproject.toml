@@ -1,0 +1,53 @@
+[build-system]
+requires = [
+    "pyiron_base",
+    "setuptools",
+    "versioneer[toml]==0.29",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyiron_module_template"
+description = "pyiron_module_template - Your pyiron-like module."
+readme = "docs/README.md"
+keywords = [ "pyiron",]
+requires-python = ">=3.9, <3.13"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: BSD License",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "pyiron_base==0.8.3"
+]
+dynamic = [ "version",]
+authors = [
+    { name = "Lorem Ipsum", email = "lorem@ipsum.com" },
+]
+
+[project.license]
+file = "LICENSE"
+
+[project.urls]
+Homepage = "https://pyiron.org/"
+Documentation = "https://pyiron_module_template.readthedocs.io"
+Repository = "https://github.com/pyiron/pyiron_module_template"
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440-pre"
+versionfile_source = "pyiron_module_template/_version.py"
+parentdir_prefix = "pyiron_module_template"
+tag_prefix = "pyiron_module_template-"
+
+[tool.setuptools.packages.find]
+include = [ "pyiron_module_template*",]
+
+[tool.setuptools.dynamic.version]
+attr = "pyiron_module_template.__version__"

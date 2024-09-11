@@ -1,0 +1,13 @@
+# This runs jobs which pyiron modules should run on pushes or PRs to main
+
+name: Push-Pull
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  pyiron:
+    uses: pyiron/actions/.github/workflows/push-pull.yml@actions-3.3.0
+    secrets: inherit

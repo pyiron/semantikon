@@ -1,0 +1,10 @@
+channels:
+- conda-forge
+dependencies:
+- ipykernel
+- myst-parser
+- nbsphinx
+- sphinx-gallery
+- sphinx-rtd-theme
+- versioneer
+- pyiron_base =0.8.3
