@@ -13,9 +13,7 @@ def get_speed_multiple_outputs(
 
 
 @units
-def get_speed_no_output_type(
-    distance: u(float, "meter"), time: u(float, "second")
-):
+def get_speed_no_output_type(distance: u(float, "meter"), time: u(float, "second")):
     return distance / time
 
 
@@ -129,9 +127,7 @@ class TestUnits(unittest.TestCase):
     def test_no_output_type(self):
         self.assertEqual(get_speed_no_output_type(1, 1), 1)
         ureg = UnitRegistry()
-        self.assertEqual(
-            get_speed_no_output_type(1 * ureg.meter, 1 * ureg.second), 1
-        )
+        self.assertEqual(get_speed_no_output_type(1 * ureg.meter, 1 * ureg.second), 1)
         self.assertEqual(
             get_speed_no_output_type(1 * ureg.millimeter, 1 * ureg.second), 0.001
         )
@@ -140,7 +136,9 @@ class TestUnits(unittest.TestCase):
         self.assertEqual(get_speed_multiple_outputs(1, 1, 1), (1, 1))
         ureg = UnitRegistry()
         self.assertEqual(
-            get_speed_multiple_outputs(1 * ureg.meter, 1 * ureg.second, 1 * ureg.second),
+            get_speed_multiple_outputs(
+                1 * ureg.meter, 1 * ureg.second, 1 * ureg.second
+            ),
             (1 * ureg.meter / ureg.second, 1 * ureg.meter / ureg.second),
         )
         self.assertEqual(
