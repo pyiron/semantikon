@@ -5,7 +5,12 @@
 from pint import Quantity
 import inspect
 from functools import wraps
-from pint.registry_helpers import _apply_defaults, _parse_wrap_args, _to_units_container, _replace_units
+from pint.registry_helpers import (
+    _apply_defaults,
+    _parse_wrap_args,
+    _to_units_container,
+    _replace_units,
+)
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -35,6 +40,7 @@ def _get_args(sig):
             args.append(None)
     return args
 
+
 def _get_converter(sig):
     args = _get_args(sig)
     if any([arg is not None for arg in args]):
@@ -55,6 +61,7 @@ def units(func):
     """
     sig = inspect.signature(func)
     converter = _get_converter(sig)
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         ureg = _get_ureg(args, kwargs)
@@ -65,14 +72,16 @@ def units(func):
         try:
             ret = _to_units_container(sig.return_annotation.__metadata__[0], ureg)
             out_units = (
-                _replace_units(r, names) if is_ref else r
-                for (r, is_ref) in ret
+                _replace_units(r, names) if is_ref else r for (r, is_ref) in ret
             )
-            output_units = ureg.Quantity(1, _replace_units(ret[0], names) if ret[1] else ret[0])
+            output_units = ureg.Quantity(
+                1, _replace_units(ret[0], names) if ret[1] else ret[0]
+            )
         except AttributeError:
             output_units = None
         if output_units is None:
             return func(*args, **kwargs)
         else:
             return output_units * func(*args, **kwargs)
+
     return wrapper

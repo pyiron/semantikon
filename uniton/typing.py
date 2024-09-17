@@ -2,8 +2,8 @@ from typing import Annotated, Any
 
 __author__ = "Sam Waseda"
 __copyright__ = (
-   "Copyright 2021, Max-Planck-Institut für Eisenforschung GmbH "
-   "- Computational Materials Design (CM) Department"
+    "Copyright 2021, Max-Planck-Institut für Eisenforschung GmbH "
+    "- Computational Materials Design (CM) Department"
 )
 __version__ = "1.0"
 __maintainer__ = "Sam Waseda"
