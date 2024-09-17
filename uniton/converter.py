@@ -5,7 +5,6 @@
 from pint import Quantity
 import inspect
 from functools import wraps
-from typing import get_type_hints
 from pint.registry_helpers import _apply_defaults, _parse_wrap_args, _to_units_container, _replace_units
 
 __author__ = "Sam Waseda"
