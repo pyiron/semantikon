@@ -10,6 +10,7 @@ def get_speed_no_output_type(
 ):
     return distance / time
 
+
 @units
 def get_speed_multiple_args(
     distance: u(float, "meter"),
