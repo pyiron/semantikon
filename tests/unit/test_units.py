@@ -9,18 +9,20 @@ from pint import UnitRegistry
 def get_speed_multiple_args(
     distance: u(float, "meter"),
     time: u(float, "second"),
-    duration: u(float | None, "second") = None
+    duration: u(float | None, "second") = None,
 ) -> u(float, "meter/second"):
     if duration is None:
         return distance / time
     else:
         return distance / duration
 
+
 @units
 def get_speed_optional_args(
     distance: u(float, "meter"), time: u(float, "second") = 1
 ) -> u(float, "meter/second"):
     return distance / time
+
 
 @units
 def get_speed_ints(
@@ -88,7 +90,9 @@ class TestUnits(unittest.TestCase):
             1 * ureg.meter / ureg.second,
         )
         self.assertEqual(
-            get_speed_multiple_args(1 * ureg.meter, 1 * ureg.second, 1 * ureg.millisecond),
+            get_speed_multiple_args(
+                1 * ureg.meter, 1 * ureg.second, 1 * ureg.millisecond
+            ),
             1000 * ureg.meter / ureg.second,
         )
 
@@ -107,6 +111,7 @@ class TestUnits(unittest.TestCase):
             get_speed_optional_args(1 * ureg.meter, 1 * ureg.millisecond),
             1000 * ureg.meter / ureg.second,
         )
+
 
 if __name__ == "__main__":
     unittest.main()
