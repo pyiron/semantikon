@@ -1,4 +1,3 @@
-import numpy as np
 import unittest
 from uniton.typing import u
 from uniton.converter import units

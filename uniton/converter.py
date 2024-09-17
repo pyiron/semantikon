@@ -71,9 +71,6 @@ def units(func):
         args, kwargs, names = converter(ureg, sig, args, kwargs, strict=False)
         try:
             ret = _to_units_container(sig.return_annotation.__metadata__[0], ureg)
-            out_units = (
-                _replace_units(r, names) if is_ref else r for (r, is_ref) in ret
-            )
             output_units = ureg.Quantity(
                 1, _replace_units(ret[0], names) if ret[1] else ret[0]
             )
