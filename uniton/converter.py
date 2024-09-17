@@ -11,6 +11,7 @@ from pint.registry_helpers import (
     _to_units_container,
     _replace_units,
 )
+from typing import get_origin, get_args
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -70,14 +71,28 @@ def units(func):
         args, kwargs = _apply_defaults(sig, args, kwargs)
         args, kwargs, names = converter(ureg, sig, args, kwargs, strict=False)
         try:
-            ret = _to_units_container(sig.return_annotation.__metadata__[0], ureg)
-            output_units = ureg.Quantity(
-                1, _replace_units(ret[0], names) if ret[1] else ret[0]
-            )
+            if get_origin(sig.return_annotation) is tuple:
+                output_units = []
+                for ann in get_args(sig.return_annotation):
+                    ret = _to_units_container(ann.__metadata__[0], ureg)
+                    output_units.append(
+                        ureg.Quantity(
+                            1, _replace_units(ret[0], names) if ret[1] else ret[0]
+                        )
+                    )
+            else:
+                ret = _to_units_container(sig.return_annotation.__metadata__[0], ureg)
+                output_units = ureg.Quantity(
+                    1, _replace_units(ret[0], names) if ret[1] else ret[0]
+                )
         except AttributeError:
             output_units = None
         if output_units is None:
             return func(*args, **kwargs)
+        elif isinstance(output_units, list):
+            return tuple(
+                [oo * ff for oo, ff in zip(output_units, func(*args, **kwargs))]
+            )
         else:
             return output_units * func(*args, **kwargs)
 
