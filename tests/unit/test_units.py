@@ -2,6 +2,14 @@ import unittest
 from uniton.typing import u
 from uniton.converter import units
 from pint import UnitRegistry
+from typing import Tuple
+
+
+@units
+def get_speed_multiple_outputs(
+    distance: u(float, "meter"), time: u(float, "second"), duration: u(float, "second")
+) -> Tuple[u(float, "meter/second"), u(float, "meter/second")]:
+    return distance / time, distance / duration
 
 
 @units
@@ -126,6 +134,20 @@ class TestUnits(unittest.TestCase):
         )
         self.assertEqual(
             get_speed_no_output_type(1 * ureg.millimeter, 1 * ureg.second), 0.001
+        )
+
+    def test_multiple_outputs(self):
+        self.assertEqual(get_speed_multiple_outputs(1, 1, 1), (1, 1))
+        ureg = UnitRegistry()
+        self.assertEqual(
+            get_speed_multiple_outputs(1 * ureg.meter, 1 * ureg.second, 1 * ureg.second),
+            (1 * ureg.meter / ureg.second, 1 * ureg.meter / ureg.second),
+        )
+        self.assertEqual(
+            get_speed_multiple_outputs(
+                1 * ureg.meter, 1 * ureg.second, 1 * ureg.millisecond
+            ),
+            (1 * ureg.meter / ureg.second, 1000 * ureg.meter / ureg.second),
         )
 
 
