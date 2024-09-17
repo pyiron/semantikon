@@ -5,6 +5,12 @@ from pint import UnitRegistry
 
 
 @units
+def get_speed_no_output_type(
+    distance: u(float, "meter"), time: u(float, "second")
+):
+    return distance / time
+
+@units
 def get_speed_multiple_args(
     distance: u(float, "meter"),
     time: u(float, "second"),
@@ -109,6 +115,16 @@ class TestUnits(unittest.TestCase):
         self.assertEqual(
             get_speed_optional_args(1 * ureg.meter, 1 * ureg.millisecond),
             1000 * ureg.meter / ureg.second,
+        )
+
+    def test_no_output_type(self):
+        self.assertEqual(get_speed_no_output_type(1, 1), 1)
+        ureg = UnitRegistry()
+        self.assertEqual(
+            get_speed_no_output_type(1 * ureg.meter, 1 * ureg.second), 1
+        )
+        self.assertEqual(
+            get_speed_no_output_type(1 * ureg.millimeter, 1 * ureg.second), 0.001
         )
 
 
