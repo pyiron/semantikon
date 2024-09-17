@@ -50,6 +50,11 @@ def _get_converter(sig):
         return None
 
 
+def _get_ret_units(ann, ureg, names):
+    ret = _to_units_container(ann.__metadata__[0], ureg)
+    return ureg.Quantity(1, _replace_units(ret[0], names) if ret[1] else ret[0])
+
+
 def units(func):
     """
     Decorator to convert the output of a function to a Quantity object with the specified units.
@@ -72,19 +77,12 @@ def units(func):
         args, kwargs, names = converter(ureg, sig, args, kwargs, strict=False)
         try:
             if get_origin(sig.return_annotation) is tuple:
-                output_units = []
-                for ann in get_args(sig.return_annotation):
-                    ret = _to_units_container(ann.__metadata__[0], ureg)
-                    output_units.append(
-                        ureg.Quantity(
-                            1, _replace_units(ret[0], names) if ret[1] else ret[0]
-                        )
-                    )
+                output_units = [
+                    _get_ret_units(ann, ureg, names)
+                    for ann in get_args(sig.return_annotation)
+                ]
             else:
-                ret = _to_units_container(sig.return_annotation.__metadata__[0], ureg)
-                output_units = ureg.Quantity(
-                    1, _replace_units(ret[0], names) if ret[1] else ret[0]
-                )
+                output_units = _get_ret_units(sig.return_annotation, ureg, names)
         except AttributeError:
             output_units = None
         if output_units is None:
