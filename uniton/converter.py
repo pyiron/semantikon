@@ -78,8 +78,7 @@ def units(func):
         try:
             if isinstance(sig.return_annotation, tuple):
                 output_units = [
-                    _get_ret_units(ann, ureg, names)
-                    for ann in sig.return_annotation
+                    _get_ret_units(ann, ureg, names) for ann in sig.return_annotation
                 ]
             else:
                 output_units = _get_ret_units(sig.return_annotation, ureg, names)
