@@ -49,6 +49,11 @@ def _get_converter(sig):
         return None
 
 
+def _get_ret_units(ann, ureg, names):
+    ret = _to_units_container(ann.__metadata__[0], ureg)
+    return ureg.Quantity(1, _replace_units(ret[0], names) if ret[1] else ret[0])
+
+
 def units(func):
     """
     Decorator to convert the output of a function to a Quantity object with the specified units.
@@ -70,14 +75,20 @@ def units(func):
         args, kwargs = _apply_defaults(sig, args, kwargs)
         args, kwargs, names = converter(ureg, sig, args, kwargs, strict=False)
         try:
-            ret = _to_units_container(sig.return_annotation.__metadata__[0], ureg)
-            output_units = ureg.Quantity(
-                1, _replace_units(ret[0], names) if ret[1] else ret[0]
-            )
+            if isinstance(sig.return_annotation, tuple):
+                output_units = [
+                    _get_ret_units(ann, ureg, names) for ann in sig.return_annotation
+                ]
+            else:
+                output_units = _get_ret_units(sig.return_annotation, ureg, names)
         except AttributeError:
             output_units = None
         if output_units is None:
             return func(*args, **kwargs)
+        elif isinstance(output_units, list):
+            return tuple(
+                [oo * ff for oo, ff in zip(output_units, func(*args, **kwargs))]
+            )
         else:
             return output_units * func(*args, **kwargs)
 
