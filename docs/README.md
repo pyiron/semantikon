@@ -22,7 +22,7 @@ def my_function(
 
 ### **Interpreters**
 
-`uniton` provides a way to interpret the types of inputs and outputs of a function via a decorator, in order to check consistency of the types and to convert them if necessary. Currently, `uniton` provides a converter for `pint.UnitRegistry` objects. The interpreter is applied in the following way:
+`uniton` provides a way to interpret the types of inputs and outputs of a function via a decorator, in order to check consistency of the types and to convert them if necessary. Currently, `uniton` provides an interpreter for `pint.UnitRegistry` objects. The interpreter is applied in the following way:
 
 ```python
 from uniton.typing import u
@@ -46,3 +46,9 @@ Output: `1.0 meter / second`
 
 
 The interpreters check all types and, if necessary, convert them to the expected types **before** the function is executed, in order for all possible errors would be raised before the function execution. The interpreters convert the types in the way that the underlying function would receive the raw values.
+
+In case there are multiple outputs, the type hints are to be passed as a tuple (e.g. `(u(int, "meter", my_ontology_for_length), u(int, "second", my_ontology_for_time))`).
+
+Interpreters can distinguish between annotated arguments and non-anotated arguments. If the argument is annotated, the interpreter will try to convert the argument to the expected type. If the argument is not annotated, the interpreter will pass the argument as is.
+
+Regardless of type hints are given or not, the interpreter acts only when the input values contain units and ontological types. If the input values do not contain units and ontological types, the interpreter will pass the input values to the function as is.
