@@ -76,10 +76,10 @@ def units(func):
         args, kwargs = _apply_defaults(sig, args, kwargs)
         args, kwargs, names = converter(ureg, sig, args, kwargs, strict=False)
         try:
-            if get_origin(sig.return_annotation) is tuple:
+            if isinstance(sig.return_annotation, tuple):
                 output_units = [
                     _get_ret_units(ann, ureg, names)
-                    for ann in get_args(sig.return_annotation)
+                    for ann in sig.return_annotation
                 ]
             else:
                 output_units = _get_ret_units(sig.return_annotation, ureg, names)

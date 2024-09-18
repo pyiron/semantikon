@@ -2,13 +2,12 @@ import unittest
 from uniton.typing import u
 from uniton.converter import units
 from pint import UnitRegistry
-from typing import Tuple
 
 
 @units
 def get_speed_multiple_outputs(
     distance: u(float, "meter"), time: u(float, "second"), duration: u(float, "second")
-) -> Tuple[u(float, "meter/second"), u(float, "meter/second")]:
+) -> (u(float, "meter/second"), u(float, "meter/second")):
     return distance / time, distance / duration
 
 
