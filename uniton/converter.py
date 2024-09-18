@@ -11,7 +11,6 @@ from pint.registry_helpers import (
     _to_units_container,
     _replace_units,
 )
-from typing import get_origin, get_args
 
 __author__ = "Sam Waseda"
 __copyright__ = (
