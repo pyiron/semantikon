@@ -22,8 +22,7 @@ class Pizza:
 
 
 class TestDataclass(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
         append_types(Pizza)
 
     def test_type(self):
