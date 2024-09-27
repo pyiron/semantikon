@@ -93,3 +93,20 @@ def units(func):
             return output_units * func(*args, **kwargs)
 
     return wrapper
+
+
+def append_types(cls: type):
+    """
+    Append type hints to the class attributes.
+
+    Args:
+        cls: class to be decorated
+    """
+    for key, value in cls.__dict__.items():
+        if isinstance(value, type):
+            append_types(getattr(cls, key))
+    try:
+        for key, value in cls.__annotations__.items():
+            setattr(cls, key, value)
+    except AttributeError:
+        pass
