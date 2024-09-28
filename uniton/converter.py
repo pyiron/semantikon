@@ -123,7 +123,7 @@ def append_types(cls: type):
     >>> print(Pizza.size)
     >>> print(Pizza.price)
     >>> print(Pizza.Topping.sauce)
-    
+
     Output:
 
     <class '__main__.Pizza'>
