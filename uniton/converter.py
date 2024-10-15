@@ -11,6 +11,7 @@ from pint.registry_helpers import (
     _to_units_container,
     _replace_units,
 )
+from ast import literal_eval
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -35,7 +36,7 @@ def _get_args(sig):
     args = []
     for value in sig.parameters.values():
         if hasattr(value.annotation, "__metadata__"):
-            args.append(value.annotation.__metadata__[0])
+            args.append(literal_eval(value.annotation.__metadata__[0])["units"])
         else:
             args.append(None)
     return args
@@ -50,7 +51,7 @@ def _get_converter(sig):
 
 
 def _get_ret_units(ann, ureg, names):
-    ret = _to_units_container(ann.__metadata__[0], ureg)
+    ret = _to_units_container(literal_eval(ann.__metadata__[0])["units"], ureg)
     return ureg.Quantity(1, _replace_units(ret[0], names) if ret[1] else ret[0])
 
 

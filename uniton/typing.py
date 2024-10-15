@@ -19,4 +19,4 @@ def u(
     otype: Any = None,
     shape: tuple[int] | None = None,
 ):
-    return Annotated[type_, units, otype, shape]
+    return Annotated[type_, str({"units": units, "otype": otype, "shape": shape})]
