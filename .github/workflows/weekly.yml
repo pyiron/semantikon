@@ -8,5 +8,5 @@ on:
 
 jobs:
   codeql:
-    uses: pyiron/actions/.github/workflows/codeql.yml@pyyaml_via_apt
+    uses: pyiron/actions/.github/workflows/codeql.yml@actions-3.3.2
     secrets: inherit

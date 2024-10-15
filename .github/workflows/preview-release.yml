@@ -11,7 +11,7 @@ on:
 
 jobs:
   pyiron:
-    uses: pyiron/actions/.github/workflows/pyproject-release.yml@pyyaml_via_apt
+    uses: pyiron/actions/.github/workflows/pyproject-release.yml@actions-3.3.2
     secrets: inherit
     with:
       semantic-upper-bound: 'minor'
