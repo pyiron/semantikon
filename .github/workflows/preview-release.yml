@@ -6,6 +6,8 @@ name: Preview Release
 
 on:
   pull_request:
+#  release:
+#    types: [ published ]
 
 jobs:
   pyiron:
