@@ -51,9 +51,7 @@ def parse_input_args(sig):
 
 def parse_output_args(sig):
     if isinstance(sig.return_annotation, tuple):
-        return [
-            _meta_to_dict(ann) for ann in sig.return_annotation
-        ]
+        return [_meta_to_dict(ann) for ann in sig.return_annotation]
     else:
         return _meta_to_dict(sig.return_annotation)
 
