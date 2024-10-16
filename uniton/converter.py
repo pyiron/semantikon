@@ -43,6 +43,21 @@ def _meta_to_dict(value):
         return None
 
 
+def parse_input_args(sig):
+    return {
+        key: _meta_to_dict(value.annotation) for key, value in sig.parameters.items()
+    }
+
+
+def parse_output_args(sig):
+    if isinstance(sig.return_annotation, tuple):
+        return [
+            _meta_to_dict(ann) for ann in sig.return_annotation
+        ]
+    else:
+        return _meta_to_dict(sig.return_annotation)
+
+
 def parse_args(sig):
     """
     Parse the arguments of a function signature.
@@ -53,16 +68,7 @@ def parse_args(sig):
     Returns:
         dictionary containing the input and output arguments
     """
-    result = {"input": {}}
-    for key, value in sig.parameters:
-        result["input"][key] = _meta_to_dict(value.annotation)
-    if isinstance(sig.return_annotation, tuple):
-        result["output"] = [
-            _meta_to_dict(ann) for ann in sig.return_annotation
-        ]
-    else:
-        result["output"] = _meta_to_dict(sig.return_annotation)
-    return result
+    return {"input": parse_input_args(sig), "output": parse_output_args(sig)}
 
 
 def parse_output_args(ann, ureg, names):
@@ -70,18 +76,13 @@ def parse_output_args(ann, ureg, names):
     return ureg.Quantity(1, _replace_units(ret[0], names) if ret[1] else ret[0])
 
 
-def _get_args(sig):
+def _get_converter(sig):
     args = []
-    for value in sig.parameters.values():
-        if hasattr(value.annotation, "__metadata__"):
-            args.append(literal_eval(value.annotation.__metadata__[0])["units"])
+    for value in parse_input_args(sig).values():
+        if value is not None:
+            args.append(value["units"])
         else:
             args.append(None)
-    return args
-
-
-def _get_converter(sig):
-    args = _get_args(sig)
     if any([arg is not None for arg in args]):
         return _parse_wrap_args(args)
     else:
