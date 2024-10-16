@@ -147,6 +147,24 @@ class TestUnits(unittest.TestCase):
             (1 * ureg.meter / ureg.second, 1000 * ureg.meter / ureg.second),
         )
 
+    def test_use_list(self):
+        @units
+        def get_speed_use_list(
+            distance: u(float, "meter", use_list=True),
+            time: u(float, "second", use_list=True),
+        ) -> u(float, "meter/second", use_list=True):
+            return distance / time
+        self.assertEqual(get_speed_use_list(1.0, 1.0), 1.0)
+        ureg = UnitRegistry()
+        self.assertEqual(
+            get_speed_use_list(1.0 * ureg.meter, 1.0 * ureg.second),
+            1.0 * ureg.meter / ureg.second,
+        )
+        self.assertEqual(
+            get_speed_use_list(1.0 * ureg.millimeter, 1.0 * ureg.second),
+            0.001 * ureg.meter / ureg.second,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
