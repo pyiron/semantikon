@@ -164,6 +164,10 @@ class TestUnits(unittest.TestCase):
             get_speed_use_list(1.0 * ureg.millimeter, 1.0 * ureg.second),
             0.001 * ureg.meter / ureg.second,
         )
+        with self.assertRaises(
+            ValueError, msg="user keyword is not supported when use_list is True"
+        ):
+            _ = u(float, my_arg="ahoi", use_list=True)
 
 
 if __name__ == "__main__":
