@@ -58,11 +58,6 @@ def parse_output_args(sig):
         return _meta_to_dict(sig.return_annotation)
 
 
-def parse_output_args(ann, ureg, names):
-    ret = _to_units_container(literal_eval(ann.__metadata__[0])["units"], ureg)
-    return ureg.Quantity(1, _replace_units(ret[0], names) if ret[1] else ret[0])
-
-
 def _get_converter(sig):
     args = []
     for value in parse_input_args(sig).values():
@@ -76,9 +71,18 @@ def _get_converter(sig):
         return None
 
 
-def _get_ret_units(ann, ureg, names):
-    ret = _to_units_container(literal_eval(ann.__metadata__[0])["units"], ureg)
+def _get_ret_units(output, ureg, names):
+    if output is None:
+        return None
+    ret = _to_units_container(output["units"], ureg)
     return ureg.Quantity(1, _replace_units(ret[0], names) if ret[1] else ret[0])
+
+
+def _get_output_units(output, ureg, names):
+    if isinstance(output, list):
+        return [_get_ret_units(oo, ureg, names) for oo in output]
+    else:
+        return _get_ret_units(output, ureg, names)
 
 
 def units(func):
@@ -102,12 +106,7 @@ def units(func):
         args, kwargs = _apply_defaults(sig, args, kwargs)
         args, kwargs, names = converter(ureg, sig, args, kwargs, strict=False)
         try:
-            if isinstance(sig.return_annotation, tuple):
-                output_units = [
-                    _get_ret_units(ann, ureg, names) for ann in sig.return_annotation
-                ]
-            else:
-                output_units = _get_ret_units(sig.return_annotation, ureg, names)
+            output_units = _get_output_units(parse_output_args(sig), ureg, names)
         except AttributeError:
             output_units = None
         if output_units is None:
