@@ -32,6 +32,44 @@ def _get_ureg(args, kwargs):
     return None
 
 
+def _meta_to_dict(value):
+    if hasattr(value, "__metadata__"):
+        # When there is only one metadata `use_list=False` must have been used
+        if len(value.__metadata__) == 1:
+            return literal_eval(value.__metadata__[0])
+        else:
+            return dict(zip(["units", "otype", "shape"], value.__metadata__))
+    else:
+        return None
+
+
+def parse_args(sig):
+    """
+    Parse the arguments of a function signature.
+
+    Args:
+        sig: function signature
+
+    Returns:
+        dictionary containing the input and output arguments
+    """
+    result = {"input": {}}
+    for key, value in sig.parameters:
+        result["input"][key] = _meta_to_dict(value.annotation)
+    if isinstance(sig.return_annotation, tuple):
+        result["output"] = [
+            _meta_to_dict(ann) for ann in sig.return_annotation
+        ]
+    else:
+        result["output"] = _meta_to_dict(sig.return_annotation)
+    return result
+
+
+def parse_output_args(ann, ureg, names):
+    ret = _to_units_container(literal_eval(ann.__metadata__[0])["units"], ureg)
+    return ureg.Quantity(1, _replace_units(ret[0], names) if ret[1] else ret[0])
+
+
 def _get_args(sig):
     args = []
     for value in sig.parameters.values():
