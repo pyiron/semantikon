@@ -14,6 +14,6 @@ jobs:
     uses: pyiron/actions/.github/workflows/pyproject-release.yml@actions-3.3.2
     secrets: inherit
     with:
-      runner: 'ubuntu-22.04' # with ubuntu > 22.04, pip is broken
+      #runner: 'ubuntu-22.04' # with ubuntu > 22.04, pip is broken
       semantic-upper-bound: 'minor'
       publish-to-pypi: false
