@@ -58,19 +58,6 @@ def parse_output_args(sig):
         return _meta_to_dict(sig.return_annotation)
 
 
-def parse_args(sig):
-    """
-    Parse the arguments of a function signature.
-
-    Args:
-        sig: function signature
-
-    Returns:
-        dictionary containing the input and output arguments
-    """
-    return {"input": parse_input_args(sig), "output": parse_output_args(sig)}
-
-
 def parse_output_args(ann, ureg, names):
     ret = _to_units_container(literal_eval(ann.__metadata__[0])["units"], ureg)
     return ureg.Quantity(1, _replace_units(ret[0], names) if ret[1] else ret[0])
