@@ -44,12 +44,33 @@ def _meta_to_dict(value):
 
 
 def parse_input_args(sig):
+    """
+    Parse the input arguments of a function.
+
+    Args:
+        sig: signature of the function
+
+    Returns:
+        dictionary of the input arguments. Available keys are `units`, `otype`,
+        and `shape`. See `uniton.typing.u` for more details.
+    """
     return {
         key: _meta_to_dict(value.annotation) for key, value in sig.parameters.items()
     }
 
 
 def parse_output_args(sig):
+    """
+    Parse the output arguments of a function.
+
+    Args:
+        sig: signature of the function
+
+    Returns:
+        dictionary of the output arguments if there is only one output. Otherwise,
+        a list of dictionaries is returned. Available keys are `units`, `otype`,
+        and `shape`. See `uniton.typing.u` for more details.
+    """
     if isinstance(sig.return_annotation, tuple):
         return [_meta_to_dict(ann) for ann in sig.return_annotation]
     else:
