@@ -43,43 +43,45 @@ def _meta_to_dict(value):
         return None
 
 
-def parse_input_args(sig):
+def parse_input_args(func: callable):
     """
     Parse the input arguments of a function.
 
     Args:
-        sig: signature of the function
+        func: function to be parsed
 
     Returns:
         dictionary of the input arguments. Available keys are `units`, `otype`,
         and `shape`. See `uniton.typing.u` for more details.
     """
     return {
-        key: _meta_to_dict(value.annotation) for key, value in sig.parameters.items()
+        key: _meta_to_dict(value.annotation)
+        for key, value in inspect.signature(func).parameters.items()
     }
 
 
-def parse_output_args(sig):
+def parse_output_args(func: callable):
     """
     Parse the output arguments of a function.
 
     Args:
-        sig: signature of the function
+        func: function to be parsed
 
     Returns:
         dictionary of the output arguments if there is only one output. Otherwise,
         a list of dictionaries is returned. Available keys are `units`, `otype`,
         and `shape`. See `uniton.typing.u` for more details.
     """
+    sig = inspect.signature(func)
     if isinstance(sig.return_annotation, tuple):
         return [_meta_to_dict(ann) for ann in sig.return_annotation]
     else:
         return _meta_to_dict(sig.return_annotation)
 
 
-def _get_converter(sig):
+def _get_converter(func):
     args = []
-    for value in parse_input_args(sig).values():
+    for value in parse_input_args(func).values():
         if value is not None:
             args.append(value["units"])
         else:
@@ -106,7 +108,8 @@ def _get_output_units(output, ureg, names):
 
 def units(func):
     """
-    Decorator to convert the output of a function to a Quantity object with the specified units.
+    Decorator to convert the output of a function to a Quantity object with
+    the specified units.
 
     Args:
         func: function to be decorated
@@ -115,7 +118,7 @@ def units(func):
         decorated function
     """
     sig = inspect.signature(func)
-    converter = _get_converter(sig)
+    converter = _get_converter(func)
 
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -125,7 +128,7 @@ def units(func):
         args, kwargs = _apply_defaults(sig, args, kwargs)
         args, kwargs, names = converter(ureg, sig, args, kwargs, strict=False)
         try:
-            output_units = _get_output_units(parse_output_args(sig), ureg, names)
+            output_units = _get_output_units(parse_output_args(func), ureg, names)
         except AttributeError:
             output_units = None
         if output_units is None:
