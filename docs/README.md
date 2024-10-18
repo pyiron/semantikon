@@ -12,9 +12,9 @@ In the realm of the workflow management systems, there are well defined inputs a
 from uniton.typing import u
 
 def my_function(
-    a: u(int, "meter", my_ontology_for_length),
-    b: u(int, "second", my_ontology_for_time)
-) -> u(int, "meter/second", my_ontology_for_speed):
+    a: u(int, units="meter"),
+    b: u(int, units="second")
+) -> u(int, units="meter/second", label="speed"):
     return a / b
 ```
 
@@ -31,9 +31,9 @@ from pint import UnitRegistry
 
 @units
 def my_function(
-    a: u(int, "meter", my_ontology_for_length),
-    b: u(int, "second", my_ontology_for_time)
-) -> u(int, "meter/second", my_ontology_for_speed):
+    a: u(int, units="meter"),
+    b: u(int, units="second")
+) -> u(int, units="meter/second", label="speed"):
     return a / b
 
 
@@ -47,8 +47,11 @@ Output: `1.0 meter / second`
 
 The interpreters check all types and, if necessary, convert them to the expected types **before** the function is executed, in order for all possible errors would be raised before the function execution. The interpreters convert the types in the way that the underlying function would receive the raw values.
 
-In case there are multiple outputs, the type hints are to be passed as a tuple (e.g. `(u(int, "meter", my_ontology_for_length), u(int, "second", my_ontology_for_time))`).
+In case there are multiple outputs, the type hints are to be passed as a tuple (e.g. `(u(int, "meter"), u(int, "second"))`).
 
 Interpreters can distinguish between annotated arguments and non-anotated arguments. If the argument is annotated, the interpreter will try to convert the argument to the expected type. If the argument is not annotated, the interpreter will pass the argument as is.
 
 Regardless of type hints are given or not, the interpreter acts only when the input values contain units and ontological types. If the input values do not contain units and ontological types, the interpreter will pass the input values to the function as is.
+
+For arguments beyond units, you can use the functions `parse_input_args` and `parse_output_args` to extract the variable information. `parse_input_args` parses the input variables and return a dictionary with the variable names as keys and the variable information as values. `parse_output_args` parses the output variables and return a dictionary with the variable information as values if there is one output variable, or a list of dictionaries if it is a tuple.
+
