@@ -25,6 +25,15 @@ class TestUnits(unittest.TestCase):
             self.assertEqual(output_args["units"], "meter/second")
             self.assertEqual(output_args["label"], "speed")
 
+    def test_additional_args(self):
+        def get_speed(
+            distance: u(float, "meter", my_arg="some_info"),
+            time: u(float, "second"),
+        ) -> u(float, "meter/second", label="speed"):
+            return distance / time
+        input_args = parse_input_args(get_speed)
+        self.assertEqual(input_args["distance"]["my_arg"], "some_info")
+
 
 if __name__ == "__main__":
     unittest.main()
