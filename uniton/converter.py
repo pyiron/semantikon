@@ -36,9 +36,11 @@ def _meta_to_dict(value):
     if hasattr(value, "__metadata__"):
         # When there is only one metadata `use_list=False` must have been used
         if len(value.__metadata__) == 1:
-            return literal_eval(value.__metadata__[0])
+            result = literal_eval(value.__metadata__[0])
         else:
-            return dict(zip(["units", "label", "uri", "shape"], value.__metadata__))
+            result = dict(zip(["units", "label", "uri", "shape"], value.__metadata__))
+        result["dtype"] = value.__args__[0]
+        return result
     else:
         return None
 
