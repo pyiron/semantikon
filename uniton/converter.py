@@ -76,7 +76,7 @@ def parse_output_args(func: callable):
     """
     sig = inspect.signature(func)
     if isinstance(sig.return_annotation, tuple):
-        return [_meta_to_dict(ann) for ann in sig.return_annotation]
+        return tuple([_meta_to_dict(ann) for ann in sig.return_annotation])
     else:
         return _meta_to_dict(sig.return_annotation)
 
@@ -102,8 +102,8 @@ def _get_ret_units(output, ureg, names):
 
 
 def _get_output_units(output, ureg, names):
-    if isinstance(output, list):
-        return [_get_ret_units(oo, ureg, names) for oo in output]
+    if isinstance(output, tuple):
+        return tuple([_get_ret_units(oo, ureg, names) for oo in output])
     else:
         return _get_ret_units(output, ureg, names)
 
@@ -135,7 +135,7 @@ def units(func):
             output_units = None
         if output_units is None:
             return func(*args, **kwargs)
-        elif isinstance(output_units, list):
+        elif isinstance(output_units, tuple):
             return tuple(
                 [oo * ff for oo, ff in zip(output_units, func(*args, **kwargs))]
             )

@@ -36,7 +36,7 @@ class TestUnits(unittest.TestCase):
             ):
                 return distance / time, distance
             output_args = parse_output_args(get_speed)
-            self.assertIsInstance(output_args, list)
+            self.assertIsInstance(output_args, tuple)
             for output_arg in output_args:
                 for key in ["units", "uri", "shape", "label", "dtype"]:
                     self.assertTrue(key in output_arg)
