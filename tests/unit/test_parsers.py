@@ -1,7 +1,6 @@
 import unittest
 from uniton.typing import u
 from uniton.converter import parse_input_args, parse_output_args
-import inspect
 
 
 class TestUnits(unittest.TestCase):
