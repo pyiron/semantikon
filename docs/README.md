@@ -12,9 +12,9 @@ In the realm of the workflow management systems, there are well defined inputs a
 from uniton.typing import u
 
 def my_function(
-    a: u(int, "meter", my_ontology_for_length),
-    b: u(int, "second", my_ontology_for_time)
-) -> u(int, "meter/second", my_ontology_for_speed):
+    a: u(int, units="meter"),
+    b: u(int, units="second")
+) -> u(int, units="meter/second", label="speed"):
     return a / b
 ```
 
@@ -31,9 +31,9 @@ from pint import UnitRegistry
 
 @units
 def my_function(
-    a: u(int, "meter", my_ontology_for_length),
-    b: u(int, "second", my_ontology_for_time)
-) -> u(int, "meter/second", my_ontology_for_speed):
+    a: u(int, units="meter"),
+    b: u(int, units="second")
+) -> u(int, units="meter/second", label="speed"):
     return a / b
 
 
