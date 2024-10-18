@@ -38,7 +38,7 @@ def _meta_to_dict(value):
         if len(value.__metadata__) == 1:
             return literal_eval(value.__metadata__[0])
         else:
-            return dict(zip(["units", "otype", "shape"], value.__metadata__))
+            return dict(zip(["units", "label", "uri", "shape"], value.__metadata__))
     else:
         return None
 
