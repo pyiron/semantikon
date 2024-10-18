@@ -16,7 +16,8 @@ def u(
     type_,
     /,
     units: str | None = None,
-    otype: Any = None,
+    label: str | None = None,
+    uri: str | None = None,
     shape: tuple[int] | None = None,
     use_list: bool = False,
     **kwargs,
@@ -24,8 +25,8 @@ def u(
     if use_list:
         if len(kwargs) > 0:
             raise ValueError("kwargs are not allowed when use_list=True")
-        return Annotated[type_, units, otype, shape]
+        return Annotated[type_, units, otype, label, uri, shape]
     else:
-        result = {"units": units, "otype": otype, "shape": shape}
+        result = {"units": units, "label": label, "uri": uri, "shape": shape}
         result.update(kwargs)
         return Annotated[type_, str(result)]
