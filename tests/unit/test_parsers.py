@@ -25,6 +25,26 @@ class TestUnits(unittest.TestCase):
             self.assertEqual(output_args["units"], "meter/second")
             self.assertEqual(output_args["label"], "speed")
 
+    def test_multiple_output_args(self):
+        for use_list in [True, False]:
+            def get_speed(
+                distance: u(float, "meter", use_list=use_list),
+                time: u(float, "second", use_list=use_list),
+            ) -> (
+                u(float, "meter/second", label="speed", use_list=use_list),
+                u(float, "meter", label="distance", use_list=use_list)
+            ):
+                return distance / time, distance
+            output_args = parse_output_args(get_speed)
+            self.assertIsInstance(output_args, list)
+            for output_arg in output_args:
+                for key in ["units", "uri", "shape", "label", "dtype"]:
+                    self.assertTrue(key in output_arg)
+            self.assertEqual(output_args[0]["units"], "meter/second")
+            self.assertEqual(output_args[0]["label"], "speed")
+            self.assertEqual(output_args[1]["units"], "meter")
+            self.assertEqual(output_args[1]["label"], "distance")
+
     def test_additional_args(self):
         def get_speed(
             distance: u(float, "meter", my_arg="some_info"),
