@@ -11,6 +11,7 @@ from pint.registry_helpers import (
     _to_units_container,
     _replace_units,
 )
+from ast import literal_eval
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -31,27 +32,76 @@ def _get_ureg(args, kwargs):
     return None
 
 
-def _get_args(sig):
-    args = []
-    for value in sig.parameters.values():
-        if hasattr(value.annotation, "__metadata__"):
-            args.append(value.annotation.__metadata__[0])
+def _meta_to_dict(value):
+    if hasattr(value, "__metadata__"):
+        # When there is only one metadata `use_list=False` must have been used
+        if len(value.__metadata__) == 1:
+            return literal_eval(value.__metadata__[0])
         else:
-            args.append(None)
-    return args
+            return dict(zip(["units", "otype", "shape"], value.__metadata__))
+    else:
+        return None
+
+
+def parse_input_args(sig):
+    """
+    Parse the input arguments of a function.
+
+    Args:
+        sig: signature of the function
+
+    Returns:
+        dictionary of the input arguments. Available keys are `units`, `otype`,
+        and `shape`. See `uniton.typing.u` for more details.
+    """
+    return {
+        key: _meta_to_dict(value.annotation) for key, value in sig.parameters.items()
+    }
+
+
+def parse_output_args(sig):
+    """
+    Parse the output arguments of a function.
+
+    Args:
+        sig: signature of the function
+
+    Returns:
+        dictionary of the output arguments if there is only one output. Otherwise,
+        a list of dictionaries is returned. Available keys are `units`, `otype`,
+        and `shape`. See `uniton.typing.u` for more details.
+    """
+    if isinstance(sig.return_annotation, tuple):
+        return [_meta_to_dict(ann) for ann in sig.return_annotation]
+    else:
+        return _meta_to_dict(sig.return_annotation)
 
 
 def _get_converter(sig):
-    args = _get_args(sig)
+    args = []
+    for value in parse_input_args(sig).values():
+        if value is not None:
+            args.append(value["units"])
+        else:
+            args.append(None)
     if any([arg is not None for arg in args]):
         return _parse_wrap_args(args)
     else:
         return None
 
 
-def _get_ret_units(ann, ureg, names):
-    ret = _to_units_container(ann.__metadata__[0], ureg)
+def _get_ret_units(output, ureg, names):
+    if output is None:
+        return None
+    ret = _to_units_container(output["units"], ureg)
     return ureg.Quantity(1, _replace_units(ret[0], names) if ret[1] else ret[0])
+
+
+def _get_output_units(output, ureg, names):
+    if isinstance(output, list):
+        return [_get_ret_units(oo, ureg, names) for oo in output]
+    else:
+        return _get_ret_units(output, ureg, names)
 
 
 def units(func):
@@ -75,12 +125,7 @@ def units(func):
         args, kwargs = _apply_defaults(sig, args, kwargs)
         args, kwargs, names = converter(ureg, sig, args, kwargs, strict=False)
         try:
-            if isinstance(sig.return_annotation, tuple):
-                output_units = [
-                    _get_ret_units(ann, ureg, names) for ann in sig.return_annotation
-                ]
-            else:
-                output_units = _get_ret_units(sig.return_annotation, ureg, names)
+            output_units = _get_output_units(parse_output_args(sig), ureg, names)
         except AttributeError:
             output_units = None
         if output_units is None:
