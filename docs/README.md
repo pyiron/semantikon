@@ -20,7 +20,43 @@ def my_function(
 
 `uniton`'s type hinting does not require to follow any particular standard. It only needs to be compatible with the interpreter applied.
 
+There are two possible ways to store the data for `uniton`. The standard way is to do it by converting all arguments except for the data type as a string, which is the default behaviour. The other way is to store the data as a list, which is turned on by setting `use_list=True`. In most cases, the default behaviour is the safest option; in some cases, especially when the data cannot be represented as a string, you might want to switch on `use_list`, but `uniton` is still under intensive development, and therefore there is no guarantee that you can retrieve the data across different versions correctly.
+
+
 ### **Interpreters**
+
+#### General interpreter
+
+In order to extract argument information, you can use the functions `parse_input_args` and `parse_output_args`. `parse_input_args` parses the input variables and return a dictionary with the variable names as keys and the variable information as values. `parse_output_args` parses the output variables and return a dictionary with the variable information as values if there is one output variable, or a list of dictionaries if it is a tuple.
+
+Example:
+
+```python
+from uniton.typing import u
+from uniton.converter import parse_input_args, parse_output_args
+
+def my_function(
+    a: u(int, units="meter"),
+    b: u(int, units="second")
+) -> u(int, units="meter/second", label="speed"):
+    return a / b
+
+print(parse_input_args(my_function))
+print(parse_output_args(my_function))
+```
+
+Output:
+
+```python
+{'distance': {'units': 'meter', 'label': None, 'uri': None, 'shape': None, 'dtype': <class 'float'>}, 'time': {'units': 'second', 'label': None, 'uri': None, 'shape': None, 'dtype': <class 'float'>}}
+{'units': 'meter/second', 'label': 'speed', 'uri': None, 'shape': None, 'dtype': <class 'float'>}
+```
+
+Here the output is the same whether `use_list` is set to `True` or `False`. When `use_list` is `False`, you can use additionally any tag that you want to store. When `use_list` is `True`, you can store only the data type, `units`, `label`, `uri`, `shape` and `dtype`.
+
+Future announcement: There will be no distrinction between `use_list=True` and `use_list=False` when the official support of python 3.10 is dropped (i.e. around autumn 2026).
+
+#### Unit conversion with `pint`
 
 `uniton` provides a way to interpret the types of inputs and outputs of a function via a decorator, in order to check consistency of the types and to convert them if necessary. Currently, `uniton` provides an interpreter for `pint.UnitRegistry` objects. The interpreter is applied in the following way:
 
@@ -53,5 +89,4 @@ Interpreters can distinguish between annotated arguments and non-anotated argume
 
 Regardless of type hints are given or not, the interpreter acts only when the input values contain units and ontological types. If the input values do not contain units and ontological types, the interpreter will pass the input values to the function as is.
 
-For arguments beyond units, you can use the functions `parse_input_args` and `parse_output_args` to extract the variable information. `parse_input_args` parses the input variables and return a dictionary with the variable names as keys and the variable information as values. `parse_output_args` parses the output variables and return a dictionary with the variable information as values if there is one output variable, or a list of dictionaries if it is a tuple.
 
