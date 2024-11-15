@@ -1,5 +1,5 @@
 import unittest
-from uniton.converter import append_types
+from uniton.converter import append_types, parse_metadata
 from typing import Annotated
 from dataclasses import dataclass
 
