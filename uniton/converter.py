@@ -32,13 +32,27 @@ def _get_ureg(args, kwargs):
     return None
 
 
+def parse_metadata(value):
+    """
+    Parse the metadata of a Quantity object.
+
+    Args:
+        value: Quantity object
+
+    Returns:
+        dictionary of the metadata. Available keys are `units`, `otype`,
+        `shape`, and `dtype`. See `uniton.typing.u` for more details.
+    """
+    # When there is only one metadata `use_list=False` must have been used
+    if len(value.__metadata__) == 1:
+        return literal_eval(value.__metadata__[0])
+    else:
+        return dict(zip(["units", "label", "uri", "shape"], value.__metadata__))
+
+
 def _meta_to_dict(value):
     if hasattr(value, "__metadata__"):
-        # When there is only one metadata `use_list=False` must have been used
-        if len(value.__metadata__) == 1:
-            result = literal_eval(value.__metadata__[0])
-        else:
-            result = dict(zip(["units", "label", "uri", "shape"], value.__metadata__))
+        result = parse_metadata(value)
         result["dtype"] = value.__args__[0]
         return result
     else:
