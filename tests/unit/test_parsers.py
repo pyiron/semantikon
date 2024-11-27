@@ -53,6 +53,18 @@ class TestUnits(unittest.TestCase):
         input_args = parse_input_args(get_speed)
         self.assertEqual(input_args["distance"]["my_arg"], "some_info")
 
+    def test_return_class(self):
+        class Output:
+            value: u(float, "meter/second", label="speed")
+        def get_speed(
+            distance: u(float, "meter"),
+            time: u(float, "second"),
+        ) -> Output:
+            return distance / time
+        output_args = parse_output_args(get_speed)
+        self.assertIsInstance(output_args, dict)
+        self.assertEqual(output_args["dtype"], Output)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -55,6 +55,14 @@ def _meta_to_dict(value):
         result = parse_metadata(value)
         result["dtype"] = value.__args__[0]
         return result
+    elif value is not inspect.Parameter.empty:
+        return {
+            "units": None,
+            "label": None,
+            "uri": None,
+            "shape": None,
+            "dtype": value,
+        }
     else:
         return None
 
