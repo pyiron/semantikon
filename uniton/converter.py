@@ -206,4 +206,3 @@ def uniton_class(cls: type):
     except AttributeError:
         pass
     return cls
-
