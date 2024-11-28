@@ -167,25 +167,26 @@ def units(func):
     return wrapper
 
 
-def append_types(cls: type):
+def uniton_class(cls: type):
     """
-    Append type hints to the class attributes.
+    A class decorator to append type hints to class attributes.
 
     Args:
         cls: class to be decorated
 
+    Returns:
+        The modified class with type hints appended to its attributes.
+
     Comments:
 
-    >>> from dataclasses import dataclass
     >>> from typing import Annotated
-    >>> from uniton.converter.append_types
+    >>> from uniton.converter import uniton_class
 
-    >>> @dataclass
+    >>> @uniton_class
     >>> class Pizza:
     >>>     price: Annotated[float, "money"]
     >>>     size: Annotated[float, "dimension"]
 
-    >>>     @dataclass
     >>>     class Topping:
     >>>         sauce: Annotated[str, "matter"]
 
@@ -195,23 +196,14 @@ def append_types(cls: type):
     >>> print(Pizza.size)
     >>> print(Pizza.price)
     >>> print(Pizza.Topping.sauce)
-
-    Output:
-
-    <class '__main__.Pizza'>
-    <class '__main__.Pizza.Topping'>
-    typing.Annotated[float, 'dimension']
-    typing.Annotated[float, 'money']
-    typing.Annotated[str, 'matter']
-
-    The main point is the type hints are appended to the class attributes. The
-    classes remain untouched.
     """
     for key, value in cls.__dict__.items():
         if isinstance(value, type):
-            append_types(getattr(cls, key))
+            uniton_class(getattr(cls, key))  # Recursively apply to nested classes
     try:
         for key, value in cls.__annotations__.items():
-            setattr(cls, key, value)
+            setattr(cls, key, value)  # Append type hints to attributes
     except AttributeError:
         pass
+    return cls
+
