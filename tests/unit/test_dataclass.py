@@ -1,10 +1,11 @@
 import unittest
-from uniton.converter import append_types, parse_metadata
 from uniton.typing import u
 from typing import Annotated
 from dataclasses import dataclass
+from uniton.converter import uniton_class, parse_metadata
 
 
+@uniton_class
 @dataclass
 class Pizza:
     size: Annotated[float, "centimeter"]
@@ -22,15 +23,13 @@ class Pizza:
         return self.price
 
 
+@uniton_class
 @dataclass
 class Output:
     total_energy: u(float, units="eV", label="TotalEnergy", associate_to_sample=True)
 
 
 class TestDataclass(unittest.TestCase):
-    def setUp(self):
-        append_types(Pizza)
-        append_types(Output)
 
     def test_type(self):
         self.assertEqual(Pizza.price, int)
