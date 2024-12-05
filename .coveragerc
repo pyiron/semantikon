@@ -1,5 +1,5 @@
 # .coveragerc to control coverage.py
 [run]
-source = uniton
-omit = uniton/_version.py
+source = semantikon
+omit = semantikon/_version.py
 concurrency = multiprocessing
