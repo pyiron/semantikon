@@ -41,7 +41,7 @@ def parse_metadata(value):
 
     Returns:
         dictionary of the metadata. Available keys are `units`, `otype`,
-        `shape`, and `dtype`. See `uniton.typing.u` for more details.
+        `shape`, and `dtype`. See `semantikon.typing.u` for more details.
     """
     # When there is only one metadata `use_list=False` must have been used
     if len(value.__metadata__) == 1:
@@ -76,7 +76,7 @@ def parse_input_args(func: callable):
 
     Returns:
         dictionary of the input arguments. Available keys are `units`, `otype`,
-        and `shape`. See `uniton.typing.u` for more details.
+        and `shape`. See `semantikon.typing.u` for more details.
     """
     return {
         key: _meta_to_dict(value.annotation)
@@ -94,7 +94,7 @@ def parse_output_args(func: callable):
     Returns:
         dictionary of the output arguments if there is only one output. Otherwise,
         a list of dictionaries is returned. Available keys are `units`, `otype`,
-        and `shape`. See `uniton.typing.u` for more details.
+        and `shape`. See `semantikon.typing.u` for more details.
     """
     sig = inspect.signature(func)
     if isinstance(sig.return_annotation, tuple):
@@ -167,7 +167,7 @@ def units(func):
     return wrapper
 
 
-def uniton_class(cls: type):
+def semantikon_class(cls: type):
     """
     A class decorator to append type hints to class attributes.
 
@@ -180,9 +180,9 @@ def uniton_class(cls: type):
     Comments:
 
     >>> from typing import Annotated
-    >>> from uniton.converter import uniton_class
+    >>> from semantikon.converter import semantikon_class
 
-    >>> @uniton_class
+    >>> @semantikon_class
     >>> class Pizza:
     >>>     price: Annotated[float, "money"]
     >>>     size: Annotated[float, "dimension"]
@@ -199,7 +199,7 @@ def uniton_class(cls: type):
     """
     for key, value in cls.__dict__.items():
         if isinstance(value, type):
-            uniton_class(getattr(cls, key))  # Recursively apply to nested classes
+            semantikon_class(getattr(cls, key))  # Recursively apply to nested classes
     try:
         for key, value in cls.__annotations__.items():
             setattr(cls, key, value)  # Append type hints to attributes

@@ -1,15 +1,15 @@
-# uniton
+# semantikon
 
 ## Overview
 
-In the realm of the workflow management systems, there are well defined inputs and outputs for each node. `uniton` is a Python package to give scientific context to node inputs and outputs by providing type hinting and interpreters. Therefore, it consists of two **fully** separate parts: type hinting and interpreters.
+In the realm of the workflow management systems, there are well defined inputs and outputs for each node. `semantikon` is a Python package to give scientific context to node inputs and outputs by providing type hinting and interpreters. Therefore, it consists of two **fully** separate parts: type hinting and interpreters.
 
 ### **Type hinting**
 
-`uniton` provides a way to define types for any number of input parameters and any number of output values for function via type hinting, in particular: data type, unit and ontological type. Type hinting is done with the function `u`, which **requires** the type, and **optionally** you can define the units and the ontological type. The type hinting is done in the following way:
+`semantikon` provides a way to define types for any number of input parameters and any number of output values for function via type hinting, in particular: data type, unit and ontological type. Type hinting is done with the function `u`, which **requires** the type, and **optionally** you can define the units and the ontological type. The type hinting is done in the following way:
 
 ```python
-from uniton.typing import u
+from semantikon.typing import u
 
 def my_function(
     a: u(int, units="meter"),
@@ -18,9 +18,9 @@ def my_function(
     return a / b
 ```
 
-`uniton`'s type hinting does not require to follow any particular standard. It only needs to be compatible with the interpreter applied.
+`semantikon`'s type hinting does not require to follow any particular standard. It only needs to be compatible with the interpreter applied.
 
-There are two possible ways to store the data for `uniton`. The standard way is to do it by converting all arguments except for the data type as a string, which is the default behaviour. The other way is to store the data as a list, which is turned on by setting `use_list=True`. In most cases, the default behaviour is the safest option; in some cases, especially when the data cannot be represented as a string, you might want to switch on `use_list`, but `uniton` is still under intensive development, and therefore there is no guarantee that you can retrieve the data across different versions correctly.
+There are two possible ways to store the data for `semantikon`. The standard way is to do it by converting all arguments except for the data type as a string, which is the default behaviour. The other way is to store the data as a list, which is turned on by setting `use_list=True`. In most cases, the default behaviour is the safest option; in some cases, especially when the data cannot be represented as a string, you might want to switch on `use_list`, but `semantikon` is still under intensive development, and therefore there is no guarantee that you can retrieve the data across different versions correctly.
 
 
 ### **Interpreters**
@@ -32,8 +32,8 @@ In order to extract argument information, you can use the functions `parse_input
 Example:
 
 ```python
-from uniton.typing import u
-from uniton.converter import parse_input_args, parse_output_args
+from semantikon.typing import u
+from semantikon.converter import parse_input_args, parse_output_args
 
 def my_function(
     a: u(int, units="meter"),
@@ -58,11 +58,11 @@ Future announcement: There will be no distrinction between `use_list=True` and `
 
 #### Unit conversion with `pint`
 
-`uniton` provides a way to interpret the types of inputs and outputs of a function via a decorator, in order to check consistency of the types and to convert them if necessary. Currently, `uniton` provides an interpreter for `pint.UnitRegistry` objects. The interpreter is applied in the following way:
+`semantikon` provides a way to interpret the types of inputs and outputs of a function via a decorator, in order to check consistency of the types and to convert them if necessary. Currently, `semantikon` provides an interpreter for `pint.UnitRegistry` objects. The interpreter is applied in the following way:
 
 ```python
-from uniton.typing import u
-from uniton.converters import units
+from semantikon.typing import u
+from semantikon.converters import units
 from pint import UnitRegistry
 
 @units

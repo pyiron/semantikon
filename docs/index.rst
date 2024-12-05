@@ -1,4 +1,4 @@
-.. uniton documentation master file
+.. semantikon documentation master file
 
 .. _index:
 

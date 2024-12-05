@@ -6,8 +6,8 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "uniton"
-description = "uniton - Your tool for units"
+name = "semantikon"
+description = "semantikon - Your tool for units"
 readme = "docs/README.md"
 keywords = [ "pyiron",]
 requires-python = ">=3.9, <3.13"
@@ -36,18 +36,18 @@ file = "LICENSE"
 
 [project.urls]
 Homepage = "https://pyiron.org/"
-Documentation = "https://uniton.readthedocs.io"
-Repository = "https://github.com/pyiron/uniton"
+Documentation = "https://semantikon.readthedocs.io"
+Repository = "https://github.com/pyiron/semantikon"
 
 [tool.versioneer]
 VCS = "git"
 style = "pep440-pre"
-versionfile_source = "uniton/_version.py"
-parentdir_prefix = "uniton"
-tag_prefix = "uniton-"
+versionfile_source = "semantikon/_version.py"
+parentdir_prefix = "semantikon"
+tag_prefix = "semantikon-"
 
 [tool.setuptools.packages.find]
-include = [ "uniton*",]
+include = [ "semantikon*",]
 
 [tool.setuptools.dynamic.version]
-attr = "uniton.__version__"
+attr = "semantikon.__version__"

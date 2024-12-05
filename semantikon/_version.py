@@ -50,9 +50,9 @@ def get_config() -> VersioneerConfig:
     cfg = VersioneerConfig()
     cfg.VCS = "git"
     cfg.style = "pep440-pre"
-    cfg.tag_prefix = "uniton-"
-    cfg.parentdir_prefix = "uniton"
-    cfg.versionfile_source = "uniton/_version.py"
+    cfg.tag_prefix = "semantikon-"
+    cfg.parentdir_prefix = "semantikon"
+    cfg.versionfile_source = "semantikon/_version.py"
     cfg.verbose = False
     return cfg
 
