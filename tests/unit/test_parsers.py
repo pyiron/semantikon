@@ -1,6 +1,6 @@
 import unittest
-from uniton.typing import u
-from uniton.converter import parse_input_args, parse_output_args
+from semantikon.typing import u
+from semantikon.converter import parse_input_args, parse_output_args
 
 
 class TestUnits(unittest.TestCase):

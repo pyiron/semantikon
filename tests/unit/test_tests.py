@@ -1,9 +1,9 @@
 import unittest
-import uniton
+import semantikon
 
 
 class TestVersion(unittest.TestCase):
     def test_version(self):
-        version = uniton.__version__
+        version = semantikon.__version__
         print(version)
         self.assertTrue(version.startswith('0'))

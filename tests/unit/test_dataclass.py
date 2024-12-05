@@ -1,8 +1,8 @@
 import unittest
-from uniton.typing import u
+from semantikon.typing import u
 from typing import Annotated
 from dataclasses import dataclass
-from uniton.converter import uniton_class, parse_metadata
+from semantikon.converter import uniton_class, parse_metadata
 
 
 @uniton_class
