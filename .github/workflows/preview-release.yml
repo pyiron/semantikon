@@ -4,8 +4,9 @@
 # To actually release, change the `on` and `publish-to-pypi` fields
 name: Preview Release
 
-release:
-  types: [ published ]
+on:
+  release:
+    types: [ published ]
 
 jobs:
   pyiron:
