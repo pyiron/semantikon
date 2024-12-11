@@ -30,7 +30,9 @@ dynamic = [ "version",]
 authors = [
     { name = "Sam Waseda", email = "waseda@mpie.de" },
 ]
-license = {file = "LICENSE"}
+
+[project.license]
+file = "LICENSE"
 
 [project.urls]
 Homepage = "https://pyiron.org/"
