@@ -4,10 +4,8 @@
 # To actually release, change the `on` and `publish-to-pypi` fields
 name: Preview Release
 
-on:
-  pull_request:
-#  release:
-#    types: [ published ]
+release:
+  types: [ published ]
 
 jobs:
   pyiron:
@@ -16,4 +14,4 @@ jobs:
     with:
       runner: 'ubuntu-22.04' # with ubuntu > 22.04, pip is broken
       semantic-upper-bound: 'minor'
-      publish-to-pypi: false
+      publish-to-pypi: true
