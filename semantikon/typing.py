@@ -28,6 +28,12 @@ def u(
             raise ValueError("kwargs are not allowed when use_list=True")
         return Annotated[type_, units, label, otype, uri, shape]
     else:
-        result = {"units": units, "label": label, "otype": otype, "uri": uri, "shape": shape}
+        result = {
+            "units": units,
+            "label": label,
+            "otype": otype,
+            "uri": uri,
+            "shape": shape,
+        }
         result.update(kwargs)
         return Annotated[type_, str(result)]
