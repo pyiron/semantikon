@@ -33,6 +33,7 @@ def u(
             "units": units,
             "label": label,
             "otype": otype,
+            "triple": triple,
             "uri": uri,
             "shape": shape,
         }
