@@ -18,6 +18,7 @@ def u(
     units: str | None = None,
     label: str | None = None,
     otype: str | tuple | None = None,
+    triple: tuple[tuple[str, str, str], ...] | tuple[str, str, str] | None = None,
     uri: str | None = None,
     shape: tuple[int] | None = None,
     use_list: bool = False,
