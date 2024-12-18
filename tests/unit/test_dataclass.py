@@ -54,6 +54,7 @@ class TestDataclass(unittest.TestCase):
                 "label": "TotalEnergy",
                 "associate_to_sample": True,
                 "otype": None,
+                "triple": None,
                 "shape": None,
                 "uri": None,
             },
