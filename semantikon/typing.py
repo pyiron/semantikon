@@ -27,7 +27,7 @@ def u(
     if use_list:
         if len(kwargs) > 0:
             raise ValueError("kwargs are not allowed when use_list=True")
-        return Annotated[type_, units, label, otype, uri, shape]
+        return Annotated[type_, units, label, otype, triple, uri, shape]
     else:
         result = {
             "units": units,
