@@ -7,7 +7,7 @@ from pint import UnitRegistry
 @units
 def get_speed_multiple_outputs(
     distance: u(float, "meter"), time: u(float, "second"), duration: u(float, "second")
-) -> (u(float, "meter/second"), u(float, "meter/second")):
+) -> tuple[u(float, "meter/second"), u(float, "meter/second")]:
     return distance / time, distance / duration
 
 
@@ -154,6 +154,7 @@ class TestUnits(unittest.TestCase):
             time: u(float, "second", use_list=True),
         ) -> u(float, "meter/second", use_list=True):
             return distance / time
+
         self.assertEqual(get_speed_use_list(1.0, 1.0), 1.0)
         ureg = UnitRegistry()
         self.assertEqual(
