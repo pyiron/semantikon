@@ -45,10 +45,13 @@ def parse_metadata(value):
         `shape`, and `dtype`. See `semantikon.typing.u` for more details.
     """
     # When there is only one metadata `use_list=False` must have been used
-    if len(value.__metadata__) == 1:
+    if len(value.__metadata__) == 1 and isinstance(value.__metadata__[0], str):
         return literal_eval(value.__metadata__[0])
     else:
-        return dict(zip(["units", "label", "uri", "shape"], value.__metadata__))
+        d = {}
+        for ii in range(len(value.__metadata__[0]) // 2):
+            d[value.__metadata__[0][2 * ii]] = value.__metadata__[0][2 * ii + 1]
+        return d
 
 
 def _meta_to_dict(value):

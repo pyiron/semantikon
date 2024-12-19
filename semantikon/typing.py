@@ -24,18 +24,17 @@ def u(
     use_list: bool = False,
     **kwargs,
 ):
+    result = {
+        "units": units,
+        "label": label,
+        "otype": otype,
+        "triple": triple,
+        "uri": uri,
+        "shape": shape,
+    }
+    result.update(kwargs)
     if use_list:
-        if len(kwargs) > 0:
-            raise ValueError("kwargs are not allowed when use_list=True")
-        return Annotated[type_, units, label, otype, triple, uri, shape]
+        items = [x for k, v in result.items() for x in [k, v]]
+        return Annotated[type_, items]
     else:
-        result = {
-            "units": units,
-            "label": label,
-            "otype": otype,
-            "triple": triple,
-            "uri": uri,
-            "shape": shape,
-        }
-        result.update(kwargs)
         return Annotated[type_, str(result)]
