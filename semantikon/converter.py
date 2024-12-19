@@ -48,7 +48,10 @@ def parse_metadata(value):
     if len(value.__metadata__) == 1:
         return literal_eval(value.__metadata__[0])
     else:
-        return dict(zip(["units", "label", "uri", "shape"], value.__metadata__))
+        d = {}
+        for ii in range(len(value.__metadata__) // 2):
+            d[value.__metadata__[2 * ii]] = value.__metadata__[2 * ii + 1]
+        return d
 
 
 def _meta_to_dict(value):
