@@ -154,6 +154,7 @@ class TestUnits(unittest.TestCase):
             time: u(float, "second", use_list=True),
         ) -> u(float, "meter/second", use_list=True):
             return distance / time
+
         self.assertEqual(get_speed_use_list(1.0, 1.0), 1.0)
         ureg = UnitRegistry()
         self.assertEqual(
