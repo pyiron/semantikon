@@ -34,6 +34,7 @@ def u(
     }
     result.update(kwargs)
     if use_list:
-        return Annotated[type_, *[x for k, v in result.items() for x in [k, v]]]
+        items = [x for k, v in result.items() for x in [k, v]]
+        return Annotated[type_, *items]
     else:
         return Annotated[type_, str(result)]
