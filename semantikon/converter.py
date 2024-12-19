@@ -12,6 +12,7 @@ from pint.registry_helpers import (
     _replace_units,
 )
 from ast import literal_eval
+from typing import get_origin, get_args
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -97,8 +98,8 @@ def parse_output_args(func: callable):
         and `shape`. See `semantikon.typing.u` for more details.
     """
     sig = inspect.signature(func)
-    if isinstance(sig.return_annotation, tuple):
-        return tuple([_meta_to_dict(ann) for ann in sig.return_annotation])
+    if get_origin(sig.return_annotation) is tuple:
+        return tuple([_meta_to_dict(ann) for ann in get_args(sig.return_annotation)])
     else:
         return _meta_to_dict(sig.return_annotation)
 

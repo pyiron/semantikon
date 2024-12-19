@@ -7,7 +7,7 @@ from pint import UnitRegistry
 @units
 def get_speed_multiple_outputs(
     distance: u(float, "meter"), time: u(float, "second"), duration: u(float, "second")
-) -> (u(float, "meter/second"), u(float, "meter/second")):
+) -> tuple[u(float, "meter/second"), u(float, "meter/second")]:
     return distance / time, distance / duration
 
 
