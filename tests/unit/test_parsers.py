@@ -29,10 +29,10 @@ class TestUnits(unittest.TestCase):
             def get_speed(
                 distance: u(float, "meter", use_list=use_list),
                 time: u(float, "second", use_list=use_list),
-            ) -> (
+            ) -> tuple[
                 u(float, "meter/second", label="speed", use_list=use_list),
                 u(float, "meter", label="distance", use_list=use_list)
-            ):
+            ]:
                 return distance / time, distance
             output_args = parse_output_args(get_speed)
             self.assertIsInstance(output_args, tuple)
