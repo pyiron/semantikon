@@ -21,7 +21,7 @@ def u(
     triple: tuple[tuple[str, str, str], ...] | tuple[str, str, str] | None = None,
     uri: str | None = None,
     shape: tuple[int] | None = None,
-    use_list: bool = False,
+    use_list: bool = True,
     **kwargs,
 ):
     result = {
