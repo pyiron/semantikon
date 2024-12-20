@@ -150,9 +150,9 @@ class TestUnits(unittest.TestCase):
     def test_use_list(self):
         @units
         def get_speed_use_list(
-            distance: u(float, "meter", use_list=True),
-            time: u(float, "second", use_list=True),
-        ) -> u(float, "meter/second", use_list=True):
+            distance: u(float, "meter", use_list=False),
+            time: u(float, "second", use_list=False),
+        ) -> u(float, "meter/second", use_list=False):
             return distance / time
 
         self.assertEqual(get_speed_use_list(1.0, 1.0), 1.0)
