@@ -9,5 +9,5 @@ dependencies:
 - versioneer
 - coveralls
 - coverage
-- numpy =2.2.0
+- numpy =2.2.1
 - pint =0.24.4
