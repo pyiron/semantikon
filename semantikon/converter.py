@@ -124,6 +124,7 @@ def _get_ret_units(output, ureg, names):
     if output is None:
         return None
     ret = _to_units_container(output["units"], ureg)
+    names = {key: 1.0 * value.units for key, value in names.items()}
     return ureg.Quantity(1, _replace_units(ret[0], names) if ret[1] else ret[0])
 
 
