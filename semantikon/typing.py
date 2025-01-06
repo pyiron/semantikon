@@ -17,7 +17,6 @@ def u(
     /,
     units: str | None = None,
     label: str | None = None,
-    otype: str | tuple | None = None,
     triple: tuple[tuple[str, str, str], ...] | tuple[str, str, str] | None = None,
     uri: str | None = None,
     shape: tuple[int] | None = None,
@@ -27,7 +26,6 @@ def u(
     result = {
         "units": units,
         "label": label,
-        "otype": otype,
         "triple": triple,
         "uri": uri,
         "shape": shape,
