@@ -1,4 +1,5 @@
 from typing import Annotated, Any
+from semantikon.converter import parse_metadata
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -23,6 +24,10 @@ def u(
     use_list: bool = True,
     **kwargs,
 ):
+    parent_result = {}
+    if hasattr(type_, "__metadata__"):
+        parent_result = parse_metadata(type_)
+        type_ = type_.__origin__
     result = {
         "units": units,
         "label": label,
@@ -30,6 +35,9 @@ def u(
         "uri": uri,
         "shape": shape,
     }
+    for key, value in parent_result.items():
+        if result[key] is None:
+            result[key] = value
     result.update(kwargs)
     if use_list:
         items = [x for k, v in result.items() for x in [k, v]]
