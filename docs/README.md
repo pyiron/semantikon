@@ -12,16 +12,34 @@ In the realm of the workflow management systems, there are well defined inputs a
 from semantikon.typing import u
 
 def my_function(
-    a: u(int, units="meter"),
-    b: u(int, units="second")
+    distance: u(int, units="meter"),
+    time: u(int, units="second")
 ) -> u(int, units="meter/second", label="speed"):
-    return a / b
+    return distance / time
 ```
 
 `semantikon`'s type hinting does not require to follow any particular standard. It only needs to be compatible with the interpreter applied.
 
 There are two possible ways to store the data for `semantikon`. The standard way is to do it by converting all arguments except for the data type as a string, which is the default behaviour. The other way is to store the data as a list, which is turned on by setting `use_list=True`. In most cases, the default behaviour is the safest option; in some cases, especially when the data cannot be represented as a string, you might want to switch on `use_list`, but `semantikon` is still under intensive development, and therefore there is no guarantee that you can retrieve the data across different versions correctly.
 
+You can also type-hint the inputs and outputs of a function using a class, i.e.:
+
+
+```python
+from semantikon.typing import u
+from semantikon.convert import semantikon_class
+
+@semantikon_class
+class MyRecord:
+    distance: u(int, units="meter")
+    time: u(int, units="second")
+    result: u(int, units="meter/second", label="speed")
+
+def my_function(distance: MyRecord.distance, time: MyRecord.time) -> MyRecord.result:
+    return distance / time
+```
+
+This is equivalent to the previous example. Moreover, if you need to modify some parameters, you can use `u` again, e.g. `u(MyRecord.distance, units="kilometer")`.
 
 ### **Interpreters**
 

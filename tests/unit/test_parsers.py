@@ -1,6 +1,6 @@
 import unittest
 from semantikon.typing import u
-from semantikon.converter import parse_input_args, parse_output_args
+from semantikon.converter import parse_input_args, parse_output_args, parse_metadata
 
 
 class TestUnits(unittest.TestCase):
@@ -71,6 +71,16 @@ class TestUnits(unittest.TestCase):
         output_args = parse_output_args(get_speed)
         self.assertIsInstance(output_args, dict)
         self.assertEqual(output_args["dtype"], Output)
+
+    def test_multiple_u(self):
+        initial_type = u(float, units="meter", label="distance")
+        result = parse_metadata(initial_type)
+        self.assertEqual(result["units"], "meter")
+        self.assertEqual(result["label"], "distance")
+        final_type = u(initial_type, units="millimeter")
+        result = parse_metadata(final_type)
+        self.assertEqual(result["units"], "millimeter")
+        self.assertEqual(result["label"], "distance")
 
 
 if __name__ == "__main__":
