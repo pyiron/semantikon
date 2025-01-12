@@ -101,7 +101,9 @@ Output: `1.0 meter / second`
 
 The interpreters check all types and, if necessary, convert them to the expected types **before** the function is executed, in order for all possible errors would be raised before the function execution. The interpreters convert the types in the way that the underlying function would receive the raw values.
 
-In case there are multiple outputs, the type hints are to be passed as a tuple (e.g. `(u(int, "meter"), u(int, "second"))`).
+In case there are multiple outputs, the type hints are to be passed as a tuple (e.g. `tuple[u(int, "meter"), u(int, "second"))`).
+
+It is not totally garanteed as a functionality, but relative units as given [on this page](https://pint.readthedocs.io/en/0.10.1/wrapping.html#specifying-relations-between-arguments) can be also used.
 
 Interpreters can distinguish between annotated arguments and non-anotated arguments. If the argument is annotated, the interpreter will try to convert the argument to the expected type. If the argument is not annotated, the interpreter will pass the argument as is.
 
