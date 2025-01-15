@@ -16,12 +16,28 @@ class TestUnits(unittest.TestCase):
             input_args = parse_input_args(get_speed)
             for key in ["distance", "time"]:
                 self.assertTrue(key in input_args)
-            for key in ["units", "uri", "shape", "label", "dtype"]:
+            for key in [
+                "units",
+                "uri",
+                "triple",
+                "shape",
+                "label",
+                "restriction",
+                "dtype"
+            ]:
                 self.assertTrue(key in input_args["distance"])
             self.assertEqual(input_args["distance"]["units"], "meter")
             self.assertEqual(input_args["time"]["units"], "second")
             output_args = parse_output_args(get_speed)
-            for key in ["units", "uri", "shape", "label", "dtype"]:
+            for key in [
+                "units",
+                "uri",
+                "triple",
+                "shape",
+                "label",
+                "restriction",
+                "dtype"
+            ]:
                 self.assertTrue(key in output_args)
             self.assertEqual(output_args["units"], "meter/second")
             self.assertEqual(output_args["label"], "speed")
@@ -41,7 +57,15 @@ class TestUnits(unittest.TestCase):
             output_args = parse_output_args(get_speed)
             self.assertIsInstance(output_args, tuple)
             for output_arg in output_args:
-                for key in ["units", "uri", "shape", "label", "dtype"]:
+                for key in [
+                    "units",
+                    "uri",
+                    "triple",
+                    "shape",
+                    "label",
+                    "restriction",
+                    "dtype"
+                ]:
                     self.assertTrue(key in output_arg)
             self.assertEqual(output_args[0]["units"], "meter/second")
             self.assertEqual(output_args[0]["label"], "speed")

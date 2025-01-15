@@ -63,8 +63,10 @@ def _meta_to_dict(value):
         return {
             "units": None,
             "label": None,
+            "triple": None,
             "uri": None,
             "shape": None,
+            "restriction": None,
             "dtype": value,
         }
     else:
