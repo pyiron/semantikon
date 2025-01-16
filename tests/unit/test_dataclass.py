@@ -56,6 +56,7 @@ class TestDataclass(unittest.TestCase):
                 "triple": None,
                 "shape": None,
                 "uri": None,
+                "restriction": None,
             },
         )
 

@@ -21,6 +21,7 @@ def u(
     triple: tuple[tuple[str, str, str], ...] | tuple[str, str, str] | None = None,
     uri: str | None = None,
     shape: tuple[int] | None = None,
+    restriction: tuple[tuple[str, str]] | None = None,
     use_list: bool = True,
     **kwargs,
 ):
@@ -34,6 +35,7 @@ def u(
         "triple": triple,
         "uri": uri,
         "shape": shape,
+        "restriction": restriction,
     }
     for key, value in parent_result.items():
         if result[key] is None:
