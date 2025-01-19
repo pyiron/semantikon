@@ -18,10 +18,10 @@ def u(
     /,
     units: str | None = None,
     label: str | None = None,
-    triple: tuple[tuple[str, str, str], ...] | tuple[str, str, str] | None = None,
+    triples: tuple[tuple[str, str, str], ...] | tuple[str, str, str] | None = None,
     uri: str | None = None,
     shape: tuple[int] | None = None,
-    restriction: tuple[tuple[str, str]] | None = None,
+    restrictions: tuple[tuple[str, str]] | None = None,
     use_list: bool = True,
     **kwargs,
 ):
@@ -32,10 +32,10 @@ def u(
     result = {
         "units": units,
         "label": label,
-        "triple": triple,
+        "triples": triples,
         "uri": uri,
         "shape": shape,
-        "restriction": restriction,
+        "restrictions": restrictions,
     }
     for key, value in parent_result.items():
         if result[key] is None:
