@@ -42,7 +42,7 @@ def parse_metadata(value):
 
     Returns:
         dictionary of the metadata. Available keys are `units`, `label`,
-        `triple`, `uri` and `shape`. See `semantikon.typing.u` for more details.
+        `triples`, `uri` and `shape`. See `semantikon.typing.u` for more details.
     """
     # When there is only one metadata `use_list=False` must have been used
     if len(value.__metadata__) == 1 and isinstance(value.__metadata__[0], str):
@@ -63,10 +63,10 @@ def _meta_to_dict(value):
         return {
             "units": None,
             "label": None,
-            "triple": None,
+            "triples": None,
             "uri": None,
             "shape": None,
-            "restriction": None,
+            "restrictions": None,
             "dtype": value,
         }
     else:
@@ -82,7 +82,7 @@ def parse_input_args(func: callable):
 
     Returns:
         dictionary of the input arguments. Available keys are `units`, `label`,
-        `triple`, `uri` and `shape`. See `semantikon.typing.u` for more details.
+        `triples`, `uri` and `shape`. See `semantikon.typing.u` for more details.
     """
     return {
         key: _meta_to_dict(value.annotation)
@@ -100,7 +100,7 @@ def parse_output_args(func: callable):
     Returns:
         dictionary of the output arguments if there is only one output. Otherwise,
         a list of dictionaries is returned. Available keys are `units`,
-        `label`, `triple`, `uri` and `shape`. See `semantikon.typing.u` for
+        `label`, `triples`, `uri` and `shape`. See `semantikon.typing.u` for
         more details.
     """
     sig = inspect.signature(func)

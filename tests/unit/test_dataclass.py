@@ -53,10 +53,10 @@ class TestDataclass(unittest.TestCase):
                 "units": "eV",
                 "label": "TotalEnergy",
                 "associate_to_sample": True,
-                "triple": None,
+                "triples": None,
                 "shape": None,
                 "uri": None,
-                "restriction": None,
+                "restrictions": None,
             },
         )
 

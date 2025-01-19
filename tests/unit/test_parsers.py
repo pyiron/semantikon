@@ -19,10 +19,10 @@ class TestUnits(unittest.TestCase):
             for key in [
                 "units",
                 "uri",
-                "triple",
+                "triples",
                 "shape",
                 "label",
-                "restriction",
+                "restrictions",
                 "dtype"
             ]:
                 self.assertTrue(key in input_args["distance"])
@@ -32,10 +32,10 @@ class TestUnits(unittest.TestCase):
             for key in [
                 "units",
                 "uri",
-                "triple",
+                "triples",
                 "shape",
                 "label",
-                "restriction",
+                "restrictions",
                 "dtype"
             ]:
                 self.assertTrue(key in output_args)
@@ -60,10 +60,10 @@ class TestUnits(unittest.TestCase):
                 for key in [
                     "units",
                     "uri",
-                    "triple",
+                    "triples",
                     "shape",
                     "label",
-                    "restriction",
+                    "restrictions",
                     "dtype"
                 ]:
                     self.assertTrue(key in output_arg)
