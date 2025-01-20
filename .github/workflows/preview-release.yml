@@ -15,4 +15,5 @@ jobs:
     with:
       runner: 'ubuntu-22.04' # with ubuntu > 22.04, pip is broken
       semantic-upper-bound: 'minor'
+      lower-bound-yaml: '.ci_support/lower_bound.yml'
       publish-to-pypi: true
