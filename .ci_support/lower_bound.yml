@@ -1,0 +1,7 @@
+channels:
+- conda-forge
+dependencies:
+- coveralls
+- coverage
+- numpy =1.26.3
+- pint =0.23
