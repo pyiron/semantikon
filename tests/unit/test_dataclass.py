@@ -26,10 +26,18 @@ class Pizza:
 @semantikon_class
 @dataclass
 class Output:
-    total_energy: u(float, units="eV", label="TotalEnergy", associate_to_sample=True)
+    total_energy: u(
+        float, units="eV", label="TotalEnergy", associate_to_sample=True
+    )
 
 
 class TestDataclass(unittest.TestCase):
+
+    def test_is_semantikon_class(self):
+        self.assertTrue(hasattr(Pizza, "_is_semantikon_class"))
+        self.assertTrue(Pizza._is_semantikon_class)
+        self.assertTrue(hasattr(Pizza.Topping, "_is_semantikon_class"))
+        self.assertTrue(Pizza.Topping._is_semantikon_class)
 
     def test_type(self):
         self.assertEqual(Pizza.price, int)

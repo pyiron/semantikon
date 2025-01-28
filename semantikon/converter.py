@@ -213,4 +213,5 @@ def semantikon_class(cls: type):
             setattr(cls, key, value)  # Append type hints to attributes
     except AttributeError:
         pass
+    cls._is_semantikon_class = True
     return cls
