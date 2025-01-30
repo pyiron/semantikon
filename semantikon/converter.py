@@ -54,7 +54,7 @@ def parse_metadata(value):
         return d
 
 
-def _meta_to_dict(value):
+def meta_to_dict(value):
     if hasattr(value, "__metadata__"):
         result = parse_metadata(value)
         result["dtype"] = value.__args__[0]
@@ -85,7 +85,7 @@ def parse_input_args(func: callable):
         `triples`, `uri` and `shape`. See `semantikon.typing.u` for more details.
     """
     return {
-        key: _meta_to_dict(value.annotation)
+        key: meta_to_dict(value.annotation)
         for key, value in inspect.signature(func).parameters.items()
     }
 
@@ -105,9 +105,9 @@ def parse_output_args(func: callable):
     """
     sig = inspect.signature(func)
     if get_origin(sig.return_annotation) is tuple:
-        return tuple([_meta_to_dict(ann) for ann in get_args(sig.return_annotation)])
+        return tuple([meta_to_dict(ann) for ann in get_args(sig.return_annotation)])
     else:
-        return _meta_to_dict(sig.return_annotation)
+        return meta_to_dict(sig.return_annotation)
 
 
 def _get_converter(func):
