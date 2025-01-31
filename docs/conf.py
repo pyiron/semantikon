@@ -35,40 +35,39 @@ from sphinx.ext.apidoc import main
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'myst_parser',
-    'nbsphinx',
-    'sphinx_gallery.load_style',
-    'sphinx.ext.mathjax',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.napoleon'
+    "myst_parser",
+    "nbsphinx",
+    "sphinx_gallery.load_style",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.napoleon",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 nbsphinx_thumbnails = {
-    'source/notebooks/example': "_static/pyiron-logo-dark.png",
+    "source/notebooks/example": "_static/pyiron-logo-dark.png",
 }
 
 # The suffix of source filenames.
 # The suffix of source filenames.
-source_suffix = {
-    '.rst': 'restructuredtext',
-    '.md': 'markdown'
-}
+source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
 
 # The encoding of source files.
 # source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = "index"
 
 # General information about the project.
-project = u'semantikon'
-copyright = u'2024, Max-Planck-Institut für Nachhaltige Materialien GmbH - Computational Materials Design (CM) Department ' \
-            u'All rights reserved'
+project = "semantikon"
+copyright = (
+    "2024, Max-Planck-Institut für Nachhaltige Materialien GmbH - Computational Materials Design (CM) Department "
+    "All rights reserved"
+)
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -77,12 +76,12 @@ copyright = u'2024, Max-Planck-Institut für Nachhaltige Materialien GmbH - Comp
 # The short X.Y version.
 version_full = subprocess.check_output(
     "python -c 'import versioneer; print(versioneer.get_version())'",
-    cwd=os.path.join(os.path.curdir, '..'),
+    cwd=os.path.join(os.path.curdir, ".."),
     universal_newlines=True,
-    shell=True
+    shell=True,
 )
-version_full = version_full.split('\n')[0]
-version = '.'.join(version_full.split('.')[0:2])
+version_full = version_full.split("\n")[0]
+version = ".".join(version_full.split(".")[0:2])
 # The full version, including alpha/beta/rc tags.
 release = version_full
 
@@ -99,7 +98,7 @@ release = version_full
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 
-exclude_patterns = ['_build', '**.ipynb_checkpoints', '**/tests']
+exclude_patterns = ["_build", "**.ipynb_checkpoints", "**/tests"]
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -117,11 +116,18 @@ exclude_patterns = ['_build', '**.ipynb_checkpoints', '**/tests']
 # show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = "sphinx"
 
 # A list of ignored prefixes for module index sorting.
-modindex_common_prefix = ['vasp.', 'base.', 'lammps.',
-                          'pyiron.', 'dft.', 'atomistics.', 'testing.']
+modindex_common_prefix = [
+    "vasp.",
+    "base.",
+    "lammps.",
+    "pyiron.",
+    "dft.",
+    "atomistics.",
+    "testing.",
+]
 
 # If true, keep warnings as "system message" paragraphs in the built documents.
 # keep_warnings = False
@@ -142,10 +148,11 @@ modindex_common_prefix = ['vasp.', 'base.', 'lammps.',
 #    html_theme = 'default'
 
 try:
-   import sphinx_rtd_theme
-   html_theme = 'sphinx_rtd_theme'
+    import sphinx_rtd_theme
+
+    html_theme = "sphinx_rtd_theme"
 except ImportError:
-   html_theme = 'default'
+    html_theme = "default"
 
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -175,7 +182,7 @@ html_favicon = "_static/pyiron_logo.ico"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -224,49 +231,52 @@ html_static_path = ['_static']
 # html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'pyironDoc'
+htmlhelp_basename = "pyironDoc"
 
 
 # -- Options for LaTeX output ---------------------------------------------
 
 latex_elements = {
-# The paper size ('letterpaper' or 'a4paper').
-# 'papersize': 'letterpaper',
-
-# The font size ('10pt', '11pt' or '12pt').
-#'pointsize': '10pt',
-
-# Additional stuff for the LaTeX preamble.
-#'preamble': '',
+    # The paper size ('letterpaper' or 'a4paper').
+    # 'papersize': 'letterpaper',
+    # The font size ('10pt', '11pt' or '12pt').
+    #'pointsize': '10pt',
+    # Additional stuff for the LaTeX preamble.
+    #'preamble': '',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'semantikon.tex', u'semantikon Documentation',
-   u'Max-Planck-Institut für Nachhaltige Materialien GmbH - Computational Materials Design (CM) Department', 'manual'),
+    (
+        "index",
+        "semantikon.tex",
+        "semantikon Documentation",
+        "Max-Planck-Institut für Nachhaltige Materialien GmbH - Computational Materials Design (CM) Department",
+        "manual",
+    ),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-#latex_logo = None
+# latex_logo = None
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.
-#latex_use_parts = False
+# latex_use_parts = False
 
 # If true, show page references after internal links.
-#latex_show_pagerefs = False
+# latex_show_pagerefs = False
 
 # If true, show URL addresses after external links.
-#latex_show_urls = False
+# latex_show_urls = False
 
 # Documents to append as an appendix to all manuals.
-#latex_appendices = []
+# latex_appendices = []
 
 # If false, no module index is generated.
-#latex_domain_indices = True
+# latex_domain_indices = True
 
 
 # -- Options for manual page output ---------------------------------------
@@ -274,14 +284,19 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index',
-     'semantikon',
-     u'semantikon Documentation',
-     [u'Max-Planck-Institut für Nachhaltige Materialien GmbH - Computational Materials Design (CM) Department'], 1)
+    (
+        "index",
+        "semantikon",
+        "semantikon Documentation",
+        [
+            "Max-Planck-Institut für Nachhaltige Materialien GmbH - Computational Materials Design (CM) Department"
+        ],
+        1,
+    )
 ]
 
 # If true, show URL addresses after external links.
-#man_show_urls = False
+# man_show_urls = False
 
 
 # -- Options for Texinfo output -------------------------------------------
@@ -290,13 +305,15 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index',
-   'semantikon',
-   u'semantikon Documentation',
-   u'Max-Planck-Institut für Nachhaltige Materialien GmbH - Computational Materials Design (CM) Department',
-   'semantikon',
-   'One line description of project.',
-   'Miscellaneous'),
+    (
+        "index",
+        "semantikon",
+        "semantikon Documentation",
+        "Max-Planck-Institut für Nachhaltige Materialien GmbH - Computational Materials Design (CM) Department",
+        "semantikon",
+        "One line description of project.",
+        "Miscellaneous",
+    ),
 ]
 
 # Documents to append as an appendix to all manuals.
@@ -311,17 +328,22 @@ texinfo_documents = [
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 # texinfo_no_detailmenu = False
 
-main(['-e', '-o', 'apidoc', '../semantikon', '--force'])
+main(["-e", "-o", "apidoc", "../semantikon", "--force"])
 
 curdir = os.path.dirname(os.path.abspath(__file__))
-if os.path.exists(os.path.join(curdir, 'source/notebooks')):
-    shutil.rmtree(os.path.join(curdir, 'source/notebooks'))
+if os.path.exists(os.path.join(curdir, "source/notebooks")):
+    shutil.rmtree(os.path.join(curdir, "source/notebooks"))
 
-shutil.copytree(os.path.join(curdir, '..', 'notebooks'),
-                os.path.join(curdir, 'source/notebooks'))
+shutil.copytree(
+    os.path.join(curdir, "..", "notebooks"), os.path.join(curdir, "source/notebooks")
+)
 
-if 'readthedocs.org' in curdir:  # write config for readthedocs.org
-    with open(os.path.join(os.path.expanduser('~/.pyiron')), 'w') as f:
-        f.writelines(['[DEFAULT]',
-                      'TOP_LEVEL_DIRS = ' + os.path.join(curdir, '..'),
-                      'RESOURCE_PATHS = ' + os.path.join(curdir, '..') + '/tests/static'])
+if "readthedocs.org" in curdir:  # write config for readthedocs.org
+    with open(os.path.join(os.path.expanduser("~/.pyiron")), "w") as f:
+        f.writelines(
+            [
+                "[DEFAULT]",
+                "TOP_LEVEL_DIRS = " + os.path.join(curdir, ".."),
+                "RESOURCE_PATHS = " + os.path.join(curdir, "..") + "/tests/static",
+            ]
+        )
