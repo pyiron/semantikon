@@ -1,6 +1,5 @@
-from typing import Annotated, Any
+from typing import Annotated
 from semantikon.converter import parse_metadata
-from functools import wraps
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -60,19 +59,23 @@ def _function_metadata(
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
 ):
-    @wraps(func)
-    def decorator(func):
-        func._semantikon_metadata = kwargs
+    data = {
+        "triples": triples,
+        "uri": uri,
+        "shape": shape,
+        "restrictions": restrictions
+    }
+    data.update(kwargs)
+    def decorator(func: callable):
+        if not callable(func):
+            raise TypeError("Only functions can be decorated with u()")
+        func._semantikon_metadata = data
         return func
     return decorator
 
 
-def u(*args, **kwargs):
-    if isinstance(args[0], type) or _is_annotated(args[0]):
-        return _type_metadata(*args, **kwargs)
-    elif callable(args[0]):
-        if len(args) > 1:
-            raise TypeError(f"Invalid type: {args}")
-        return _function_metadata(*args, **kwargs)
+def u(type_or_func=None, /, **kwargs):
+    if isinstance(type_or_func, type) or _is_annotated(type_or_func):
+        return _type_metadata(type_or_func, **kwargs)
     else:
-        raise TypeError(f"Invalid type: {args}, {kwargs}")
+        return _function_metadata(**kwargs)
