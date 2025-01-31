@@ -43,6 +43,7 @@ class TestUnits(unittest.TestCase):
             self.assertEqual(output_args["units"], "meter/second")
             self.assertEqual(output_args["label"], "speed")
             self.assertEqual(get_speed._semantikon_metadata["uri"], "abc")
+            self.assertRaises(TypeError, u)
 
     def test_multiple_output_args(self):
         for use_list in [True, False]:
