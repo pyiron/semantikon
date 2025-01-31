@@ -7,10 +7,11 @@ class TestUnits(unittest.TestCase):
     def test_basic(self):
         for use_list in [True, False]:
 
+            @u(uri="abc")
             def get_speed(
-                distance: u(float, "meter", use_list=use_list),
-                time: u(float, "second", use_list=use_list),
-            ) -> u(float, "meter/second", label="speed", use_list=use_list):
+                distance: u(float, units="meter", use_list=use_list),
+                time: u(float, units="second", use_list=use_list),
+            ) -> u(float, units="meter/second", label="speed", use_list=use_list):
                 return distance / time
 
             input_args = parse_input_args(get_speed)
@@ -41,16 +42,18 @@ class TestUnits(unittest.TestCase):
                 self.assertTrue(key in output_args)
             self.assertEqual(output_args["units"], "meter/second")
             self.assertEqual(output_args["label"], "speed")
+            self.assertEqual(get_speed._semantikon_metadata["uri"], "abc")
+            self.assertRaises(TypeError, u, "abc")
 
     def test_multiple_output_args(self):
         for use_list in [True, False]:
 
             def get_speed(
-                distance: u(float, "meter", use_list=use_list),
-                time: u(float, "second", use_list=use_list),
+                distance: u(float, units="meter", use_list=use_list),
+                time: u(float, units="second", use_list=use_list),
             ) -> tuple[
-                u(float, "meter/second", label="speed", use_list=use_list),
-                u(float, "meter", label="distance", use_list=use_list),
+                u(float, units="meter/second", label="speed", use_list=use_list),
+                u(float, units="meter", label="distance", use_list=use_list),
             ]:
                 return distance / time, distance
 
@@ -74,9 +77,9 @@ class TestUnits(unittest.TestCase):
 
     def test_additional_args(self):
         def get_speed(
-            distance: u(float, "meter", my_arg="some_info"),
-            time: u(float, "second"),
-        ) -> u(float, "meter/second", label="speed"):
+            distance: u(float, units="meter", my_arg="some_info"),
+            time: u(float, units="second"),
+        ) -> u(float, units="meter/second", label="speed"):
             return distance / time
 
         input_args = parse_input_args(get_speed)
@@ -84,11 +87,11 @@ class TestUnits(unittest.TestCase):
 
     def test_return_class(self):
         class Output:
-            value: u(float, "meter/second", label="speed")
+            value: u(float, units="meter/second", label="speed")
 
         def get_speed(
-            distance: u(float, "meter"),
-            time: u(float, "second"),
+            distance: u(float, units="meter"),
+            time: u(float, units="second"),
         ) -> Output:
             return distance / time
 

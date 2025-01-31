@@ -6,22 +6,26 @@ from pint import UnitRegistry
 
 @units
 def get_speed_multiple_outputs(
-    distance: u(float, "meter"), time: u(float, "second"), duration: u(float, "second")
-) -> tuple[u(float, "meter/second"), u(float, "meter/second")]:
+    distance: u(float, units="meter"),
+    time: u(float, units="second"),
+    duration: u(float, units="second"),
+) -> tuple[u(float, units="meter/second"), u(float, units="meter/second")]:
     return distance / time, distance / duration
 
 
 @units
-def get_speed_no_output_type(distance: u(float, "meter"), time: u(float, "second")):
+def get_speed_no_output_type(
+    distance: u(float, units="meter"), time: u(float, units="second")
+):
     return distance / time
 
 
 @units
 def get_speed_multiple_args(
-    distance: u(float, "meter"),
-    time: u(float, "second"),
-    duration: u(float | None, "second") = None,
-) -> u(float, "meter/second"):
+    distance: u(float, units="meter"),
+    time: u(float, units="second"),
+    duration: u(float | None, units="second") = None,
+) -> u(float, units="meter/second"):
     if duration is None:
         return distance / time
     else:
@@ -30,29 +34,29 @@ def get_speed_multiple_args(
 
 @units
 def get_speed_optional_args(
-    distance: u(float, "meter"), time: u(float, "second") = 1
-) -> u(float, "meter/second"):
+    distance: u(float, units="meter"), time: u(float, units="second") = 1
+) -> u(float, units="meter/second"):
     return distance / time
 
 
 @units
 def get_speed_ints(
-    distance: u(int, "meter"), time: u(int, "second")
-) -> u(int, "meter/second"):
+    distance: u(int, units="meter"), time: u(int, units="second")
+) -> u(int, units="meter/second"):
     return distance / time
 
 
 @units
 def get_speed_floats(
-    distance: u(float, "meter"), time: u(float, "second")
-) -> u(float, "meter/second"):
+    distance: u(float, units="meter"), time: u(float, units="second")
+) -> u(float, units="meter/second"):
     return distance / time
 
 
 @units
 def get_speed_relative(
-    distance: u(float, "=A"), time: u(float, "=B")
-) -> u(float, "=A/B"):
+    distance: u(float, units="=A"), time: u(float, units="=B")
+) -> u(float, units="=A/B"):
     return distance / time
 
 
@@ -150,9 +154,9 @@ class TestUnits(unittest.TestCase):
     def test_use_list(self):
         @units
         def get_speed_use_list(
-            distance: u(float, "meter", use_list=False),
-            time: u(float, "second", use_list=False),
-        ) -> u(float, "meter/second", use_list=False):
+            distance: u(float, units="meter", use_list=False),
+            time: u(float, units="second", use_list=False),
+        ) -> u(float, units="meter/second", use_list=False):
             return distance / time
 
         self.assertEqual(get_speed_use_list(1.0, 1.0), 1.0)
