@@ -26,9 +26,7 @@ class Pizza:
 @semantikon_class
 @dataclass
 class Output:
-    total_energy: u(
-        float, units="eV", label="TotalEnergy", associate_to_sample=True
-    )
+    total_energy: u(float, units="eV", label="TotalEnergy", associate_to_sample=True)
 
 
 class TestDataclass(unittest.TestCase):

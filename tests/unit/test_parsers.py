@@ -23,7 +23,7 @@ class TestUnits(unittest.TestCase):
                 "shape",
                 "label",
                 "restrictions",
-                "dtype"
+                "dtype",
             ]:
                 self.assertTrue(key in input_args["distance"])
             self.assertEqual(input_args["distance"]["units"], "meter")
@@ -36,7 +36,7 @@ class TestUnits(unittest.TestCase):
                 "shape",
                 "label",
                 "restrictions",
-                "dtype"
+                "dtype",
             ]:
                 self.assertTrue(key in output_args)
             self.assertEqual(output_args["units"], "meter/second")
@@ -64,7 +64,7 @@ class TestUnits(unittest.TestCase):
                     "shape",
                     "label",
                     "restrictions",
-                    "dtype"
+                    "dtype",
                 ]:
                     self.assertTrue(key in output_arg)
             self.assertEqual(output_args[0]["units"], "meter/second")
