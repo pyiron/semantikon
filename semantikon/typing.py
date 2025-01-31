@@ -58,15 +58,13 @@ def _function_metadata(
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
 ):
-    data = {
-        "triples": triples,
-        "uri": uri,
-        "restrictions": restrictions
-    }
+    data = {"triples": triples, "uri": uri, "restrictions": restrictions}
     data.update(kwargs)
+
     def decorator(func: callable):
         func._semantikon_metadata = data
         return func
+
     return decorator
 
 
