@@ -55,14 +55,12 @@ def _type_metadata(
 def _function_metadata(
     triples: tuple[tuple[str, str, str], ...] | tuple[str, str, str] | None = None,
     uri: str | None = None,
-    shape: tuple[int] | None = None,
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
 ):
     data = {
         "triples": triples,
         "uri": uri,
-        "shape": shape,
         "restrictions": restrictions
     }
     data.update(kwargs)
