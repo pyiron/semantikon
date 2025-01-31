@@ -7,6 +7,7 @@ class TestUnits(unittest.TestCase):
     def test_basic(self):
         for use_list in [True, False]:
 
+            @u(uri="abc")
             def get_speed(
                 distance: u(float, units="meter", use_list=use_list),
                 time: u(float, units="second", use_list=use_list),
@@ -41,6 +42,7 @@ class TestUnits(unittest.TestCase):
                 self.assertTrue(key in output_args)
             self.assertEqual(output_args["units"], "meter/second")
             self.assertEqual(output_args["label"], "speed")
+            self.assertEqual(get_speed._semantikon_metadata["uri"], "abc")
 
     def test_multiple_output_args(self):
         for use_list in [True, False]:
