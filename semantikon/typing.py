@@ -13,6 +13,10 @@ __status__ = "development"
 __date__ = "Aug 21, 2021"
 
 
+def _is_annotated(type_):
+    return hasattr(type_, "__metadata__") and hasattr(type_, "__origin__")
+
+
 def _type_metadata(
     type_,
     /,
@@ -26,7 +30,7 @@ def _type_metadata(
     **kwargs,
 ):
     parent_result = {}
-    if hasattr(type_, "__metadata__"):
+    if _is_annotated(type_):
         parent_result = parse_metadata(type_)
         type_ = type_.__origin__
     result = {
@@ -56,7 +60,7 @@ def _function_metadata(**kwargs):
 
 
 def u(*args, **kwargs):
-    if isinstance(args[0], type) or hasattr(args[0], "__metadata__"):
+    if isinstance(args[0], type) or _is_annotated(args[0]):
         return _type_metadata(*args, **kwargs)
     elif callable(args[0]):
         if len(args) > 1:
