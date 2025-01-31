@@ -13,7 +13,7 @@ __status__ = "development"
 __date__ = "Aug 21, 2021"
 
 
-def u(
+def _type_metadata(
     type_,
     /,
     units: str | None = None,
@@ -46,3 +46,21 @@ def u(
         return Annotated[type_, items]
     else:
         return Annotated[type_, str(result)]
+
+
+def _function_metadata(**kwargs):
+    def decorator(func):
+        func.metadata = kwargs
+        return func
+    return decorator
+
+
+def u(*args, **kwargs):
+    if isinstance(args[0], type) or hasattr(args[0], "__metadata__"):
+        return _type_metadata(*args, **kwargs)
+    elif callable(args[0]):
+        if len(args) > 1:
+            raise TypeError(f"Invalid type: {args}")
+        return _function_metadata(*args, **kwargs)
+    else:
+        raise TypeError(f"Invalid type: {args}, {kwargs}")
