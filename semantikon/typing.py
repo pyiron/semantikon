@@ -67,8 +67,6 @@ def _function_metadata(
     }
     data.update(kwargs)
     def decorator(func: callable):
-        if not callable(func):
-            raise TypeError("Only functions can be decorated with u()")
         func._semantikon_metadata = data
         return func
     return decorator
@@ -77,5 +75,7 @@ def _function_metadata(
 def u(type_or_func=None, /, **kwargs):
     if isinstance(type_or_func, type) or _is_annotated(type_or_func):
         return _type_metadata(type_or_func, **kwargs)
-    else:
+    elif type_or_func is None:
         return _function_metadata(**kwargs)
+    else:
+        raise TypeError(f"Unsupported type: {type(type_or_func)}")
