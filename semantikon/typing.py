@@ -1,5 +1,6 @@
 from typing import Annotated, Any
 from semantikon.converter import parse_metadata
+from functools import wraps
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -52,9 +53,16 @@ def _type_metadata(
         return Annotated[type_, str(result)]
 
 
-def _function_metadata(**kwargs):
+def _function_metadata(
+    triples: tuple[tuple[str, str, str], ...] | tuple[str, str, str] | None = None,
+    uri: str | None = None,
+    shape: tuple[int] | None = None,
+    restrictions: tuple[tuple[str, str]] | None = None,
+    **kwargs,
+):
+    @wraps(func)
     def decorator(func):
-        func.metadata = kwargs
+        func._semantikon_metadata = kwargs
         return func
     return decorator
 
