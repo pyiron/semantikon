@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, get_origin
 from semantikon.converter import parse_metadata
 
 __author__ = "Sam Waseda"
@@ -71,7 +71,7 @@ def _function_metadata(
 
 
 def u(type_or_func=None, /, **kwargs):
-    if isinstance(type_or_func, type) or _is_annotated(type_or_func):
+    if isinstance(type_or_func, type) or get_origin(type_or_func) is not None:
         return _type_metadata(type_or_func, **kwargs)
     elif type_or_func is None:
         return _function_metadata(**kwargs)
