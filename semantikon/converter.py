@@ -44,14 +44,12 @@ def parse_metadata(value):
         dictionary of the metadata. Available keys are `units`, `label`,
         `triples`, `uri` and `shape`. See `semantikon.typing.u` for more details.
     """
-    # When there is only one metadata `use_list=False` must have been used
-    if len(value.__metadata__) == 1 and isinstance(value.__metadata__[0], str):
+    not_use_list = len(value.__metadata__) == 1 and isinstance(value.__metadata__[0], str)
+    if not_use_list:
         return literal_eval(value.__metadata__[0])
     else:
-        d = {}
-        for ii in range(len(value.__metadata__[0]) // 2):
-            d[value.__metadata__[0][2 * ii]] = value.__metadata__[0][2 * ii + 1]
-        return d
+        metadata = value.__metadata__[0]
+        return {k: v for k, v in zip(metadata[::2], metadata[1::2]) }   
 
 
 def meta_to_dict(value):
