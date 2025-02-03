@@ -44,7 +44,9 @@ def parse_metadata(value):
         dictionary of the metadata. Available keys are `units`, `label`,
         `triples`, `uri` and `shape`. See `semantikon.typing.u` for more details.
     """
-    not_use_list = len(value.__metadata__) == 1 and isinstance(value.__metadata__[0], str)
+    not_use_list = len(value.__metadata__) == 1 and isinstance(
+        value.__metadata__[0], str
+    )
     if not_use_list:
         return literal_eval(value.__metadata__[0])
     else:
@@ -130,7 +132,7 @@ def _get_ret_units(output, ureg, names):
 
 
 def _get_output_units(output, ureg, names):
-    if isinstance(output, tuple):
+    if multiple_output_args := isinstance(output, tuple):
         return tuple([_get_ret_units(oo, ureg, names) for oo in output])
     else:
         return _get_ret_units(output, ureg, names)
