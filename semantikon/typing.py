@@ -69,9 +69,13 @@ def _function_metadata(
 
 
 def u(type_or_func=None, /, **kwargs):
-    if isinstance(type_or_func, type) or get_origin(type_or_func) is not None:
+    is_type_hint = isinstance(
+        type_or_func, type
+    ) or get_origin(type_or_func) is not None
+    is_decorator = type_or_func is None:
+    if is_type_hint:
         return _type_metadata(type_or_func, **kwargs)
-    elif type_or_func is None:
+    elif is_decorator:
         return _function_metadata(**kwargs)
     else:
         raise TypeError(f"Unsupported type: {type(type_or_func)}")
