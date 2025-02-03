@@ -49,7 +49,7 @@ def parse_metadata(value):
         return literal_eval(value.__metadata__[0])
     else:
         metadata = value.__metadata__[0]
-        return {k: v for k, v in zip(metadata[::2], metadata[1::2]) }   
+        return {k: v for k, v in zip(metadata[::2], metadata[1::2])}
 
 
 def meta_to_dict(value):
@@ -102,7 +102,7 @@ def parse_output_args(func: callable):
         more details.
     """
     sig = inspect.signature(func)
-    if get_origin(sig.return_annotation) is tuple:
+    if multiple_output := get_origin(sig.return_annotation) is tuple:
         return tuple([meta_to_dict(ann) for ann in get_args(sig.return_annotation)])
     else:
         return meta_to_dict(sig.return_annotation)
