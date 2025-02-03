@@ -55,8 +55,8 @@ def parse_metadata(value):
 
 
 def meta_to_dict(value):
-    semantikon_was_used = hasattr(value, "__metadata__"):
-    type_hint_was_present = value is not inspect.Parameter.empty:
+    semantikon_was_used = hasattr(value, "__metadata__")
+    type_hint_was_present = value is not inspect.Parameter.empty
     if semantikon_was_used:
         result = parse_metadata(value)
         result["dtype"] = value.__args__[0]
@@ -106,7 +106,7 @@ def parse_output_args(func: callable):
         more details.
     """
     sig = inspect.signature(func)
-    multiple_output = get_origin(sig.return_annotation) is tuple:
+    multiple_output = get_origin(sig.return_annotation) is tuple
     if multiple_output:
         return tuple([meta_to_dict(ann) for ann in get_args(sig.return_annotation)])
     else:
@@ -135,7 +135,7 @@ def _get_ret_units(output, ureg, names):
 
 
 def _get_output_units(output, ureg, names):
-    multiple_output_args = isinstance(output, tuple):
+    multiple_output_args = isinstance(output, tuple)
     if multiple_output_args:
         return tuple([_get_ret_units(oo, ureg, names) for oo in output])
     else:

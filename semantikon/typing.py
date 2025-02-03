@@ -69,10 +69,10 @@ def _function_metadata(
 
 
 def u(type_or_func=None, /, **kwargs):
-    is_type_hint = isinstance(
-        type_or_func, type
-    ) or get_origin(type_or_func) is not None
-    is_decorator = type_or_func is None:
+    is_type_hint = (
+        isinstance(type_or_func, type) or get_origin(type_or_func) is not None
+    )
+    is_decorator = type_or_func is None
     if is_type_hint:
         return _type_metadata(type_or_func, **kwargs)
     elif is_decorator:
