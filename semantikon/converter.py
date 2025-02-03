@@ -44,22 +44,24 @@ def parse_metadata(value):
         dictionary of the metadata. Available keys are `units`, `label`,
         `triples`, `uri` and `shape`. See `semantikon.typing.u` for more details.
     """
-    # When there is only one metadata `use_list=False` must have been used
-    if len(value.__metadata__) == 1 and isinstance(value.__metadata__[0], str):
+    not_use_list = len(value.__metadata__) == 1 and isinstance(
+        value.__metadata__[0], str
+    )
+    if not_use_list:
         return literal_eval(value.__metadata__[0])
     else:
-        d = {}
-        for ii in range(len(value.__metadata__[0]) // 2):
-            d[value.__metadata__[0][2 * ii]] = value.__metadata__[0][2 * ii + 1]
-        return d
+        metadata = value.__metadata__[0]
+        return {k: v for k, v in zip(metadata[::2], metadata[1::2])}
 
 
 def meta_to_dict(value):
-    if hasattr(value, "__metadata__"):
+    semantikon_was_used = hasattr(value, "__metadata__")
+    type_hint_was_present = value is not inspect.Parameter.empty
+    if semantikon_was_used:
         result = parse_metadata(value)
         result["dtype"] = value.__args__[0]
         return result
-    elif value is not inspect.Parameter.empty:
+    elif type_hint_was_present:
         return {
             "units": None,
             "label": None,
@@ -104,7 +106,8 @@ def parse_output_args(func: callable):
         more details.
     """
     sig = inspect.signature(func)
-    if get_origin(sig.return_annotation) is tuple:
+    multiple_output = get_origin(sig.return_annotation) is tuple
+    if multiple_output:
         return tuple([meta_to_dict(ann) for ann in get_args(sig.return_annotation)])
     else:
         return meta_to_dict(sig.return_annotation)
@@ -132,7 +135,8 @@ def _get_ret_units(output, ureg, names):
 
 
 def _get_output_units(output, ureg, names):
-    if isinstance(output, tuple):
+    multiple_output_args = isinstance(output, tuple)
+    if multiple_output_args:
         return tuple([_get_ret_units(oo, ureg, names) for oo in output])
     else:
         return _get_ret_units(output, ureg, names)
