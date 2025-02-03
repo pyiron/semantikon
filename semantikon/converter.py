@@ -53,11 +53,11 @@ def parse_metadata(value):
 
 
 def meta_to_dict(value):
-    if hasattr(value, "__metadata__"):
+    if semantikon_was_used := hasattr(value, "__metadata__"):
         result = parse_metadata(value)
         result["dtype"] = value.__args__[0]
         return result
-    elif value is not inspect.Parameter.empty:
+    elif type_hint_was_present := value is not inspect.Parameter.empty:
         return {
             "units": None,
             "label": None,
