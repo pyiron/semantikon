@@ -60,7 +60,7 @@ def _function_metadata(
 ):
     data = {"triples": triples, "uri": uri, "restrictions": restrictions}
     data.update(kwargs)
-    for key, value in data.items():
+    for key, value in kwargs.items():
         if value is None:
             data.pop(key)
 
