@@ -60,6 +60,9 @@ def _function_metadata(
 ):
     data = {"triples": triples, "uri": uri, "restrictions": restrictions}
     data.update(kwargs)
+    for key, value in data.items():
+        if value is None:
+            data.pop(key)
 
     def decorator(func: callable):
         func._semantikon_metadata = data
@@ -68,11 +71,33 @@ def _function_metadata(
     return decorator
 
 
-def u(type_or_func=None, /, **kwargs):
+def u(
+    type_or_func=None,
+    /,
+    units: str | None = None,
+    label: str | None = None,
+    triples: tuple[tuple[str, str, str], ...] | tuple[str, str, str] | None = None,
+    uri: str | None = None,
+    shape: tuple[int] | None = None,
+    restrictions: tuple[tuple[str, str]] | None = None,
+    use_list: bool = True,
+    **kwargs
+):
     is_type_hint = (
         isinstance(type_or_func, type) or get_origin(type_or_func) is not None
     )
     is_decorator = type_or_func is None
+    kwargs.update(
+        {
+            "units": units,
+            "label": label,
+            "triples": triples,
+            "uri": uri,
+            "shape": shape,
+            "restrictions": restrictions,
+            "use_list": use_list,
+        }
+    )
     if is_type_hint:
         return _type_metadata(type_or_func, **kwargs)
     elif is_decorator:
