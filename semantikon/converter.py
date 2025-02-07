@@ -179,6 +179,16 @@ def units(func):
     return wrapper
 
 
+def get_function_dict(function):
+    result = {
+        "label": function.__name__,
+    }
+    function_has_metadata = hasattr(function, "_semantikon_metadata")
+    if function_has_metadata:
+        result.update(function._semantikon_metadata)
+    return result
+
+
 def semantikon_class(cls: type):
     """
     A class decorator to append type hints to class attributes.
