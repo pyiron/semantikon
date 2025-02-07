@@ -209,13 +209,25 @@ def semantikon_class(cls: type):
     >>> print(Pizza.price)
     >>> print(Pizza.Topping.sauce)
     """
+    cls._semantikon_dict = cls.__dict__.copy()
     for key, value in cls.__dict__.items():
         if isinstance(value, type):
-            semantikon_class(getattr(cls, key))  # Recursively apply to nested classes
+            # Recursively apply to nested classes
+            semantikon_class(getattr(cls, key))
     try:
         for key, value in cls.__annotations__.items():
             setattr(cls, key, value)  # Append type hints to attributes
     except AttributeError:
         pass
+
+    original_init = cls.__init__
+
+    def new_init(self, *args, **kwargs):
+        original_init(self, *args, **kwargs)  # Call the original __init__
+        for key, value in cls.__annotations__.items():
+            if key in cls._semantikon_dict:
+                setattr(self, key, cls._semantikon_dict[key])
+
+    cls.__init__ = new_init
     cls._is_semantikon_class = True
     return cls
