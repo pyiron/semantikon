@@ -1,6 +1,11 @@
 import unittest
 from semantikon.typing import u
-from semantikon.converter import parse_input_args, parse_output_args, parse_metadata
+from semantikon.converter import (
+    parse_input_args,
+    parse_output_args,
+    parse_metadata,
+    get_function_dict,
+)
 
 
 class TestUnits(unittest.TestCase):
@@ -44,6 +49,9 @@ class TestUnits(unittest.TestCase):
             self.assertEqual(output_args["label"], "speed")
             self.assertEqual(get_speed._semantikon_metadata["uri"], "abc")
             self.assertRaises(TypeError, u, "abc")
+            f_dict = get_function_dict(get_speed)
+            self.assertEqual(f_dict["uri"], "abc")
+            self.assertEqual(f_dict["label"], "get_speed")
 
     def test_multiple_output_args(self):
         for use_list in [True, False]:
