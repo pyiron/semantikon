@@ -26,7 +26,6 @@ def _type_metadata(
     uri: str | None = None,
     shape: tuple[int] | None = None,
     restrictions: tuple[tuple[str, str]] | None = None,
-    use_list: bool = True,
     **kwargs,
 ):
     parent_result = {}
@@ -45,11 +44,8 @@ def _type_metadata(
         if result[key] is None:
             result[key] = value
     result.update(kwargs)
-    if use_list:
-        items = [x for k, v in result.items() for x in [k, v]]
-        return Annotated[type_, items]
-    else:
-        return Annotated[type_, str(result)]
+    items = [x for k, v in result.items() for x in [k, v]]
+    return Annotated[type_, items]
 
 
 def _function_metadata(
@@ -80,7 +76,6 @@ def u(
     uri: str | None = None,
     shape: tuple[int] | None = None,
     restrictions: tuple[tuple[str, str]] | None = None,
-    use_list: bool = True,
     **kwargs,
 ):
     is_type_hint = (
@@ -95,7 +90,6 @@ def u(
             "uri": uri,
             "shape": shape,
             "restrictions": restrictions,
-            "use_list": use_list,
         }
     )
     if is_type_hint:
