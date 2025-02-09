@@ -11,7 +11,6 @@ from pint.registry_helpers import (
     _to_units_container,
     _replace_units,
 )
-from ast import literal_eval
 from typing import get_origin, get_args
 
 __author__ = "Sam Waseda"
@@ -44,14 +43,8 @@ def parse_metadata(value):
         dictionary of the metadata. Available keys are `units`, `label`,
         `triples`, `uri` and `shape`. See `semantikon.typing.u` for more details.
     """
-    not_use_list = len(value.__metadata__) == 1 and isinstance(
-        value.__metadata__[0], str
-    )
-    if not_use_list:
-        return literal_eval(value.__metadata__[0])
-    else:
-        metadata = value.__metadata__[0]
-        return {k: v for k, v in zip(metadata[::2], metadata[1::2])}
+    metadata = value.__metadata__[0]
+    return {k: v for k, v in zip(metadata[::2], metadata[1::2])}
 
 
 def meta_to_dict(value):
