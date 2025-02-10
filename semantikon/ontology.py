@@ -3,6 +3,7 @@ import warnings
 
 from rdflib import Graph, Literal, RDF, RDFS, URIRef, OWL, PROV, Namespace
 from dataclasses import is_dataclass
+from semantikon.converter import parse_input_args, parse_output_args, meta_to_dict
 
 
 class PNS:
