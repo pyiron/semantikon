@@ -8,7 +8,7 @@ from semantikon.converter import (
 )
 
 
-class TestUnits(unittest.TestCase):
+class TestParser(unittest.TestCase):
     def test_basic(self):
         for use_list in [True, False]:
 
