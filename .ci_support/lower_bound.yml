@@ -5,3 +5,5 @@ dependencies:
 - coverage
 - numpy =1.26.3
 - pint =0.23
+- rdflib =7.1.1
+- owlrl =7.1.2
