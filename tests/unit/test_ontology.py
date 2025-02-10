@@ -1,5 +1,5 @@
 import unittest
-from rdflib import Graph, OWL, Namespace
+from rdflib import Graph, OWL, Namespace, URIRef
 from semantikon.typing import u
 from semantikon.converter import (
     parse_input_args,
@@ -7,7 +7,7 @@ from semantikon.converter import (
     parse_metadata,
     get_function_dict,
 )
-from semantikon.ontology import get_knowledge_graph, PNS
+from semantikon.ontology import get_knowledge_graph, PNS, get_triples
 
 
 EX = Namespace("http://example.org/")
@@ -98,6 +98,26 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(len(results), 3)
         result_list = [row[0].value for row in graph.query(query)]
         self.assertEqual(sorted(result_list), [2.0, 5.0, 10.0])
+
+    def test_triples(self):
+        data = get_speed()["speed"]
+        graph = get_triples(data=data)
+        subj = URIRef("http://example.org/subject")
+        obj = URIRef("http://example.org/object")
+        label = URIRef("speed.outputs.speed")
+        self.assertGreater(
+            len(list(graph.triples((None, PNS.hasUnits, URIRef("meter/second"))))), 0
+        )
+        ex_triple = (None, EX.somehowRelatedTo, URIRef("speed.inputs.time"))
+        self.assertTrue(
+            ex_triple in graph,
+            msg=f"Triple {ex_triple} not found {graph.serialize(format='turtle')}",
+        )
+        self.assertEqual(
+            len(list(graph.triples((EX.subject, EX.predicate, EX.object)))), 1
+        )
+        self.assertTrue((subj, EX.predicate, label) in graph)
+        self.assertTrue((label, EX.predicate, obj) in graph)
 
 
 if __name__ == "__main__":
