@@ -316,3 +316,45 @@ def _append_missing_items(graph: Graph) -> Graph:
             if not triple in graph:
                 graph.add(triple)
     return graph
+
+
+def get_knowledge_graph(
+    wf_dict: dict,
+    graph: Graph | None = None,
+    inherit_properties: bool = True,
+    ontology=PNS,
+    append_missing_items: bool = True,
+) -> Graph:
+    """
+    Generate RDF graph from a dictionary containing workflow information
+
+    Args:
+        wf_dict (dict): dictionary containing workflow information
+        graph (rdflib.Graph): graph to be updated
+        inherit_properties (bool): if True, properties are inherited
+
+    Returns:
+        (rdflib.Graph): graph containing workflow information
+    """
+    if graph is None:
+        graph = Graph()
+    workflow_label = wf_dict.pop("workflow_label")
+    graph.add((URIRef(workflow_label), RDFS.label, Literal(workflow_label)))
+    for data in wf_dict.values():
+        graph.add(
+            (
+                URIRef(workflow_label),
+                ontology.hasNode,
+                URIRef(workflow_label + "." + data["label"]),
+            )
+        )
+        graph += get_triples(
+            data=data,
+            workflow_namespace=workflow_label,
+            ontology=ontology,
+        )
+    if inherit_properties:
+        _inherit_properties(graph, ontology=ontology)
+    if append_missing_items:
+        graph = _append_missing_items(graph)
+    return graph
