@@ -3,7 +3,7 @@ import warnings
 
 from rdflib import Graph, Literal, RDF, RDFS, URIRef, OWL, PROV, Namespace
 from dataclasses import is_dataclass
-from semantikon.converter import parse_input_args, parse_output_args, meta_to_dict
+from semantikon.converter import meta_to_dict, get_function_dict
 
 
 class PNS:
@@ -18,7 +18,6 @@ class PNS:
 
 
 def _translate_has_value(
-    graph: Graph,
     label: URIRef,
     tag: str,
     value: Any = None,
@@ -28,7 +27,7 @@ def _translate_has_value(
     ontology=PNS,
 ) -> Graph:
     tag_uri = URIRef(tag + ".value")
-    graph.add((label, ontology.hasValue, tag_uri))
+    triples = [(label, ontology.hasValue, tag_uri)]
     if is_dataclass(dtype):
         warnings.warn(
             "semantikon_class is experimental - triples may change in the future",
@@ -36,133 +35,37 @@ def _translate_has_value(
         )
         for k, v in dtype.__dict__.items():
             if isinstance(v, type) and is_dataclass(v):
-                _translate_has_value(
-                    graph=graph,
-                    label=label,
-                    tag=tag + "." + k,
-                    value=getattr(value, k, None),
-                    dtype=v,
-                    parent=tag_uri,
-                    ontology=ontology,
+                triples.extend(
+                    _translate_has_value(
+                        label=label,
+                        tag=tag + "." + k,
+                        value=getattr(value, k, None),
+                        dtype=v,
+                        parent=tag_uri,
+                        ontology=ontology,
+                    )
                 )
         for k, v in dtype.__annotations__.items():
             metadata = meta_to_dict(v)
-            _translate_has_value(
-                graph=graph,
-                label=label,
-                tag=tag + "." + k,
-                value=getattr(value, k, None),
-                dtype=metadata["dtype"],
-                units=metadata.get("units", None),
-                parent=tag_uri,
-                ontology=ontology,
+            triples.extend(
+                _translate_has_value(
+                    label=label,
+                    tag=tag + "." + k,
+                    value=getattr(value, k, None),
+                    dtype=metadata["dtype"],
+                    units=metadata.get("units", None),
+                    parent=tag_uri,
+                    ontology=ontology,
+                )
             )
     else:
         if parent is not None:
-            graph.add((tag_uri, RDFS.subClassOf, parent))
+            triples.append((tag_uri, RDFS.subClassOf, parent))
         if value is not None:
-            graph.add((tag_uri, RDF.value, Literal(value)))
+            triples.append((tag_uri, RDF.value, Literal(value)))
         if units is not None:
-            graph.add((tag_uri, ontology.hasUnits, URIRef(units)))
-    return graph
-
-
-def get_triples(
-    data: dict,
-    workflow_namespace: str | None = None,
-    ontology=PNS,
-) -> Graph:
-    """
-    Generate triples from a dictionary containing input output information.
-    The dictionary should be obtained from the get_inputs_and_outputs function,
-    and should contain the keys "inputs", "outputs", "function" and "label".
-    Within "inputs" and "outputs", the keys should be the variable names, and
-    the values should be dictionaries containing the keys "type", "value" and
-    "connection". The "connection" key should contain the label of the output
-    variable that the input is connected to. The "type" key should contain the
-    URI of the type of the variable. The "value" key should contain the value
-    of the variable. The "function" key should contain the name of the function
-    that the node is connected to. The "label" key should contain the label of
-    the node. In terms of python code, it should look like this:
-
-    >>> data = {
-    >>>     "inputs": {
-    >>>         "input1": {
-    >>>             "type": URIRef("http://example.org/Type"),
-    >>>             "value": 1,
-    >>>             "triples": some_triples,
-    >>>             "restrictions": some_restrictions,
-    >>>             "connection": "output1"
-    >>>         }
-    >>>     },
-    >>>     "outputs": {
-    >>>         "output1": {
-    >>>             "type": URIRef("http://example.org/Type"),
-    >>>             "value": 1,
-    >>>             "triples": other_triples,
-    >>>         }
-    >>>     },
-    >>>     "function": "function_name",
-    >>>     "label": "label"
-    >>> }
-
-    triples should consist of a list of tuples, where each tuple contains 2 or 3
-    elements. If the tuple contains 2 elements, the first element should be the
-    predicate and the second element should be the object, in order for the subject
-    to be  generated from the variable name.
-
-    Args:
-        data (dict): dictionary containing input output information
-        workflow_namespace (str): ontology of the workflow
-
-    Returns:
-        (rdflib.Graph): graph containing triples
-    """
-    if workflow_namespace is None:
-        workflow_namespace = ""
-    else:
-        workflow_namespace += "."
-    graph = Graph()
-    node_label = workflow_namespace + data["label"]
-    graph.add((URIRef(node_label), RDF.type, PROV.Activity))
-    graph.add(
-        (
-            URIRef(node_label),
-            ontology.hasSourceFunction,
-            URIRef(data["function"]["label"]),
-        )
-    )
-    if data["function"].get("uri", None) is not None:
-        graph.add((URIRef(node_label), RDF.type, URIRef(data["function"]["uri"])))
-    for t in _get_triples_from_restrictions(data["function"]):
-        graph.add(_parse_triple(t, ns=node_label, label=URIRef(node_label)))
-    for io_ in ["inputs", "outputs"]:
-        for key, d in data[io_].items():
-            channel_label = URIRef(node_label + f".{io_}." + key)
-            graph.add((channel_label, RDFS.label, Literal(str(channel_label))))
-            graph.add((channel_label, RDF.type, PROV.Entity))
-            if d.get("uri", None) is not None:
-                graph.add((channel_label, RDF.type, URIRef(d["uri"])))
-            if io_ == "inputs":
-                graph.add((channel_label, ontology.inputOf, URIRef(node_label)))
-            elif io_ == "outputs":
-                graph.add((channel_label, ontology.outputOf, URIRef(node_label)))
-            tag = channel_label
-            if io_ == "inputs" and d.get("connection", None) is not None:
-                tag = workflow_namespace + d["connection"]
-                graph.add((channel_label, ontology.inheritsPropertiesFrom, URIRef(tag)))
-            graph = _translate_has_value(
-                graph=graph,
-                label=channel_label,
-                tag=tag,
-                value=d.get("value", None),
-                dtype=d.get("dtype", None),
-                units=d.get("units", None),
-                ontology=ontology,
-            )
-            for t in _get_triples_from_restrictions(d):
-                graph.add(_parse_triple(t, ns=node_label, label=channel_label))
-    return graph
+            triples.append((tag_uri, ontology.hasUnits, URIRef(units)))
+    return triples
 
 
 def _get_triples_from_restrictions(data: dict) -> list:
@@ -314,9 +217,18 @@ def _append_missing_items(graph: Graph) -> Graph:
     ):
         for obj in graph.objects(None, p):
             triple = (obj, RDF.type, o)
-            if not triple in graph:
+            if triple not in graph:
                 graph.add(triple)
     return graph
+
+
+def convert_to_uriref(value):
+    if isinstance(value, URIRef) or isinstance(value, Literal):
+        return value  # Already a URIRef
+    elif isinstance(value, str):
+        return URIRef(value)  # Convert string to URIRef
+    else:
+        raise TypeError(f"Unsupported type: {type(value)}")
 
 
 def get_knowledge_graph(
@@ -339,21 +251,46 @@ def get_knowledge_graph(
     """
     if graph is None:
         graph = Graph()
-    workflow_label = wf_dict.pop("workflow_label")
-    graph.add((URIRef(workflow_label), RDFS.label, Literal(workflow_label)))
-    for data in wf_dict.values():
-        graph.add(
-            (
-                URIRef(workflow_label),
-                ontology.hasNode,
-                URIRef(workflow_label + "." + data["label"]),
-            )
-        )
-        graph += get_triples(
-            data=data,
-            workflow_namespace=workflow_label,
-            ontology=ontology,
-        )
+    triples = []
+    workflow_label = wf_dict.pop("label")
+    triples.append((workflow_label, RDFS.label, Literal(workflow_label)))
+    for n_label, node in wf_dict["nodes"].items():
+        node_label = workflow_label + "." + n_label
+        f_dict = get_function_dict(node["function"])
+        if f_dict.get("uri", None) is not None:
+            triples.append((node_label, RDF.type, f_dict["uri"]))
+        for t in _get_triples_from_restrictions(f_dict):
+            triples.append(_parse_triple(t, ns=node_label, label=URIRef(node_label)))
+        triples.append((node_label, RDF.type, PROV.Activity))
+        triples.append((workflow_label, ontology.hasNode, node_label))
+        triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
+
+    for key, node in wf_dict["nodes"].items():
+        for io_ in ["inputs", "outputs"]:
+            d = node[io_]
+            if "type_hint" in d:
+                d.update(meta_to_dict(d["type_hint"]))
+            channel_label = URIRef(f"{node_label}.{io_}.{key}")
+            triples.append((channel_label, RDFS.label, Literal(str(channel_label))))
+            triples.append((channel_label, RDF.type, PROV.Entity))
+            if d.get("uri", None) is not None:
+                triples.append((channel_label, RDF.type, d["uri"]))
+            if io_ == "inputs":
+                triples.append((channel_label, ontology.inputOf, node_label))
+            elif io_ == "outputs":
+                triples.append((channel_label, ontology.outputOf, node_label))
+            # graph = _translate_has_value(
+            #     label=channel_label,
+            #     tag=tag,
+            #     value=d.get("value", None),
+            #     dtype=d.get("dtype", None),
+            #     units=d.get("units", None),
+            #     ontology=ontology,
+            # )
+            for t in _get_triples_from_restrictions(d):
+                triples.append(_parse_triple(t, ns=node_label, label=channel_label))
+    for triple in triples:
+        graph.add((convert_to_uriref(t) for t in triple))
     if inherit_properties:
         _inherit_properties(graph, ontology=ontology)
     if append_missing_items:
