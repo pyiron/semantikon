@@ -313,6 +313,7 @@ def get_knowledge_graph(
                     triples.append(_parse_triple(t, ns=node_label, label=channel_label))
     for triple in triples:
         converted_triples = (convert_to_uriref(t) for t in triple)
+        assert len(converted_triples) == 3
         if not any(t is None for t in converted_triples):
             graph.add(converted_triples)
     if inherit_properties:
