@@ -231,17 +231,17 @@ def convert_to_uriref(value):
         raise TypeError(f"Unsupported type: {type(value)}")
 
 
-def _nodes_to_triples(nodes: dict, workflow_label: str, ontology=PNS) -> list:
+def _nodes_to_triples(nodes: dict, prefix: str, ontology=PNS) -> list:
     triples = []
     for n_label, node in nodes.items():
-        node_label = workflow_label + "." + n_label
+        node_label = prefix + "." + n_label
         f_dict = get_function_dict(node["function"])
         if f_dict.get("uri", None) is not None:
             triples.append((node_label, RDF.type, f_dict["uri"]))
         for t in _get_triples_from_restrictions(f_dict):
             triples.append(_parse_triple(t, ns=node_label, label=URIRef(node_label)))
         triples.append((node_label, RDF.type, PROV.Activity))
-        triples.append((workflow_label, ontology.hasNode, node_label))
+        triples.append((prefix, ontology.hasNode, node_label))
         triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
     return triples
 
@@ -269,7 +269,6 @@ def get_knowledge_graph(
     triples = []
     workflow_label = wf_dict.pop("label")
     triples.append((workflow_label, RDFS.label, Literal(workflow_label)))
-    triples.extend(_nodes_to_triples(wf_dict["nodes"], workflow_label, ontology))
 
     edge_dict = {}
     for edges in wf_dict["data_edges"]:
@@ -281,6 +280,7 @@ def get_knowledge_graph(
                 workflow_label + "." + edges[0],
             )
         )
+    triples.extend(_nodes_to_triples(wf_dict["nodes"], workflow_label, ontology))
     for node_key, node in wf_dict["nodes"].items():
         for io_ in ["inputs", "outputs"]:
             for key, port in node[io_].items():
@@ -312,7 +312,9 @@ def get_knowledge_graph(
                 for t in _get_triples_from_restrictions(port):
                     triples.append(_parse_triple(t, ns=node_label, label=channel_label))
     for triple in triples:
-        graph.add((convert_to_uriref(t) for t in triple))
+        converted_triples = (convert_to_uriref(t) for t in triple)
+        if not any(t is None for t in converted_triples):
+            graph.add(converted_triples)
     if inherit_properties:
         _inherit_properties(graph, ontology=ontology)
     if append_missing_items:
