@@ -248,7 +248,7 @@ def _nodes_to_triples(nodes: dict, prefix: str, ontology=PNS) -> list:
 
 def _get_edge_dict(edges: list) -> dict:
     d = {edge[1]: edge[0] for edge in edges}
-    assert len(d) == len(edges)
+    assert len(d) == len(edges), f"Duplicate keys in edge list: {edges}"
     return d
 
 
