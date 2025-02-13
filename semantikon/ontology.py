@@ -246,6 +246,17 @@ def _nodes_to_triples(nodes: dict, prefix: str, ontology=PNS) -> list:
     return triples
 
 
+def _get_edge_dict(edges: list) -> dict:
+    return {edge[1]: edge[0] for edge in edges}
+
+
+def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
+    return [
+        (f"{prefix}.{inp}", ontology.inheritsPropertiesFrom, f"{prefix}.{out}")
+        for inp, out in edges.items()
+    ]
+
+
 def get_knowledge_graph(
     wf_dict: dict,
     graph: Graph | None = None,
@@ -270,16 +281,8 @@ def get_knowledge_graph(
     workflow_label = wf_dict.pop("label")
     triples.append((workflow_label, RDFS.label, Literal(workflow_label)))
 
-    edge_dict = {}
-    for edges in wf_dict["data_edges"]:
-        edge_dict[edges[1]] = edges[0]
-        triples.append(
-            (
-                workflow_label + "." + edges[1],
-                ontology.inheritsPropertiesFrom,
-                workflow_label + "." + edges[0],
-            )
-        )
+    edge_dict = _get_edge_dict(wf_dict["data_edges"])
+    triples.extend(_edges_to_triples(edge_dict, workflow_label, ontology))
     triples.extend(_nodes_to_triples(wf_dict["nodes"], workflow_label, ontology))
     for node_key, node in wf_dict["nodes"].items():
         for io_ in ["inputs", "outputs"]:
