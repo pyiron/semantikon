@@ -258,9 +258,7 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
                     triples.append((channel_label, ontology.inputOf, node_label))
                 elif io_ == "outputs":
                     triples.append((channel_label, ontology.outputOf, node_label))
-                tag = edge_dict.get(
-                    f"{n_label}.{io_}.{key}", f"{n_label}.{io_}.{key}"
-                )
+                tag = edge_dict.get(f"{n_label}.{io_}.{key}", f"{n_label}.{io_}.{key}")
                 triples.extend(
                     _translate_has_value(
                         label=channel_label,
