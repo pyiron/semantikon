@@ -286,9 +286,7 @@ class TestOntology(unittest.TestCase):
         query = "\n".join(query_txt)
         results = graph.query(query)
         self.assertEqual(
-            len(results),
-            2,
-            msg=f"Results: {results.serialize(format='txt').decode()}"
+            len(results), 2, msg=f"Results: {results.serialize(format='txt').decode()}"
         )
         result_list = [row[0].value for row in graph.query(query)]
         self.assertEqual(sorted(result_list), [2.0, 10.0])

@@ -272,7 +272,7 @@ def get_knowledge_graph(
             (
                 workflow_label + "." + edges[1],
                 ontology.inheritsPropertiesFrom,
-                workflow_label + "." + edges[0]
+                workflow_label + "." + edges[0],
             )
         )
     for node_key, node in wf_dict["nodes"].items():
@@ -290,7 +290,9 @@ def get_knowledge_graph(
                     triples.append((channel_label, ontology.inputOf, node_label))
                 elif io_ == "outputs":
                     triples.append((channel_label, ontology.outputOf, node_label))
-                tag = edge_dict.get(f"{node_key}.{io_}.{key}", f"{node_key}.{io_}.{key}")
+                tag = edge_dict.get(
+                    f"{node_key}.{io_}.{key}", f"{node_key}.{io_}.{key}"
+                )
                 triples.extend(
                     _translate_has_value(
                         label=channel_label,
