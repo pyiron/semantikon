@@ -146,6 +146,7 @@ def _parse_triple(
         subj, pred, obj = triples
     else:
         raise ValueError("Triple must have 2 or 3 elements")
+    assert pred is not None, "Predicate must not be None"
     if subj is None:
         subj = label
     if obj is None:
