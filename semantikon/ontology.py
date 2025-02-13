@@ -71,7 +71,7 @@ def _translate_has_value(
 def _get_triples_from_restrictions(data: dict) -> list:
     triples = []
     if data.get("restrictions", None) is not None:
-        triples = restriction_to_triple(data["restrictions"])
+        triples = _restriction_to_triple(data["restrictions"])
     if data.get("triples", None) is not None:
         if isinstance(data["triples"][0], tuple | list):
             triples.extend(list(data["triples"]))
@@ -96,7 +96,7 @@ def _validate_restriction_format(
         raise ValueError("Restrictions must be tuples of URIRefs")
 
 
-def restriction_to_triple(
+def _restriction_to_triple(
     restrictions: _rest_type | tuple[_rest_type] | list[_rest_type],
 ) -> list[tuple[URIRef | None, URIRef, URIRef]]:
     """
@@ -222,7 +222,7 @@ def _append_missing_items(graph: Graph) -> Graph:
     return graph
 
 
-def convert_to_uriref(value):
+def _convert_to_uriref(value):
     if isinstance(value, URIRef) or isinstance(value, Literal):
         return value  # Already a URIRef
     elif isinstance(value, str):
@@ -317,7 +317,7 @@ def get_knowledge_graph(
     for triple in triples:
         if any(t is None for t in triple):
             continue
-        converted_triples = (convert_to_uriref(t) for t in triple)
+        converted_triples = (_convert_to_uriref(t) for t in triple)
         graph.add(converted_triples)
     if inherit_properties:
         _inherit_properties(graph, ontology=ontology)
