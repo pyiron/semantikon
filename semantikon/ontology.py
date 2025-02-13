@@ -231,7 +231,7 @@ def _convert_to_uriref(value):
         raise TypeError(f"Unsupported type: {type(value)}")
 
 
-def _nodes_to_triples(nodes: dict, prefix: str, ontology=PNS) -> list:
+def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -> list:
     triples = []
     for n_label, node in nodes.items():
         node_label = prefix + "." + n_label
@@ -243,6 +243,35 @@ def _nodes_to_triples(nodes: dict, prefix: str, ontology=PNS) -> list:
         triples.append((node_label, RDF.type, PROV.Activity))
         triples.append((prefix, ontology.hasNode, node_label))
         triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
+        for io_ in ["inputs", "outputs"]:
+            for key, port in node[io_].items():
+                if "type_hint" in port:
+                    port.update(meta_to_dict(port["type_hint"]))
+                node_label = prefix + "." + n_label
+                channel_label = URIRef(f"{node_label}.{io_}.{key}")
+                triples.append((channel_label, RDFS.label, Literal(str(channel_label))))
+                triples.append((channel_label, RDF.type, PROV.Entity))
+                if port.get("uri", None) is not None:
+                    triples.append((channel_label, RDF.type, port["uri"]))
+                if io_ == "inputs":
+                    triples.append((channel_label, ontology.inputOf, node_label))
+                elif io_ == "outputs":
+                    triples.append((channel_label, ontology.outputOf, node_label))
+                tag = edge_dict.get(
+                    f"{n_label}.{io_}.{key}", f"{n_label}.{io_}.{key}"
+                )
+                triples.extend(
+                    _translate_has_value(
+                        label=channel_label,
+                        tag=f"{prefix}.{tag}",
+                        value=port.get("value", None),
+                        dtype=port.get("dtype", None),
+                        units=port.get("units", None),
+                        ontology=ontology,
+                    )
+                )
+                for t in _get_triples_from_restrictions(port):
+                    triples.append(_parse_triple(t, ns=node_label, label=channel_label))
     return triples
 
 
@@ -282,40 +311,11 @@ def get_knowledge_graph(
     triples = []
     workflow_label = wf_dict.pop("label")
     triples.append((workflow_label, RDFS.label, Literal(workflow_label)))
-
     edge_dict = _get_edge_dict(wf_dict["data_edges"])
     triples.extend(_edges_to_triples(edge_dict, workflow_label, ontology))
-    triples.extend(_nodes_to_triples(wf_dict["nodes"], workflow_label, ontology))
-    for node_key, node in wf_dict["nodes"].items():
-        for io_ in ["inputs", "outputs"]:
-            for key, port in node[io_].items():
-                if "type_hint" in port:
-                    port.update(meta_to_dict(port["type_hint"]))
-                node_label = workflow_label + "." + node_key
-                channel_label = URIRef(f"{node_label}.{io_}.{key}")
-                triples.append((channel_label, RDFS.label, Literal(str(channel_label))))
-                triples.append((channel_label, RDF.type, PROV.Entity))
-                if port.get("uri", None) is not None:
-                    triples.append((channel_label, RDF.type, port["uri"]))
-                if io_ == "inputs":
-                    triples.append((channel_label, ontology.inputOf, node_label))
-                elif io_ == "outputs":
-                    triples.append((channel_label, ontology.outputOf, node_label))
-                tag = edge_dict.get(
-                    f"{node_key}.{io_}.{key}", f"{node_key}.{io_}.{key}"
-                )
-                triples.extend(
-                    _translate_has_value(
-                        label=channel_label,
-                        tag=f"{workflow_label}.{tag}",
-                        value=port.get("value", None),
-                        dtype=port.get("dtype", None),
-                        units=port.get("units", None),
-                        ontology=ontology,
-                    )
-                )
-                for t in _get_triples_from_restrictions(port):
-                    triples.append(_parse_triple(t, ns=node_label, label=channel_label))
+    triples.extend(
+        _nodes_to_triples(wf_dict["nodes"], edge_dict, workflow_label, ontology)
+    )
     for triple in triples:
         if any(t is None for t in triple):
             continue
