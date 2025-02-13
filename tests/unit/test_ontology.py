@@ -11,7 +11,6 @@ from semantikon.converter import (
 from semantikon.ontology import (
     get_knowledge_graph,
     PNS,
-    get_triples,
     _inherit_properties,
     validate_values,
 )
@@ -21,349 +20,258 @@ from dataclasses import dataclass
 EX = Namespace("http://example.org/")
 
 
-def get_speed():
+def calculate_speed(
+    distance: u(float, units="meter") = 10.0,
+    time: u(float, units="second") = 2.0,
+) -> u(
+    float,
+    units="meter/second",
+    triples=(
+        (EX.somehowRelatedTo, "inputs.time"),
+        (EX.subject, EX.predicate, EX.object),
+        (EX.subject, EX.predicate, None),
+        (None, EX.predicate, EX.object),
+    ),
+):
+    return distance / time
+
+
+@u(uri=EX.Addition)
+def add(a: float, b: float) -> u(float, triples=(EX.HasOperation, EX.Addition)):
+    return a + b
+
+
+def multiply(a: float, b: float) -> u(
+    float,
+    triples=(
+        (EX.HasOperation, EX.Multiplication),
+        (PNS.inheritsPropertiesFrom, "inputs.a"),
+    ),
+):
+    return a * b
+
+
+def correct_analysis(
+    a: u(
+        float,
+        restrictions=(
+            (OWL.onProperty, EX.HasOperation),
+            (OWL.someValuesFrom, EX.Addition),
+        ),
+    )
+) -> float:
+    return a
+
+
+def wrong_analysis(
+    a: u(
+        float,
+        restrictions=(
+            (OWL.onProperty, EX.HasOperation),
+            (OWL.someValuesFrom, EX.Division),
+        ),
+    )
+) -> float:
+    return a
+
+
+def multiple_outputs(a: int = 1, b: int = 2) -> tuple[int, int]:
+    return a, b
+
+
+def get_speed_dict():
     return {
-        "speed": {
-            "inputs": {
-                "distance": {
-                    "units": "meter",
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                    "value": 10.0,
-                    "connection": None,
-                },
-                "time": {
-                    "units": "second",
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                    "value": 2.0,
-                    "connection": None,
-                },
+        "inputs": {
+            "speed__distance": {
+                "default": 10.0,
+                "value": 10.0,
+                "type_hint": u(float, units="meter"),
             },
-            "outputs": {
-                "speed": {
-                    "units": "meter/second",
-                    "label": None,
-                    "triples": (
-                        (
-                            EX.somehowRelatedTo,
-                            "inputs.time",
-                        ),
-                        (
-                            EX.subject,
-                            EX.predicate,
-                            EX.object,
-                        ),
-                        (
-                            EX.subject,
-                            EX.predicate,
-                            None,
-                        ),
-                        (
-                            None,
-                            EX.predicate,
-                            EX.object,
-                        ),
-                    ),
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                    "value": 5.0,
-                }
+            "speed__time": {
+                "default": 2.0,
+                "value": 2.0,
+                "type_hint": u(float, units="second"),
             },
-            "function": {"label": "calculate_speed"},
-            "label": "speed",
         },
-        "workflow_label": "speed",
+        "outputs": {
+            "speed__speed": {
+                "type_hint": u(
+                    float,
+                    units="meter/second",
+                    triples=(
+                        (EX.somehowRelatedTo, "inputs.time"),
+                        (EX.subject, EX.predicate, EX.object),
+                        (EX.subject, EX.predicate, None),
+                        (None, EX.predicate, EX.object),
+                    ),
+                ),
+            }
+        },
+        "nodes": {
+            "speed": {
+                "inputs": {
+                    "distance": {
+                        "default": 10.0,
+                        "value": 10.0,
+                        "type_hint": u(float, units="meter"),
+                    },
+                    "time": {
+                        "default": 2.0,
+                        "value": 2.0,
+                        "type_hint": u(float, units="second"),
+                    },
+                },
+                "outputs": {
+                    "speed": {
+                        "type_hint": u(
+                            float,
+                            units="meter/second",
+                            triples=(
+                                (EX.somehowRelatedTo, "inputs.time"),
+                                (EX.subject, EX.predicate, EX.object),
+                                (EX.subject, EX.predicate, None),
+                                (None, EX.predicate, EX.object),
+                            ),
+                        ),
+                    }
+                },
+                "function": calculate_speed,
+            }
+        },
+        "data_edges": [],
+        "label": "speed",
     }
 
 
-def get_correct_analysis():
+def get_correct_analysis_dict():
     return {
-        "addition": {
-            "inputs": {
-                "a": {
-                    "units": None,
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                    "value": 1.0,
-                    "connection": None,
-                },
-                "b": {
-                    "units": None,
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                    "value": 2.0,
-                    "connection": None,
-                },
-            },
-            "outputs": {
-                "result": {
-                    "units": None,
-                    "label": None,
-                    "triples": (
-                        EX.HasOperation,
-                        EX.Addition,
-                    ),
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                }
-            },
-            "function": {
-                "label": "add",
-                "triples": None,
-                "uri": EX.Addition,
-                "restrictions": None,
-                "use_list": True,
-            },
-            "label": "addition",
+        "inputs": {
+            "addition__a": {"value": 1.0, "type_hint": float},
+            "addition__b": {"value": 2.0, "type_hint": float},
+            "multiply__b": {"value": 3.0, "type_hint": float},
         },
-        "multiply": {
-            "inputs": {
-                "a": {
-                    "units": None,
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                    "connection": "addition.outputs.result",
+        "outputs": {"analysis__result": {"type_hint": float}},
+        "nodes": {
+            "addition": {
+                "inputs": {
+                    "a": {"value": 1.0, "type_hint": float},
+                    "b": {"value": 2.0, "type_hint": float},
                 },
-                "b": {
-                    "units": None,
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                    "value": 3.0,
-                    "connection": None,
+                "outputs": {
+                    "result": {
+                        "type_hint": u(float, triples=(EX.HasOperation, EX.Addition)),
+                    }
                 },
+                "function": add,
             },
-            "outputs": {
-                "result": {
-                    "units": None,
-                    "label": None,
-                    "triples": (
-                        (
-                            EX.HasOperation,
-                            EX.Multiplication,
+            "multiply": {
+                "inputs": {
+                    "a": {"type_hint": float},
+                    "b": {"value": 3.0, "type_hint": float},
+                },
+                "outputs": {
+                    "result": {
+                        "type_hint": u(
+                            float,
+                            triples=(
+                                (EX.HasOperation, EX.Multiplication),
+                                (PNS.inheritsPropertiesFrom, "inputs.a"),
+                            ),
                         ),
-                        (
-                            PNS.inheritsPropertiesFrom,
-                            "inputs.a",
-                        ),
-                    ),
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                }
+                    }
+                },
+                "function": multiply,
             },
-            "function": {"label": "multiply"},
-            "label": "multiply",
+            "analysis": {
+                "inputs": {
+                    "a": {
+                        "type_hint": u(
+                            float,
+                            restrictions=(
+                                (OWL.onProperty, EX.HasOperation),
+                                (OWL.someValuesFrom, EX.Addition),
+                            ),
+                        )
+                    }
+                },
+                "outputs": {"result": {"type_hint": float}},
+                "function": correct_analysis,
+            },
         },
-        "analysis": {
-            "inputs": {
-                "a": {
-                    "units": None,
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": (
-                        (
-                            OWL.onProperty,
-                            EX.HasOperation,
-                        ),
-                        (
-                            OWL.someValuesFrom,
-                            EX.Addition,
-                        ),
-                    ),
-                    "dtype": float,
-                    "connection": "multiply.outputs.result",
-                }
-            },
-            "outputs": {
-                "result": {
-                    "units": None,
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                }
-            },
-            "function": {"label": "correct_analysis"},
-            "label": "analysis",
-        },
-        "workflow_label": "correct_analysis",
+        "data_edges": [
+            ("addition.outputs.result", "multiply.inputs.a"),
+            ("multiply.outputs.result", "analysis.inputs.a"),
+        ],
+        "label": "correct_analysis",
     }
 
 
-def get_wrong_analysis():
+def get_wrong_analysis_dict():
     return {
-        "addition": {
-            "inputs": {
-                "a": {
-                    "units": None,
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                    "value": 1.0,
-                    "connection": None,
-                },
-                "b": {
-                    "units": None,
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                    "value": 2.0,
-                    "connection": None,
-                },
-            },
-            "outputs": {
-                "result": {
-                    "units": None,
-                    "label": None,
-                    "triples": (
-                        EX.HasOperation,
-                        EX.Addition,
-                    ),
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                }
-            },
-            "function": {
-                "label": "add",
-                "triples": None,
-                "uri": EX.Addition,
-                "restrictions": None,
-                "use_list": True,
-            },
-            "label": "addition",
+        "inputs": {
+            "addition__a": {"value": 1.0, "type_hint": float},
+            "addition__b": {"value": 2.0, "type_hint": float},
+            "multiply__b": {"value": 3.0, "type_hint": float},
         },
-        "multiply": {
-            "inputs": {
-                "a": {
-                    "units": None,
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                    "connection": "addition.outputs.result",
+        "outputs": {"analysis__result": {"type_hint": float}},
+        "nodes": {
+            "addition": {
+                "inputs": {
+                    "a": {"value": 1.0, "type_hint": float},
+                    "b": {"value": 2.0, "type_hint": float},
                 },
-                "b": {
-                    "units": None,
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                    "value": 3.0,
-                    "connection": None,
+                "outputs": {
+                    "result": {
+                        "type_hint": u(float, triples=(EX.HasOperation, EX.Addition))
+                    }
                 },
+                "function": add,
             },
-            "outputs": {
-                "result": {
-                    "units": None,
-                    "label": None,
-                    "triples": (
-                        (
-                            EX.HasOperation,
-                            EX.Multiplication,
-                        ),
-                        (
-                            PNS.inheritsPropertiesFrom,
-                            "inputs.a",
-                        ),
-                    ),
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                }
+            "multiply": {
+                "inputs": {
+                    "a": {"type_hint": float},
+                    "b": {"value": 3.0, "type_hint": float},
+                },
+                "outputs": {
+                    "result": {
+                        "type_hint": u(
+                            float,
+                            triples=(
+                                (EX.HasOperation, EX.Multiplication),
+                                (PNS.inheritsPropertiesFrom, "inputs.a"),
+                            ),
+                        )
+                    }
+                },
+                "function": multiply,
             },
-            "function": {"label": "multiply"},
-            "label": "multiply",
+            "analysis": {
+                "inputs": {
+                    "a": {
+                        "type_hint": u(
+                            float,
+                            restrictions=(
+                                (OWL.onProperty, EX.HasOperation),
+                                (OWL.someValuesFrom, EX.Division),
+                            ),
+                        )
+                    }
+                },
+                "outputs": {"result": {"type_hint": float}},
+                "function": wrong_analysis,
+            },
         },
-        "analysis": {
-            "inputs": {
-                "a": {
-                    "units": None,
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": (
-                        (
-                            OWL.onProperty,
-                            EX.HasOperation,
-                        ),
-                        (
-                            OWL.someValuesFrom,
-                            EX.Division,
-                        ),
-                    ),
-                    "dtype": float,
-                    "connection": "multiply.outputs.result",
-                }
-            },
-            "outputs": {
-                "result": {
-                    "units": None,
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": float,
-                }
-            },
-            "function": {"label": "wrong_analysis"},
-            "label": "analysis",
-        },
-        "workflow_label": "wrong_analysis",
+        "data_edges": [
+            ("addition.outputs.result", "multiply.inputs.a"),
+            ("multiply.outputs.result", "analysis.inputs.a"),
+        ],
+        "label": "wrong_analysis",
     }
 
 
 class TestOntology(unittest.TestCase):
     def test_units_with_sparql(self):
-        graph = get_knowledge_graph(get_speed())
+        graph = get_knowledge_graph(get_speed_dict())
         query_txt = [
             "PREFIX ex: <http://example.org/>",
             "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
@@ -377,36 +285,43 @@ class TestOntology(unittest.TestCase):
         ]
         query = "\n".join(query_txt)
         results = graph.query(query)
-        self.assertEqual(len(results), 3)
+        self.assertEqual(
+            len(results),
+            2,
+            msg=f"Results: {results.serialize(format='txt').decode()}"
+        )
         result_list = [row[0].value for row in graph.query(query)]
-        self.assertEqual(sorted(result_list), [2.0, 5.0, 10.0])
+        self.assertEqual(sorted(result_list), [2.0, 10.0])
 
     def test_triples(self):
-        data = get_speed()["speed"]
-        graph = get_triples(data=data)
+        data = get_speed_dict()
+        graph = get_knowledge_graph(data)
         subj = URIRef("http://example.org/subject")
         obj = URIRef("http://example.org/object")
-        label = URIRef("speed.outputs.speed")
+        label = URIRef("speed.speed.outputs.speed")
         self.assertGreater(
             len(list(graph.triples((None, PNS.hasUnits, URIRef("meter/second"))))), 0
         )
-        ex_triple = (None, EX.somehowRelatedTo, URIRef("speed.inputs.time"))
+        ex_triple = (None, EX.somehowRelatedTo, URIRef("speed.speed.inputs.time"))
         self.assertTrue(
             ex_triple in graph,
             msg=f"Triple {ex_triple} not found {graph.serialize(format='turtle')}",
         )
-        self.assertEqual(
-            len(list(graph.triples((EX.subject, EX.predicate, EX.object)))), 1
-        )
+        self.assertTrue((EX.subject, EX.predicate, EX.object) in graph)
         self.assertTrue((subj, EX.predicate, label) in graph)
         self.assertTrue((label, EX.predicate, obj) in graph)
 
     def test_correct_analysis(self):
-        graph = get_knowledge_graph(get_correct_analysis())
+        graph = get_knowledge_graph(get_correct_analysis_dict())
         _inherit_properties(graph)
         DeductiveClosure(OWLRL_Semantics).expand(graph)
-        self.assertEqual(len(validate_values(graph)), 0)
-        graph = get_knowledge_graph(get_wrong_analysis())
+        missing_triples = validate_values(graph)
+        self.assertEqual(
+            len(missing_triples),
+            0,
+            msg=f"{missing_triples} not found in {graph.serialize()}",
+        )
+        graph = get_knowledge_graph(get_wrong_analysis_dict())
         _inherit_properties(graph)
         DeductiveClosure(OWLRL_Semantics).expand(graph)
         self.assertEqual(len(validate_values(graph)), 1)
@@ -431,46 +346,34 @@ class Output:
     L: u(float, units="angstrom")
 
 
-def get_run_md():
+def run_md(inp: Input) -> Output:
+    out = Output(E=1.0, L=2.0)
+    return out
+
+
+def get_run_md_dict():
     inp = Input(T=300.0, n=100)
     inp.parameters.a = 1
     return {
-        "node": {
-            "inputs": {
-                "inp": {
-                    "units": None,
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": Input,
-                    "value": inp,
-                    "connection": None,
-                }
-            },
-            "outputs": {
-                "out": {
-                    "units": None,
-                    "label": None,
-                    "triples": None,
-                    "uri": None,
-                    "shape": None,
-                    "restrictions": None,
-                    "dtype": Output,
-                    "value": Output(E=1.0, L=2.0),
-                }
-            },
-            "function": {"label": "run_md"},
-            "label": "node",
+        "inputs": {"node__inp": {"value": inp, "type_hint": Input}},
+        "outputs": {"node__out": {"value": Output(E=1.0, L=2.0), "type_hint": Output}},
+        "nodes": {
+            "node": {
+                "inputs": {"inp": {"value": inp, "type_hint": Input}},
+                "outputs": {
+                    "out": {"value": Output(E=1.0, L=2.0), "type_hint": Output}
+                },
+                "function": run_md,
+            }
         },
-        "workflow_label": "my_wf",
+        "data_edges": [],
+        "label": "my_wf",
     }
 
 
 class TestDataclass(unittest.TestCase):
     def test_dataclass(self):
-        graph = get_knowledge_graph(get_run_md())
+        graph = get_knowledge_graph(get_run_md_dict())
         i_txt = "my_wf.node.inputs.inp"
         o_txt = "my_wf.node.outputs.out"
         triples = (

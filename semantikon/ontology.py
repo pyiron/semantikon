@@ -265,30 +265,44 @@ def get_knowledge_graph(
         triples.append((workflow_label, ontology.hasNode, node_label))
         triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
 
-    for key, node in wf_dict["nodes"].items():
+    edge_dict = {}
+    for edges in wf_dict["data_edges"]:
+        edge_dict[edges[1]] = edges[0]
+        triples.append(
+            (
+                workflow_label + "." + edges[1],
+                ontology.inheritsPropertiesFrom,
+                workflow_label + "." + edges[0]
+            )
+        )
+    for node_key, node in wf_dict["nodes"].items():
         for io_ in ["inputs", "outputs"]:
-            d = node[io_]
-            if "type_hint" in d:
-                d.update(meta_to_dict(d["type_hint"]))
-            channel_label = URIRef(f"{node_label}.{io_}.{key}")
-            triples.append((channel_label, RDFS.label, Literal(str(channel_label))))
-            triples.append((channel_label, RDF.type, PROV.Entity))
-            if d.get("uri", None) is not None:
-                triples.append((channel_label, RDF.type, d["uri"]))
-            if io_ == "inputs":
-                triples.append((channel_label, ontology.inputOf, node_label))
-            elif io_ == "outputs":
-                triples.append((channel_label, ontology.outputOf, node_label))
-            # graph = _translate_has_value(
-            #     label=channel_label,
-            #     tag=tag,
-            #     value=d.get("value", None),
-            #     dtype=d.get("dtype", None),
-            #     units=d.get("units", None),
-            #     ontology=ontology,
-            # )
-            for t in _get_triples_from_restrictions(d):
-                triples.append(_parse_triple(t, ns=node_label, label=channel_label))
+            for key, port in node[io_].items():
+                if "type_hint" in port:
+                    port.update(meta_to_dict(port["type_hint"]))
+                node_label = workflow_label + "." + node_key
+                channel_label = URIRef(f"{node_label}.{io_}.{key}")
+                triples.append((channel_label, RDFS.label, Literal(str(channel_label))))
+                triples.append((channel_label, RDF.type, PROV.Entity))
+                if port.get("uri", None) is not None:
+                    triples.append((channel_label, RDF.type, port["uri"]))
+                if io_ == "inputs":
+                    triples.append((channel_label, ontology.inputOf, node_label))
+                elif io_ == "outputs":
+                    triples.append((channel_label, ontology.outputOf, node_label))
+                tag = edge_dict.get(f"{node_key}.{io_}.{key}", f"{node_key}.{io_}.{key}")
+                triples.extend(
+                    _translate_has_value(
+                        label=channel_label,
+                        tag=f"{workflow_label}.{tag}",
+                        value=port.get("value", None),
+                        dtype=port.get("dtype", None),
+                        units=port.get("units", None),
+                        ontology=ontology,
+                    )
+                )
+                for t in _get_triples_from_restrictions(port):
+                    triples.append(_parse_triple(t, ns=node_label, label=channel_label))
     for triple in triples:
         graph.add((convert_to_uriref(t) for t in triple))
     if inherit_properties:
