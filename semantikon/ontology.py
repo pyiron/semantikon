@@ -247,7 +247,9 @@ def _nodes_to_triples(nodes: dict, prefix: str, ontology=PNS) -> list:
 
 
 def _get_edge_dict(edges: list) -> dict:
-    return {edge[1]: edge[0] for edge in edges}
+    d = {edge[1]: edge[0] for edge in edges}
+    assert len(d) == len(edges)
+    return d
 
 
 def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
