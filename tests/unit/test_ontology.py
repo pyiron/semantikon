@@ -382,25 +382,21 @@ class TestOntology(unittest.TestCase):
     def test_macro(self):
         graph = get_knowledge_graph(get_macro())
         subj = list(
-            graph.subjects(
-                PNS.hasValue, URIRef("my_wf.three.two.outputs.result.value")
-            )
+            graph.subjects(PNS.hasValue, URIRef("my_wf.three.two.outputs.result.value"))
         )
         self.assertEqual(len(subj), 3)
         prefix = "my_wf"
         for ii, tag in enumerate(
-            ['three.two.outputs.result', 'three.outputs.w', 'four.inputs.a']
+            ["three.two.outputs.result", "three.outputs.w", "four.inputs.a"]
         ):
             with self.subTest(i=ii):
                 self.assertIn(
                     URIRef(prefix + "." + tag), subj, msg=f"{tag} not in {subj}"
                 )
-        same_as = [
-            (str(g[0]), str(g[1])) for g in graph.subject_objects(OWL.sameAs)
-        ]
+        same_as = [(str(g[0]), str(g[1])) for g in graph.subject_objects(OWL.sameAs)]
         sub_obj = [
-            ('my_wf.three.one.inputs.a', 'my_wf.three.inputs.c'),
-            ('my_wf.three.outputs.w', 'my_wf.three.two.outputs.result')
+            ("my_wf.three.one.inputs.a", "my_wf.three.inputs.c"),
+            ("my_wf.three.outputs.w", "my_wf.three.two.outputs.result"),
         ]
         self.assertEqual(len(same_as), 2)
         for ii, pair in enumerate(sub_obj):

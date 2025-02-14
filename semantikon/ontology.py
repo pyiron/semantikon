@@ -244,12 +244,15 @@ def _function_to_triples(node: dict, node_label: str, ontology=PNS) -> list:
     triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
     return triples
 
+
 def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -> list:
     triples = []
     for n_label, node in nodes.items():
         node_label = dot(prefix, n_label)
         if "nodes" in node:
-            triples.extend(_parse_workflow(node, edge_dict, prefix=prefix, ontology=ontology))
+            triples.extend(
+                _parse_workflow(node, edge_dict, prefix=prefix, ontology=ontology)
+            )
         if "function" in node:
             triples.extend(_function_to_triples(node, node_label, ontology))
         triples.append((node_label, RDF.type, PROV.Activity))
@@ -268,9 +271,7 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
                     triples.append((channel_label, ontology.inputOf, node_label))
                 elif io_ == "outputs":
                     triples.append((channel_label, ontology.outputOf, node_label))
-                tag = edge_dict.get(
-                    * 2 * [_remove_us(prefix, n_label, io_, key)]
-                )
+                tag = edge_dict.get(*2 * [_remove_us(prefix, n_label, io_, key)])
                 triples.extend(
                     _translate_has_value(
                         label=channel_label,
@@ -297,19 +298,20 @@ def _get_all_edge_dict(data, prefix=None):
     else:
         prefix = prefix + "." + data["label"]
     edges = {
-        _remove_us(prefix, e[1]): _remove_us(prefix, e[0])
-        for e in data["data_edges"]
+        _remove_us(prefix, e[1]): _remove_us(prefix, e[0]) for e in data["data_edges"]
     }
     for node in data["nodes"].values():
         if "nodes" in node:
             edges.update(_get_all_edge_dict(node, prefix))
     return edges
 
+
 def _order_edge_dict(data):
     for key, value in data.items():
         if value in data:
             data[key] = data[value]
     return data
+
 
 def _get_full_edge_dict(data, prefix=None):
     edges = _get_all_edge_dict(data, prefix)
@@ -335,8 +337,7 @@ def _convert_edge_triples(inp: str, out: str, prefix: str, ontology=PNS) -> tupl
 
 def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
     return [
-        _convert_edge_triples(inp, out, prefix, ontology)
-        for inp, out in edges.items()
+        _convert_edge_triples(inp, out, prefix, ontology) for inp, out in edges.items()
     ]
 
 
@@ -351,9 +352,7 @@ def _parse_workflow(
     triples.append((workflow_label, RDFS.label, Literal(workflow_label)))
     triples.extend(_edges_to_triples(edge_dict, workflow_label, ontology))
     triples.extend(
-        _nodes_to_triples(
-            wf_dict["nodes"], full_edge_dict, workflow_label, ontology
-        )
+        _nodes_to_triples(wf_dict["nodes"], full_edge_dict, workflow_label, ontology)
     )
     return triples
 
