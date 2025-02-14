@@ -140,6 +140,17 @@ def _parse_triple(
     ns: str,
     label: URIRef | None = None,
 ) -> tuple:
+    """
+    Triples given in type hints can be expressed by a tuple of 2 or 3 elements.
+    If a triple contains 2 elements, the first element is assumed to be the
+    predicate and the second element the object, as semantikon automatically
+    adds the argument as the subject. If a triple contains 3 elements, the
+    first element is assumed to be the subject, the second element the
+    predicate, and the third element the object. Instead, you can also
+    indicate the position of the argument by setting it to None. Furthermore,
+    if the object is a string and starts with "inputs." or "outputs.", it is
+    assumed to be a channel and the namespace is added automatically.
+    """
     if len(triples) == 2:
         subj, pred, obj = label, triples[0], triples[1]
     elif len(triples) == 3:
