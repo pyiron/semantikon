@@ -264,11 +264,7 @@ def _parse_node(node: dict, node_label: str, prefix: str, ontology=PNS):
 
 
 def _parse_channel(
-    channel_dict: dict,
-    channel_label: str,
-    edge_dict: str,
-    prefix: str,
-    ontology=PNS
+    channel_dict: dict, channel_label: str, edge_dict: str, prefix: str, ontology=PNS
 ):
     triples = []
     triples.append((channel_label, RDFS.label, Literal(channel_label)))
@@ -313,9 +309,7 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
                 elif io_ == "outputs":
                     triples.append((channel_label, ontology.outputOf, node_label))
                 for t in _get_triples_from_restrictions(channel_dict):
-                    triples.append(
-                        _parse_triple(t, ns=node_label, label=channel_label)
-                    )
+                    triples.append(_parse_triple(t, ns=node_label, label=channel_label))
     return triples
 
 
