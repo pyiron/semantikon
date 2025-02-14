@@ -414,7 +414,7 @@ def _parse_cancel(nodes: dict, label: str) -> list:
                         triples.append(
                             _parse_triple(c, label=_remove_us(node_label, io_, key))
                         )
-    return (_convert_to_uriref(t) for t in triples)
+    return ((_convert_to_uriref(tt) for tt in t) for t in triples)
 
 
 
