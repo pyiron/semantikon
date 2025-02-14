@@ -138,7 +138,7 @@ def _restriction_to_triple(
 def _parse_triple(
     triples: tuple,
     ns: str,
-    label: URIRef | None = None,
+    label: str | URIRef | None = None,
 ) -> tuple:
     """
     Triples given in type hints can be expressed by a tuple of 2 or 3 elements.
@@ -164,8 +164,6 @@ def _parse_triple(
         obj = label
     if obj.startswith("inputs.") or obj.startswith("outputs."):
         obj = dot(ns, obj)
-    if not isinstance(obj, URIRef):
-        obj = URIRef(obj)
     return subj, pred, obj
 
 
@@ -251,8 +249,17 @@ def _function_to_triples(node: dict, node_label: str, ontology=PNS) -> list:
     if f_dict.get("uri", None) is not None:
         triples.append((node_label, RDF.type, f_dict["uri"]))
     for t in _get_triples_from_restrictions(f_dict):
-        triples.append(_parse_triple(t, ns=node_label, label=URIRef(node_label)))
+        triples.append(_parse_triple(t, ns=node_label, label=node_label))
     triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
+    return triples
+
+
+def _parse_node(node: dict, node_label: str, prefix: str, ontology=PNS):
+    triples = []
+    if "function" in node:
+        triples.extend(_function_to_triples(node, node_label, ontology))
+    triples.append((node_label, RDF.type, PROV.Activity))
+    triples.append((prefix, ontology.hasNode, node_label))
     return triples
 
 
@@ -260,19 +267,15 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
     triples = []
     for n_label, node in nodes.items():
         node_label = dot(prefix, n_label)
+        triples.extend(_parse_node(node, node_label, prefix, ontology))
         if "nodes" in node:
             triples.extend(
                 _parse_workflow(node, edge_dict, prefix=prefix, ontology=ontology)
             )
-        if "function" in node:
-            triples.extend(_function_to_triples(node, node_label, ontology))
-        triples.append((node_label, RDF.type, PROV.Activity))
-        triples.append((prefix, ontology.hasNode, node_label))
         for io_ in ["inputs", "outputs"]:
             for key, port in node[io_].items():
                 if "type_hint" in port:
                     port.update(meta_to_dict(port["type_hint"]))
-                node_label = dot(prefix, n_label)
                 channel_label = URIRef(_remove_us(node_label, io_, key))
                 triples.append((channel_label, RDFS.label, Literal(str(channel_label))))
                 triples.append((channel_label, RDF.type, PROV.Entity))
@@ -282,7 +285,7 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
                     triples.append((channel_label, ontology.inputOf, node_label))
                 elif io_ == "outputs":
                     triples.append((channel_label, ontology.outputOf, node_label))
-                tag = edge_dict.get(*2 * [_remove_us(prefix, n_label, io_, key)])
+                tag = edge_dict.get(*2 * [_remove_us(node_label, io_, key)])
                 triples.extend(
                     _translate_has_value(
                         label=channel_label,
@@ -294,7 +297,9 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
                     )
                 )
                 for t in _get_triples_from_restrictions(port):
-                    triples.append(_parse_triple(t, ns=node_label, label=channel_label))
+                    triples.append(
+                        _parse_triple(t, ns=node_label, label=channel_label)
+                    )
     return triples
 
 
