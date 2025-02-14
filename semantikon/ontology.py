@@ -4,6 +4,7 @@ import warnings
 from rdflib import Graph, Literal, RDF, RDFS, URIRef, OWL, PROV, Namespace
 from dataclasses import is_dataclass
 from semantikon.converter import meta_to_dict, get_function_dict
+from owlrl import DeductiveClosure, OWLRL_Semantics
 
 
 class PNS:
@@ -137,7 +138,7 @@ def _restriction_to_triple(
 
 def _parse_triple(
     triples: tuple,
-    ns: str,
+    ns: str | None = None,
     label: str | URIRef | None = None,
 ) -> tuple:
     """
@@ -163,11 +164,14 @@ def _parse_triple(
     if obj is None:
         obj = label
     if obj.startswith("inputs.") or obj.startswith("outputs."):
+        assert ns is not None, "Namespace must not be None"
         obj = dot(ns, obj)
     return subj, pred, obj
 
 
-def _inherit_properties(graph: Graph, n: int | None = None, ontology=PNS):
+def _inherit_properties(
+    graph: Graph, triples_to_cancel: list | None = None, n_max: int = 1000, ontology=PNS
+):
     update_query = (
         f"PREFIX ns: <{ontology.BASE}>",
         f"PREFIX rdfs: <{RDFS}>",
@@ -188,13 +192,20 @@ def _inherit_properties(graph: Graph, n: int | None = None, ontology=PNS):
         "    FILTER(?p != owl:sameAs)",
         "}",
     )
-    if n is None:
-        n = len(list(graph.triples((None, ontology.inheritsPropertiesFrom, None))))
-    for _ in range(n):
+    if triples_to_cancel is None:
+        triples_to_cancel = []
+    n = 0
+    for _ in range(n_max):
         graph.update("\n".join(update_query))
+        for t in triples_to_cancel:
+            if t in graph:
+                graph.remove(t)
+        if len(graph) == n:
+            break
+        n = len(graph)
 
 
-def validate_values(graph: Graph) -> list:
+def validate_values(graph: Graph, run_reasoner: bool = True) -> list:
     """
     Validate if all values required by restrictions are present in the graph
 
@@ -204,6 +215,8 @@ def validate_values(graph: Graph) -> list:
     Returns:
         (list): list of missing triples
     """
+    if run_reasoner:
+        DeductiveClosure(OWLRL_Semantics).expand(graph)
     missing_triples = []
     for restrictions in graph.subjects(RDF.type, OWL.Restriction):
         on_property = graph.value(restrictions, OWL.onProperty)
@@ -372,7 +385,7 @@ def _parse_workflow(
 ) -> list:
     triples = []
     edge_dict = _get_edge_dict(wf_dict["data_edges"])
-    workflow_label = wf_dict.pop("label")
+    workflow_label = wf_dict["label"]
     if prefix is not None:
         workflow_label = dot(prefix, workflow_label)
     triples.append((workflow_label, RDFS.label, Literal(workflow_label)))
@@ -381,6 +394,27 @@ def _parse_workflow(
         _nodes_to_triples(wf_dict["nodes"], full_edge_dict, workflow_label, ontology)
     )
     return triples
+
+
+def _parse_cancel(nodes: dict, label: str) -> list:
+    triples = []
+    for n_label, node in nodes.items():
+        node_label = dot(label, n_label)
+        if "nodes" in node:
+            triples.extend(_parse_cancel(node["nodes"], node_label))
+        for io_ in ["inputs", "outputs"]:
+            for key, channel_dict in node[io_].items():
+                if "cancel" in channel_dict:
+                    cancel = channel_dict["cancel"]
+                    assert isinstance(cancel, list | tuple)
+                    assert len(cancel) > 0
+                    if not isinstance(cancel[0], list | tuple):
+                        cancel = [cancel]
+                    for c in cancel:
+                        triples.append(
+                            _parse_triple(c, label=_remove_us(node_label, io_, key))
+                        )
+    return [tuple([_convert_to_uriref(tt) for tt in t]) for t in triples]
 
 
 def get_knowledge_graph(
@@ -405,13 +439,14 @@ def get_knowledge_graph(
         graph = Graph()
     full_edge_dict = _get_full_edge_dict(wf_dict)
     triples = _parse_workflow(wf_dict, full_edge_dict, ontology=ontology)
+    triples_to_cancel = _parse_cancel(wf_dict["nodes"], wf_dict["label"])
     for triple in triples:
         if any(t is None for t in triple):
             continue
         converted_triples = (_convert_to_uriref(t) for t in triple)
         graph.add(converted_triples)
     if inherit_properties:
-        _inherit_properties(graph, ontology=ontology)
+        _inherit_properties(graph, triples_to_cancel, ontology=ontology)
     if append_missing_items:
         graph = _append_missing_items(graph)
     return graph

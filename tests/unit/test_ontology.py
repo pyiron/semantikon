@@ -96,6 +96,43 @@ def add_three(macro, c: int) -> int:
     return w
 
 
+def create_vacancy(
+    structure: str,
+) -> u(
+    str,
+    triples=(
+        (PNS.inheritsPropertiesFrom, "inputs.structure"),
+        (EX.hasDefect, EX.vacancy),
+    ),
+    cancel=(EX.hasState, EX.relaxed),
+):
+    return structure
+
+
+def relax_structure(
+    structure: str,
+) -> u(
+    str,
+    triples=(
+        (PNS.inheritsPropertiesFrom, "inputs.structure"),
+        (EX.hasState, EX.relaxed),
+    ),
+):
+    return structure
+
+
+def get_vacancy_formation_energy(
+    structure: u(
+        str,
+        restrictions=(
+            ((OWL.onProperty, EX.hasDefect), (OWL.someValuesFrom, EX.vacancy)),
+            ((OWL.onProperty, EX.hasState), (OWL.someValuesFrom, EX.relaxed)),
+        ),
+    )
+):
+    return len(structure)
+
+
 def get_speed_dict():
     return {
         "inputs": {
@@ -324,6 +361,72 @@ def get_macro():
     }
 
 
+def get_wrong_order():
+    return {
+        "inputs": {"relaxed__structure": {"value": "abc", "type_hint": str}},
+        "outputs": {"energy__len(structure)": {}},
+        "nodes": {
+            "relaxed": {
+                "inputs": {"structure": {"value": "abc", "type_hint": str}},
+                "outputs": {
+                    "structure": {
+                        "type_hint": u(
+                            str,
+                            triples=(
+                                (PNS.inheritsPropertiesFrom, "inputs.structure"),
+                                (EX.hasState, EX.relaxed),
+                            ),
+                        )
+                    }
+                },
+                "function": relax_structure,
+            },
+            "vac": {
+                "inputs": {"structure": {"type_hint": str}},
+                "outputs": {
+                    "structure": {
+                        "type_hint": u(
+                            str,
+                            triples=(
+                                (PNS.inheritsPropertiesFrom, "inputs.structure"),
+                                (EX.hasDefect, EX.vacancy),
+                            ),
+                            cancel=(EX.hasState, EX.relaxed),
+                        )
+                    }
+                },
+                "function": create_vacancy,
+            },
+            "energy": {
+                "inputs": {
+                    "structure": {
+                        "type_hint": u(
+                            str,
+                            restrictions=(
+                                (
+                                    (OWL.onProperty, EX.hasDefect),
+                                    (OWL.someValuesFrom, EX.vacancy),
+                                ),
+                                (
+                                    (OWL.onProperty, EX.hasState),
+                                    (OWL.someValuesFrom, EX.relaxed),
+                                ),
+                            ),
+                        )
+                    }
+                },
+                "outputs": {"len(structure)": {}},
+                "function": get_vacancy_formation_energy,
+            },
+        },
+        "data_edges": [
+            ("relaxed.outputs.structure", "vac.inputs.structure"),
+            ("vac.outputs.structure", "energy.inputs.structure"),
+        ],
+        "label": "wrong_order",
+    }
+
+
 class TestOntology(unittest.TestCase):
     def test_units_with_sparql(self):
         graph = get_knowledge_graph(get_speed_dict())
@@ -366,8 +469,6 @@ class TestOntology(unittest.TestCase):
 
     def test_correct_analysis(self):
         graph = get_knowledge_graph(get_correct_analysis_dict())
-        _inherit_properties(graph)
-        DeductiveClosure(OWLRL_Semantics).expand(graph)
         missing_triples = validate_values(graph)
         self.assertEqual(
             len(missing_triples),
@@ -375,8 +476,6 @@ class TestOntology(unittest.TestCase):
             msg=f"{missing_triples} not found in {graph.serialize()}",
         )
         graph = get_knowledge_graph(get_wrong_analysis_dict())
-        _inherit_properties(graph)
-        DeductiveClosure(OWLRL_Semantics).expand(graph)
         self.assertEqual(len(validate_values(graph)), 1)
 
     def test_macro(self):
@@ -402,6 +501,21 @@ class TestOntology(unittest.TestCase):
         for ii, pair in enumerate(sub_obj):
             with self.subTest(i=ii):
                 self.assertIn(pair, same_as)
+
+    def test_wrong_order(self):
+        data = get_wrong_order()
+        graph = get_knowledge_graph(data)
+        missing_triples = [[str(gg) for gg in g] for g in validate_values(graph)]
+        self.assertEqual(
+            missing_triples,
+            [
+                [
+                    "wrong_order.energy.inputs.structure",
+                    "http://example.org/hasState",
+                    "http://example.org/relaxed",
+                ]
+            ],
+        )
 
 
 @dataclass
