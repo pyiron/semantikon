@@ -263,6 +263,32 @@ def _parse_node(node: dict, node_label: str, prefix: str, ontology=PNS):
     return triples
 
 
+def _parse_channel(
+    channel_dict: dict,
+    channel_label: str,
+    edge_dict: str,
+    prefix: str,
+    ontology=PNS
+):
+    triples = []
+    triples.append((channel_label, RDFS.label, Literal(channel_label)))
+    triples.append((channel_label, RDF.type, PROV.Entity))
+    if channel_dict.get("uri", None) is not None:
+        triples.append((channel_label, RDF.type, channel_dict["uri"]))
+    tag = edge_dict.get(*2 * [channel_label])
+    triples.extend(
+        _translate_has_value(
+            label=channel_label,
+            tag=tag,
+            value=channel_dict.get("value", None),
+            dtype=channel_dict.get("dtype", None),
+            units=channel_dict.get("units", None),
+            ontology=ontology,
+        )
+    )
+    return triples
+
+
 def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -> list:
     triples = []
     for n_label, node in nodes.items():
@@ -273,30 +299,20 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
                 _parse_workflow(node, edge_dict, prefix=prefix, ontology=ontology)
             )
         for io_ in ["inputs", "outputs"]:
-            for key, port in node[io_].items():
-                if "type_hint" in port:
-                    port.update(meta_to_dict(port["type_hint"]))
+            for key, channel_dict in node[io_].items():
+                if "type_hint" in channel_dict:
+                    channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
                 channel_label = _remove_us(node_label, io_, key)
-                triples.append((channel_label, RDFS.label, Literal(channel_label)))
-                triples.append((channel_label, RDF.type, PROV.Entity))
-                if port.get("uri", None) is not None:
-                    triples.append((channel_label, RDF.type, port["uri"]))
+                triples.extend(
+                    _parse_channel(
+                        channel_dict, channel_label, edge_dict, prefix, ontology
+                    )
+                )
                 if io_ == "inputs":
                     triples.append((channel_label, ontology.inputOf, node_label))
                 elif io_ == "outputs":
                     triples.append((channel_label, ontology.outputOf, node_label))
-                tag = edge_dict.get(*2 * [_remove_us(node_label, io_, key)])
-                triples.extend(
-                    _translate_has_value(
-                        label=channel_label,
-                        tag=tag,
-                        value=port.get("value", None),
-                        dtype=port.get("dtype", None),
-                        units=port.get("units", None),
-                        ontology=ontology,
-                    )
-                )
-                for t in _get_triples_from_restrictions(port):
+                for t in _get_triples_from_restrictions(channel_dict):
                     triples.append(
                         _parse_triple(t, ns=node_label, label=channel_label)
                     )
