@@ -170,10 +170,7 @@ def _parse_triple(
 
 
 def _inherit_properties(
-    graph: Graph,
-    triples_to_cancel: list | None = None,
-    n_max: int = 1000,
-    ontology=PNS
+    graph: Graph, triples_to_cancel: list | None = None, n_max: int = 1000, ontology=PNS
 ):
     update_query = (
         f"PREFIX ns: <{ontology.BASE}>",
@@ -418,7 +415,6 @@ def _parse_cancel(nodes: dict, label: str) -> list:
                             _parse_triple(c, label=_remove_us(node_label, io_, key))
                         )
     return [tuple([_convert_to_uriref(tt) for tt in t]) for t in triples]
-
 
 
 def get_knowledge_graph(
