@@ -276,8 +276,8 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
             for key, port in node[io_].items():
                 if "type_hint" in port:
                     port.update(meta_to_dict(port["type_hint"]))
-                channel_label = URIRef(_remove_us(node_label, io_, key))
-                triples.append((channel_label, RDFS.label, Literal(str(channel_label))))
+                channel_label = _remove_us(node_label, io_, key)
+                triples.append((channel_label, RDFS.label, Literal(channel_label)))
                 triples.append((channel_label, RDF.type, PROV.Entity))
                 if port.get("uri", None) is not None:
                     triples.append((channel_label, RDF.type, port["uri"]))
