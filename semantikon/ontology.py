@@ -4,6 +4,7 @@ import warnings
 from rdflib import Graph, Literal, RDF, RDFS, URIRef, OWL, PROV, Namespace
 from dataclasses import is_dataclass
 from semantikon.converter import meta_to_dict, get_function_dict
+from owlrl import DeductiveClosure, OWLRL_Semantics
 
 
 class PNS:
@@ -207,7 +208,7 @@ def _inherit_properties(
         n = len(graph)
 
 
-def validate_values(graph: Graph) -> list:
+def validate_values(graph: Graph, run_reasoner: bool = True) -> list:
     """
     Validate if all values required by restrictions are present in the graph
 
@@ -217,6 +218,8 @@ def validate_values(graph: Graph) -> list:
     Returns:
         (list): list of missing triples
     """
+    if run_reasoner:
+        DeductiveClosure(OWLRL_Semantics).expand(graph)
     missing_triples = []
     for restrictions in graph.subjects(RDF.type, OWL.Restriction):
         on_property = graph.value(restrictions, OWL.onProperty)
