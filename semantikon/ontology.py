@@ -372,7 +372,7 @@ def _parse_workflow(
 ) -> list:
     triples = []
     edge_dict = _get_edge_dict(wf_dict["data_edges"])
-    workflow_label = wf_dict.pop("label")
+    workflow_label = wf_dict["label"]
     if prefix is not None:
         workflow_label = dot(prefix, workflow_label)
     triples.append((workflow_label, RDFS.label, Literal(workflow_label)))
