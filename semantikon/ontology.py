@@ -38,7 +38,7 @@ def _translate_has_value(
                 triples.extend(
                     _translate_has_value(
                         label=label,
-                        tag=tag + "." + k,
+                        tag=dot(tag, k),
                         value=getattr(value, k, None),
                         dtype=v,
                         parent=tag_uri,
@@ -50,7 +50,7 @@ def _translate_has_value(
             triples.extend(
                 _translate_has_value(
                     label=label,
-                    tag=tag + "." + k,
+                    tag=dot(tag, k),
                     value=getattr(value, k, None),
                     dtype=metadata["dtype"],
                     units=metadata.get("units", None),
@@ -152,7 +152,7 @@ def _parse_triple(
     if obj is None:
         obj = label
     if obj.startswith("inputs.") or obj.startswith("outputs."):
-        obj = ns + "." + obj
+        obj = dot(ns, obj)
     if not isinstance(obj, URIRef):
         obj = URIRef(obj)
     return subj, pred, obj
@@ -163,6 +163,7 @@ def _inherit_properties(graph: Graph, n: int | None = None, ontology=PNS):
         f"PREFIX ns: <{ontology.BASE}>",
         f"PREFIX rdfs: <{RDFS}>",
         f"PREFIX rdf: <{RDF}>",
+        f"PREFIX owl: <{OWL}>",
         "",
         "INSERT {",
         "    ?subject ?p ?o .",
@@ -175,6 +176,7 @@ def _inherit_properties(graph: Graph, n: int | None = None, ontology=PNS):
         "    FILTER(?p != rdf:value)",
         "    FILTER(?p != ns:hasValue)",
         "    FILTER(?p != rdf:type)",
+        "    FILTER(?p != owl:sameAs)",
         "}",
     )
     if n is None:
@@ -232,24 +234,35 @@ def _convert_to_uriref(value):
         raise TypeError(f"Unsupported type: {type(value)}")
 
 
+def _function_to_triples(node: dict, node_label: str, ontology=PNS) -> list:
+    f_dict = get_function_dict(node["function"])
+    triples = []
+    if f_dict.get("uri", None) is not None:
+        triples.append((node_label, RDF.type, f_dict["uri"]))
+    for t in _get_triples_from_restrictions(f_dict):
+        triples.append(_parse_triple(t, ns=node_label, label=URIRef(node_label)))
+    triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
+    return triples
+
+
 def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -> list:
     triples = []
     for n_label, node in nodes.items():
-        node_label = prefix + "." + n_label
-        f_dict = get_function_dict(node["function"])
-        if f_dict.get("uri", None) is not None:
-            triples.append((node_label, RDF.type, f_dict["uri"]))
-        for t in _get_triples_from_restrictions(f_dict):
-            triples.append(_parse_triple(t, ns=node_label, label=URIRef(node_label)))
+        node_label = dot(prefix, n_label)
+        if "nodes" in node:
+            triples.extend(
+                _parse_workflow(node, edge_dict, prefix=prefix, ontology=ontology)
+            )
+        if "function" in node:
+            triples.extend(_function_to_triples(node, node_label, ontology))
         triples.append((node_label, RDF.type, PROV.Activity))
         triples.append((prefix, ontology.hasNode, node_label))
-        triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
         for io_ in ["inputs", "outputs"]:
             for key, port in node[io_].items():
                 if "type_hint" in port:
                     port.update(meta_to_dict(port["type_hint"]))
-                node_label = prefix + "." + n_label
-                channel_label = URIRef(f"{node_label}.{io_}.{key}")
+                node_label = dot(prefix, n_label)
+                channel_label = URIRef(_remove_us(node_label, io_, key))
                 triples.append((channel_label, RDFS.label, Literal(str(channel_label))))
                 triples.append((channel_label, RDF.type, PROV.Entity))
                 if port.get("uri", None) is not None:
@@ -258,11 +271,11 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
                     triples.append((channel_label, ontology.inputOf, node_label))
                 elif io_ == "outputs":
                     triples.append((channel_label, ontology.outputOf, node_label))
-                tag = edge_dict.get(f"{n_label}.{io_}.{key}", f"{n_label}.{io_}.{key}")
+                tag = edge_dict.get(*2 * [_remove_us(prefix, n_label, io_, key)])
                 triples.extend(
                     _translate_has_value(
                         label=channel_label,
-                        tag=f"{prefix}.{tag}",
+                        tag=tag,
                         value=port.get("value", None),
                         dtype=port.get("dtype", None),
                         units=port.get("units", None),
@@ -274,17 +287,74 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
     return triples
 
 
+def _remove_us(*arg) -> str:
+    s = ".".join(arg)
+    return ".".join(t.split("__")[-1] for t in s.split("."))
+
+
+def _get_all_edge_dict(data, prefix=None):
+    if prefix is None:
+        prefix = data["label"]
+    else:
+        prefix = prefix + "." + data["label"]
+    edges = {
+        _remove_us(prefix, e[1]): _remove_us(prefix, e[0]) for e in data["data_edges"]
+    }
+    for node in data["nodes"].values():
+        if "nodes" in node:
+            edges.update(_get_all_edge_dict(node, prefix))
+    return edges
+
+
+def _order_edge_dict(data):
+    for key, value in data.items():
+        if value in data:
+            data[key] = data[value]
+    return data
+
+
+def _get_full_edge_dict(data, prefix=None):
+    edges = _get_all_edge_dict(data, prefix)
+    edges = _order_edge_dict(edges)
+    return edges
+
+
 def _get_edge_dict(edges: list) -> dict:
-    d = {edge[1]: edge[0] for edge in edges}
+    d = {_remove_us(edge[1]): _remove_us(edge[0]) for edge in edges}
     assert len(d) == len(edges), f"Duplicate keys in edge list: {edges}"
     return d
 
 
+def dot(*args):
+    return ".".join(args)
+
+
+def _convert_edge_triples(inp: str, out: str, prefix: str, ontology=PNS) -> tuple:
+    if inp.startswith("outputs.") or out.startswith("inputs."):
+        return (dot(prefix, inp), OWL.sameAs, dot(prefix, out))
+    return (dot(prefix, inp), ontology.inheritsPropertiesFrom, dot(prefix, out))
+
+
 def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
     return [
-        (f"{prefix}.{inp}", ontology.inheritsPropertiesFrom, f"{prefix}.{out}")
-        for inp, out in edges.items()
+        _convert_edge_triples(inp, out, prefix, ontology) for inp, out in edges.items()
     ]
+
+
+def _parse_workflow(
+    wf_dict: dict, full_edge_dict: dict, prefix=None, ontology=PNS
+) -> list:
+    triples = []
+    edge_dict = _get_edge_dict(wf_dict["data_edges"])
+    workflow_label = wf_dict.pop("label")
+    if prefix is not None:
+        workflow_label = dot(prefix, workflow_label)
+    triples.append((workflow_label, RDFS.label, Literal(workflow_label)))
+    triples.extend(_edges_to_triples(edge_dict, workflow_label, ontology))
+    triples.extend(
+        _nodes_to_triples(wf_dict["nodes"], full_edge_dict, workflow_label, ontology)
+    )
+    return triples
 
 
 def get_knowledge_graph(
@@ -307,14 +377,8 @@ def get_knowledge_graph(
     """
     if graph is None:
         graph = Graph()
-    triples = []
-    workflow_label = wf_dict.pop("label")
-    triples.append((workflow_label, RDFS.label, Literal(workflow_label)))
-    edge_dict = _get_edge_dict(wf_dict["data_edges"])
-    triples.extend(_edges_to_triples(edge_dict, workflow_label, ontology))
-    triples.extend(
-        _nodes_to_triples(wf_dict["nodes"], edge_dict, workflow_label, ontology)
-    )
+    full_edge_dict = _get_full_edge_dict(wf_dict)
+    triples = _parse_workflow(wf_dict, full_edge_dict, ontology=ontology)
     for triple in triples:
         if any(t is None for t in triple):
             continue

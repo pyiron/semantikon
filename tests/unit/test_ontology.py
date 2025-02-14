@@ -79,6 +79,23 @@ def multiple_outputs(a: int = 1, b: int = 2) -> tuple[int, int]:
     return a, b
 
 
+def add_one(a: int):
+    result = a + 1
+    return result
+
+
+def add_two(b=10) -> int:
+    result = b + 2
+    return result
+
+
+def add_three(macro, c: int) -> int:
+    macro.one = add_one(a=c)
+    macro.two = add_two(b=macro.one)
+    w = macro.two
+    return w
+
+
 def get_speed_dict():
     return {
         "inputs": {
@@ -269,6 +286,44 @@ def get_wrong_analysis_dict():
     }
 
 
+def get_macro():
+    return {
+        "inputs": {"three__c": {"value": 1, "type_hint": int}},
+        "outputs": {"four__result": {"value": 5}},
+        "nodes": {
+            "three": {
+                "inputs": {"three__c": {"value": 1, "type_hint": int}},
+                "outputs": {"three__w": {"value": 4, "type_hint": int}},
+                "nodes": {
+                    "one": {
+                        "inputs": {"a": {"value": 1, "type_hint": int}},
+                        "outputs": {"result": {"value": 2}},
+                        "function": add_one,
+                    },
+                    "two": {
+                        "inputs": {"b": {"default": 10, "value": 2}},
+                        "outputs": {"result": {"value": 4, "type_hint": int}},
+                        "function": add_two,
+                    },
+                },
+                "data_edges": [
+                    ("inputs.three__c", "one.inputs.a"),
+                    ("one.outputs.result", "two.inputs.b"),
+                    ("two.outputs.result", "outputs.three__w"),
+                ],
+                "label": "three",
+            },
+            "four": {
+                "inputs": {"a": {"value": 4, "type_hint": int}},
+                "outputs": {"result": {"value": 5}},
+                "function": add_one,
+            },
+        },
+        "data_edges": [("three.outputs.w", "four.inputs.a")],
+        "label": "my_wf",
+    }
+
+
 class TestOntology(unittest.TestCase):
     def test_units_with_sparql(self):
         graph = get_knowledge_graph(get_speed_dict())
@@ -323,6 +378,30 @@ class TestOntology(unittest.TestCase):
         _inherit_properties(graph)
         DeductiveClosure(OWLRL_Semantics).expand(graph)
         self.assertEqual(len(validate_values(graph)), 1)
+
+    def test_macro(self):
+        graph = get_knowledge_graph(get_macro())
+        subj = list(
+            graph.subjects(PNS.hasValue, URIRef("my_wf.three.two.outputs.result.value"))
+        )
+        self.assertEqual(len(subj), 3)
+        prefix = "my_wf"
+        for ii, tag in enumerate(
+            ["three.two.outputs.result", "three.outputs.w", "four.inputs.a"]
+        ):
+            with self.subTest(i=ii):
+                self.assertIn(
+                    URIRef(prefix + "." + tag), subj, msg=f"{tag} not in {subj}"
+                )
+        same_as = [(str(g[0]), str(g[1])) for g in graph.subject_objects(OWL.sameAs)]
+        sub_obj = [
+            ("my_wf.three.one.inputs.a", "my_wf.three.inputs.c"),
+            ("my_wf.three.outputs.w", "my_wf.three.two.outputs.result"),
+        ]
+        self.assertEqual(len(same_as), 2)
+        for ii, pair in enumerate(sub_obj):
+            with self.subTest(i=ii):
+                self.assertIn(pair, same_as)
 
 
 @dataclass
