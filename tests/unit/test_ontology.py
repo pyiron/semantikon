@@ -469,8 +469,6 @@ class TestOntology(unittest.TestCase):
 
     def test_correct_analysis(self):
         graph = get_knowledge_graph(get_correct_analysis_dict())
-        _inherit_properties(graph)
-        DeductiveClosure(OWLRL_Semantics).expand(graph)
         missing_triples = validate_values(graph)
         self.assertEqual(
             len(missing_triples),
@@ -478,8 +476,6 @@ class TestOntology(unittest.TestCase):
             msg=f"{missing_triples} not found in {graph.serialize()}",
         )
         graph = get_knowledge_graph(get_wrong_analysis_dict())
-        _inherit_properties(graph)
-        DeductiveClosure(OWLRL_Semantics).expand(graph)
         self.assertEqual(len(validate_values(graph)), 1)
 
     def test_macro(self):
