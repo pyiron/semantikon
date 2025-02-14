@@ -168,7 +168,12 @@ def _parse_triple(
     return subj, pred, obj
 
 
-def _inherit_properties(graph: Graph, n: int | None = None, ontology=PNS):
+def _inherit_properties(
+    graph: Graph,
+    triples_to_cancel: list | None = None,
+    n_max: int = 1000,
+    ontology=PNS
+):
     update_query = (
         f"PREFIX ns: <{ontology.BASE}>",
         f"PREFIX rdfs: <{RDFS}>",
@@ -189,10 +194,17 @@ def _inherit_properties(graph: Graph, n: int | None = None, ontology=PNS):
         "    FILTER(?p != owl:sameAs)",
         "}",
     )
-    if n is None:
-        n = len(list(graph.triples((None, ontology.inheritsPropertiesFrom, None))))
-    for _ in range(n):
+    if triples_to_cancel is None:
+        triples_to_cancel = []
+    n = 0
+    for _ in range(n_max):
         graph.update("\n".join(update_query))
+        for t in triples_to_cancel:
+            if t in graph:
+                graph.remove(t)
+        if len(graph) == n:
+            break
+        n = len(graph)
 
 
 def validate_values(graph: Graph) -> list:
@@ -402,7 +414,8 @@ def _parse_cancel(nodes: dict, label: str) -> list:
                         triples.append(
                             _parse_triple(c, label=_remove_us(node_label, io_, key))
                         )
-    return triples
+    return (_convert_to_uriref(t) for t in triples)
+
 
 
 def get_knowledge_graph(
@@ -434,7 +447,7 @@ def get_knowledge_graph(
         converted_triples = (_convert_to_uriref(t) for t in triple)
         graph.add(converted_triples)
     if inherit_properties:
-        _inherit_properties(graph, ontology=ontology)
+        _inherit_properties(graph, triples_to_cancel, ontology=ontology)
     if append_missing_items:
         graph = _append_missing_items(graph)
     return graph
