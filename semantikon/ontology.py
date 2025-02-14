@@ -137,7 +137,7 @@ def _restriction_to_triple(
 
 def _parse_triple(
     triples: tuple,
-    ns: str,
+    ns: str | None = None,
     label: str | URIRef | None = None,
 ) -> tuple:
     """
@@ -163,6 +163,7 @@ def _parse_triple(
     if obj is None:
         obj = label
     if obj.startswith("inputs.") or obj.startswith("outputs."):
+        assert ns is not None, "Namespace must not be None"
         obj = dot(ns, obj)
     return subj, pred, obj
 
@@ -383,6 +384,27 @@ def _parse_workflow(
     return triples
 
 
+def _parse_cancel(nodes: dict, label: str) -> list:
+    triples = []
+    for n_label, node in nodes.items():
+        node_label = dot(label, n_label)
+        if "nodes" in node:
+            triples.extend(_parse_cancel(node["nodes"], node_label))
+        for io_ in ["inputs", "outputs"]:
+            for key, channel_dict in node[io_].items():
+                if "cancel" in channel_dict:
+                    cancel = channel_dict["cancel"]
+                    assert isinstance(cancel, list | tuple)
+                    assert len(cancel) > 0
+                    if not isinstance(cancel[0], list | tuple):
+                        cancel = [cancel]
+                    for c in cancel:
+                        triples.append(
+                            _parse_triple(c, label=_remove_us(node_label, io_, key))
+                        )
+    return triples
+
+
 def get_knowledge_graph(
     wf_dict: dict,
     graph: Graph | None = None,
@@ -405,6 +427,7 @@ def get_knowledge_graph(
         graph = Graph()
     full_edge_dict = _get_full_edge_dict(wf_dict)
     triples = _parse_workflow(wf_dict, full_edge_dict, ontology=ontology)
+    triples_to_cancel = _parse_cancel(wf_dict["nodes"], wf_dict["label"])
     for triple in triples:
         if any(t is None for t in triple):
             continue
