@@ -249,7 +249,7 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
     for n_label, node in nodes.items():
         node_label = dot(prefix, n_label)
         if "nodes" in node:
-            triples.extend(_parse_workflow(node, prefix=prefix, ontology=ontology))
+            triples.extend(_parse_workflow(node, edge_dict, prefix=prefix, ontology=ontology))
         if "function" in node:
             triples.extend(_function_to_triples(node, node_label, ontology))
         triples.append((node_label, RDF.type, PROV.Activity))
@@ -259,7 +259,7 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
                 if "type_hint" in port:
                     port.update(meta_to_dict(port["type_hint"]))
                 node_label = dot(prefix, n_label)
-                channel_label = URIRef(dot(node_label, io_, key.split("__")[-1]))
+                channel_label = URIRef(_remove_us(node_label, io_, key))
                 triples.append((channel_label, RDFS.label, Literal(str(channel_label))))
                 triples.append((channel_label, RDF.type, PROV.Entity))
                 if port.get("uri", None) is not None:
@@ -269,12 +269,12 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
                 elif io_ == "outputs":
                     triples.append((channel_label, ontology.outputOf, node_label))
                 tag = edge_dict.get(
-                    * 2 * [dot(n_label, io_, key.split("__")[-1])]
+                    * 2 * [_remove_us(prefix, n_label, io_, key)]
                 )
                 triples.extend(
                     _translate_has_value(
                         label=channel_label,
-                        tag=dot(prefix, tag),
+                        tag=tag,
                         value=port.get("value", None),
                         dtype=port.get("dtype", None),
                         units=port.get("units", None),
@@ -286,10 +286,39 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
     return triples
 
 
+def _remove_us(*arg) -> str:
+    s = ".".join(arg)
+    return ".".join(t.split("__")[-1] for t in s.split("."))
+
+
+def _get_all_edge_dict(data, prefix=None):
+    if prefix is None:
+        prefix = data["label"]
+    else:
+        prefix = prefix + "." + data["label"]
+    edges = {
+        _remove_us(prefix, e[1]): _remove_us(prefix, e[0])
+        for e in data["data_edges"]
+    }
+    for node in data["nodes"].values():
+        if "nodes" in node:
+            edges.update(_get_all_edge_dict(node, prefix))
+    return edges
+
+def _order_edge_dict(data):
+    for key, value in data.items():
+        if value in data:
+            data[key] = data[value]
+    return data
+
+def _get_full_edge_dict(data, prefix=None):
+    edges = _get_all_edge_dict(data, prefix)
+    edges = _order_edge_dict(edges)
+    return edges
+
+
 def _get_edge_dict(edges: list) -> dict:
-    def remove_us(s: str) -> str:
-        return ".".join(t.split("__")[-1] for t in s.split("."))
-    d = {remove_us(edge[1]): remove_us(edge[0]) for edge in edges}
+    d = {_remove_us(edge[1]): _remove_us(edge[0]) for edge in edges}
     assert len(d) == len(edges), f"Duplicate keys in edge list: {edges}"
     return d
 
@@ -311,16 +340,20 @@ def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
     ]
 
 
-def _parse_workflow(wf_dict: dict, prefix=None, ontology=PNS) -> list:
+def _parse_workflow(
+    wf_dict: dict, full_edge_dict: dict, prefix=None, ontology=PNS
+) -> list:
     triples = []
+    edge_dict = _get_edge_dict(wf_dict["data_edges"])
     workflow_label = wf_dict.pop("label")
     if prefix is not None:
         workflow_label = dot(prefix, workflow_label)
     triples.append((workflow_label, RDFS.label, Literal(workflow_label)))
-    edge_dict = _get_edge_dict(wf_dict["data_edges"])
     triples.extend(_edges_to_triples(edge_dict, workflow_label, ontology))
     triples.extend(
-        _nodes_to_triples(wf_dict["nodes"], edge_dict, workflow_label, ontology)
+        _nodes_to_triples(
+            wf_dict["nodes"], full_edge_dict, workflow_label, ontology
+        )
     )
     return triples
 
@@ -345,7 +378,8 @@ def get_knowledge_graph(
     """
     if graph is None:
         graph = Graph()
-    triples = _parse_workflow(wf_dict, ontology=ontology)
+    full_edge_dict = _get_full_edge_dict(wf_dict)
+    triples = _parse_workflow(wf_dict, full_edge_dict, ontology=ontology)
     for triple in triples:
         if any(t is None for t in triple):
             continue
