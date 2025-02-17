@@ -9,7 +9,7 @@ dependencies:
 - versioneer
 - coveralls
 - coverage
-- numpy =2.2.2
+- numpy =2.2.3
 - pint =0.24.4
 - rdflib =7.1.1
 - owlrl =7.1.2
