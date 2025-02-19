@@ -53,19 +53,21 @@ def meta_to_dict(value, default=inspect.Parameter.empty):
     if semantikon_was_used:
         result = parse_metadata(value)
         result["dtype"] = value.__args__[0]
-        return result
-    elif type_hint_was_present:
-        return {
+    else:
+        result = {
             "units": None,
             "label": None,
             "triples": None,
             "uri": None,
             "shape": None,
             "restrictions": None,
-            "dtype": value,
+            "dtype": None,
         }
-    else:
-        return None
+        if type_hint_was_present:
+            result["dtype"] = value
+    if default is not inspect.Parameter.empty:
+        result["default"] = default
+    return result
 
 
 def parse_input_args(func: callable):
