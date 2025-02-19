@@ -47,25 +47,27 @@ def parse_metadata(value):
     return {k: v for k, v in zip(metadata[::2], metadata[1::2])}
 
 
-def meta_to_dict(value):
+def meta_to_dict(value, default=inspect.Parameter.empty):
     semantikon_was_used = hasattr(value, "__metadata__")
     type_hint_was_present = value is not inspect.Parameter.empty
     if semantikon_was_used:
         result = parse_metadata(value)
         result["dtype"] = value.__args__[0]
-        return result
-    elif type_hint_was_present:
-        return {
+    else:
+        result = {
             "units": None,
             "label": None,
             "triples": None,
             "uri": None,
             "shape": None,
             "restrictions": None,
-            "dtype": value,
+            "dtype": None,
         }
-    else:
-        return None
+        if type_hint_was_present:
+            result["dtype"] = value
+    if default is not inspect.Parameter.empty:
+        result["default"] = default
+    return result
 
 
 def parse_input_args(func: callable):
@@ -80,7 +82,7 @@ def parse_input_args(func: callable):
         `triples`, `uri` and `shape`. See `semantikon.typing.u` for more details.
     """
     return {
-        key: meta_to_dict(value.annotation)
+        key: meta_to_dict(value.annotation, value.default)
         for key, value in inspect.signature(func).parameters.items()
     }
 
