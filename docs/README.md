@@ -28,7 +28,7 @@ You can also type-hint the inputs and outputs of a function using a class, i.e.:
 
 ```python
 >>> from semantikon.typing import u
->>> from semantikon.convert import semantikon_class
+>>> from semantikon.converter import semantikon_class
 >>> 
 >>> @semantikon_class
 ... class MyRecord:
@@ -79,7 +79,7 @@ Future announcement: There will be no distrinction between `use_list=True` and `
 
 ```python
 >>> from semantikon.typing import u
->>> from semantikon.converters import units
+>>> from semantikon.converter import units
 >>> from pint import UnitRegistry
 >>> 
 >>> @units
