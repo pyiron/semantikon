@@ -62,10 +62,10 @@ Example:
 ...     return a / b
 >>> 
 >>> print(parse_input_args(my_function))
-{'distance': {'units': 'meter', 'label': None, 'uri': None, 'shape': None, 'dtype': <class 'float'>}, 'time': {'units': 'second', 'label': None, 'uri': None, 'shape': None, 'dtype': <class 'float'>}}
+{'a': {'units': 'meter', 'label': None, 'triples': None, 'uri': None, 'shape': None, 'restrictions': None, 'dtype': <class 'int'>}, 'b': {'units': 'second', 'label': None, 'triples': None, 'uri': None, 'shape': None, 'restrictions': None, 'dtype': <class 'int'>}}
 
 >>> print(parse_output_args(my_function))
-{'units': 'meter/second', 'label': 'speed', 'uri': None, 'shape': None, 'dtype': <class 'float'>}
+{'units': 'meter/second', 'label': 'speed', 'triples': None, 'uri': None, 'shape': None, 'restrictions': None, 'dtype': <class 'int'>}
 
 ```
 
