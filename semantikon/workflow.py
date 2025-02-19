@@ -18,6 +18,10 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
                         break
                 else:
                     raise AssertionError("Too many times function used")
+                if node.value.func.id not in self.scope:
+                    raise ValueError(
+                        f"Function {node.value.func.id} not defined"
+                    )
                 self.function_defs[called_func] = self.scope[node.value.func.id]
 
                 # Track function output: connect called function to the assigned variable
