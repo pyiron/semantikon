@@ -82,7 +82,7 @@ def parse_input_args(func: callable):
         `triples`, `uri` and `shape`. See `semantikon.typing.u` for more details.
     """
     return {
-        key: meta_to_dict(value.annotation)
+        key: meta_to_dict(value.annotation, value.default)
         for key, value in inspect.signature(func).parameters.items()
     }
 
