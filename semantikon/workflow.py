@@ -1,9 +1,12 @@
 import ast
 import networkx as nx
+import inspect
 
 class FunctionFlowAnalyzer(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self, scope):
         self.graph = nx.DiGraph()
+        self.function_defs = {}
+        self.scope = scope
 
     def visit_Assign(self, node):
         """Handles variable assignments (e.g., x = add(a, b) or y = func(x=val))"""
@@ -15,6 +18,7 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
                         break
                 else:
                     raise AssertionError("Too many times function used")
+                self.function_defs[called_func] = self.scope[node.value.func.id]
 
                 # Track function output: connect called function to the assigned variable
                 for target in node.targets:
@@ -38,8 +42,9 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
 def analyze_function(func):
     """Extracts the variable flow graph from a function"""
     source_code = inspect.getsource(func)
+    scope = inspect.getmodule(func).__dict__
     tree = ast.parse(source_code)
-    analyzer = FunctionFlowAnalyzer()
+    analyzer = FunctionFlowAnalyzer(scope)
     analyzer.visit(tree)
-    return analyzer.graph
+    return analyzer
 
