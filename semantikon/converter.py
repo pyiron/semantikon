@@ -47,7 +47,7 @@ def parse_metadata(value):
     return {k: v for k, v in zip(metadata[::2], metadata[1::2])}
 
 
-def meta_to_dict(value):
+def meta_to_dict(value, default=inspect.Parameter.empty):
     semantikon_was_used = hasattr(value, "__metadata__")
     type_hint_was_present = value is not inspect.Parameter.empty
     if semantikon_was_used:
