@@ -66,8 +66,8 @@ print(parse_output_args(my_function))
 Output:
 
 ```python
-{'distance': {'units': 'meter', 'label': None, 'uri': None, 'shape': None, 'dtype': <class 'float'>}, 'time': {'units': 'second', 'label': None, 'uri': None, 'shape': None, 'dtype': <class 'float'>}}
-{'units': 'meter/second', 'label': 'speed', 'uri': None, 'shape': None, 'dtype': <class 'float'>}
+{'distance': {'units': 'meter', 'dtype': <class 'float'>}, 'time': {'units': 'second', 'dtype': <class 'float'>}}
+{'units': 'meter/second', 'label': 'speed', 'dtype': <class 'float'>}
 ```
 
 Here the output is the same whether `use_list` is set to `True` or `False`. When `use_list` is `False`, you can use additionally any tag that you want to store. When `use_list` is `True`, you can store only the data type, `units`, `label`, `uri`, `shape` and `dtype`.
