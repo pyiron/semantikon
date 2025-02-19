@@ -13,7 +13,7 @@ class TestParser(unittest.TestCase):
         @u(uri="abc")
         def get_speed(
             distance: u(float, units="meter"),
-            time: u(float, units="second"),
+            time: u(float, units="second") = 1.0,
         ) -> u(float, units="meter/second", label="speed"):
             return distance / time
 
@@ -31,6 +31,7 @@ class TestParser(unittest.TestCase):
         ]:
             self.assertTrue(key in input_args["distance"])
         self.assertEqual(input_args["distance"]["units"], "meter")
+        self.assertEqual(input_args["time"]["default"], 1.0)
         self.assertEqual(input_args["time"]["units"], "second")
         output_args = parse_output_args(get_speed)
         for key in [
@@ -50,6 +51,13 @@ class TestParser(unittest.TestCase):
         f_dict = get_function_dict(get_speed)
         self.assertEqual(f_dict["uri"], "abc")
         self.assertEqual(f_dict["label"], "get_speed")
+
+    def test_canonical_types(self):
+        def f(x: float) -> float:
+            return x
+
+        input_args = parse_input_args(f)
+        self.assertEqual(input_args["x"]["dtype"], float)
 
     def test_multiple_output_args(self):
         def get_speed(
