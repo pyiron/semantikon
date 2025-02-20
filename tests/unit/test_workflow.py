@@ -3,7 +3,8 @@ from semantikon.workflow import (
     number_to_letter,
     analyze_function,
     get_return_variables,
-    _get_output_counts
+    _get_output_counts,
+    get_workflow_dict,
 )
 
 
@@ -51,19 +52,44 @@ class TestSnippets(unittest.TestCase):
         )
 
     def test_get_return_variables(self):
-        self.assertEqual(
-            get_return_variables(example_function),
-            ["f"]
-        )
+        self.assertEqual(get_return_variables(example_function), ["f"])
         self.assertRaises(ValueError, get_return_variables, add)
         self.assertRaises(ValueError, get_return_variables, operation)
 
     def test_get_output_counts(self):
         analyzer = analyze_function(example_function)
         output_counts = _get_output_counts(analyzer.graph.edges.data())
-        self.assertEqual(
-            output_counts, {'operation': 2, 'add': 1, 'multiply': 1}
-        )
+        self.assertEqual(output_counts, {"operation": 2, "add": 1, "multiply": 1})
+
+    def test_get_workflow_dict(self):
+        ref_data = {
+            "input": {"a": {"default": 10}, "b": {"default": 20}},
+            "outputs": {"f": {}},
+            "nodes": {
+                "operation": {
+                    "inputs": {"x": {"dtype": float}, "y": {"dtype": float}},
+                    "outputs": {
+                        "output_0": {"dtype": float},
+                        "output_1": {"dtype": float},
+                    },
+                    "function": operation,
+                },
+                "add": {
+                    "inputs": {
+                        "x": {"dtype": float, "default": 2.0},
+                        "y": {"dtype": float, "default": 1},
+                    },
+                    "outputs": {"output": {"dtype": float}},
+                    "function": add,
+                },
+                "multiply": {
+                    "inputs": {"x": {"dtype": float}, "y": {"dtype": float}},
+                    "outputs": {"output": {"dtype": float}},
+                    "function": multiply,
+                },
+            },
+        }
+        self.assertEqual(get_workflow_dict(example_function), ref_data)
 
 
 if __name__ == "__main__":

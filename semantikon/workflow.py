@@ -1,6 +1,7 @@
 import ast
 import networkx as nx
 import inspect
+from semantikon.converter import parse_input_args, parse_output_args
 
 
 def _check_node(node):
@@ -99,12 +100,21 @@ def number_to_letter(n):
         raise ValueError("Number out of range")
 
 
-def _get_outputs(func):
+def _get_workflow_outputs(func):
     var_output = get_return_variables(func)
     data_output = parse_output_args(func)
     if isinstance(data_output, dict):
         data_output = [data_output]
     return dict(zip(var_output, data_output))
+
+def _get_node_outputs(func, counts):
+    outputs = parse_output_args(func)
+    if outputs == {} and counts > 1:
+        outputs = counts * [{}]
+    if isinstance(outputs, tuple):
+        return {f"output_{ii}": v for ii, v in enumerate(outputs)}
+    else:
+        return {"output": outputs}
 
 
 def _get_output_counts(data):
@@ -118,18 +128,23 @@ def _get_output_counts(data):
     return f_dict
 
 
+def _get_nodes(data, output_counts):
+    return {
+        node: {
+            "function": func,
+            "inputs": parse_input_args(func),
+            "outputs": _get_node_outputs(func, output_counts.get(node, 1)),
+        }
+        for node, func in data.items()
+    }
+
+
 def get_workflow_dict(func):
+    analyzer = analyze_function(func)
+    output_counts = _get_output_counts(analyzer.graph.edges.data())
     data = {
         "input": parse_input_args(func),
-        "outputs": _get_outputs(func),
+        "outputs": _get_workflow_outputs(func),
+        "nodes": _get_nodes(analyzer.function_defs, output_counts),
     }
-    outputs = parse_output_args(func)
-    if isinstance(outputs, tuple):
-        out = {f"output_{ii}": v for ii, v in enumerate(outputs)}
-    else:
-        out = {"output": outputs}
-    {
-        "function": func,
-        "inputs": parse_input_args(func),
-        "outputs": out,
-    }
+    return data
