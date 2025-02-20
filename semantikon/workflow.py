@@ -21,15 +21,18 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
         if self._is_variable(source):
             self.graph.add_edge(source.id, target, type="input", **kwargs)
 
+    def _get_func_name(self, node):
+        for ii in range(100):
+            if f"{node.value.func.id}_{ii}" not in self.graph:
+                called_func = f"{node.value.func.id}_{ii}"
+                break
+        else:
+            raise AssertionError("Too many times function used")
+
     def visit_Assign(self, node):
         """Handles variable assignments including tuple unpacking."""
         if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
-            for ii in range(100):
-                if f"{node.value.func.id}_{ii}" not in self.graph:
-                    called_func = f"{node.value.func.id}_{ii}"
-                    break
-            else:
-                raise AssertionError("Too many times function used")
+            called_func = self._get_func_name(node)
             if node.value.func.id not in self.scope:
                 raise ValueError(f"Function {node.value.func.id} not defined")
             self.function_defs[called_func] = self.scope[node.value.func.id]
@@ -47,7 +50,6 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
 
             for index, arg in enumerate(node.value.args):
                 self._add_input_edge(arg, called_func, input_index=index)
-
             for kw in node.value.keywords:
                 self._add_input_edge(kw.value, called_func, input_name=kw.arg)
 
