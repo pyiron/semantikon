@@ -97,3 +97,39 @@ def number_to_letter(n):
         return chr(n + ord("A"))
     else:
         raise ValueError("Number out of range")
+
+
+def _get_outputs(func):
+    var_output = get_return_variables(func)
+    data_output = parse_output_args(func)
+    if isinstance(data_output, dict):
+        data_output = [data_output]
+    return dict(zip(var_output, data_output))
+
+
+def _get_output_counts(data):
+    f_dict = {}
+    for edge in data:
+        if edge[2]["type"] != "output":
+            continue
+        f_name = "_".join(edge[0].split("_")[:-1])
+        if f_name not in f_dict or f_dict[f_name] < edge[2].get("output_index", 0) + 1:
+            f_dict[f_name] = edge[2].get("output_index", 0) + 1
+    return f_dict
+
+
+def get_workflow_dict(func):
+    data = {
+        "input": parse_input_args(func),
+        "outputs": _get_outputs(func),
+    }
+    outputs = parse_output_args(func)
+    if isinstance(outputs, tuple):
+        out = {f"output_{ii}": v for ii, v in enumerate(outputs)}
+    else:
+        out = {"output": outputs}
+    {
+        "function": func,
+        "inputs": parse_input_args(func),
+        "outputs": out,
+    }

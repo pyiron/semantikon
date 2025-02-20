@@ -1,6 +1,9 @@
 import unittest
 from semantikon.workflow import (
-    number_to_letter, analyze_function, get_return_variables
+    number_to_letter,
+    analyze_function,
+    get_return_variables,
+    _get_output_counts
 )
 
 
@@ -54,6 +57,13 @@ class TestSnippets(unittest.TestCase):
         )
         self.assertRaises(ValueError, get_return_variables, add)
         self.assertRaises(ValueError, get_return_variables, operation)
+
+    def test_get_output_counts(self):
+        analyzer = analyze_function(example_function)
+        output_counts = _get_output_counts(analyzer.graph.edges.data())
+        self.assertEqual(
+            output_counts, {'operation': 2, 'add': 1, 'multiply': 1}
+        )
 
 
 if __name__ == "__main__":
