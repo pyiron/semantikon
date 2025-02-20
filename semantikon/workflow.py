@@ -3,28 +3,33 @@ import networkx as nx
 import inspect
 
 
+def _check_node(node):
+    if isinstance(
+        node.value, (ast.BinOp, ast.Call, ast.Attribute, ast.Subscript)
+    ):
+        raise ValueError(
+            "Return statement contains an operation or function call."
+        )
+
+
 def get_return_variables(func):
     source = ast.parse(inspect.getsource(func))
     for node in ast.walk(source):
-        if isinstance(node, ast.Return):  # Find return statements
-            if isinstance(
-                node.value, (ast.BinOp, ast.Call, ast.Attribute, ast.Subscript)
-            ):
-                raise ValueError(
-                    "Return statement contains an operation or function call."
-                )
+        if not isinstance(node, ast.Return):
+            continue
 
-            if isinstance(node.value, ast.Tuple):  # If returning multiple values
-                for elt in node.value.elts:
-                    if not isinstance(elt, ast.Name):
-                        raise ValueError(f"Invalid return value: {ast.dump(elt)}")
-                return [elt.id for elt in node.value.elts if isinstance(elt, ast.Name)]
+        _check_node(node)
+        if isinstance(node.value, ast.Tuple):  # If returning multiple values
+            for elt in node.value.elts:
+                if not isinstance(elt, ast.Name):
+                    raise ValueError(f"Invalid return value: {ast.dump(elt)}")
+            return [elt.id for elt in node.value.elts if isinstance(elt, ast.Name)]
 
-            elif isinstance(node.value, ast.Name):  # If returning a single variable
-                return [node.value.id]
+        elif isinstance(node.value, ast.Name):  # If returning a single variable
+            return [node.value.id]
 
-            else:
-                raise ValueError(f"Invalid return value: {ast.dump(node.value)}")
+        else:
+            raise ValueError(f"Invalid return value: {ast.dump(node.value)}")
 
     return []
 

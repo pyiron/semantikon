@@ -53,6 +53,7 @@ class TestSnippets(unittest.TestCase):
             ["f"]
         )
         self.assertRaises(ValueError, get_return_variables, add)
+        self.assertRaises(ValueError, get_return_variables, operation)
 
 
 if __name__ == "__main__":
