@@ -129,9 +129,9 @@ def _get_output_counts(data):
 
 def _get_nodes(data, output_counts):
     result = {}
-    for node, func in data.items()
-        if hasattr(node, "_semantikon_workflow"):
-            result[node] = node._semantikon_workflow
+    for node, func in data.items():
+        if hasattr(func, "_semantikon_workflow"):
+            result[node] = func._semantikon_workflow
         else:
             result[node] = {
                 "function": func,
