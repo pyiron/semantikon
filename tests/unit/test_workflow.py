@@ -47,7 +47,7 @@ class TestSnippets(unittest.TestCase):
             all_data,
         )
 
-    def get_return_variables(self):
+    def test_get_return_variables(self):
         self.assertEqual(
             get_return_variables(example_function),
             ["f"]
