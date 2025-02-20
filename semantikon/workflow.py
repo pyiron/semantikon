@@ -107,6 +107,7 @@ def _get_workflow_outputs(func):
         data_output = [data_output]
     return dict(zip(var_output, data_output))
 
+
 def _get_node_outputs(func, counts):
     outputs = parse_output_args(func)
     if outputs == {} and counts > 1:
