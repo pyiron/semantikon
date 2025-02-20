@@ -7,8 +7,12 @@ def get_return_variables(func):
     source = ast.parse(inspect.getsource(func))
     for node in ast.walk(source):
         if isinstance(node, ast.Return):  # Find return statements
-            if isinstance(node.value, (ast.BinOp, ast.Call, ast.Attribute, ast.Subscript)):
-                raise ValueError("Return statement contains an operation or function call.")
+            if isinstance(
+                node.value, (ast.BinOp, ast.Call, ast.Attribute, ast.Subscript)
+            ):
+                raise ValueError(
+                    "Return statement contains an operation or function call."
+                )
 
             if isinstance(node.value, ast.Tuple):  # If returning multiple values
                 for elt in node.value.elts:
@@ -23,7 +27,6 @@ def get_return_variables(func):
                 raise ValueError(f"Invalid return value: {ast.dump(node.value)}")
 
     return []
-
 
 
 class FunctionFlowAnalyzer(ast.NodeVisitor):
