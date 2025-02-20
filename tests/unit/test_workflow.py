@@ -98,6 +98,7 @@ class TestSnippets(unittest.TestCase):
                 ["add_0.outputs.output", "multiply_0.inputs.x"],
                 ["multiply_0.outputs.output", "outputs.f"],
             ],
+            "label": "example_function",
         }
         self.assertEqual(get_workflow_dict(example_function), ref_data)
         self.assertEqual(example_function._semantikon_workflow, ref_data)

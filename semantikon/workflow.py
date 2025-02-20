@@ -128,14 +128,17 @@ def _get_output_counts(data):
 
 
 def _get_nodes(data, output_counts):
-    return {
-        node: {
-            "function": func,
-            "inputs": parse_input_args(func),
-            "outputs": _get_node_outputs(func, output_counts.get(node, 1)),
-        }
-        for node, func in data.items()
-    }
+    result = {}
+    for node, func in data.items()
+        if hasattr(node, "_semantikon_workflow"):
+            result[node] = node._semantikon_workflow
+        else:
+            result[node] = {
+                "function": func,
+                "inputs": parse_input_args(func),
+                "outputs": _get_node_outputs(func, output_counts.get(node, 1)),
+            }
+    return result
 
 
 def _get_data_edges(analyzer, func):
@@ -177,6 +180,7 @@ def get_workflow_dict(func):
         "outputs": _get_workflow_outputs(func),
         "nodes": _get_nodes(analyzer.function_defs, output_counts),
         "data_edges": _get_data_edges(analyzer, func),
+        "label": func.__name__,
     }
     return data
 
