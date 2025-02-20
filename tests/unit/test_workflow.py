@@ -1,5 +1,7 @@
 import unittest
-from semantikon.workflow import number_to_letter, analyze_function
+from semantikon.workflow import (
+    number_to_letter, analyze_function, get_return_variables
+)
 
 
 def operation(x: float, y: float) -> tuple[float, float]:
@@ -44,6 +46,13 @@ class TestSnippets(unittest.TestCase):
             [data for data in analyzer.graph.edges.data()],
             all_data,
         )
+
+    def get_return_variables(self):
+        self.assertEqual(
+            get_return_variables(example_function),
+            ["f"]
+        )
+        self.assertRaises(ValueError, get_return_variables, add)
 
 
 if __name__ == "__main__":
