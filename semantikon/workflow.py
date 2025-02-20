@@ -8,6 +8,10 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
         self.function_defs = {}
         self.scope = scope
 
+    @staticmethod
+    def _is_variable(arg):
+        return isinstance(arg, ast.Name)
+
     def visit_Assign(self, node):
         """Handles variable assignments including tuple unpacking."""
         if isinstance(node.value, ast.Call):  # Function call in assignment
@@ -26,22 +30,22 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
                 if len(node.targets) == 1 and isinstance(node.targets[0], ast.Tuple):
                     # Tuple unpacking case (e.g., c, d = func(...))
                     for index, target in enumerate(node.targets[0].elts):
-                        if isinstance(target, ast.Name):
+                        if self._is_variable(target):
                             self.graph.add_edge(called_func, target.id, type="output", output_index=index)
                 else:
                     # Single assignment case (e.g., x = func(...))
                     for target in node.targets:
-                        if isinstance(target, ast.Name):  # Ensure it's a variable
+                        if self._is_variable(target):
                             self.graph.add_edge(called_func, target.id, type="output")
 
                 # Track positional arguments
                 for index, arg in enumerate(node.value.args):
-                    if isinstance(arg, ast.Name):  # If argument is a variable
+                    if self._is_variable(arg):
                         self.graph.add_edge(arg.id, called_func, type="input", input_index=index)
 
                 # Track keyword arguments
                 for kw in node.value.keywords:
-                    if isinstance(kw.value, ast.Name):  # If the value is a variable
+                    if self._is_variable(kw.value):
                         self.graph.add_edge(kw.value.id, called_func, type="input", input_name=kw.arg)
 
         self.generic_visit(node)
