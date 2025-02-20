@@ -52,8 +52,7 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
         for ii in range(100):
             if f"{node.value.func.id}_{ii}" not in self.graph:
                 return f"{node.value.func.id}_{ii}"
-        else:
-            raise AssertionError("Too many times function used")
+        raise AssertionError("Too many times function used")
 
     def visit_Assign(self, node):
         """Handles variable assignments including tuple unpacking."""
