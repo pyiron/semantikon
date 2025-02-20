@@ -61,7 +61,7 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
             called_func = self._get_func_name(node)
             if node.value.func.id not in self.scope:
                 raise ValueError(f"Function {node.value.func.id} not defined")
-            self.function_defs[called_func] = self.scope[node.value.func.id]
+            self.function_defs[node.value.func.id] = self.scope[node.value.func.id]
 
             is_multi_assignment = len(node.targets) == 1 and isinstance(
                 node.targets[0], ast.Tuple
