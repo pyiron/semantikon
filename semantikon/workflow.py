@@ -24,7 +24,7 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
     def _get_func_name(self, node):
         for ii in range(100):
             if f"{node.value.func.id}_{ii}" not in self.graph:
-                called_func = f"{node.value.func.id}_{ii}"
+                return f"{node.value.func.id}_{ii}"
                 break
         else:
             raise AssertionError("Too many times function used")
