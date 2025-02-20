@@ -4,12 +4,8 @@ import inspect
 
 
 def _check_node(node):
-    if isinstance(
-        node.value, (ast.BinOp, ast.Call, ast.Attribute, ast.Subscript)
-    ):
-        raise ValueError(
-            "Return statement contains an operation or function call."
-        )
+    if isinstance(node.value, (ast.BinOp, ast.Call, ast.Attribute, ast.Subscript)):
+        raise ValueError("Return statement contains an operation or function call.")
 
 
 def get_return_variables(func):
@@ -17,7 +13,6 @@ def get_return_variables(func):
     for node in ast.walk(source):
         if not isinstance(node, ast.Return):
             continue
-
         _check_node(node)
         if isinstance(node.value, ast.Tuple):  # If returning multiple values
             for elt in node.value.elts:
