@@ -13,6 +13,14 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
     def _is_variable(arg):
         return isinstance(arg, ast.Name)
 
+    def _add_output_edge(self, source, target, **kwargs):
+        if self._is_variable(target):
+            self.graph.add_edge(source, target.id, type="output", **kwargs)
+
+    def _add_input_edge(self, source, target, **kwargs):
+        if self._is_variable(source):
+            self.graph.add_edge(source.id, target, type="input", **kwargs)
+
     def visit_Assign(self, node):
         """Handles variable assignments including tuple unpacking."""
         if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
@@ -32,34 +40,16 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
 
             if is_multi_assignment:
                 for index, target in enumerate(node.targets[0].elts):
-                    if self._is_variable(target):
-                        self.graph.add_edge(
-                            called_func,
-                            target.id,
-                            type="output",
-                            output_index=index,
-                        )
+                    self._add_output_edge(called_func, target, output_index=index)
             else:
                 for target in node.targets:
-                    if self._is_variable(target):
-                        self.graph.add_edge(called_func, target.id, type="output")
+                    self._add_output_edge(called_func, target)
 
-            # Track positional arguments
             for index, arg in enumerate(node.value.args):
-                if self._is_variable(arg):
-                    self.graph.add_edge(
-                        arg.id, called_func, type="input", input_index=index
-                    )
+                self._add_input_edge(arg, called_func, input_index=index)
 
-            # Track keyword arguments
             for kw in node.value.keywords:
-                if self._is_variable(kw.value):
-                    self.graph.add_edge(
-                        kw.value.id,
-                        called_func,
-                        type="input",
-                        input_name=kw.arg,
-                    )
+                self._add_input_edge(kw.value, called_func, input_name=kw.arg)
 
         self.generic_visit(node)
 
