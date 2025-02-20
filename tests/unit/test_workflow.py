@@ -5,6 +5,7 @@ from semantikon.workflow import (
     get_return_variables,
     _get_output_counts,
     get_workflow_dict,
+    workflow,
 )
 
 
@@ -20,6 +21,7 @@ def multiply(x: float, y: float) -> float:
     return x * y
 
 
+@workflow
 def example_function(a=10, b=20):
     c, d = operation(a, b)
     e = add(c, y=d)
@@ -98,7 +100,7 @@ class TestSnippets(unittest.TestCase):
             ],
         }
         self.assertEqual(get_workflow_dict(example_function), ref_data)
-
+        self.assertEqual(example_function._semantikon_workflow, ref_data)
 
 if __name__ == "__main__":
     unittest.main()

@@ -179,3 +179,8 @@ def get_workflow_dict(func):
         "data_edges": _get_data_edges(analyzer, func),
     }
     return data
+
+
+def workflow(func):
+    func._semantikon_workflow = get_workflow_dict(func)
+    return func
