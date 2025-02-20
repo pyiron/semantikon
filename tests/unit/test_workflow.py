@@ -88,6 +88,14 @@ class TestSnippets(unittest.TestCase):
                     "function": multiply,
                 },
             },
+            "data_edges": [
+                ["operation_0.outputs.output_0", "add_0.inputs.x"],
+                ["operation_0.outputs.output_1", "add_0.inputs.y"],
+                ["inputs.a", "operation_0.inputs.x"],
+                ["inputs.b", "operation_0.inputs.y"],
+                ["add_0.outputs.output", "multiply_0.inputs.x"],
+                ["multiply_0.outputs.output", "outputs.f"],
+            ],
         }
         self.assertEqual(get_workflow_dict(example_function), ref_data)
 

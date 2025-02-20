@@ -139,6 +139,37 @@ def _get_nodes(data, output_counts):
     }
 
 
+def _get_data_edges(analyzer, func):
+    input_dict = {
+        name: list(parse_input_args(func).keys())
+        for name, func in analyzer.function_defs.items()
+    }
+    output_labels = list(_get_workflow_outputs(func).keys())
+    data_edges = []
+    output_dict = {}
+    for edge in analyzer.graph.edges.data():
+        if edge[2]["type"] == "output":
+            if "output_index" in edge[2]:
+                tag = f"{edge[0]}.outputs.output_{edge[2]['output_index']}"
+            else:
+                tag = f"{edge[0]}.outputs.output"
+            if edge[1] in output_labels:
+                data_edges.append([tag, f"outputs.{edge[1]}"])
+            else:
+                output_dict[edge[1]] = tag
+        else:
+            if edge[0] not in output_dict:
+                source = f"inputs.{edge[0]}"
+            else:
+                source = output_dict[edge[0]]
+            if "input_name" in edge[2]:
+                target = f"{edge[1]}.inputs.{edge[2]['input_name']}"
+            elif "input_index" in edge[2]:
+                target = f"{edge[1]}.inputs.{input_dict['_'.join(edge[1].split('_')[:-1])][edge[2]['input_index']]}"
+            data_edges.append([source, target])
+    return data_edges
+
+
 def get_workflow_dict(func):
     analyzer = analyze_function(func)
     output_counts = _get_output_counts(analyzer.graph.edges.data())
@@ -146,5 +177,6 @@ def get_workflow_dict(func):
         "input": parse_input_args(func),
         "outputs": _get_workflow_outputs(func),
         "nodes": _get_nodes(analyzer.function_defs, output_counts),
+        "data_edges": _get_data_edges(analyzer, func),
     }
     return data
