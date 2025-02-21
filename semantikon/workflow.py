@@ -57,10 +57,11 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
 
     def _add_input_edge(self, source, target, **kwargs):
         if self._is_variable(source):
-            count = self._var_index[source.id]
-            self.graph.add_edge(
-                f"{source.id}_{count}", target, type="input", **kwargs
-            )
+            if source.id not in self._var_index:
+                tag = f"{source.id}_0"
+            else:
+                tag = f"{source.id}_{self._var_index[source.id]}"
+            self.graph.add_edge(tag, target, type="input", **kwargs)
 
     def _get_func_name(self, node):
         for ii in range(100):
@@ -155,6 +156,10 @@ def _get_nodes(data, output_counts):
     return result
 
 
+def _remove_index(s):
+    return "_".join(s.split("_")[:-1])
+
+
 def _get_data_edges(analyzer, func):
     input_dict = {
         name: list(parse_input_args(func).keys())
@@ -169,13 +174,13 @@ def _get_data_edges(analyzer, func):
                 tag = f"{edge[0]}.outputs.output_{edge[2]['output_index']}"
             else:
                 tag = f"{edge[0]}.outputs.output"
-            if edge[1] in output_labels:
-                data_edges.append([tag, f"outputs.{edge[1]}"])
+            if _remove_index(edge[1]) in output_labels:
+                data_edges.append([tag, f"outputs.{_remove_index(edge[1])}"])
             else:
                 output_dict[edge[1]] = tag
         else:
             if edge[0] not in output_dict:
-                source = f"inputs.{edge[0]}"
+                source = f"inputs.{_remove_index(edge[0])}"
             else:
                 source = output_dict[edge[0]]
             if "input_name" in edge[2]:

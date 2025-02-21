@@ -54,15 +54,15 @@ class TestSnippets(unittest.TestCase):
     def test_analyzer(self):
         analyzer = analyze_function(example_macro)
         all_data = [
-            ("operation_0", "c", {"type": "output", "output_index": 0}),
-            ("operation_0", "d", {"type": "output", "output_index": 1}),
-            ("c", "add_0", {"type": "input", "input_index": 0}),
-            ("d", "add_0", {"type": "input", "input_name": "y"}),
-            ("a", "operation_0", {"type": "input", "input_index": 0}),
-            ("b", "operation_0", {"type": "input", "input_index": 1}),
-            ("add_0", "e", {"type": "output"}),
-            ("e", "multiply_0", {"type": "input", "input_index": 0}),
-            ("multiply_0", "f", {"type": "output"}),
+            ("operation_0", "c_0", {"type": "output", "output_index": 0}),
+            ("operation_0", "d_0", {"type": "output", "output_index": 1}),
+            ("c_0", "add_0", {"type": "input", "input_index": 0}),
+            ("d_0", "add_0", {"type": "input", "input_name": "y"}),
+            ("a_0", "operation_0", {"type": "input", "input_index": 0}),
+            ("b_0", "operation_0", {"type": "input", "input_index": 1}),
+            ("add_0", "e_0", {"type": "output"}),
+            ("e_0", "multiply_0", {"type": "input", "input_index": 0}),
+            ("multiply_0", "f_0", {"type": "output"}),
         ]
         self.assertEqual(
             [data for data in analyzer.graph.edges.data()],
@@ -183,18 +183,19 @@ class TestSnippets(unittest.TestCase):
             ],
             "label": "example_workflow",
         }
-        self.assertEqual(get_workflow_dict(example_workflow), ref_data)
+        result = get_workflow_dict(example_workflow)
+        self.assertEqual(result, ref_data, msg=result)
 
     def test_parallel_execution(self):
         analyzer = analyze_function(parallel_execution)
         self.assertEqual(
             find_parallel_execution_levels(analyzer.graph),
             [
-                ["a", "b"],
+                ["a_0", "b_0"],
                 ["add_0", "multiply_0"],
-                ["c", "d"],
+                ["c_0", "d_0"],
                 ["operation_0"],
-                ["e", "f"],
+                ["e_0", "f_0"],
             ],
         )
 
