@@ -212,6 +212,29 @@ def get_workflow_dict(func):
     return data
 
 
+def _get_missing_edges(edges):
+    extra_edges = []
+    for edge in edges:
+        for tag in edge:
+            if len(tag.split(".")) < 3:
+                continue
+            if tag.split(".")[1] == "inputs":
+                new_edge = [tag, tag.split(".")[0]]
+            elif tag.split(".")[1] == "outputs":
+                new_edge = [tag.split(".")[0], tag]
+            if new_edge not in extra_edges:
+                extra_edges.append(new_edge)
+    return extra_edges
+
+
+def _get_execution_list(edges):
+    extra_edges = _get_missing_edges(edges)
+    graph = nx.DiGraph()
+    for edge in edges + extra_edges:
+        graph.add_edge(*edge)
+    return find_parallel_execution_levels(graph)
+
+
 class _Workflow:
     def __init__(self, func):
         self._workflow = get_workflow_dict(func)
@@ -232,7 +255,7 @@ class _Workflow:
 
     def _set_inputs(self, *args, **kwargs):
         kwargs = self._sanitize_input(*args, **kwargs)
-        for key, value in kwargs:
+        for key, value in kwargs.items():
             if key not in self._workflow["inputs"]:
                 raise TypeError(f"Unexpected keyword argument '{key}'")
             self._workflow["inputs"][key]["value"] = value

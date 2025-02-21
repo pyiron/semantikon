@@ -7,6 +7,7 @@ from semantikon.workflow import (
     get_workflow_dict,
     workflow,
     find_parallel_execution_levels,
+    _get_execution_list,
 )
 
 
@@ -196,6 +197,28 @@ class TestSnippets(unittest.TestCase):
                 ["c_0", "d_0"],
                 ["operation_0"],
                 ["e_0", "f_0"],
+            ],
+        )
+
+    def test_get_execution_list(self):
+        edges = [
+            ["inputs.a", "function_one_0.inputs.x"],
+            ["inputs.b", "function_two_0.inputs.x"],
+            ["function_one_0.outputs.output", "function_three_0.inputs.x"],
+            ["function_two_0.outputs.output", "function_three_0.inputs.y"],
+            ["function_three_0.outputs.output", "outputs.e"],
+        ]
+        self.assertEqual(
+            _get_execution_list(edges),
+            [
+                ["inputs.a", "inputs.b"],
+                ["function_one_0.inputs.x", "function_two_0.inputs.x"],
+                ["function_one_0", "function_two_0"],
+                ["function_one_0.outputs.output", "function_two_0.outputs.output"],
+                ["function_three_0.inputs.x", "function_three_0.inputs.y"],
+                ["function_three_0"],
+                ["function_three_0.outputs.output"],
+                ["outputs.e"],
             ],
         )
 
