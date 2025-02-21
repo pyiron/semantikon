@@ -38,6 +38,7 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
         self.graph = nx.DiGraph()
         self.function_defs = {}
         self.scope = scope
+        self._var_index = {}
 
     @staticmethod
     def _is_variable(arg):
@@ -45,11 +46,21 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
 
     def _add_output_edge(self, source, target, **kwargs):
         if self._is_variable(target):
-            self.graph.add_edge(source, target.id, type="output", **kwargs)
+            if target.id not in self._var_index:
+                self._var_index[target.id] = 0
+            else:
+                self._var_index[target.id] += 1
+            count = self._var_index[target.id]
+            self.graph.add_edge(
+                source, f"{target.id}_{count}", type="output", **kwargs
+            )
 
     def _add_input_edge(self, source, target, **kwargs):
         if self._is_variable(source):
-            self.graph.add_edge(source.id, target, type="input", **kwargs)
+            count = self._var_index[source.id]
+            self.graph.add_edge(
+                f"{source.id}_{count}", target, type="input", **kwargs
+            )
 
     def _get_func_name(self, node):
         for ii in range(100):
