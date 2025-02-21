@@ -3,9 +3,9 @@ import networkx as nx
 from networkx.algorithms.dag import topological_sort
 import inspect
 from collections import deque
+from functools import cached_property
 
 from semantikon.converter import parse_input_args, parse_output_args
-
 
 
 def _check_node(node):
@@ -52,9 +52,7 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
             else:
                 self._var_index[target.id] += 1
             count = self._var_index[target.id]
-            self.graph.add_edge(
-                source, f"{target.id}_{count}", type="output", **kwargs
-            )
+            self.graph.add_edge(source, f"{target.id}_{count}", type="output", **kwargs)
 
     def _add_input_edge(self, source, target, **kwargs):
         if self._is_variable(source):
@@ -194,7 +192,9 @@ def _get_data_edges(analyzer, func):
             if "input_name" in edge[2]:
                 target = f"{edge[1]}.inputs.{edge[2]['input_name']}"
             elif "input_index" in edge[2]:
-                target = f"{edge[1]}.inputs.{input_dict[edge[1]][edge[2]['input_index']]}"
+                target = (
+                    f"{edge[1]}.inputs.{input_dict[edge[1]][edge[2]['input_index']]}"
+                )
             data_edges.append([source, target])
     return data_edges
 
@@ -227,17 +227,25 @@ def _get_missing_edges(edges):
     return extra_edges
 
 
-def _get_execution_list(edges):
-    extra_edges = _get_missing_edges(edges)
-    graph = nx.DiGraph()
-    for edge in edges + extra_edges:
-        graph.add_edge(*edge)
-    return find_parallel_execution_levels(graph)
-
-
 class _Workflow:
     def __init__(self, func):
         self._workflow = get_workflow_dict(func)
+
+    @cached_property
+    def _all_edges(self):
+        extra_edges = _get_missing_edges(self._workflow["data_edges"])
+        return self._workflow["data_edges"] + extra_edges
+
+    @cached_property
+    def _graph(self):
+        graph = nx.DiGraph()
+        for edge in self._all_edges:
+            graph.add_edge(*edge)
+        return graph
+
+    @cached_property
+    def _execution_list(self):
+        return find_parallel_execution_levels(self._graph)
 
     def get_workflow_dict(self):
         return self._workflow
@@ -260,8 +268,70 @@ class _Workflow:
                 raise TypeError(f"Unexpected keyword argument '{key}'")
             self._workflow["inputs"][key]["value"] = value
 
+    def _get_value_from_data(self, node):
+        if "value" not in node:
+            node["value"] = node["default"]
+        return node["value"]
+
+    def _get_value_from_global(self, path):
+        io, var = path.split(".")
+        return self._get_value_from_data(self._workflow[io][var])
+
+    def _get_value_from_node(self, path):
+        node, io, var = path.split(".")
+        return self._get_value_from_data(self._workflow["nodes"][node][io][var])
+
+    def _set_value_from_global(self, path, value):
+        io, var = path.split(".")
+        self._workflow[io][var]["value"] = value
+
+    def _set_value_from_node(self, path, value):
+        node, io, var = path.split(".")
+        self._workflow["nodes"][node][io][var]["value"] = value
+
+    def _execute_node(self, function):
+        node = self._workflow["nodes"][function]
+        input_data = {}
+        try:
+            for key, content in node["inputs"].items():
+                if "value" not in content:
+                    content["value"] = content["default"]
+                input_data[key] = content["value"]
+        except KeyError:
+            raise KeyError(f"value not defined for {function}")
+        outputs = node["function"](**input_data)
+        return outputs
+
+    def _set_value(self, tag, value):
+        if len(tag.split(".")) == 2 and tag.split(".")[0] in ("inputs", "outputs"):
+            self._set_value_from_global(tag, value)
+        elif len(tag.split(".")) == 3 and tag.split(".")[1] in ("inputs", "outputs"):
+            self._set_value_from_node(tag, value)
+        elif "." in tag:
+            raise ValueError(f"{tag} not recognized")
+
+    def _get_value(self, tag):
+        if len(tag.split(".")) == 2 and tag.split(".")[0] in ("inputs", "outputs"):
+            return self._get_value_from_global(tag)
+        elif len(tag.split(".")) == 3 and tag.split(".")[1] in ("inputs", "outputs"):
+            return self._get_value_from_node(tag)
+        elif "." not in tag:
+            return self._execute_node(tag)
+        else:
+            raise ValueError(f"{tag} not recognized")
+
     def run(self, *args, **kwargs):
         self._set_inputs(*args, **kwargs)
+        for current_list in self._execution_list:
+            for item in current_list:
+                values = self._get_value(item)
+                nodes = self._graph.edges(item)
+                if "." not in item and len(nodes) > 1:
+                    for value, node in zip(values, nodes):
+                        self._set_value(node[1], value)
+                else:
+                    for node in nodes:
+                        self._set_value(node[1], values)
         return self._workflow
 
 
