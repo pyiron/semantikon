@@ -220,7 +220,7 @@ class _Workflow:
         return self._workflow
 
     def _sanitize_input(self, *args, **kwargs):
-        keys = list(self._workflow["input"].keys())
+        keys = list(self._workflow["inputs"].keys())
         for ii, arg in enumerate(args):
             if keys[ii] in kwargs:
                 raise TypeError(
@@ -230,9 +230,16 @@ class _Workflow:
             kwargs[keys[ii]] = arg
         return kwargs
 
-    def run(self, *args, **kwargs):
+    def _set_inputs(self, *args, **kwargs):
         kwargs = self._sanitize_input(*args, **kwargs)
-        raise NotImplementedError
+        for key, value in kwargs:
+            if key not in self._workflow["inputs"]:
+                raise TypeError(f"Unexpected keyword argument '{key}'")
+            self._workflow["inputs"][key]["value"] = value
+
+    def run(self, *args, **kwargs):
+        self._set_inputs(*args, **kwargs)
+        return self._workflow
 
 
 def find_parallel_execution_levels(G):
