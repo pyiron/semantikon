@@ -14,6 +14,7 @@ from semantikon.ontology import (
     _inherit_properties,
     validate_values,
 )
+from semantikon.workflow import workflow
 from dataclasses import dataclass
 
 
@@ -34,6 +35,14 @@ def calculate_speed(
     ),
 ):
     return distance / time
+
+
+@workflow
+def get_speed(distance=10.0, time=2.0):
+    speed = calculate_speed(distance, time)
+    return speed
+
+get_speed.run()
 
 
 @u(uri=EX.Addition)
@@ -429,7 +438,7 @@ def get_wrong_order():
 
 class TestOntology(unittest.TestCase):
     def test_units_with_sparql(self):
-        graph = get_knowledge_graph(get_speed_dict())
+        graph = get_knowledge_graph(get_speed._semantikon_workflow)
         query_txt = [
             "PREFIX ex: <http://example.org/>",
             "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
@@ -444,10 +453,10 @@ class TestOntology(unittest.TestCase):
         query = "\n".join(query_txt)
         results = graph.query(query)
         self.assertEqual(
-            len(results), 2, msg=f"Results: {results.serialize(format='txt').decode()}"
+            len(results), 3, msg=f"Results: {results.serialize(format='txt').decode()}"
         )
         result_list = [row[0].value for row in graph.query(query)]
-        self.assertEqual(sorted(result_list), [2.0, 10.0])
+        self.assertEqual(sorted(result_list), [2.0, 5.0, 10.0])
 
     def test_triples(self):
         data = get_speed_dict()
