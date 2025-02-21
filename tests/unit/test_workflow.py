@@ -81,7 +81,7 @@ class TestSnippets(unittest.TestCase):
 
     def test_get_workflow_dict(self):
         ref_data = {
-            "input": {"a": {"default": 10}, "b": {"default": 20}},
+            "inputs": {"a": {"default": 10}, "b": {"default": 20}},
             "outputs": {"f": {}},
             "nodes": {
                 "operation_0": {
@@ -124,11 +124,11 @@ class TestSnippets(unittest.TestCase):
 
     def test_get_workflow_dict_macro(self):
         ref_data = {
-            "input": {"a": {"default": 10}, "b": {"default": 20}},
+            "inputs": {"a": {"default": 10}, "b": {"default": 20}},
             "outputs": {"z": {}},
             "nodes": {
                 "example_macro_0": {
-                    "input": {"a": {"default": 10}, "b": {"default": 20}},
+                    "inputs": {"a": {"default": 10}, "b": {"default": 20}},
                     "outputs": {"f": {}},
                     "nodes": {
                         "operation_0": {

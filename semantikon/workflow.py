@@ -203,7 +203,7 @@ def get_workflow_dict(func):
     analyzer = analyze_function(func)
     output_counts = _get_output_counts(analyzer.graph.edges.data())
     data = {
-        "input": parse_input_args(func),
+        "inputs": parse_input_args(func),
         "outputs": _get_workflow_outputs(func),
         "nodes": _get_nodes(analyzer.function_defs, output_counts),
         "data_edges": _get_data_edges(analyzer, func),
