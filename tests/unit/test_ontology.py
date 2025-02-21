@@ -142,70 +142,6 @@ def get_vacancy_formation_energy(
     return len(structure)
 
 
-def get_speed_dict():
-    return {
-        "inputs": {
-            "speed__distance": {
-                "default": 10.0,
-                "value": 10.0,
-                "type_hint": u(float, units="meter"),
-            },
-            "speed__time": {
-                "default": 2.0,
-                "value": 2.0,
-                "type_hint": u(float, units="second"),
-            },
-        },
-        "outputs": {
-            "speed__speed": {
-                "type_hint": u(
-                    float,
-                    units="meter/second",
-                    triples=(
-                        (EX.somehowRelatedTo, "inputs.time"),
-                        (EX.subject, EX.predicate, EX.object),
-                        (EX.subject, EX.predicate, None),
-                        (None, EX.predicate, EX.object),
-                    ),
-                ),
-            }
-        },
-        "nodes": {
-            "speed": {
-                "inputs": {
-                    "distance": {
-                        "default": 10.0,
-                        "value": 10.0,
-                        "type_hint": u(float, units="meter"),
-                    },
-                    "time": {
-                        "default": 2.0,
-                        "value": 2.0,
-                        "type_hint": u(float, units="second"),
-                    },
-                },
-                "outputs": {
-                    "speed": {
-                        "type_hint": u(
-                            float,
-                            units="meter/second",
-                            triples=(
-                                (EX.somehowRelatedTo, "inputs.time"),
-                                (EX.subject, EX.predicate, EX.object),
-                                (EX.subject, EX.predicate, None),
-                                (None, EX.predicate, EX.object),
-                            ),
-                        ),
-                    }
-                },
-                "function": calculate_speed,
-            }
-        },
-        "data_edges": [],
-        "label": "speed",
-    }
-
-
 def get_correct_analysis_dict():
     return {
         "inputs": {
@@ -459,15 +395,18 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(sorted(result_list), [2.0, 5.0, 10.0])
 
     def test_triples(self):
-        data = get_speed_dict()
-        graph = get_knowledge_graph(data)
+        graph = get_knowledge_graph(get_speed._semantikon_workflow)
         subj = URIRef("http://example.org/subject")
         obj = URIRef("http://example.org/object")
-        label = URIRef("speed.speed.outputs.speed")
+        label = URIRef("get_speed.calculate_speed_0.outputs.output")
         self.assertGreater(
             len(list(graph.triples((None, PNS.hasUnits, URIRef("meter/second"))))), 0
         )
-        ex_triple = (None, EX.somehowRelatedTo, URIRef("speed.speed.inputs.time"))
+        ex_triple = (
+            None,
+            EX.somehowRelatedTo,
+            URIRef("get_speed.calculate_speed_0.inputs.time")
+        )
         self.assertTrue(
             ex_triple in graph,
             msg=f"Triple {ex_triple} not found {graph.serialize(format='turtle')}",
