@@ -1,5 +1,6 @@
 import ast
 import networkx as nx
+from networkx.algorithms.dag import topological_sort
 import inspect
 from collections import deque
 
@@ -160,6 +161,12 @@ def _remove_index(s):
     return "_".join(s.split("_")[:-1])
 
 
+def get_sorted_edges(graph):
+    topo_order = list(topological_sort(graph))
+    node_order = {node: i for i, node in enumerate(topo_order)}
+    return sorted(graph.edges.data(), key=lambda edge: node_order[edge[0]])
+
+
 def _get_data_edges(analyzer, func):
     input_dict = {
         name: list(parse_input_args(func).keys())
@@ -168,7 +175,8 @@ def _get_data_edges(analyzer, func):
     output_labels = list(_get_workflow_outputs(func).keys())
     data_edges = []
     output_dict = {}
-    for edge in analyzer.graph.edges.data():
+    ordered_edges = get_sorted_edges(analyzer.graph)
+    for edge in ordered_edges:
         if edge[2]["type"] == "output":
             if "output_index" in edge[2]:
                 tag = f"{edge[0]}.outputs.output_{edge[2]['output_index']}"
