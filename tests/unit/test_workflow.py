@@ -17,7 +17,7 @@ def add(x: float = 2.0, y: float = 1) -> float:
     return x + y
 
 
-def multiply(x: float, y: float) -> float:
+def multiply(x: float, y: float = 5) -> float:
     return x * y
 
 
@@ -25,7 +25,7 @@ def multiply(x: float, y: float) -> float:
 def example_macro(a=10, b=20):
     c, d = operation(a, b)
     e = add(c, y=d)
-    f = multiply(e, 5)
+    f = multiply(e)
     return f
 
 
@@ -92,7 +92,7 @@ class TestSnippets(unittest.TestCase):
                     "function": add,
                 },
                 "multiply": {
-                    "inputs": {"x": {"dtype": float}, "y": {"dtype": float}},
+                    "inputs": {"x": {"dtype": float}, "y": {"dtype": float, "default": 5}},
                     "outputs": {"output": {"dtype": float}},
                     "function": multiply,
                 },
@@ -137,7 +137,7 @@ class TestSnippets(unittest.TestCase):
                         },
                         "multiply": {
                             "function": multiply,
-                            "inputs": {"x": {"dtype": float}, "y": {"dtype": float}},
+                            "inputs": {"x": {"dtype": float}, "y": {"dtype": float, "default": 5}},
                             "outputs": {"output": {"dtype": float}},
                         },
                     },
