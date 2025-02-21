@@ -63,7 +63,7 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
             called_func = self._get_func_name(node)
             if node.value.func.id not in self.scope:
                 raise ValueError(f"Function {node.value.func.id} not defined")
-            self.function_defs[node.value.func.id] = self.scope[node.value.func.id]
+            self.function_defs[called_func] = self.scope[node.value.func.id]
 
             is_multi_assignment = len(node.targets) == 1 and isinstance(
                 node.targets[0], ast.Tuple
@@ -170,7 +170,7 @@ def _get_data_edges(analyzer, func):
             if "input_name" in edge[2]:
                 target = f"{edge[1]}.inputs.{edge[2]['input_name']}"
             elif "input_index" in edge[2]:
-                target = f"{edge[1]}.inputs.{input_dict['_'.join(edge[1].split('_')[:-1])][edge[2]['input_index']]}"
+                target = f"{edge[1]}.inputs.{input_dict[edge[1]][edge[2]['input_index']]}"
             data_edges.append([source, target])
     return data_edges
 

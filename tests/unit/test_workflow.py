@@ -84,7 +84,7 @@ class TestSnippets(unittest.TestCase):
             "input": {"a": {"default": 10}, "b": {"default": 20}},
             "outputs": {"f": {}},
             "nodes": {
-                "operation": {
+                "operation_0": {
                     "inputs": {"x": {"dtype": float}, "y": {"dtype": float}},
                     "outputs": {
                         "output_0": {"dtype": float},
@@ -92,7 +92,7 @@ class TestSnippets(unittest.TestCase):
                     },
                     "function": operation,
                 },
-                "add": {
+                "add_0": {
                     "inputs": {
                         "x": {"dtype": float, "default": 2.0},
                         "y": {"dtype": float, "default": 1},
@@ -100,7 +100,7 @@ class TestSnippets(unittest.TestCase):
                     "outputs": {"output": {"dtype": float}},
                     "function": add,
                 },
-                "multiply": {
+                "multiply_0": {
                     "inputs": {
                         "x": {"dtype": float},
                         "y": {"dtype": float, "default": 5},
@@ -127,11 +127,11 @@ class TestSnippets(unittest.TestCase):
             "input": {"a": {"default": 10}, "b": {"default": 20}},
             "outputs": {"z": {}},
             "nodes": {
-                "example_macro": {
+                "example_macro_0": {
                     "input": {"a": {"default": 10}, "b": {"default": 20}},
                     "outputs": {"f": {}},
                     "nodes": {
-                        "operation": {
+                        "operation_0": {
                             "function": operation,
                             "inputs": {"x": {"dtype": float}, "y": {"dtype": float}},
                             "outputs": {
@@ -139,7 +139,7 @@ class TestSnippets(unittest.TestCase):
                                 "output_1": {"dtype": float},
                             },
                         },
-                        "add": {
+                        "add_0": {
                             "function": add,
                             "inputs": {
                                 "x": {"dtype": float, "default": 2.0},
@@ -147,7 +147,7 @@ class TestSnippets(unittest.TestCase):
                             },
                             "outputs": {"output": {"dtype": float}},
                         },
-                        "multiply": {
+                        "multiply_0": {
                             "function": multiply,
                             "inputs": {
                                 "x": {"dtype": float},
@@ -166,7 +166,7 @@ class TestSnippets(unittest.TestCase):
                     ],
                     "label": "example_macro",
                 },
-                "add": {
+                "add_0": {
                     "function": add,
                     "inputs": {
                         "x": {"dtype": float, "default": 2.0},
