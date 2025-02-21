@@ -1,7 +1,10 @@
 import ast
 import networkx as nx
 import inspect
+from collections import deque
+
 from semantikon.converter import parse_input_args, parse_output_args
+
 
 
 def _check_node(node):
@@ -185,6 +188,52 @@ def get_workflow_dict(func):
     return data
 
 
+class _Workflow:
+    def __init__(self, func):
+        self._workflow = get_workflow_dict(func)
+
+    def get_workflow_dict(self):
+        return self._workflow
+
+    def _sanitize_input(self, *args, **kwargs):
+        keys = list(self._workflow["input"].keys())
+        for ii, arg in enumerate(args):
+            if keys[ii] in kwargs:
+                raise TypeError(
+                    f"{self._workflow['label']}() got multiple values for"
+                    " argument '{keys[ii]}'"
+                )
+            kwargs[keys[ii]] = arg
+        return kwargs
+
+    def run(self, *args, **kwargs):
+        kwargs = self._sanitize_input(*args, **kwargs)
+        raise NotImplementedError
+
+
+def find_parallel_execution_levels(G):
+    in_degree = dict(G.in_degree())  # Track incoming edges
+    queue = deque([node for node in G.nodes if in_degree[node] == 0])
+    levels = []
+
+    while queue:
+        current_level = list(queue)
+        levels.append(current_level)
+
+        next_queue = deque()
+        for node in current_level:
+            for neighbor in G.successors(node):
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    next_queue.append(neighbor)
+
+        queue = next_queue
+
+    return levels
+
+
 def workflow(func):
-    func._semantikon_workflow = get_workflow_dict(func)
+    w = _Workflow(func)
+    func._semantikon_workflow = w.get_workflow_dict()
+    func.run = w.run
     return func

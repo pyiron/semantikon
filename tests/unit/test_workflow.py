@@ -6,6 +6,7 @@ from semantikon.workflow import (
     _get_output_counts,
     get_workflow_dict,
     workflow,
+    find_parallel_execution_levels,
 )
 
 
@@ -34,6 +35,14 @@ def example_workflow(a=10, b=20):
     y = example_macro(a, b)
     z = add(y, 10)
     return z
+
+
+@workflow
+def parallel_execution(a=10, b=20):
+    c = add(a)
+    d = multiply(b)
+    e, f = operation(c, d)
+    return e, f
 
 
 class TestSnippets(unittest.TestCase):
@@ -92,7 +101,10 @@ class TestSnippets(unittest.TestCase):
                     "function": add,
                 },
                 "multiply": {
-                    "inputs": {"x": {"dtype": float}, "y": {"dtype": float, "default": 5}},
+                    "inputs": {
+                        "x": {"dtype": float},
+                        "y": {"dtype": float, "default": 5},
+                    },
                     "outputs": {"output": {"dtype": float}},
                     "function": multiply,
                 },
@@ -137,7 +149,10 @@ class TestSnippets(unittest.TestCase):
                         },
                         "multiply": {
                             "function": multiply,
-                            "inputs": {"x": {"dtype": float}, "y": {"dtype": float, "default": 5}},
+                            "inputs": {
+                                "x": {"dtype": float},
+                                "y": {"dtype": float, "default": 5},
+                            },
                             "outputs": {"output": {"dtype": float}},
                         },
                     },
@@ -169,6 +184,19 @@ class TestSnippets(unittest.TestCase):
             "label": "example_workflow",
         }
         self.assertEqual(get_workflow_dict(example_workflow), ref_data)
+
+    def test_parallel_execution(self):
+        analyzer = analyze_function(parallel_execution)
+        self.assertEqual(
+            find_parallel_execution_levels(analyzer.graph),
+            [
+                ["a", "b"],
+                ["add_0", "multiply_0"],
+                ["c", "d"],
+                ["operation_0"],
+                ["e", "f"],
+            ],
+        )
 
 
 if __name__ == "__main__":
