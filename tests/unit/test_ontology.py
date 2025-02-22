@@ -142,67 +142,12 @@ def get_vacancy_formation_energy(
     return len(structure)
 
 
-def get_correct_analysis_dict():
-    return {
-        "inputs": {
-            "addition__a": {"value": 1.0, "type_hint": float},
-            "addition__b": {"value": 2.0, "type_hint": float},
-            "multiply__b": {"value": 3.0, "type_hint": float},
-        },
-        "outputs": {"analysis__result": {"type_hint": float}},
-        "nodes": {
-            "addition": {
-                "inputs": {
-                    "a": {"value": 1.0, "type_hint": float},
-                    "b": {"value": 2.0, "type_hint": float},
-                },
-                "outputs": {
-                    "result": {
-                        "type_hint": u(float, triples=(EX.HasOperation, EX.Addition)),
-                    }
-                },
-                "function": add,
-            },
-            "multiply": {
-                "inputs": {
-                    "a": {"type_hint": float},
-                    "b": {"value": 3.0, "type_hint": float},
-                },
-                "outputs": {
-                    "result": {
-                        "type_hint": u(
-                            float,
-                            triples=(
-                                (EX.HasOperation, EX.Multiplication),
-                                (PNS.inheritsPropertiesFrom, "inputs.a"),
-                            ),
-                        ),
-                    }
-                },
-                "function": multiply,
-            },
-            "analysis": {
-                "inputs": {
-                    "a": {
-                        "type_hint": u(
-                            float,
-                            restrictions=(
-                                (OWL.onProperty, EX.HasOperation),
-                                (OWL.someValuesFrom, EX.Addition),
-                            ),
-                        )
-                    }
-                },
-                "outputs": {"result": {"type_hint": float}},
-                "function": correct_analysis,
-            },
-        },
-        "data_edges": [
-            ("addition.outputs.result", "multiply.inputs.a"),
-            ("multiply.outputs.result", "analysis.inputs.a"),
-        ],
-        "label": "correct_analysis",
-    }
+@workflow
+def get_correct_analysis(a=1.0, b=2.0, c=3.0):
+    d = add(a=a, b=b)
+    m = multiply(a=d, b=c)
+    analysis = correct_analysis(a=m)
+    return analysis
 
 
 def get_wrong_analysis_dict():
@@ -416,7 +361,7 @@ class TestOntology(unittest.TestCase):
         self.assertTrue((label, EX.predicate, obj) in graph)
 
     def test_correct_analysis(self):
-        graph = get_knowledge_graph(get_correct_analysis_dict())
+        graph = get_knowledge_graph(get_correct_analysis._semantikon_workflow)
         missing_triples = validate_values(graph)
         self.assertEqual(
             len(missing_triples),
