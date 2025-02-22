@@ -14,6 +14,7 @@ from semantikon.ontology import (
     _inherit_properties,
     validate_values,
 )
+from semantikon.workflow import workflow
 from dataclasses import dataclass
 
 
@@ -34,6 +35,14 @@ def calculate_speed(
     ),
 ):
     return distance / time
+
+
+@workflow
+def get_speed(distance=10.0, time=2.0):
+    speed = calculate_speed(distance, time)
+    return speed
+
+get_speed.run()
 
 
 @u(uri=EX.Addition)
@@ -133,194 +142,20 @@ def get_vacancy_formation_energy(
     return len(structure)
 
 
-def get_speed_dict():
-    return {
-        "inputs": {
-            "speed__distance": {
-                "default": 10.0,
-                "value": 10.0,
-                "type_hint": u(float, units="meter"),
-            },
-            "speed__time": {
-                "default": 2.0,
-                "value": 2.0,
-                "type_hint": u(float, units="second"),
-            },
-        },
-        "outputs": {
-            "speed__speed": {
-                "type_hint": u(
-                    float,
-                    units="meter/second",
-                    triples=(
-                        (EX.somehowRelatedTo, "inputs.time"),
-                        (EX.subject, EX.predicate, EX.object),
-                        (EX.subject, EX.predicate, None),
-                        (None, EX.predicate, EX.object),
-                    ),
-                ),
-            }
-        },
-        "nodes": {
-            "speed": {
-                "inputs": {
-                    "distance": {
-                        "default": 10.0,
-                        "value": 10.0,
-                        "type_hint": u(float, units="meter"),
-                    },
-                    "time": {
-                        "default": 2.0,
-                        "value": 2.0,
-                        "type_hint": u(float, units="second"),
-                    },
-                },
-                "outputs": {
-                    "speed": {
-                        "type_hint": u(
-                            float,
-                            units="meter/second",
-                            triples=(
-                                (EX.somehowRelatedTo, "inputs.time"),
-                                (EX.subject, EX.predicate, EX.object),
-                                (EX.subject, EX.predicate, None),
-                                (None, EX.predicate, EX.object),
-                            ),
-                        ),
-                    }
-                },
-                "function": calculate_speed,
-            }
-        },
-        "data_edges": [],
-        "label": "speed",
-    }
+@workflow
+def get_correct_analysis(a=1.0, b=2.0, c=3.0):
+    d = add(a=a, b=b)
+    m = multiply(a=d, b=c)
+    analysis = correct_analysis(a=m)
+    return analysis
 
 
-def get_correct_analysis_dict():
-    return {
-        "inputs": {
-            "addition__a": {"value": 1.0, "type_hint": float},
-            "addition__b": {"value": 2.0, "type_hint": float},
-            "multiply__b": {"value": 3.0, "type_hint": float},
-        },
-        "outputs": {"analysis__result": {"type_hint": float}},
-        "nodes": {
-            "addition": {
-                "inputs": {
-                    "a": {"value": 1.0, "type_hint": float},
-                    "b": {"value": 2.0, "type_hint": float},
-                },
-                "outputs": {
-                    "result": {
-                        "type_hint": u(float, triples=(EX.HasOperation, EX.Addition)),
-                    }
-                },
-                "function": add,
-            },
-            "multiply": {
-                "inputs": {
-                    "a": {"type_hint": float},
-                    "b": {"value": 3.0, "type_hint": float},
-                },
-                "outputs": {
-                    "result": {
-                        "type_hint": u(
-                            float,
-                            triples=(
-                                (EX.HasOperation, EX.Multiplication),
-                                (PNS.inheritsPropertiesFrom, "inputs.a"),
-                            ),
-                        ),
-                    }
-                },
-                "function": multiply,
-            },
-            "analysis": {
-                "inputs": {
-                    "a": {
-                        "type_hint": u(
-                            float,
-                            restrictions=(
-                                (OWL.onProperty, EX.HasOperation),
-                                (OWL.someValuesFrom, EX.Addition),
-                            ),
-                        )
-                    }
-                },
-                "outputs": {"result": {"type_hint": float}},
-                "function": correct_analysis,
-            },
-        },
-        "data_edges": [
-            ("addition.outputs.result", "multiply.inputs.a"),
-            ("multiply.outputs.result", "analysis.inputs.a"),
-        ],
-        "label": "correct_analysis",
-    }
-
-
-def get_wrong_analysis_dict():
-    return {
-        "inputs": {
-            "addition__a": {"value": 1.0, "type_hint": float},
-            "addition__b": {"value": 2.0, "type_hint": float},
-            "multiply__b": {"value": 3.0, "type_hint": float},
-        },
-        "outputs": {"analysis__result": {"type_hint": float}},
-        "nodes": {
-            "addition": {
-                "inputs": {
-                    "a": {"value": 1.0, "type_hint": float},
-                    "b": {"value": 2.0, "type_hint": float},
-                },
-                "outputs": {
-                    "result": {
-                        "type_hint": u(float, triples=(EX.HasOperation, EX.Addition))
-                    }
-                },
-                "function": add,
-            },
-            "multiply": {
-                "inputs": {
-                    "a": {"type_hint": float},
-                    "b": {"value": 3.0, "type_hint": float},
-                },
-                "outputs": {
-                    "result": {
-                        "type_hint": u(
-                            float,
-                            triples=(
-                                (EX.HasOperation, EX.Multiplication),
-                                (PNS.inheritsPropertiesFrom, "inputs.a"),
-                            ),
-                        )
-                    }
-                },
-                "function": multiply,
-            },
-            "analysis": {
-                "inputs": {
-                    "a": {
-                        "type_hint": u(
-                            float,
-                            restrictions=(
-                                (OWL.onProperty, EX.HasOperation),
-                                (OWL.someValuesFrom, EX.Division),
-                            ),
-                        )
-                    }
-                },
-                "outputs": {"result": {"type_hint": float}},
-                "function": wrong_analysis,
-            },
-        },
-        "data_edges": [
-            ("addition.outputs.result", "multiply.inputs.a"),
-            ("multiply.outputs.result", "analysis.inputs.a"),
-        ],
-        "label": "wrong_analysis",
-    }
+@workflow
+def get_wrong_analysis(a=1.0, b=2.0, c=3.0):
+    d = add(a=a, b=b)
+    m = multiply(a=d, b=c)
+    analysis = wrong_analysis(a=m)
+    return analysis
 
 
 def get_macro():
@@ -361,75 +196,17 @@ def get_macro():
     }
 
 
-def get_wrong_order():
-    return {
-        "inputs": {"relaxed__structure": {"value": "abc", "type_hint": str}},
-        "outputs": {"energy__len(structure)": {}},
-        "nodes": {
-            "relaxed": {
-                "inputs": {"structure": {"value": "abc", "type_hint": str}},
-                "outputs": {
-                    "structure": {
-                        "type_hint": u(
-                            str,
-                            triples=(
-                                (PNS.inheritsPropertiesFrom, "inputs.structure"),
-                                (EX.hasState, EX.relaxed),
-                            ),
-                        )
-                    }
-                },
-                "function": relax_structure,
-            },
-            "vac": {
-                "inputs": {"structure": {"type_hint": str}},
-                "outputs": {
-                    "structure": {
-                        "type_hint": u(
-                            str,
-                            triples=(
-                                (PNS.inheritsPropertiesFrom, "inputs.structure"),
-                                (EX.hasDefect, EX.vacancy),
-                            ),
-                            cancel=(EX.hasState, EX.relaxed),
-                        )
-                    }
-                },
-                "function": create_vacancy,
-            },
-            "energy": {
-                "inputs": {
-                    "structure": {
-                        "type_hint": u(
-                            str,
-                            restrictions=(
-                                (
-                                    (OWL.onProperty, EX.hasDefect),
-                                    (OWL.someValuesFrom, EX.vacancy),
-                                ),
-                                (
-                                    (OWL.onProperty, EX.hasState),
-                                    (OWL.someValuesFrom, EX.relaxed),
-                                ),
-                            ),
-                        )
-                    }
-                },
-                "outputs": {"len(structure)": {}},
-                "function": get_vacancy_formation_energy,
-            },
-        },
-        "data_edges": [
-            ("relaxed.outputs.structure", "vac.inputs.structure"),
-            ("vac.outputs.structure", "energy.inputs.structure"),
-        ],
-        "label": "wrong_order",
-    }
+@workflow
+def get_wrong_order(structure="abc"):
+    relaxed = relax_structure(structure=structure)
+    vac = create_vacancy(structure=relaxed)
+    energy = get_vacancy_formation_energy(structure=vac)
+    return energy
 
 
 class TestOntology(unittest.TestCase):
     def test_units_with_sparql(self):
-        graph = get_knowledge_graph(get_speed_dict())
+        graph = get_knowledge_graph(get_speed._semantikon_workflow)
         query_txt = [
             "PREFIX ex: <http://example.org/>",
             "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
@@ -444,21 +221,24 @@ class TestOntology(unittest.TestCase):
         query = "\n".join(query_txt)
         results = graph.query(query)
         self.assertEqual(
-            len(results), 2, msg=f"Results: {results.serialize(format='txt').decode()}"
+            len(results), 3, msg=f"Results: {results.serialize(format='txt').decode()}"
         )
         result_list = [row[0].value for row in graph.query(query)]
-        self.assertEqual(sorted(result_list), [2.0, 10.0])
+        self.assertEqual(sorted(result_list), [2.0, 5.0, 10.0])
 
     def test_triples(self):
-        data = get_speed_dict()
-        graph = get_knowledge_graph(data)
+        graph = get_knowledge_graph(get_speed._semantikon_workflow)
         subj = URIRef("http://example.org/subject")
         obj = URIRef("http://example.org/object")
-        label = URIRef("speed.speed.outputs.speed")
+        label = URIRef("get_speed.calculate_speed_0.outputs.output")
         self.assertGreater(
             len(list(graph.triples((None, PNS.hasUnits, URIRef("meter/second"))))), 0
         )
-        ex_triple = (None, EX.somehowRelatedTo, URIRef("speed.speed.inputs.time"))
+        ex_triple = (
+            None,
+            EX.somehowRelatedTo,
+            URIRef("get_speed.calculate_speed_0.inputs.time")
+        )
         self.assertTrue(
             ex_triple in graph,
             msg=f"Triple {ex_triple} not found {graph.serialize(format='turtle')}",
@@ -468,14 +248,14 @@ class TestOntology(unittest.TestCase):
         self.assertTrue((label, EX.predicate, obj) in graph)
 
     def test_correct_analysis(self):
-        graph = get_knowledge_graph(get_correct_analysis_dict())
+        graph = get_knowledge_graph(get_correct_analysis._semantikon_workflow)
         missing_triples = validate_values(graph)
         self.assertEqual(
             len(missing_triples),
             0,
             msg=f"{missing_triples} not found in {graph.serialize()}",
         )
-        graph = get_knowledge_graph(get_wrong_analysis_dict())
+        graph = get_knowledge_graph(get_wrong_analysis._semantikon_workflow)
         self.assertEqual(len(validate_values(graph)), 1)
 
     def test_macro(self):
@@ -503,14 +283,13 @@ class TestOntology(unittest.TestCase):
                 self.assertIn(pair, same_as)
 
     def test_wrong_order(self):
-        data = get_wrong_order()
-        graph = get_knowledge_graph(data)
+        graph = get_knowledge_graph(get_wrong_order._semantikon_workflow)
         missing_triples = [[str(gg) for gg in g] for g in validate_values(graph)]
         self.assertEqual(
             missing_triples,
             [
                 [
-                    "wrong_order.energy.inputs.structure",
+                    "get_wrong_order.get_vacancy_formation_energy_0.inputs.structure",
                     "http://example.org/hasState",
                     "http://example.org/relaxed",
                 ]
