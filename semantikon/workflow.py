@@ -247,9 +247,6 @@ class _Workflow:
     def _execution_list(self):
         return find_parallel_execution_levels(self._graph)
 
-    def get_workflow_dict(self):
-        return self._workflow
-
     def _sanitize_input(self, *args, **kwargs):
         keys = list(self._workflow["inputs"].keys())
         for ii, arg in enumerate(args):
