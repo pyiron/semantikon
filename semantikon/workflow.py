@@ -176,7 +176,15 @@ def _get_data_edges(analyzer, func):
     ordered_edges = get_sorted_edges(analyzer.graph)
     for edge in ordered_edges:
         if edge[2]["type"] == "output":
-            if "output_index" in edge[2]:
+            if hasattr(analyzer.function_defs[edge[0]], "_semantikon_workflow"):
+                keys = list(
+                    analyzer.function_defs[edge[0]]._semantikon_workflow["outputs"].keys()
+                )
+                output_index = 0 
+                if "output_index" in edge[2]:
+                    output_index = edge[2]["output_index"]
+                tag = f"{edge[0]}.outputs.{keys[output_index]}"
+            elif "output_index" in edge[2]:
                 tag = f"{edge[0]}.outputs.output_{edge[2]['output_index']}"
             else:
                 tag = f"{edge[0]}.outputs.output"
@@ -284,7 +292,10 @@ class _Workflow:
 
     def _set_value_from_node(self, path, value):
         node, io, var = path.split(".")
-        self._workflow["nodes"][node][io][var]["value"] = value
+        try:
+            self._workflow["nodes"][node][io][var]["value"] = value
+        except KeyError:
+            raise KeyError(f"{path} not found in {node}")
 
     def _execute_node(self, function):
         node = self._workflow["nodes"][function]
@@ -296,7 +307,13 @@ class _Workflow:
                 input_data[key] = content["value"]
         except KeyError:
             raise KeyError(f"value not defined for {function}")
-        outputs = node["function"](**input_data)
+        if "function" not in node:
+            workflow = _Workflow(node)
+            outputs = [d["value"] for d in workflow.run(**input_data)["outputs"].values()]
+            if len(outputs) == 1:
+                outputs = outputs[0]
+        else:
+            outputs = node["function"](**input_data)
         return outputs
 
     def _set_value(self, tag, value):

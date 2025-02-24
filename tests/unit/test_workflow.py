@@ -178,7 +178,7 @@ class TestWorkflow(unittest.TestCase):
             "data_edges": [
                 ["inputs.a", "example_macro_0.inputs.a"],
                 ["inputs.b", "example_macro_0.inputs.b"],
-                ["example_macro_0.outputs.output", "add_0.inputs.x"],
+                ["example_macro_0.outputs.f", "add_0.inputs.x"],
                 ["add_0.outputs.output", "outputs.z"],
             ],
             "label": "example_workflow",
@@ -293,6 +293,8 @@ class TestWorkflow(unittest.TestCase):
             "label": "parallel_execution",
         }
         self.assertEqual(data, ref_data)
+        data = example_workflow.run()
+        print(data)
 
 
 if __name__ == "__main__":
