@@ -228,8 +228,8 @@ def _get_missing_edges(edges):
 
 
 class _Workflow:
-    def __init__(self, func):
-        self._workflow = get_workflow_dict(func)
+    def __init__(self, workflow_dict):
+        self._workflow = workflow_dict
 
     @cached_property
     def _all_edges(self):
@@ -357,7 +357,8 @@ def find_parallel_execution_levels(G):
 
 
 def workflow(func):
-    w = _Workflow(func)
-    func._semantikon_workflow = w.get_workflow_dict()
+    workflow_dict = get_workflow_dict(func)
+    w = _Workflow(workflow_dict)
+    func._semantikon_workflow = workflow_dict
     func.run = w.run
     return func
