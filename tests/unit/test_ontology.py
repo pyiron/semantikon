@@ -158,42 +158,11 @@ def get_wrong_analysis(a=1.0, b=2.0, c=3.0):
     return analysis
 
 
-def get_macro():
-    return {
-        "inputs": {"three__c": {"value": 1, "type_hint": int}},
-        "outputs": {"four__result": {"value": 5}},
-        "nodes": {
-            "three": {
-                "inputs": {"three__c": {"value": 1, "type_hint": int}},
-                "outputs": {"three__w": {"value": 4, "type_hint": int}},
-                "nodes": {
-                    "one": {
-                        "inputs": {"a": {"value": 1, "type_hint": int}},
-                        "outputs": {"result": {"value": 2}},
-                        "function": add_one,
-                    },
-                    "two": {
-                        "inputs": {"b": {"default": 10, "value": 2}},
-                        "outputs": {"result": {"value": 4, "type_hint": int}},
-                        "function": add_two,
-                    },
-                },
-                "data_edges": [
-                    ("inputs.three__c", "one.inputs.a"),
-                    ("one.outputs.result", "two.inputs.b"),
-                    ("two.outputs.result", "outputs.three__w"),
-                ],
-                "label": "three",
-            },
-            "four": {
-                "inputs": {"a": {"value": 4, "type_hint": int}},
-                "outputs": {"result": {"value": 5}},
-                "function": add_one,
-            },
-        },
-        "data_edges": [("three.outputs.w", "four.inputs.a")],
-        "label": "my_wf",
-    }
+@workflow
+def get_macro(c=1):
+    w = add_three(c=c)
+    result = add_one(a=w)
+    return result
 
 
 @workflow
