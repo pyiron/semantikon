@@ -1,6 +1,5 @@
 import unittest
 from semantikon.workflow import (
-    number_to_letter,
     analyze_function,
     get_return_variables,
     _get_output_counts,
@@ -46,11 +45,6 @@ def parallel_execution(a=10, b=20):
 
 
 class TestWorkflow(unittest.TestCase):
-    def test_number_to_letter(self):
-        self.assertEqual(number_to_letter(0), "A")
-        self.assertEqual(number_to_letter(1), "B")
-        self.assertRaises(ValueError, number_to_letter, -1)
-
     def test_analyzer(self):
         analyzer = analyze_function(example_macro)
         all_data = [
