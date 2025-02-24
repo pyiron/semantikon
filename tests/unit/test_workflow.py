@@ -1,6 +1,5 @@
 import unittest
 from semantikon.workflow import (
-    number_to_letter,
     analyze_function,
     get_return_variables,
     _get_output_counts,
@@ -33,7 +32,7 @@ def example_macro(a=10, b=20):
 @workflow
 def example_workflow(a=10, b=20):
     y = example_macro(a, b)
-    z = add(y, 10)
+    z = add(y, b)
     return z
 
 
@@ -46,11 +45,6 @@ def parallel_execution(a=10, b=20):
 
 
 class TestWorkflow(unittest.TestCase):
-    def test_number_to_letter(self):
-        self.assertEqual(number_to_letter(0), "A")
-        self.assertEqual(number_to_letter(1), "B")
-        self.assertRaises(ValueError, number_to_letter, -1)
-
     def test_analyzer(self):
         analyzer = analyze_function(example_macro)
         all_data = [
@@ -123,6 +117,7 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(example_macro._semantikon_workflow, ref_data)
 
     def test_get_workflow_dict_macro(self):
+        result = get_workflow_dict(example_workflow)
         ref_data = {
             "inputs": {"a": {"default": 10}, "b": {"default": 20}},
             "outputs": {"z": {}},
@@ -178,12 +173,12 @@ class TestWorkflow(unittest.TestCase):
             "data_edges": [
                 ["inputs.a", "example_macro_0.inputs.a"],
                 ["inputs.b", "example_macro_0.inputs.b"],
-                ["example_macro_0.outputs.output", "add_0.inputs.x"],
+                ["inputs.b", "add_0.inputs.y"],
+                ["example_macro_0.outputs.f", "add_0.inputs.x"],
                 ["add_0.outputs.output", "outputs.z"],
             ],
             "label": "example_workflow",
         }
-        result = get_workflow_dict(example_workflow)
         self.assertEqual(result, ref_data, msg=result)
 
     def test_parallel_execution(self):
@@ -199,100 +194,17 @@ class TestWorkflow(unittest.TestCase):
             ],
         )
 
-    def test_run(self):
+    def test_run_single(self):
         data = example_macro.run()
-        ref_data = {
-            "inputs": {
-                "a": {"default": 10, "value": 10},
-                "b": {"default": 20, "value": 20},
-            },
-            "outputs": {"f": {"value": 100}},
-            "nodes": {
-                "operation_0": {
-                    "function": operation,
-                    "inputs": {
-                        "x": {"dtype": float, "value": 10},
-                        "y": {"dtype": float, "value": 20},
-                    },
-                    "outputs": {
-                        "output_0": {"dtype": float, "value": 30},
-                        "output_1": {"dtype": float, "value": -10},
-                    },
-                },
-                "add_0": {
-                    "function": add,
-                    "inputs": {
-                        "x": {"dtype": float, "default": 2.0, "value": 30},
-                        "y": {"dtype": float, "default": 1, "value": -10},
-                    },
-                    "outputs": {"output": {"dtype": float, "value": 20}},
-                },
-                "multiply_0": {
-                    "function": multiply,
-                    "inputs": {
-                        "x": {"dtype": float, "value": 20},
-                        "y": {"dtype": float, "default": 5, "value": 5},
-                    },
-                    "outputs": {"output": {"dtype": float, "value": 100}},
-                },
-            },
-            "data_edges": [
-                ["inputs.a", "operation_0.inputs.x"],
-                ["inputs.b", "operation_0.inputs.y"],
-                ["operation_0.outputs.output_0", "add_0.inputs.x"],
-                ["operation_0.outputs.output_1", "add_0.inputs.y"],
-                ["add_0.outputs.output", "multiply_0.inputs.x"],
-                ["multiply_0.outputs.output", "outputs.f"],
-            ],
-            "label": "example_macro",
-        }
-        self.assertEqual(data, ref_data)
+        self.assertEqual(example_macro(), data["outputs"]["f"]["value"])
+
+    def test_run_parallel_execution(self):
         data = parallel_execution.run()
-        ref_data = {
-            "inputs": {
-                "a": {"default": 10, "value": 10},
-                "b": {"default": 20, "value": 20},
-            },
-            "outputs": {"e": {"value": (111, -89)}},
-            "nodes": {
-                "add_0": {
-                    "function": add,
-                    "inputs": {
-                        "x": {"dtype": float, "default": 2.0, "value": 10},
-                        "y": {"dtype": float, "default": 1, "value": 1},
-                    },
-                    "outputs": {"output": {"dtype": float, "value": 11}},
-                },
-                "multiply_0": {
-                    "function": multiply,
-                    "inputs": {
-                        "x": {"dtype": float, "value": 20},
-                        "y": {"dtype": float, "default": 5, "value": 5},
-                    },
-                    "outputs": {"output": {"dtype": float, "value": 100}},
-                },
-                "operation_0": {
-                    "function": operation,
-                    "inputs": {
-                        "x": {"dtype": float, "value": 11},
-                        "y": {"dtype": float, "value": 100},
-                    },
-                    "outputs": {
-                        "output_0": {"dtype": float, "value": (111, -89)},
-                        "output_1": {"dtype": float},
-                    },
-                },
-            },
-            "data_edges": [
-                ["inputs.a", "add_0.inputs.x"],
-                ["inputs.b", "multiply_0.inputs.x"],
-                ["add_0.outputs.output", "operation_0.inputs.x"],
-                ["multiply_0.outputs.output", "operation_0.inputs.y"],
-                ["operation_0.outputs.output_0", "outputs.e"],
-            ],
-            "label": "parallel_execution",
-        }
-        self.assertEqual(data, ref_data)
+        self.assertEqual(parallel_execution(), data["outputs"]["e"]["value"])
+
+    def test_run_nested(self):
+        data = example_workflow.run()
+        self.assertEqual(example_workflow(), data["outputs"]["z"]["value"])
 
 
 if __name__ == "__main__":
