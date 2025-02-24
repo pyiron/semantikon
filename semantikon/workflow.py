@@ -105,13 +105,6 @@ def analyze_function(func):
     return analyzer
 
 
-def number_to_letter(n):
-    if 0 <= n <= 25:
-        return chr(n + ord("A"))
-    else:
-        raise ValueError("Number out of range")
-
-
 def _get_workflow_outputs(func):
     var_output = get_return_variables(func)
     data_output = parse_output_args(func)
@@ -159,7 +152,7 @@ def _remove_index(s):
     return "_".join(s.split("_")[:-1])
 
 
-def get_sorted_edges(graph):
+def _get_sorted_edges(graph):
     topo_order = list(topological_sort(graph))
     node_order = {node: i for i, node in enumerate(topo_order)}
     return sorted(graph.edges.data(), key=lambda edge: node_order[edge[0]])
@@ -173,7 +166,7 @@ def _get_data_edges(analyzer, func):
     output_labels = list(_get_workflow_outputs(func).keys())
     data_edges = []
     output_dict = {}
-    ordered_edges = get_sorted_edges(analyzer.graph)
+    ordered_edges = _get_sorted_edges(analyzer.graph)
     for edge in ordered_edges:
         if edge[2]["type"] == "output":
             if hasattr(analyzer.function_defs[edge[0]], "_semantikon_workflow"):
