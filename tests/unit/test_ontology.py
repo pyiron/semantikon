@@ -98,10 +98,10 @@ def add_two(b=10) -> int:
     return result
 
 
-def add_three(macro, c: int) -> int:
-    macro.one = add_one(a=c)
-    macro.two = add_two(b=macro.one)
-    w = macro.two
+@workflow
+def add_three(c: int) -> int:
+    one = add_one(a=c)
+    w = add_two(b=one)
     return w
 
 
