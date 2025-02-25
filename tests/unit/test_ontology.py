@@ -229,11 +229,14 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(len(validate_values(graph)), 1)
 
     def test_macro(self):
-        graph = get_knowledge_graph(get_macro._semantikon_workflow)
+        graph = get_knowledge_graph(get_macro.run())
         subj = list(
-            graph.subjects(PNS.hasValue, URIRef("my_wf.three.two.outputs.result.value"))
+            graph.subjects(
+                PNS.hasValue,
+                URIRef("get_macro.add_three_0.add_two_0.outputs.output.value")
+            )
         )
-        self.assertEqual(len(subj), 3)
+        self.assertEqual(len(subj), 3, msg=f"{subj} not found in {graph.serialize()}")
         prefix = "my_wf"
         for ii, tag in enumerate(
             ["three.two.outputs.result", "three.outputs.w", "four.inputs.a"]
