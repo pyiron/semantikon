@@ -105,13 +105,6 @@ def analyze_function(func):
     return analyzer
 
 
-def number_to_letter(n):
-    if 0 <= n <= 25:
-        return chr(n + ord("A"))
-    else:
-        raise ValueError("Number out of range")
-
-
 def _get_workflow_outputs(func):
     var_output = get_return_variables(func)
     data_output = parse_output_args(func)
@@ -159,7 +152,7 @@ def _remove_index(s):
     return "_".join(s.split("_")[:-1])
 
 
-def get_sorted_edges(graph):
+def _get_sorted_edges(graph):
     topo_order = list(topological_sort(graph))
     node_order = {node: i for i, node in enumerate(topo_order)}
     return sorted(graph.edges.data(), key=lambda edge: node_order[edge[0]])
@@ -173,10 +166,20 @@ def _get_data_edges(analyzer, func):
     output_labels = list(_get_workflow_outputs(func).keys())
     data_edges = []
     output_dict = {}
-    ordered_edges = get_sorted_edges(analyzer.graph)
+    ordered_edges = _get_sorted_edges(analyzer.graph)
     for edge in ordered_edges:
         if edge[2]["type"] == "output":
-            if "output_index" in edge[2]:
+            if hasattr(analyzer.function_defs[edge[0]], "_semantikon_workflow"):
+                keys = list(
+                    analyzer.function_defs[edge[0]]
+                    ._semantikon_workflow["outputs"]
+                    .keys()
+                )
+                output_index = 0
+                if "output_index" in edge[2]:
+                    output_index = edge[2]["output_index"]
+                tag = f"{edge[0]}.outputs.{keys[output_index]}"
+            elif "output_index" in edge[2]:
                 tag = f"{edge[0]}.outputs.output_{edge[2]['output_index']}"
             else:
                 tag = f"{edge[0]}.outputs.output"
@@ -228,8 +231,8 @@ def _get_missing_edges(edges):
 
 
 class _Workflow:
-    def __init__(self, func):
-        self._workflow = get_workflow_dict(func)
+    def __init__(self, workflow_dict):
+        self._workflow = workflow_dict
 
     @cached_property
     def _all_edges(self):
@@ -246,9 +249,6 @@ class _Workflow:
     @cached_property
     def _execution_list(self):
         return find_parallel_execution_levels(self._graph)
-
-    def get_workflow_dict(self):
-        return self._workflow
 
     def _sanitize_input(self, *args, **kwargs):
         keys = list(self._workflow["inputs"].keys())
@@ -287,7 +287,10 @@ class _Workflow:
 
     def _set_value_from_node(self, path, value):
         node, io, var = path.split(".")
-        self._workflow["nodes"][node][io][var]["value"] = value
+        try:
+            self._workflow["nodes"][node][io][var]["value"] = value
+        except KeyError:
+            raise KeyError(f"{path} not found in {node}")
 
     def _execute_node(self, function):
         node = self._workflow["nodes"][function]
@@ -299,7 +302,15 @@ class _Workflow:
                 input_data[key] = content["value"]
         except KeyError:
             raise KeyError(f"value not defined for {function}")
-        outputs = node["function"](**input_data)
+        if "function" not in node:
+            workflow = _Workflow(node)
+            outputs = [
+                d["value"] for d in workflow.run(**input_data)["outputs"].values()
+            ]
+            if len(outputs) == 1:
+                outputs = outputs[0]
+        else:
+            outputs = node["function"](**input_data)
         return outputs
 
     def _set_value(self, tag, value):
@@ -357,7 +368,8 @@ def find_parallel_execution_levels(G):
 
 
 def workflow(func):
-    w = _Workflow(func)
-    func._semantikon_workflow = w.get_workflow_dict()
+    workflow_dict = get_workflow_dict(func)
+    w = _Workflow(workflow_dict)
+    func._semantikon_workflow = workflow_dict
     func.run = w.run
     return func
