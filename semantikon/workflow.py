@@ -173,7 +173,7 @@ def _get_data_edges(analyzer, func):
                 keys = list(
                     analyzer.function_defs[edge[0]]._semantikon_workflow["outputs"].keys()
                 )
-                output_index = 0 
+                output_index = 0
                 if "output_index" in edge[2]:
                     output_index = edge[2]["output_index"]
                 tag = f"{edge[0]}.outputs.{keys[output_index]}"
