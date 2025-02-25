@@ -42,6 +42,7 @@ def get_speed(distance=10.0, time=2.0):
     speed = calculate_speed(distance, time)
     return speed
 
+
 get_speed.run()
 
 
@@ -67,7 +68,7 @@ def correct_analysis(
             (OWL.onProperty, EX.HasOperation),
             (OWL.someValuesFrom, EX.Addition),
         ),
-    )
+    ),
 ) -> float:
     return a
 
@@ -79,7 +80,7 @@ def wrong_analysis(
             (OWL.onProperty, EX.HasOperation),
             (OWL.someValuesFrom, EX.Division),
         ),
-    )
+    ),
 ) -> float:
     return a
 
@@ -137,7 +138,7 @@ def get_vacancy_formation_energy(
             ((OWL.onProperty, EX.hasDefect), (OWL.someValuesFrom, EX.vacancy)),
             ((OWL.onProperty, EX.hasState), (OWL.someValuesFrom, EX.relaxed)),
         ),
-    )
+    ),
 ):
     return len(structure)
 
@@ -237,7 +238,7 @@ class TestOntology(unittest.TestCase):
         ex_triple = (
             None,
             EX.somehowRelatedTo,
-            URIRef("get_speed.calculate_speed_0.inputs.time")
+            URIRef("get_speed.calculate_speed_0.inputs.time"),
         )
         self.assertTrue(
             ex_triple in graph,
