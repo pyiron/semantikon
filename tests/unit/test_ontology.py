@@ -237,20 +237,26 @@ class TestOntology(unittest.TestCase):
             )
         )
         self.assertEqual(len(subj), 3, msg=f"{subj} not found in {graph.serialize()}")
-        prefix = "my_wf"
+        prefix = "get_macro"
         for ii, tag in enumerate(
-            ["three.two.outputs.result", "three.outputs.w", "four.inputs.a"]
+            [
+                "add_three_0.add_two_0.outputs.output",
+                "add_three_0.outputs.w",
+                "add_one_0.inputs.a"
+            ]
         ):
             with self.subTest(i=ii):
                 self.assertIn(
                     URIRef(prefix + "." + tag), subj, msg=f"{tag} not in {subj}"
                 )
         same_as = [(str(g[0]), str(g[1])) for g in graph.subject_objects(OWL.sameAs)]
+        prefix = "get_macro.add_three_0"
         sub_obj = [
-            ("my_wf.three.one.inputs.a", "my_wf.three.inputs.c"),
-            ("my_wf.three.outputs.w", "my_wf.three.two.outputs.result"),
+            ("add_one_0.inputs.a", "inputs.c"),
+            ("outputs.w", "add_two_0.outputs.output"),
         ]
-        self.assertEqual(len(same_as), 2)
+        sub_obj = [(prefix + "." + s, prefix + "." + o) for s, o in sub_obj]
+        self.assertEqual(len(same_as), 4)
         for ii, pair in enumerate(sub_obj):
             with self.subTest(i=ii):
                 self.assertIn(pair, same_as)

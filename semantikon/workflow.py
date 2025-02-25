@@ -138,7 +138,7 @@ def _get_nodes(data, output_counts):
     result = {}
     for node, func in data.items():
         if hasattr(func, "_semantikon_workflow"):
-            result[node] = func._semantikon_workflow
+            result[node] = func._semantikon_workflow.copy()
             result[node]["label"] = node
         else:
             result[node] = {
