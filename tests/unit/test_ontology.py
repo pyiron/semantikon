@@ -99,10 +99,10 @@ def add_two(b=10) -> int:
     return result
 
 
-def add_three(macro, c: int) -> int:
-    macro.one = add_one(a=c)
-    macro.two = add_two(b=macro.one)
-    w = macro.two
+@workflow
+def add_three(c: int) -> int:
+    one = add_one(a=c)
+    w = add_two(b=one)
     return w
 
 
@@ -159,42 +159,11 @@ def get_wrong_analysis(a=1.0, b=2.0, c=3.0):
     return analysis
 
 
-def get_macro():
-    return {
-        "inputs": {"three__c": {"value": 1, "type_hint": int}},
-        "outputs": {"four__result": {"value": 5}},
-        "nodes": {
-            "three": {
-                "inputs": {"three__c": {"value": 1, "type_hint": int}},
-                "outputs": {"three__w": {"value": 4, "type_hint": int}},
-                "nodes": {
-                    "one": {
-                        "inputs": {"a": {"value": 1, "type_hint": int}},
-                        "outputs": {"result": {"value": 2}},
-                        "function": add_one,
-                    },
-                    "two": {
-                        "inputs": {"b": {"default": 10, "value": 2}},
-                        "outputs": {"result": {"value": 4, "type_hint": int}},
-                        "function": add_two,
-                    },
-                },
-                "data_edges": [
-                    ("inputs.three__c", "one.inputs.a"),
-                    ("one.outputs.result", "two.inputs.b"),
-                    ("two.outputs.result", "outputs.three__w"),
-                ],
-                "label": "three",
-            },
-            "four": {
-                "inputs": {"a": {"value": 4, "type_hint": int}},
-                "outputs": {"result": {"value": 5}},
-                "function": add_one,
-            },
-        },
-        "data_edges": [("three.outputs.w", "four.inputs.a")],
-        "label": "my_wf",
-    }
+@workflow
+def get_macro(c=1):
+    w = add_three(c=c)
+    result = add_one(a=w)
+    return result
 
 
 @workflow
@@ -260,25 +229,33 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(len(validate_values(graph)), 1)
 
     def test_macro(self):
-        graph = get_knowledge_graph(get_macro())
+        graph = get_knowledge_graph(get_macro.run())
         subj = list(
-            graph.subjects(PNS.hasValue, URIRef("my_wf.three.two.outputs.result.value"))
+            graph.subjects(
+                PNS.hasValue,
+                URIRef("get_macro.add_three_0.add_two_0.outputs.output.value")
+            )
         )
-        self.assertEqual(len(subj), 3)
-        prefix = "my_wf"
+        self.assertEqual(len(subj), 3, msg=f"{subj} not found in {graph.serialize()}")
         for ii, tag in enumerate(
-            ["three.two.outputs.result", "three.outputs.w", "four.inputs.a"]
+            [
+                "add_three_0.add_two_0.outputs.output",
+                "add_three_0.outputs.w",
+                "add_one_0.inputs.a"
+            ]
         ):
             with self.subTest(i=ii):
                 self.assertIn(
-                    URIRef(prefix + "." + tag), subj, msg=f"{tag} not in {subj}"
+                    URIRef("get_macro." + tag), subj, msg=f"{tag} not in {subj}"
                 )
         same_as = [(str(g[0]), str(g[1])) for g in graph.subject_objects(OWL.sameAs)]
+        prefix = "get_macro.add_three_0"
         sub_obj = [
-            ("my_wf.three.one.inputs.a", "my_wf.three.inputs.c"),
-            ("my_wf.three.outputs.w", "my_wf.three.two.outputs.result"),
+            ("add_one_0.inputs.a", "inputs.c"),
+            ("outputs.w", "add_two_0.outputs.output"),
         ]
-        self.assertEqual(len(same_as), 2)
+        sub_obj = [(prefix + "." + s, prefix + "." + o) for s, o in sub_obj]
+        self.assertEqual(len(same_as), 4)
         for ii, pair in enumerate(sub_obj):
             with self.subTest(i=ii):
                 self.assertIn(pair, same_as)

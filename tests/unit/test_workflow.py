@@ -159,7 +159,7 @@ class TestWorkflow(unittest.TestCase):
                         ["add_0.outputs.output", "multiply_0.inputs.x"],
                         ["multiply_0.outputs.output", "outputs.f"],
                     ],
-                    "label": "example_macro",
+                    "label": "example_macro_0",
                 },
                 "add_0": {
                     "function": add,
