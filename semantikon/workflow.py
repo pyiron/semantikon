@@ -171,7 +171,9 @@ def _get_data_edges(analyzer, func):
         if edge[2]["type"] == "output":
             if hasattr(analyzer.function_defs[edge[0]], "_semantikon_workflow"):
                 keys = list(
-                    analyzer.function_defs[edge[0]]._semantikon_workflow["outputs"].keys()
+                    analyzer.function_defs[edge[0]]
+                    ._semantikon_workflow["outputs"]
+                    .keys()
                 )
                 output_index = 0
                 if "output_index" in edge[2]:
@@ -302,7 +304,9 @@ class _Workflow:
             raise KeyError(f"value not defined for {function}")
         if "function" not in node:
             workflow = _Workflow(node)
-            outputs = [d["value"] for d in workflow.run(**input_data)["outputs"].values()]
+            outputs = [
+                d["value"] for d in workflow.run(**input_data)["outputs"].values()
+            ]
             if len(outputs) == 1:
                 outputs = outputs[0]
         else:
