@@ -229,7 +229,7 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(len(validate_values(graph)), 1)
 
     def test_macro(self):
-        graph = get_knowledge_graph(get_macro())
+        graph = get_knowledge_graph(get_macro._semantikon_workflow)
         subj = list(
             graph.subjects(PNS.hasValue, URIRef("my_wf.three.two.outputs.result.value"))
         )
