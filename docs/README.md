@@ -21,8 +21,6 @@ In the realm of the workflow management systems, there are well defined inputs a
 
 `semantikon`'s type hinting does not require to follow any particular standard. It only needs to be compatible with the interpreter applied.
 
-There are two possible ways to store the data for `semantikon`. The standard way is to do it by converting all arguments except for the data type as a string, which is the default behaviour. The other way is to store the data as a list, which is turned on by setting `use_list=True`. In most cases, the default behaviour is the safest option; in some cases, especially when the data cannot be represented as a string, you might want to switch on `use_list`, but `semantikon` is still under intensive development, and therefore there is no guarantee that you can retrieve the data across different versions correctly.
-
 You can also type-hint the inputs and outputs of a function using a class, i.e.:
 
 
@@ -68,10 +66,6 @@ Example:
 {'units': 'meter/second', 'label': 'speed', 'dtype': <class 'int'>}
 
 ```
-
-Here the output is the same whether `use_list` is set to `True` or `False`. When `use_list` is `False`, you can use additionally any tag that you want to store. When `use_list` is `True`, you can store only the data type, `units`, `label`, `uri`, `shape` and `dtype`.
-
-Future announcement: There will be no distrinction between `use_list=True` and `use_list=False` when the official support of python 3.10 is dropped (i.e. around autumn 2026).
 
 #### Unit conversion with `pint`
 
