@@ -115,7 +115,7 @@ def _get_converter(func):
 
 
 def _get_ret_units(output, ureg, names):
-    if output is None:
+    if output == {}:
         return None
     ret = _to_units_container(output.get("units", None), ureg)
     names = {key: 1.0 * value.units for key, value in names.items()}
@@ -128,6 +128,16 @@ def _get_output_units(output, ureg, names):
         return tuple([_get_ret_units(oo, ureg, names) for oo in output])
     else:
         return _get_ret_units(output, ureg, names)
+
+
+def _is_dimensionless(output):
+    if output is None:
+        return True
+    if isinstance(output, tuple):
+        return all([_is_dimensionless(oo) for oo in output])
+    if output.to_base_units().magnitude == 1.0 and output.dimensionless:
+        return True
+    return False
 
 
 def units(func):
@@ -155,7 +165,7 @@ def units(func):
             output_units = _get_output_units(parse_output_args(func), ureg, names)
         except AttributeError:
             output_units = None
-        if output_units is None:
+        if _is_dimensionless(output_units):
             return func(*args, **kwargs)
         elif isinstance(output_units, tuple):
             return tuple(
