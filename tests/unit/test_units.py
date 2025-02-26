@@ -60,6 +60,13 @@ def get_speed_relative(
     return distance / time
 
 
+@units
+def return_dict(
+    distance: u(float, units="meter"), time: u(float, units="second")
+) -> dict:
+    return {"distance": distance, "time": time}
+
+
 class TestUnits(unittest.TestCase):
     def test_relative(self):
         self.assertEqual(get_speed_relative(1, 1), 1)
@@ -169,6 +176,11 @@ class TestUnits(unittest.TestCase):
             get_speed_use_list(1.0 * ureg.millimeter, 1.0 * ureg.second),
             0.001 * ureg.meter / ureg.second,
         )
+
+    def test_return_dict(self):
+        self.assertEqual(return_dict(1, 1), {"distance": 1, "time": 1})
+        ureg = UnitRegistry()
+        self.assertIsInstance(return_dict(1 * ureg.meter, 1 * ureg.second), dict)
 
 
 if __name__ == "__main__":
