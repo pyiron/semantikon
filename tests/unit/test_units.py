@@ -59,6 +59,7 @@ def get_speed_relative(
 ) -> u(float, units="=A/B"):
     return distance / time
 
+
 @units
 def return_dict(
     distance: u(float, units="meter"), time: u(float, units="second")
