@@ -39,7 +39,7 @@ def _translate_has_value(
                 triples.extend(
                     _translate_has_value(
                         label=label,
-                        tag=dot(tag, k),
+                        tag=_dot(tag, k),
                         value=getattr(value, k, None),
                         dtype=v,
                         parent=tag_uri,
@@ -51,7 +51,7 @@ def _translate_has_value(
             triples.extend(
                 _translate_has_value(
                     label=label,
-                    tag=dot(tag, k),
+                    tag=_dot(tag, k),
                     value=getattr(value, k, None),
                     dtype=metadata["dtype"],
                     units=metadata.get("units", None),
@@ -165,7 +165,7 @@ def _parse_triple(
         obj = label
     if obj.startswith("inputs.") or obj.startswith("outputs."):
         assert ns is not None, "Namespace must not be None"
-        obj = dot(ns, obj)
+        obj = _dot(ns, obj)
     return subj, pred, obj
 
 
@@ -301,7 +301,7 @@ def _parse_channel(
 def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -> list:
     triples = []
     for n_label, node in nodes.items():
-        node_label = dot(prefix, n_label)
+        node_label = _dot(prefix, n_label)
         triples.extend(_parse_node(node, node_label, prefix, ontology))
         if "nodes" in node:
             triples.extend(
@@ -364,14 +364,14 @@ def _get_edge_dict(edges: list) -> dict:
     return d
 
 
-def dot(*args):
+def _dot(*args):
     return ".".join(args)
 
 
 def _convert_edge_triples(inp: str, out: str, prefix: str, ontology=PNS) -> tuple:
     if inp.startswith("outputs.") or out.startswith("inputs."):
-        return (dot(prefix, inp), OWL.sameAs, dot(prefix, out))
-    return (dot(prefix, inp), ontology.inheritsPropertiesFrom, dot(prefix, out))
+        return (_dot(prefix, inp), OWL.sameAs, _dot(prefix, out))
+    return (_dot(prefix, inp), ontology.inheritsPropertiesFrom, _dot(prefix, out))
 
 
 def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
@@ -384,12 +384,15 @@ def _parse_workflow(
     wf_dict: dict, full_edge_dict: dict, prefix=None, ontology=PNS
 ) -> list:
     triples = []
-    edge_dict = _get_edge_dict(wf_dict["data_edges"])
     workflow_label = wf_dict["label"]
     if prefix is not None:
-        workflow_label = dot(prefix, workflow_label)
+        workflow_label = _dot(prefix, workflow_label)
     triples.append((workflow_label, RDFS.label, Literal(workflow_label)))
-    triples.extend(_edges_to_triples(edge_dict, workflow_label, ontology))
+    triples.extend(
+        _edges_to_triples(
+            _get_edge_dict(wf_dict["data_edges"]), workflow_label, ontology
+        )
+    )
     triples.extend(
         _nodes_to_triples(wf_dict["nodes"], full_edge_dict, workflow_label, ontology)
     )
@@ -399,7 +402,7 @@ def _parse_workflow(
 def _parse_cancel(nodes: dict, label: str) -> list:
     triples = []
     for n_label, node in nodes.items():
-        node_label = dot(label, n_label)
+        node_label = _dot(label, n_label)
         if "nodes" in node:
             triples.extend(_parse_cancel(node["nodes"], node_label))
         for io_ in ["inputs", "outputs"]:
