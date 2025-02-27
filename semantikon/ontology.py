@@ -305,7 +305,7 @@ def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -
         triples.extend(_parse_node(node, node_label, prefix, ontology))
         if "nodes" in node:
             triples.extend(
-                _parse_workflow(node, edge_dict, prefix=prefix, ontology=ontology)
+                _parse_workflow(node, prefix=prefix, ontology=ontology)
             )
         for io_ in ["inputs", "outputs"]:
             for key, channel_dict in node[io_].items():
@@ -381,7 +381,7 @@ def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
 
 
 def _parse_workflow(
-    wf_dict: dict, full_edge_dict: dict, prefix=None, ontology=PNS
+    wf_dict: dict, prefix=None, ontology=PNS
 ) -> list:
     triples = []
     workflow_label = wf_dict["label"]
@@ -393,6 +393,7 @@ def _parse_workflow(
             _get_edge_dict(wf_dict["data_edges"]), workflow_label, ontology
         )
     )
+    full_edge_dict = _get_full_edge_dict(wf_dict)
     triples.extend(
         _nodes_to_triples(wf_dict["nodes"], full_edge_dict, workflow_label, ontology)
     )
@@ -440,8 +441,7 @@ def get_knowledge_graph(
     """
     if graph is None:
         graph = Graph()
-    full_edge_dict = _get_full_edge_dict(wf_dict)
-    triples = _parse_workflow(wf_dict, full_edge_dict, ontology=ontology)
+    triples = _parse_workflow(wf_dict, ontology=ontology)
     triples_to_cancel = _parse_cancel(wf_dict["nodes"], wf_dict["label"])
     for triple in triples:
         if any(t is None for t in triple):
