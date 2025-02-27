@@ -395,7 +395,9 @@ def _parse_workflow(
     )
     full_edge_dict = _get_full_edge_dict(wf_dict)
     triples.extend(
-        _nodes_to_triples(wf_dict["nodes"], full_edge_dict, workflow_label, ontology)
+        _nodes_to_triples(
+            wf_dict["nodes"], full_edge_dict, workflow_label, ontology
+        )
     )
     return triples
 
