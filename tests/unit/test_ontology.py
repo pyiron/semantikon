@@ -233,7 +233,7 @@ class TestOntology(unittest.TestCase):
         subj = list(
             graph.subjects(
                 PNS.hasValue,
-                URIRef("get_macro.add_three_0.add_two_0.outputs.output.value")
+                URIRef("get_macro.add_three_0.add_two_0.outputs.output.value"),
             )
         )
         self.assertEqual(len(subj), 3, msg=f"{subj} not found in {graph.serialize()}")
@@ -241,7 +241,7 @@ class TestOntology(unittest.TestCase):
             [
                 "add_three_0.add_two_0.outputs.output",
                 "add_three_0.outputs.w",
-                "add_one_0.inputs.a"
+                "add_one_0.inputs.a",
             ]
         ):
             with self.subTest(i=ii):
