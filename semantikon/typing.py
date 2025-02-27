@@ -28,23 +28,22 @@ def _type_metadata(
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
 ):
-    parent_result = {}
     if _is_annotated(type_):
-        parent_result = parse_metadata(type_)
+        kwargs.update(parse_metadata(type_))
         type_ = type_.__origin__
-    result = {
-        "units": units,
-        "label": label,
-        "triples": triples,
-        "uri": uri,
-        "shape": shape,
-        "restrictions": restrictions,
-    }
-    for key, value in parent_result.items():
-        if result[key] is None:
-            result[key] = value
-    result.update(kwargs)
-    items = [x for k, v in result.items() for x in [k, v]]
+    kwargs.update(
+        _kwargs_to_dict(
+            units=units,
+            label=label,
+            triples=triples,
+            uri=uri,
+            shape=shape,
+            restrictions=restrictions,
+        )
+    )
+    if len(kwargs) == 0:
+        raise ValueError("No metadata provided.")
+    items = [x for k, v in kwargs.items() for x in [k, v]]
     return Annotated[type_, items]
 
 
@@ -67,6 +66,10 @@ def _function_metadata(
     return decorator
 
 
+def _kwargs_to_dict(**kwargs):
+    return {k: v for k, v in kwargs.items() if v is not None}
+
+
 def u(
     type_or_func=None,
     /,
@@ -83,14 +86,14 @@ def u(
     )
     is_decorator = type_or_func is None
     kwargs.update(
-        {
-            "units": units,
-            "label": label,
-            "triples": triples,
-            "uri": uri,
-            "shape": shape,
-            "restrictions": restrictions,
-        }
+        _kwargs_to_dict(
+            units=units,
+            label=label,
+            triples=triples,
+            uri=uri,
+            shape=shape,
+            restrictions=restrictions,
+        )
     )
     if is_type_hint:
         return _type_metadata(type_or_func, **kwargs)

@@ -56,13 +56,9 @@ class TestDataclass(unittest.TestCase):
         self.assertEqual(
             metadata,
             {
+                "associate_to_sample": True,
                 "units": "eV",
                 "label": "TotalEnergy",
-                "associate_to_sample": True,
-                "triples": None,
-                "shape": None,
-                "uri": None,
-                "restrictions": None,
             },
         )
 
