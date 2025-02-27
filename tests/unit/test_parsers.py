@@ -99,6 +99,11 @@ class TestParser(unittest.TestCase):
         self.assertEqual(result["units"], "millimeter")
         self.assertEqual(result["label"], "distance")
 
+    def test_invalid_u(self):
+        with self.assertRaises(TypeError) as context:
+            u(float)
+        self.assertEqual(str(context.exception), "No metadata provided.")
+
 
 if __name__ == "__main__":
     unittest.main()

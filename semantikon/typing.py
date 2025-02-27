@@ -42,7 +42,7 @@ def _type_metadata(
         )
     )
     if len(kwargs) == 0:
-        raise ValueError("No metadata provided.")
+        raise TypeError("No metadata provided.")
     items = [x for k, v in kwargs.items() for x in [k, v]]
     return Annotated[type_, items]
 
