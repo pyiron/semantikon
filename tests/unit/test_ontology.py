@@ -1,4 +1,5 @@
 import unittest
+from textwrap import dedent
 from rdflib import Graph, OWL, Namespace, URIRef, Literal, RDF, RDFS
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from semantikon.typing import u
@@ -259,6 +260,90 @@ class TestOntology(unittest.TestCase):
         for ii, pair in enumerate(sub_obj):
             with self.subTest(i=ii):
                 self.assertIn(pair, same_as)
+
+    def test_macro_full_comparison(self):
+        txt = dedent("""\
+        @prefix ns1: <http://pyiron.org/ontology/> .
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix prov: <http://www.w3.org/ns/prov#> .
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+        @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+        <get_macro.add_one_0.inputs.a> a prov:Entity ;
+            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.output.value> ;
+            ns1:inheritsPropertiesFrom <get_macro.add_three_0.outputs.w> ;
+            ns1:inputOf <get_macro.add_one_0> ;
+            ns1:outputOf <get_macro.add_three_0> .
+
+        <get_macro.add_three_0.add_one_0.inputs.a> a prov:Entity ;
+            ns1:hasValue <get_macro.inputs.c.value> ;
+            ns1:inputOf <get_macro.add_three_0.add_one_0> ;
+            owl:sameAs <get_macro.add_three_0.inputs.c> .
+
+        <get_macro.add_three_0.add_two_0.inputs.b> a prov:Entity ;
+            ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.output.value> ;
+            ns1:inheritsPropertiesFrom <get_macro.add_three_0.add_one_0.outputs.output> ;
+            ns1:inputOf <get_macro.add_three_0.add_two_0> ;
+            ns1:outputOf <get_macro.add_three_0.add_one_0> .
+
+        <get_macro.outputs.result> a prov:Entity ;
+            ns1:hasValue <get_macro.add_one_0.outputs.output.value> ;
+            ns1:outputOf <get_macro> ;
+            owl:sameAs <get_macro.add_one_0.outputs.output> .
+
+        <get_macro.add_one_0.outputs.output> a prov:Entity ;
+            ns1:hasValue <get_macro.add_one_0.outputs.output.value> ;
+            ns1:outputOf <get_macro.add_one_0> .
+
+        <get_macro.add_three_0.add_one_0.outputs.output> a prov:Entity ;
+            ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.output.value> ;
+            ns1:outputOf <get_macro.add_three_0.add_one_0> .
+
+        <get_macro.add_three_0.add_two_0.outputs.output> a prov:Entity ;
+            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.output.value> ;
+            ns1:outputOf <get_macro.add_three_0.add_two_0> .
+
+        <get_macro.add_three_0.inputs.c> a prov:Entity ;
+            ns1:hasValue <get_macro.inputs.c.value> ;
+            ns1:inputOf <get_macro.add_three_0> ;
+            owl:sameAs <get_macro.inputs.c> .
+
+        <get_macro.add_three_0.outputs.w> a prov:Entity ;
+            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.output.value> ;
+            ns1:outputOf <get_macro.add_three_0> ;
+            owl:sameAs <get_macro.add_three_0.add_two_0.outputs.output> .
+
+        <get_macro.inputs.c> a prov:Entity ;
+            ns1:hasValue <get_macro.inputs.c.value> ;
+            ns1:inputOf <get_macro> .
+
+        <get_macro> a prov:Activity ;
+            ns1:hasNode <get_macro.add_one_0>,
+                <get_macro.add_three_0> .
+
+        <get_macro.add_one_0.outputs.output.value> rdf:value 5 .
+
+        <get_macro.add_three_0.add_one_0.outputs.output.value> rdf:value 2 .
+
+        <get_macro.add_one_0> a prov:Activity ;
+            ns1:hasSourceFunction <add_one> .
+
+        <get_macro.add_three_0.add_two_0> a prov:Activity ;
+            ns1:hasSourceFunction <add_two> .
+
+        <get_macro.add_three_0.add_two_0.outputs.output.value> rdf:value 4 .
+
+        <get_macro.inputs.c.value> rdf:value 1 .
+
+        <get_macro.add_three_0> a prov:Activity ;
+            ns1:hasNode <get_macro.add_three_0.add_one_0>,
+                <get_macro.add_three_0.add_two_0> .
+
+        <get_macro.add_three_0.add_one_0> a prov:Activity ;
+            ns1:hasSourceFunction <add_one> .\n\n""")
+        self.maxDiff = None
+        graph = get_knowledge_graph(get_macro.run())
+        self.assertEqual(graph.serialize(format="turtle"), txt)
 
     def test_wrong_order(self):
         graph = get_knowledge_graph(get_wrong_order._semantikon_workflow)
