@@ -288,35 +288,6 @@ def _parse_channel(
     return triples
 
 
-def _node_to_triples(n_label: str, node: dict, edge_dict: dict, prefix: str, ontology=PNS) -> list:
-    node_label = _dot(prefix, n_label)
-    triples = [(node_label, RDF.type, PROV.Activity)]
-    triples.append((prefix, ontology.hasNode, node_label))
-    if "function" in node:
-        triples.extend(_function_to_triples(node, node_label, ontology))
-    if "nodes" in node:
-        triples.extend(
-            _parse_workflow(node, prefix=prefix, ontology=ontology)
-        )
-    for io_ in ["inputs", "outputs"]:
-        for key, channel_dict in node[io_].items():
-            if "type_hint" in channel_dict:
-                channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
-            channel_label = _remove_us(node_label, io_, key)
-            triples.extend(
-                _parse_channel(
-                    channel_dict, channel_label, edge_dict, prefix, ontology
-                )
-            )
-            if io_ == "inputs":
-                triples.append((channel_label, ontology.inputOf, node_label))
-            elif io_ == "outputs":
-                triples.append((channel_label, ontology.outputOf, node_label))
-            for t in _get_triples_from_restrictions(channel_dict):
-                triples.append(_parse_triple(t, ns=node_label, label=channel_label))
-    return triples
-
-
 def _remove_us(*arg) -> str:
     s = ".".join(arg)
     return ".".join(t.split("__")[-1] for t in s.split("."))
@@ -372,27 +343,42 @@ def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
 
 
 def _parse_workflow(
-    wf_dict: dict, prefix=None, ontology=PNS
+    wf_dict: dict, label=None, full_edge_dict=None, ontology=PNS
 ) -> list:
-    triples = []
-    workflow_label = wf_dict["label"]
-    if prefix is not None:
-        workflow_label = _dot(prefix, workflow_label)
-    triples.extend(
-        _edges_to_triples(
-            _get_edge_dict(wf_dict["data_edges"]), workflow_label, ontology
-        )
-    )
-    full_edge_dict = _get_full_edge_dict(wf_dict)
-    triples.extend(
-        [
-            n
-            for n_label, node in wf_dict["nodes"].items()
-            for n in _node_to_triples(
-                n_label, node, full_edge_dict, workflow_label, ontology
+    if full_edge_dict is None:
+        full_edge_dict = _get_full_edge_dict(wf_dict)
+    if label is None:
+        label = wf_dict["label"]
+    triples = [(label, RDF.type, PROV.Activity)]
+    for io_ in ["inputs", "outputs"]:
+        for key, channel_dict in wf_dict[io_].items():
+            if "type_hint" in channel_dict:
+                channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
+            channel_label = _remove_us(label, io_, key)
+            triples.extend(
+                _parse_channel(
+                    channel_dict, channel_label, full_edge_dict, label, ontology
+                )
             )
-        ]
-    )
+            if io_ == "inputs":
+                triples.append((channel_label, ontology.inputOf, label))
+            elif io_ == "outputs":
+                triples.append((channel_label, ontology.outputOf, label))
+            for t in _get_triples_from_restrictions(channel_dict):
+                triples.append(_parse_triple(t, ns=label, label=channel_label))
+    if "nodes" in wf_dict and "data_edges" in wf_dict:
+        triples.extend(
+            _edges_to_triples(_get_edge_dict(wf_dict["data_edges"]), label, ontology)
+        )
+        for n_label, node in wf_dict["nodes"].items():
+            node_label = _dot(label, n_label)
+            triples.append((label, ontology.hasNode, node_label))
+            for n in _parse_workflow(node, node_label, full_edge_dict, ontology):
+                triples.append(n)
+    elif "function" in wf_dict:
+        triples.extend(_function_to_triples(wf_dict, label, ontology))
+    else:
+        raise ValueError("Invalid workflow dictionary")
     return triples
 
 
