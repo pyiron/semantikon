@@ -318,14 +318,6 @@ def _node_to_triples(n_label: str, node: dict, edge_dict: dict, prefix: str, ont
     return triples
 
 
-def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -> list:
-    return [
-        n
-        for n_label, node in nodes.items()
-        for n in _node_to_triples(n_label, node, edge_dict, prefix, ontology)
-    ]
-
-
 def _remove_us(*arg) -> str:
     s = ".".join(arg)
     return ".".join(t.split("__")[-1] for t in s.split("."))
@@ -365,7 +357,7 @@ def _get_edge_dict(edges: list) -> dict:
 
 
 def _dot(*args):
-    return ".".join(args)
+    return ".".join([a for a in args if a is not None])
 
 
 def _convert_edge_triples(inp: str, out: str, prefix: str, ontology=PNS) -> tuple:
@@ -395,9 +387,13 @@ def _parse_workflow(
     )
     full_edge_dict = _get_full_edge_dict(wf_dict)
     triples.extend(
-        _nodes_to_triples(
-            wf_dict["nodes"], full_edge_dict, workflow_label, ontology
-        )
+        [
+            n
+            for n_label, node in wf_dict["nodes"].items()
+            for n in _node_to_triples(
+                n_label, node, full_edge_dict, workflow_label, ontology
+            )
+        ]
     )
     return triples
 
