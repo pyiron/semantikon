@@ -395,26 +395,6 @@ def get_run_md(inp: Input):
     return result
 
 
-def get_run_md_dict():
-    inp = Input(T=300.0, n=100)
-    inp.parameters.a = 1
-    return {
-        "inputs": {"node__inp": {"value": inp, "type_hint": Input}},
-        "outputs": {"node__out": {"value": Output(E=1.0, L=2.0), "type_hint": Output}},
-        "nodes": {
-            "node": {
-                "inputs": {"inp": {"value": inp, "type_hint": Input}},
-                "outputs": {
-                    "out": {"value": Output(E=1.0, L=2.0), "type_hint": Output}
-                },
-                "function": run_md,
-            }
-        },
-        "data_edges": [],
-        "label": "my_wf",
-    }
-
-
 class TestDataclass(unittest.TestCase):
     def test_dataclass(self):
         wf_dict = get_run_md.run(Input(T=300.0, n=100))
@@ -424,7 +404,7 @@ class TestDataclass(unittest.TestCase):
         triples = (
             (URIRef(f"{i_txt}.n.value"), RDFS.subClassOf, URIRef(f"{i_txt}.value")),
             (URIRef(f"{i_txt}.n.value"), RDF.value, Literal(100)),
-            (URIRef(f"{i_txt}.parameters.a.value"), RDF.value, Literal(1)),
+            (URIRef(f"{i_txt}.parameters.a.value"), RDF.value, Literal(2)),
             (URIRef(o_txt), PNS.hasValue, URIRef(f"{o_txt}.E.value")),
         )
         s = graph.serialize(format="turtle")
@@ -433,7 +413,7 @@ class TestDataclass(unittest.TestCase):
                 self.assertEqual(
                     len(list(graph.triples(triple))),
                     1,
-                    msg=f"{triple} not found in {s}",
+                    msg=f"{triple} not found",
                 )
         self.assertIsNone(graph.value(URIRef(f"{i_txt}.not_dataclass.b.value")))
 
