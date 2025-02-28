@@ -271,7 +271,6 @@ def _parse_channel(
     channel_dict: dict, channel_label: str, edge_dict: str, prefix: str, ontology=PNS
 ):
     triples = []
-    triples.append((channel_label, RDFS.label, Literal(channel_label)))
     triples.append((channel_label, RDF.type, PROV.Entity))
     if channel_dict.get("uri", None) is not None:
         triples.append((channel_label, RDF.type, channel_dict["uri"]))
