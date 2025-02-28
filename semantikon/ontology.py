@@ -267,15 +267,6 @@ def _function_to_triples(node: dict, node_label: str, ontology=PNS) -> list:
     return triples
 
 
-def _parse_node(node: dict, node_label: str, prefix: str, ontology=PNS):
-    triples = []
-    if "function" in node:
-        triples.extend(_function_to_triples(node, node_label, ontology))
-    triples.append((node_label, RDF.type, PROV.Activity))
-    triples.append((prefix, ontology.hasNode, node_label))
-    return triples
-
-
 def _parse_channel(
     channel_dict: dict, channel_label: str, edge_dict: str, prefix: str, ontology=PNS
 ):
@@ -298,32 +289,41 @@ def _parse_channel(
     return triples
 
 
-def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -> list:
-    triples = []
-    for n_label, node in nodes.items():
-        node_label = _dot(prefix, n_label)
-        triples.extend(_parse_node(node, node_label, prefix, ontology))
-        if "nodes" in node:
+def _node_to_triples(n_label: str, node: dict, edge_dict: dict, prefix: str, ontology=PNS) -> list:
+    node_label = _dot(prefix, n_label)
+    triples = [(node_label, RDF.type, PROV.Activity)]
+    triples.append((prefix, ontology.hasNode, node_label))
+    if "function" in node:
+        triples.extend(_function_to_triples(node, node_label, ontology))
+    if "nodes" in node:
+        triples.extend(
+            _parse_workflow(node, prefix=prefix, ontology=ontology)
+        )
+    for io_ in ["inputs", "outputs"]:
+        for key, channel_dict in node[io_].items():
+            if "type_hint" in channel_dict:
+                channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
+            channel_label = _remove_us(node_label, io_, key)
             triples.extend(
-                _parse_workflow(node, prefix=prefix, ontology=ontology)
-            )
-        for io_ in ["inputs", "outputs"]:
-            for key, channel_dict in node[io_].items():
-                if "type_hint" in channel_dict:
-                    channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
-                channel_label = _remove_us(node_label, io_, key)
-                triples.extend(
-                    _parse_channel(
-                        channel_dict, channel_label, edge_dict, prefix, ontology
-                    )
+                _parse_channel(
+                    channel_dict, channel_label, edge_dict, prefix, ontology
                 )
-                if io_ == "inputs":
-                    triples.append((channel_label, ontology.inputOf, node_label))
-                elif io_ == "outputs":
-                    triples.append((channel_label, ontology.outputOf, node_label))
-                for t in _get_triples_from_restrictions(channel_dict):
-                    triples.append(_parse_triple(t, ns=node_label, label=channel_label))
+            )
+            if io_ == "inputs":
+                triples.append((channel_label, ontology.inputOf, node_label))
+            elif io_ == "outputs":
+                triples.append((channel_label, ontology.outputOf, node_label))
+            for t in _get_triples_from_restrictions(channel_dict):
+                triples.append(_parse_triple(t, ns=node_label, label=channel_label))
     return triples
+
+
+def _nodes_to_triples(nodes: dict, edge_dict: dict, prefix: str, ontology=PNS) -> list:
+    return [
+        n
+        for n_label, node in nodes.items()
+        for n in _node_to_triples(n_label, node, edge_dict, prefix, ontology)
+    ]
 
 
 def _remove_us(*arg) -> str:
