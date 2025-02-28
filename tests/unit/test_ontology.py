@@ -234,10 +234,17 @@ class TestOntology(unittest.TestCase):
         subj = list(
             graph.subjects(
                 PNS.hasValue,
+                URIRef("get_macro.add_three_0.add_one_0.inputs.a.value"),
+            )
+        )
+        self.assertEqual(len(subj), 3)
+        subj = list(
+            graph.subjects(
+                PNS.hasValue,
                 URIRef("get_macro.add_three_0.add_two_0.outputs.output.value"),
             )
         )
-        self.assertEqual(len(subj), 3, msg=f"{subj} not found in {graph.serialize()}")
+        self.assertEqual(len(subj), 3)
         for ii, tag in enumerate(
             [
                 "add_three_0.add_two_0.outputs.output",
@@ -276,7 +283,7 @@ class TestOntology(unittest.TestCase):
             ns1:outputOf <get_macro.add_three_0> .
 
         <get_macro.add_three_0.add_one_0.inputs.a> a prov:Entity ;
-            ns1:hasValue <get_macro.inputs.c.value> ;
+            ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
             ns1:inputOf <get_macro.add_three_0.add_one_0> ;
             owl:sameAs <get_macro.add_three_0.inputs.c> .
 
@@ -304,7 +311,7 @@ class TestOntology(unittest.TestCase):
             ns1:outputOf <get_macro.add_three_0.add_two_0> .
 
         <get_macro.add_three_0.inputs.c> a prov:Entity ;
-            ns1:hasValue <get_macro.inputs.c.value> ;
+            ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
             ns1:inputOf <get_macro.add_three_0> ;
             owl:sameAs <get_macro.inputs.c> .
 
@@ -314,7 +321,7 @@ class TestOntology(unittest.TestCase):
             owl:sameAs <get_macro.add_three_0.add_two_0.outputs.output> .
 
         <get_macro.inputs.c> a prov:Entity ;
-            ns1:hasValue <get_macro.inputs.c.value> ;
+            ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
             ns1:inputOf <get_macro> .
 
         <get_macro> a prov:Activity ;
@@ -328,12 +335,12 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_one_0> a prov:Activity ;
             ns1:hasSourceFunction <add_one> .
 
+        <get_macro.add_three_0.add_one_0.inputs.a.value> rdf:value 1 .
+
         <get_macro.add_three_0.add_two_0> a prov:Activity ;
             ns1:hasSourceFunction <add_two> .
 
         <get_macro.add_three_0.add_two_0.outputs.output.value> rdf:value 4 .
-
-        <get_macro.inputs.c.value> rdf:value 1 .
 
         <get_macro.add_three_0> a prov:Activity ;
             ns1:hasNode <get_macro.add_three_0.add_one_0>,
@@ -344,6 +351,7 @@ class TestOntology(unittest.TestCase):
         self.maxDiff = None
         graph = get_knowledge_graph(get_macro.run())
         self.assertEqual(graph.serialize(format="turtle"), txt)
+        # print(graph.serialize(format="turtle"))
 
     def test_wrong_order(self):
         graph = get_knowledge_graph(get_wrong_order._semantikon_workflow)

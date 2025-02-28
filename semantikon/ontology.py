@@ -298,9 +298,12 @@ def _get_all_edge_dict(data, prefix=None):
         prefix = data["label"]
     else:
         prefix = prefix + "." + data["label"]
-    edges = {
-        _remove_us(prefix, e[1]): _remove_us(prefix, e[0]) for e in data["data_edges"]
-    }
+    edges = {}
+    for e in data["data_edges"]:
+        if e[0].startswith("inputs.") and ".inputs." in e[1]:
+            edges[_remove_us(prefix, e[0])] = _remove_us(prefix, e[1])
+        else:
+            edges[_remove_us(prefix, e[1])] = _remove_us(prefix, e[0])
     for node in data["nodes"].values():
         if "nodes" in node:
             edges.update(_get_all_edge_dict(node, prefix))
