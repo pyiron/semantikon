@@ -44,9 +44,6 @@ def get_speed(distance=10.0, time=2.0):
     return speed
 
 
-get_speed.run()
-
-
 @u(uri=EX.Addition)
 def add(a: float, b: float) -> u(float, triples=(EX.HasOperation, EX.Addition)):
     return a + b
@@ -177,7 +174,7 @@ def get_wrong_order(structure="abc"):
 
 class TestOntology(unittest.TestCase):
     def test_units_with_sparql(self):
-        graph = get_knowledge_graph(get_speed._semantikon_workflow)
+        graph = get_knowledge_graph(get_speed.run())
         query_txt = [
             "PREFIX ex: <http://example.org/>",
             "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
@@ -198,7 +195,7 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(sorted(result_list), [2.0, 5.0, 10.0])
 
     def test_triples(self):
-        graph = get_knowledge_graph(get_speed._semantikon_workflow)
+        graph = get_knowledge_graph(get_speed.run())
         subj = URIRef("http://example.org/subject")
         obj = URIRef("http://example.org/object")
         label = URIRef("get_speed.calculate_speed_0.outputs.output")
@@ -386,8 +383,8 @@ def run_md(inp: Input) -> Output:
 
 @workflow
 def get_run_md(inp: Input):
-    out = run_md(inp)
-    return out
+    result = run_md(inp)
+    return result
 
 
 def get_run_md_dict():
