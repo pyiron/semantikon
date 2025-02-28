@@ -379,7 +379,6 @@ def _parse_workflow(
     workflow_label = wf_dict["label"]
     if prefix is not None:
         workflow_label = _dot(prefix, workflow_label)
-    triples.append((workflow_label, RDFS.label, Literal(workflow_label)))
     triples.extend(
         _edges_to_triples(
             _get_edge_dict(wf_dict["data_edges"]), workflow_label, ontology
