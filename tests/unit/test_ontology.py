@@ -266,7 +266,8 @@ class TestOntology(unittest.TestCase):
                 self.assertIn(pair, same_as)
 
     def test_macro_full_comparison(self):
-        txt = dedent("""\
+        txt = dedent(
+            """\
         @prefix ns1: <http://pyiron.org/ontology/> .
         @prefix owl: <http://www.w3.org/2002/07/owl#> .
         @prefix prov: <http://www.w3.org/ns/prov#> .
@@ -344,7 +345,8 @@ class TestOntology(unittest.TestCase):
                 <get_macro.add_three_0.add_two_0> .
 
         <get_macro.add_three_0.add_one_0> a prov:Activity ;
-            ns1:hasSourceFunction <add_one> .\n\n""")
+            ns1:hasSourceFunction <add_one> .\n\n"""
+        )
         self.maxDiff = None
         graph = get_knowledge_graph(get_macro.run())
         self.assertEqual(graph.serialize(format="turtle"), txt)
