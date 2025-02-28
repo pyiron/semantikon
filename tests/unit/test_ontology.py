@@ -44,9 +44,6 @@ def get_speed(distance=10.0, time=2.0):
     return speed
 
 
-get_speed.run()
-
-
 @u(uri=EX.Addition)
 def add(a: float, b: float) -> u(float, triples=(EX.HasOperation, EX.Addition)):
     return a + b
@@ -177,7 +174,7 @@ def get_wrong_order(structure="abc"):
 
 class TestOntology(unittest.TestCase):
     def test_units_with_sparql(self):
-        graph = get_knowledge_graph(get_speed._semantikon_workflow)
+        graph = get_knowledge_graph(get_speed.run())
         query_txt = [
             "PREFIX ex: <http://example.org/>",
             "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
@@ -198,7 +195,7 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(sorted(result_list), [2.0, 5.0, 10.0])
 
     def test_triples(self):
-        graph = get_knowledge_graph(get_speed._semantikon_workflow)
+        graph = get_knowledge_graph(get_speed.run())
         subj = URIRef("http://example.org/subject")
         obj = URIRef("http://example.org/object")
         label = URIRef("get_speed.calculate_speed_0.outputs.output")
@@ -234,10 +231,17 @@ class TestOntology(unittest.TestCase):
         subj = list(
             graph.subjects(
                 PNS.hasValue,
+                URIRef("get_macro.add_three_0.add_one_0.inputs.a.value"),
+            )
+        )
+        self.assertEqual(len(subj), 3)
+        subj = list(
+            graph.subjects(
+                PNS.hasValue,
                 URIRef("get_macro.add_three_0.add_two_0.outputs.output.value"),
             )
         )
-        self.assertEqual(len(subj), 3, msg=f"{subj} not found in {graph.serialize()}")
+        self.assertEqual(len(subj), 3)
         for ii, tag in enumerate(
             [
                 "add_three_0.add_two_0.outputs.output",
@@ -262,7 +266,8 @@ class TestOntology(unittest.TestCase):
                 self.assertIn(pair, same_as)
 
     def test_macro_full_comparison(self):
-        txt = dedent("""\
+        txt = dedent(
+            """\
         @prefix ns1: <http://pyiron.org/ontology/> .
         @prefix owl: <http://www.w3.org/2002/07/owl#> .
         @prefix prov: <http://www.w3.org/ns/prov#> .
@@ -276,7 +281,7 @@ class TestOntology(unittest.TestCase):
             ns1:outputOf <get_macro.add_three_0> .
 
         <get_macro.add_three_0.add_one_0.inputs.a> a prov:Entity ;
-            ns1:hasValue <get_macro.inputs.c.value> ;
+            ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
             ns1:inputOf <get_macro.add_three_0.add_one_0> ;
             owl:sameAs <get_macro.add_three_0.inputs.c> .
 
@@ -304,7 +309,7 @@ class TestOntology(unittest.TestCase):
             ns1:outputOf <get_macro.add_three_0.add_two_0> .
 
         <get_macro.add_three_0.inputs.c> a prov:Entity ;
-            ns1:hasValue <get_macro.inputs.c.value> ;
+            ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
             ns1:inputOf <get_macro.add_three_0> ;
             owl:sameAs <get_macro.inputs.c> .
 
@@ -314,7 +319,7 @@ class TestOntology(unittest.TestCase):
             owl:sameAs <get_macro.add_three_0.add_two_0.outputs.output> .
 
         <get_macro.inputs.c> a prov:Entity ;
-            ns1:hasValue <get_macro.inputs.c.value> ;
+            ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
             ns1:inputOf <get_macro> .
 
         <get_macro> a prov:Activity ;
@@ -328,22 +333,24 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_one_0> a prov:Activity ;
             ns1:hasSourceFunction <add_one> .
 
+        <get_macro.add_three_0.add_one_0.inputs.a.value> rdf:value 1 .
+
         <get_macro.add_three_0.add_two_0> a prov:Activity ;
             ns1:hasSourceFunction <add_two> .
 
         <get_macro.add_three_0.add_two_0.outputs.output.value> rdf:value 4 .
-
-        <get_macro.inputs.c.value> rdf:value 1 .
 
         <get_macro.add_three_0> a prov:Activity ;
             ns1:hasNode <get_macro.add_three_0.add_one_0>,
                 <get_macro.add_three_0.add_two_0> .
 
         <get_macro.add_three_0.add_one_0> a prov:Activity ;
-            ns1:hasSourceFunction <add_one> .\n\n""")
+            ns1:hasSourceFunction <add_one> .\n\n"""
+        )
         self.maxDiff = None
         graph = get_knowledge_graph(get_macro.run())
         self.assertEqual(graph.serialize(format="turtle"), txt)
+        # print(graph.serialize(format="turtle"))
 
     def test_wrong_order(self):
         graph = get_knowledge_graph(get_wrong_order._semantikon_workflow)
@@ -384,35 +391,22 @@ def run_md(inp: Input) -> Output:
     return out
 
 
-def get_run_md_dict():
-    inp = Input(T=300.0, n=100)
-    inp.parameters.a = 1
-    return {
-        "inputs": {"node__inp": {"value": inp, "type_hint": Input}},
-        "outputs": {"node__out": {"value": Output(E=1.0, L=2.0), "type_hint": Output}},
-        "nodes": {
-            "node": {
-                "inputs": {"inp": {"value": inp, "type_hint": Input}},
-                "outputs": {
-                    "out": {"value": Output(E=1.0, L=2.0), "type_hint": Output}
-                },
-                "function": run_md,
-            }
-        },
-        "data_edges": [],
-        "label": "my_wf",
-    }
+@workflow
+def get_run_md(inp: Input):
+    result = run_md(inp)
+    return result
 
 
 class TestDataclass(unittest.TestCase):
     def test_dataclass(self):
-        graph = get_knowledge_graph(get_run_md_dict())
-        i_txt = "my_wf.node.inputs.inp"
-        o_txt = "my_wf.node.outputs.out"
+        wf_dict = get_run_md.run(Input(T=300.0, n=100))
+        graph = get_knowledge_graph(wf_dict)
+        i_txt = "get_run_md.run_md_0.inputs.inp"
+        o_txt = "get_run_md.run_md_0.outputs.output"
         triples = (
             (URIRef(f"{i_txt}.n.value"), RDFS.subClassOf, URIRef(f"{i_txt}.value")),
             (URIRef(f"{i_txt}.n.value"), RDF.value, Literal(100)),
-            (URIRef(f"{i_txt}.parameters.a.value"), RDF.value, Literal(1)),
+            (URIRef(f"{i_txt}.parameters.a.value"), RDF.value, Literal(2)),
             (URIRef(o_txt), PNS.hasValue, URIRef(f"{o_txt}.E.value")),
         )
         s = graph.serialize(format="turtle")
@@ -421,7 +415,7 @@ class TestDataclass(unittest.TestCase):
                 self.assertEqual(
                     len(list(graph.triples(triple))),
                     1,
-                    msg=f"{triple} not found in {s}",
+                    msg=f"{triple} not found",
                 )
         self.assertIsNone(graph.value(URIRef(f"{i_txt}.not_dataclass.b.value")))
 
