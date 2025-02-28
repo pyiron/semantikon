@@ -384,6 +384,12 @@ def run_md(inp: Input) -> Output:
     return out
 
 
+@workflow
+def get_run_md(inp: Input):
+    out = run_md(inp)
+    return out
+
+
 def get_run_md_dict():
     inp = Input(T=300.0, n=100)
     inp.parameters.a = 1
@@ -406,9 +412,10 @@ def get_run_md_dict():
 
 class TestDataclass(unittest.TestCase):
     def test_dataclass(self):
-        graph = get_knowledge_graph(get_run_md_dict())
-        i_txt = "my_wf.node.inputs.inp"
-        o_txt = "my_wf.node.outputs.out"
+        wf_dict = get_run_md.run(Input(T=300.0, n=100))
+        graph = get_knowledge_graph(wf_dict)
+        i_txt = "get_run_md.run_md_0.inputs.inp"
+        o_txt = "get_run_md.run_md_0.outputs.output"
         triples = (
             (URIRef(f"{i_txt}.n.value"), RDFS.subClassOf, URIRef(f"{i_txt}.value")),
             (URIRef(f"{i_txt}.n.value"), RDF.value, Literal(100)),
