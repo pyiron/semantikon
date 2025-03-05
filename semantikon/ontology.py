@@ -114,10 +114,12 @@ def _owl_restriction_to_triple(restriction: tuple[_rest_type]) -> list:
 
 def _sh_restriction_to_triple(restrictions: tuple[_rest_type]) -> list:
     label = BNode()
+    node = restrictions[0][0] + "Node"
     triples = [
-        (None, RDF.type, SH.NodeShape),
-        (None, SH.targetClass, None),
-        (None, SH.property, label),
+        (None, RDF.type, node),
+        (node, RDF.type, SH.NodeShape),
+        (node, SH.targetClass, node),
+        (node, SH.property, label),
     ]
     triples.extend([(label, r[0], r[1]) for r in restrictions])
     return triples
