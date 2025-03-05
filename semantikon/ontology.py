@@ -1,7 +1,7 @@
 from typing import TypeAlias, Any
 import warnings
 
-from rdflib import Graph, Literal, RDF, RDFS, URIRef, OWL, PROV, Namespace, BNode
+from rdflib import Graph, Literal, RDF, RDFS, URIRef, OWL, PROV, Namespace, BNode, SH
 from dataclasses import is_dataclass
 from semantikon.converter import meta_to_dict, get_function_dict
 from owlrl import DeductiveClosure, OWLRL_Semantics
@@ -97,6 +97,34 @@ def _validate_restriction_format(
         raise ValueError("Restrictions must be tuples of URIRefs")
 
 
+def _get_restriction_type(restriction: tuple[_rest_type]) -> URIRef:
+    if restriction[0][0].startswith(OWL):
+        return "OWL"
+    elif restriction[0][0].startswith(SH):
+        return "SH"
+    raise ValueError(f"Unknown restriction type {restriction}")
+
+
+def _owl_restriction_to_triple(restriction: tuple[_rest_type]) -> list:
+    label = BNode()
+    triples = [(None, RDF.type, label), (label, RDF.type, OWL.Restriction)]
+    triples.extend([(label, r[0], r[1]) for r in restriction])
+    return triples
+
+
+def _sh_restriction_to_triple(restrictions: tuple[_rest_type]) -> list:
+    label = BNode()
+    node = restrictions[0][0] + "Node"
+    triples = [
+        (None, RDF.type, node),
+        (node, RDF.type, SH.NodeShape),
+        (node, SH.targetClass, node),
+        (node, SH.property, label),
+    ]
+    triples.extend([(label, r[0], r[1]) for r in restrictions])
+    return triples
+
+
 def _restriction_to_triple(
     restrictions: _rest_type | tuple[_rest_type] | list[_rest_type],
 ) -> list[tuple[URIRef | None, URIRef, URIRef]]:
@@ -126,13 +154,13 @@ def _restriction_to_triple(
     >>> )
     """
     restrictions_collection = _validate_restriction_format(restrictions)
-    triples: list[tuple[URIRef | None, URIRef, URIRef]] = []
+    triples = []
     for r in restrictions_collection:
-        label = BNode()
-        triples.append((label, RDF.type, OWL.Restriction))
-        for rr in r:
-            triples.append((label, rr[0], rr[1]))
-        triples.append((None, RDF.type, label))
+        restriction_type = _get_restriction_type(r)
+        if restriction_type == "OWL":
+            triples.extend(_owl_restriction_to_triple(r))
+        else:
+            triples.extend(_sh_restriction_to_triple(r))
     return triples
 
 
