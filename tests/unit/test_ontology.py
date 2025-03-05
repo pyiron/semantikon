@@ -1,7 +1,8 @@
 import unittest
 from textwrap import dedent
-from rdflib import Graph, OWL, Namespace, URIRef, Literal, RDF, RDFS
+from rdflib import Graph, OWL, Namespace, URIRef, Literal, RDF, RDFS, SH
 from owlrl import DeductiveClosure, OWLRL_Semantics
+from pyshacl import validate
 from semantikon.typing import u
 from semantikon.converter import (
     parse_input_args,
@@ -83,6 +84,30 @@ def wrong_analysis(
     return a
 
 
+def correct_analysis_sh(
+    a: u(
+        float,
+        restrictions=(
+            (SH.path, EX.HasOperation),
+            (SH.hasValue, EX.Addition),
+        ),
+    ),
+) -> float:
+    return a
+
+
+def wrong_analysis_sh(
+    a: u(
+        float,
+        restrictions=(
+            (SH.path, EX.HasOperation),
+            (SH.hasValue, EX.Division),
+        ),
+    ),
+) -> float:
+    return a
+
+
 def multiple_outputs(a: int = 1, b: int = 2) -> tuple[int, int]:
     return a, b
 
@@ -158,6 +183,22 @@ def get_wrong_analysis(a=1.0, b=2.0, c=3.0):
 
 
 @workflow
+def get_correct_analysis_sh(a=1.0, b=2.0, c=3.0):
+    d = add(a=a, b=b)
+    m = multiply(a=d, b=c)
+    analysis = correct_analysis_sh(a=m)
+    return analysis
+
+
+@workflow
+def get_wrong_analysis_sh(a=1.0, b=2.0, c=3.0):
+    d = add(a=a, b=b)
+    m = multiply(a=d, b=c)
+    analysis = wrong_analysis_sh(a=m)
+    return analysis
+
+
+@workflow
 def get_macro(c=1):
     w = add_three(c=c)
     result = add_one(a=w)
@@ -229,6 +270,12 @@ class TestOntology(unittest.TestCase):
             validate_values(graph, sparql=True),
             validate_values(graph, sparql=False),
         )
+
+    def test_correct_analysis_sh(self):
+        graph = get_knowledge_graph(get_correct_analysis_sh._semantikon_workflow)
+        self.assertTrue(validate(graph)[0])
+        graph = get_knowledge_graph(get_wrong_analysis_sh._semantikon_workflow)
+        self.assertFalse(validate(graph)[0])
 
     def test_macro(self):
         graph = get_knowledge_graph(get_macro.run())
