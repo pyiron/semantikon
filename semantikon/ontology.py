@@ -1,7 +1,7 @@
 from typing import TypeAlias, Any
 import warnings
 
-from rdflib import Graph, Literal, RDF, RDFS, URIRef, OWL, PROV, Namespace
+from rdflib import Graph, Literal, RDF, RDFS, URIRef, OWL, PROV, Namespace, BNode
 from dataclasses import is_dataclass
 from semantikon.converter import meta_to_dict, get_function_dict
 from owlrl import DeductiveClosure, OWLRL_Semantics
@@ -128,7 +128,7 @@ def _restriction_to_triple(
     restrictions_collection = _validate_restriction_format(restrictions)
     triples: list[tuple[URIRef | None, URIRef, URIRef]] = []
     for r in restrictions_collection:
-        label = r[0][1] + "Restriction"
+        label = BNode()
         triples.append((label, RDF.type, OWL.Restriction))
         for rr in r:
             triples.append((label, rr[0], rr[1]))
