@@ -51,13 +51,12 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
         return isinstance(arg, ast.Name)
 
     def _add_output_edge(self, source, target, **kwargs):
-        if self._is_variable(target):
-            if target.id not in self._var_index:
-                self._var_index[target.id] = 0
-            else:
-                self._var_index[target.id] += 1
-            count = self._var_index[target.id]
-            self.graph.add_edge(source, f"{target.id}_{count}", type="output", **kwargs)
+        if target.id not in self._var_index:
+            self._var_index[target.id] = 0
+        else:
+            self._var_index[target.id] += 1
+        count = self._var_index[target.id]
+        self.graph.add_edge(source, f"{target.id}_{count}", type="output", **kwargs)
 
     def _add_input_edge(self, source, target, **kwargs):
         if not self._is_variable(source):
