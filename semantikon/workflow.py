@@ -92,7 +92,9 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
 
     def visit_Assign(self, node):
         """Handles variable assignments including tuple unpacking."""
-        if not isinstance(node.value, ast.Call) or not isinstance(node.value.func, ast.Name):
+        if not isinstance(node.value, ast.Call) or not isinstance(
+            node.value.func, ast.Name
+        ):
             raise NotImplementedError("Only function calls are allowed in assignments")
         called_func = self._get_func_name(node)
         if node.value.func.id not in self.scope:
