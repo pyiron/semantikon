@@ -10,12 +10,11 @@ from semantikon.converter import parse_input_args, parse_output_args
 
 
 def _check_node(node):
-    if isinstance(
-        node.value, (ast.BinOp, ast.Call, ast.Attribute, ast.Subscript)
-    ):
+    if isinstance(node.value, (ast.BinOp, ast.Call, ast.Attribute, ast.Subscript)):
         warnings.warn(
             "Return statement contains an operation or function call, replaced"
-            " by `output`", SyntaxWarning
+            " by `output`",
+            SyntaxWarning,
         )
         return ["output"]
     elif isinstance(node.value, ast.Tuple):  # If returning multiple values
