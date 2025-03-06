@@ -60,14 +60,13 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
             self.graph.add_edge(source, f"{target.id}_{count}", type="output", **kwargs)
 
     def _add_input_edge(self, source, target, **kwargs):
-        if self._is_variable(source):
-            if source.id not in self._var_index:
-                tag = f"{source.id}_0"
-            else:
-                tag = f"{source.id}_{self._var_index[source.id]}"
-            self.graph.add_edge(tag, target, type="input", **kwargs)
-        else:
+        if not self._is_variable(source):
             raise NotImplementedError(f"Invalid input: {ast.dump(source)}")
+        if source.id not in self._var_index:
+            tag = f"{source.id}_0"
+        else:
+            tag = f"{source.id}_{self._var_index[source.id]}"
+        self.graph.add_edge(tag, target, type="input", **kwargs)
 
     def _get_func_name(self, node):
         for ii in range(100):
