@@ -50,6 +50,17 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
     def _is_variable(arg):
         return isinstance(arg, ast.Name)
 
+    def _parse_outputs(self, node, called_func):
+        is_multi_outputs = len(node.targets) == 1 and isinstance(
+            node.targets[0], ast.Tuple
+        )
+        if is_multi_outputs:
+            for index, target in enumerate(node.targets[0].elts):
+                self._add_output_edge(called_func, target, output_index=index)
+        else:
+            for target in node.targets:
+                self._add_output_edge(called_func, target)
+
     def _add_output_edge(self, source, target, **kwargs):
         if target.id not in self._var_index:
             self._var_index[target.id] = 0
@@ -75,29 +86,18 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
 
     def visit_Assign(self, node):
         """Handles variable assignments including tuple unpacking."""
-        if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
-            called_func = self._get_func_name(node)
-            if node.value.func.id not in self.scope:
-                raise ValueError(f"Function {node.value.func.id} not defined")
-            self.function_defs[called_func] = self.scope[node.value.func.id]
-
-            is_multi_outputs = len(node.targets) == 1 and isinstance(
-                node.targets[0], ast.Tuple
-            )
-
-            if is_multi_outputs:
-                for index, target in enumerate(node.targets[0].elts):
-                    self._add_output_edge(called_func, target, output_index=index)
-            else:
-                for target in node.targets:
-                    self._add_output_edge(called_func, target)
-
-            for index, arg in enumerate(node.value.args):
-                self._add_input_edge(arg, called_func, input_index=index)
-            for kw in node.value.keywords:
-                self._add_input_edge(kw.value, called_func, input_name=kw.arg)
-        else:
+        if not isinstance(node.value, ast.Call) or not isinstance(node.value.func, ast.Name):
             raise NotImplementedError("Only function calls are allowed in assignments")
+        called_func = self._get_func_name(node)
+        if node.value.func.id not in self.scope:
+            raise ValueError(f"Function {node.value.func.id} not defined")
+        self.function_defs[called_func] = self.scope[node.value.func.id]
+        self._parse_outputs(node, called_func)
+
+        for index, arg in enumerate(node.value.args):
+            self._add_input_edge(arg, called_func, input_index=index)
+        for kw in node.value.keywords:
+            self._add_input_edge(kw.value, called_func, input_name=kw.arg)
 
         self.generic_visit(node)
 
