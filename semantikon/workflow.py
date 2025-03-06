@@ -4,13 +4,30 @@ from networkx.algorithms.dag import topological_sort
 import inspect
 from collections import deque
 from functools import cached_property
+import warnings
 
 from semantikon.converter import parse_input_args, parse_output_args
 
 
 def _check_node(node):
     if isinstance(node.value, (ast.BinOp, ast.Call, ast.Attribute, ast.Subscript)):
-        raise ValueError("Return statement contains an operation or function call.")
+        warnings.warn(
+            "Return statement contains an operation or function call, replaced"
+            " by `output`",
+            SyntaxWarning,
+        )
+        return ["output"]
+    elif isinstance(node.value, ast.Tuple):  # If returning multiple values
+        for elt in node.value.elts:
+            if not isinstance(elt, ast.Name):
+                raise ValueError(f"Invalid return value: {ast.dump(elt)}")
+        return [elt.id for elt in node.value.elts if isinstance(elt, ast.Name)]
+
+    elif isinstance(node.value, ast.Name):  # If returning a single variable
+        return [node.value.id]
+
+    else:
+        raise ValueError(f"Invalid return value: {ast.dump(node.value)}")
 
 
 def get_return_variables(func):
@@ -18,19 +35,7 @@ def get_return_variables(func):
     for node in ast.walk(source):
         if not isinstance(node, ast.Return):
             continue
-        _check_node(node)
-        if isinstance(node.value, ast.Tuple):  # If returning multiple values
-            for elt in node.value.elts:
-                if not isinstance(elt, ast.Name):
-                    raise ValueError(f"Invalid return value: {ast.dump(elt)}")
-            return [elt.id for elt in node.value.elts if isinstance(elt, ast.Name)]
-
-        elif isinstance(node.value, ast.Name):  # If returning a single variable
-            return [node.value.id]
-
-        else:
-            raise ValueError(f"Invalid return value: {ast.dump(node.value)}")
-
+        return _check_node(node)
     return []
 
 
