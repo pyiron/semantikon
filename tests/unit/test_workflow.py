@@ -207,6 +207,17 @@ class TestWorkflow(unittest.TestCase):
         data = example_workflow.run()
         self.assertEqual(example_workflow(), data["outputs"]["z"]["value"])
 
+    def test_syntax_error(self):
+
+        def example_syntax_error(a=10, b=20):
+            y = example_macro(a, b)
+            z = add(y, b)
+            result = z + 1
+            return result
+
+        with self.assertRaises(SyntaxError):
+            workflow(example_syntax_error)
+
 
 if __name__ == "__main__":
     unittest.main()
