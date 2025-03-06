@@ -65,7 +65,8 @@ class TestWorkflow(unittest.TestCase):
 
     def test_get_return_variables(self):
         self.assertEqual(get_return_variables(example_macro), ["f"])
-        self.assertRaises(ValueError, get_return_variables, add)
+        with self.assertWarns(SyntaxWarning):
+            self.assertEqual(get_return_variables(add), ["output"])
         self.assertRaises(ValueError, get_return_variables, operation)
 
     def test_get_output_counts(self):
