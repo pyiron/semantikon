@@ -66,6 +66,8 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
             else:
                 tag = f"{source.id}_{self._var_index[source.id]}"
             self.graph.add_edge(tag, target, type="input", **kwargs)
+        else:
+            raise NotImplementedError(f"Invalid input: {ast.dump(source)}")
 
     def _get_func_name(self, node):
         for ii in range(100):
@@ -81,11 +83,11 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
                 raise ValueError(f"Function {node.value.func.id} not defined")
             self.function_defs[called_func] = self.scope[node.value.func.id]
 
-            is_multi_assignment = len(node.targets) == 1 and isinstance(
+            is_multi_outputs = len(node.targets) == 1 and isinstance(
                 node.targets[0], ast.Tuple
             )
 
-            if is_multi_assignment:
+            if is_multi_outputs:
                 for index, target in enumerate(node.targets[0].elts):
                     self._add_output_edge(called_func, target, output_index=index)
             else:
@@ -96,6 +98,8 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
                 self._add_input_edge(arg, called_func, input_index=index)
             for kw in node.value.keywords:
                 self._add_input_edge(kw.value, called_func, input_name=kw.arg)
+        else:
+            raise NotImplementedError("Only function calls are allowed in assignments")
 
         self.generic_visit(node)
 
