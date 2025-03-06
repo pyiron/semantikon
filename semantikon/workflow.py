@@ -69,6 +69,12 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
         count = self._var_index[target.id]
         self.graph.add_edge(source, f"{target.id}_{count}", type="output", **kwargs)
 
+    def _parse_inputs(self, node, called_func):
+        for index, arg in enumerate(node.value.args):
+            self._add_input_edge(arg, called_func, input_index=index)
+        for kw in node.value.keywords:
+            self._add_input_edge(kw.value, called_func, input_name=kw.arg)
+
     def _add_input_edge(self, source, target, **kwargs):
         if not self._is_variable(source):
             raise NotImplementedError(f"Invalid input: {ast.dump(source)}")
@@ -93,12 +99,7 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
             raise ValueError(f"Function {node.value.func.id} not defined")
         self.function_defs[called_func] = self.scope[node.value.func.id]
         self._parse_outputs(node, called_func)
-
-        for index, arg in enumerate(node.value.args):
-            self._add_input_edge(arg, called_func, input_index=index)
-        for kw in node.value.keywords:
-            self._add_input_edge(kw.value, called_func, input_name=kw.arg)
-
+        self._parse_inputs(node, called_func)
         self.generic_visit(node)
 
 
