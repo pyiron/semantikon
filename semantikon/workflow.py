@@ -97,7 +97,7 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
             for kw in node.value.keywords:
                 self._add_input_edge(kw.value, called_func, input_name=kw.arg)
         else:
-            raise SyntaxError("Only function calls are allowed in assignments")
+            raise NotImplementedError("Only function calls are allowed in assignments")
 
         self.generic_visit(node)
 

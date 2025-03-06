@@ -44,6 +44,13 @@ def parallel_execution(a=10, b=20):
     return e, f
 
 
+def example_not_implemented_error(a=10, b=20):
+    y = example_macro(a, b)
+    z = add(y, b)
+    result = z + 1
+    return result
+
+
 class TestWorkflow(unittest.TestCase):
     def test_analyzer(self):
         analyzer = analyze_function(example_macro)
@@ -207,16 +214,9 @@ class TestWorkflow(unittest.TestCase):
         data = example_workflow.run()
         self.assertEqual(example_workflow(), data["outputs"]["z"]["value"])
 
-    def test_syntax_error(self):
-
-        def example_syntax_error(a=10, b=20):
-            y = example_macro(a, b)
-            z = add(y, b)
-            result = z + 1
-            return result
-
-        with self.assertRaises(SyntaxError):
-            workflow(example_syntax_error)
+    def test_not_implemented_error(self):
+        with self.assertRaises(NotImplementedError):
+            workflow(example_not_implemented_error)
 
 
 if __name__ == "__main__":
