@@ -81,11 +81,11 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
                 raise ValueError(f"Function {node.value.func.id} not defined")
             self.function_defs[called_func] = self.scope[node.value.func.id]
 
-            is_multi_assignment = len(node.targets) == 1 and isinstance(
+            is_multi_outputs = len(node.targets) == 1 and isinstance(
                 node.targets[0], ast.Tuple
             )
 
-            if is_multi_assignment:
+            if is_multi_outputs:
                 for index, target in enumerate(node.targets[0].elts):
                     self._add_output_edge(called_func, target, output_index=index)
             else:
