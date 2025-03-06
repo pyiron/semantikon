@@ -66,6 +66,8 @@ class FunctionFlowAnalyzer(ast.NodeVisitor):
             else:
                 tag = f"{source.id}_{self._var_index[source.id]}"
             self.graph.add_edge(tag, target, type="input", **kwargs)
+        else:
+            raise NotImplementedError(f"Invalid input: {ast.dump(source)}")
 
     def _get_func_name(self, node):
         for ii in range(100):

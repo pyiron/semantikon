@@ -44,10 +44,20 @@ def parallel_execution(a=10, b=20):
     return e, f
 
 
-def example_not_implemented_error(a=10, b=20):
+def example_invalid_operator(a=10, b=20):
     y = example_macro(a, b)
     z = add(y, b)
     result = z + 1
+    return result
+
+
+def example_invalid_multiple_operation(a=10, b=20):
+    result = add(a, add(a, b))
+    return result
+
+
+def example_invalid_local_var_def(a=10, b=20):
+    result = add(a, 2)
     return result
 
 
@@ -216,7 +226,11 @@ class TestWorkflow(unittest.TestCase):
 
     def test_not_implemented_error(self):
         with self.assertRaises(NotImplementedError):
-            workflow(example_not_implemented_error)
+            workflow(example_invalid_operator)
+        with self.assertRaises(NotImplementedError):
+            workflow(example_invalid_multiple_operation)
+        with self.assertRaises(NotImplementedError):
+            workflow(example_invalid_local_var_def)
 
 
 if __name__ == "__main__":
