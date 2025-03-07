@@ -53,7 +53,12 @@ def _function_metadata(
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
 ):
-    data = {"triples": triples, "uri": uri, "restrictions": restrictions}
+    data = {
+        k: v for k, v in {
+            "triples": triples, "uri": uri, "restrictions": restrictions
+        }.items()
+        if v is not None
+    }
     data.update(kwargs)
     for key, value in kwargs.items():
         if value is None:
