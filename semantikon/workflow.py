@@ -220,9 +220,7 @@ def _get_data_edges(analyzer, func):
 
 def _dtype_to_ape_format(dtype):
     standard_dict = {str: "String", float: "Float", bool: "Bool", int: "Int"}
-    if isinstance(dtype, str):
-        return dtype
-    elif dtype in standard_dict:
+    if dtype in standard_dict:
         return standard_dict[dtype]
     else:
         return dtype.__module__ + "." + dtype.__name__
