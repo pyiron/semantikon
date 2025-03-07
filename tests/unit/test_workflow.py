@@ -6,6 +6,7 @@ from semantikon.workflow import (
     get_workflow_dict,
     workflow,
     find_parallel_execution_levels,
+    get_node_dict,
 )
 
 
@@ -78,6 +79,20 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(
             [data for data in analyzer.graph.edges.data()],
             all_data,
+        )
+
+    def test_get_node_dict(self):
+        node_dict = get_node_dict(add)
+        self.assertEqual(
+            node_dict,
+            {
+                "inputs": {
+                    "x": {"dtype": float, "default": 2.0},
+                    "y": {"dtype": float, "default": 1},
+                },
+                "outputs": {"output": {"dtype": float}},
+                "label": "add",
+            }
         )
 
     def test_get_return_variables(self):
