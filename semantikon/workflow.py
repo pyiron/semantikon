@@ -219,9 +219,7 @@ def _get_data_edges(analyzer, func):
 
 
 def _dtype_to_ape_format(dtype):
-    standard_dict = {
-        str: "String", float: "Float", bool: "Bool", int: "Int"
-    }
+    standard_dict = {str: "String", float: "Float", bool: "Bool", int: "Int"}
     if isinstance(dtype, str):
         return dtype
     elif dtype in standard_dict:
@@ -243,7 +241,7 @@ def _to_ape(data, func):
                 io_data.append(
                     {
                         "Type": value["uri"],
-                        "Format": _dtype_to_ape_format(value["dtype"])
+                        "Format": _dtype_to_ape_format(value["dtype"]),
                     }
                 )
             except KeyError:
