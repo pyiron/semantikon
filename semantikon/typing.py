@@ -54,8 +54,11 @@ def _function_metadata(
     **kwargs,
 ):
     data = {
-        k: v for k, v in {
-            "triples": triples, "uri": uri, "restrictions": restrictions
+        k: v
+        for k, v in {
+            "triples": triples,
+            "uri": uri,
+            "restrictions": restrictions,
         }.items()
         if v is not None
     }
