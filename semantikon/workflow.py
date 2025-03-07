@@ -213,6 +213,17 @@ def _get_data_edges(analyzer, func):
     return data_edges
 
 
+def get_node_dict(func):
+    data = {
+        "inputs": parse_input_args(func),
+        "outputs": _get_workflow_outputs(func),
+        "label": func.__name__,
+    }
+    if hasattr(func, "_semantikon_metadata"):
+        data.update(func._semantikon_metadata)
+    return data
+
+
 def get_workflow_dict(func):
     analyzer = analyze_function(func)
     output_counts = _get_output_counts(analyzer.graph.edges.data())
