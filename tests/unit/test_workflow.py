@@ -120,6 +120,7 @@ class TestWorkflow(unittest.TestCase):
             },
         )
         self.assertRaises(KeyError, get_node_dict, add, data_format="ape")
+        self.assertRaises(KeyError, get_node_dict, multiply, data_format="ape")
 
     def test_get_return_variables(self):
         self.assertEqual(get_return_variables(example_macro), ["f"])
