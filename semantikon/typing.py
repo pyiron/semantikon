@@ -82,7 +82,7 @@ def u(
     **kwargs,
 ):
     is_type_hint = (
-        isinstance(type_or_func, type) or get_origin(type_or_func) is not None
+        isinstance(type_or_func, type) or get_origin(type_or_func) is not None or str
     )
     is_decorator = type_or_func is None
     kwargs.update(
