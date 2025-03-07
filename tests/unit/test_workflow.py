@@ -105,7 +105,7 @@ class TestWorkflow(unittest.TestCase):
                 "uri": "add",
             },
         )
-        node_dict = get_node_dict(multiple_types_for_ape, format="ape")
+        node_dict = get_node_dict(multiple_types_for_ape, data_format="ape")
         node_dict.pop("id")
         self.assertEqual(
             node_dict,
@@ -119,7 +119,7 @@ class TestWorkflow(unittest.TestCase):
                 "taxonomyOperations": ["my_function"],
             },
         )
-        self.assertRaises(KeyError, get_node_dict, add, format="ape")
+        self.assertRaises(KeyError, get_node_dict, add, data_format="ape")
 
     def test_get_return_variables(self):
         self.assertEqual(get_return_variables(example_macro), ["f"])

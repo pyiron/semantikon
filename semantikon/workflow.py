@@ -252,13 +252,13 @@ def _to_ape(data, func):
     return data
 
 
-def get_node_dict(func, format="semantikon"):
+def get_node_dict(func, data_format="semantikon"):
     """
     Get a dictionary representation of the function node.
 
     Args:
         func (callable): The function to be analyzed.
-        format (str): The format of the output. Options are "semantiokn" and
+        data_format (str): The format of the output. Options are "semantiokn" and
             "ape".
 
     Returns:
@@ -271,7 +271,7 @@ def get_node_dict(func, format="semantikon"):
     }
     if hasattr(func, "_semantikon_metadata"):
         data.update(func._semantikon_metadata)
-    if format.lower() == "ape":
+    if data_format.lower() == "ape":
         return _to_ape(data, func)
     return data
 
