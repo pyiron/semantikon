@@ -5,8 +5,13 @@ import inspect
 from collections import deque
 from functools import cached_property
 import warnings
+from hashlib import sha256
 
 from semantikon.converter import parse_input_args, parse_output_args
+
+
+def _hash_function(func):
+    return sha256(inspect.getsource(func).encode()).hexdigest()
 
 
 def _check_node(node):
@@ -213,7 +218,50 @@ def _get_data_edges(analyzer, func):
     return data_edges
 
 
-def get_node_dict(func):
+def _dtype_to_ape_format(dtype):
+    standard_dict = {str: "String", float: "Float", bool: "Bool", int: "Int"}
+    if dtype in standard_dict:
+        return standard_dict[dtype]
+    else:
+        return dtype.__module__ + "." + dtype.__name__
+
+
+def _to_ape(data, func):
+    try:
+        data["taxonomyOperations"] = [data.pop("uri")]
+    except KeyError:
+        raise KeyError(f"uri not found in metadata of {func.__name__}")
+    data["id"] = data["label"] + "_" + _hash_function(func)
+    for io_ in ["inputs", "outputs"]:
+        io_data = []
+        for key, value in data[io_].items():
+            try:
+                io_data.append(
+                    {
+                        "Type": value["uri"],
+                        "Format": _dtype_to_ape_format(value["dtype"]),
+                    }
+                )
+            except KeyError:
+                raise KeyError(
+                    f"uri not found in {io_} metadata of {func.__name__} {key}"
+                )
+        data[io_] = io_data
+    return data
+
+
+def get_node_dict(func, data_format="semantikon"):
+    """
+    Get a dictionary representation of the function node.
+
+    Args:
+        func (callable): The function to be analyzed.
+        data_format (str): The format of the output. Options are "semantiokn" and
+            "ape".
+
+    Returns:
+        (dict) A dictionary representation of the function node.
+    """
     data = {
         "inputs": parse_input_args(func),
         "outputs": _get_workflow_outputs(func),
@@ -221,6 +269,8 @@ def get_node_dict(func):
     }
     if hasattr(func, "_semantikon_metadata"):
         data.update(func._semantikon_metadata)
+    if data_format.lower() == "ape":
+        return _to_ape(data, func)
     return data
 
 

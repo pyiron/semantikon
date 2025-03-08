@@ -9,6 +9,7 @@ from semantikon.workflow import (
     find_parallel_execution_levels,
     get_node_dict,
 )
+import numpy as np
 
 
 def operation(x: float, y: float) -> tuple[float, float]:
@@ -64,6 +65,13 @@ def example_invalid_local_var_def(a=10, b=20):
     return result
 
 
+@u(uri="my_function")
+def multiple_types_for_ape(
+    a: u(int, uri="a"), b: u(np.ndarray, uri="b")
+) -> u(np.ndarray, uri="output"):
+    return a + b
+
+
 class TestWorkflow(unittest.TestCase):
     def test_analyzer(self):
         analyzer = analyze_function(example_macro)
@@ -95,8 +103,24 @@ class TestWorkflow(unittest.TestCase):
                 "outputs": {"output": {"dtype": float}},
                 "label": "add",
                 "uri": "add",
-            }
+            },
         )
+        node_dict = get_node_dict(multiple_types_for_ape, data_format="ape")
+        node_dict.pop("id")
+        self.assertEqual(
+            node_dict,
+            {
+                "inputs": [
+                    {"Type": "a", "Format": "Int"},
+                    {"Type": "b", "Format": "numpy.ndarray"},
+                ],
+                "outputs": [{"Type": "output", "Format": "numpy.ndarray"}],
+                "label": "multiple_types_for_ape",
+                "taxonomyOperations": ["my_function"],
+            },
+        )
+        self.assertRaises(KeyError, get_node_dict, add, data_format="ape")
+        self.assertRaises(KeyError, get_node_dict, multiply, data_format="ape")
 
     def test_get_return_variables(self):
         self.assertEqual(get_return_variables(example_macro), ["f"])
