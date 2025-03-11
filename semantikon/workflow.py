@@ -236,12 +236,10 @@ def _to_ape(data, func):
         io_data = []
         for key, value in data[io_].items():
             try:
-                io_data.append(
-                    {
-                        "Type": value["uri"],
-                        "Format": _dtype_to_ape_format(value["dtype"]),
-                    }
-                )
+                d = {"Type": value["uri"]}
+                if io_ == "outputs":
+                    d["Format"] = _dtype_to_ape_format(value["dtype"])
+                io_data.append(d)
             except KeyError:
                 raise KeyError(
                     f"uri not found in {io_} metadata of {func.__name__} {key}"
