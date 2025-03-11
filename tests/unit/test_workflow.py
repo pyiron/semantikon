@@ -111,7 +111,8 @@ class TestWorkflow(unittest.TestCase):
             node_dict,
             {
                 "inputs": [
-                    {"Type": "a"}, {"Type": "b"},
+                    {"Type": "a"},
+                    {"Type": "b"},
                 ],
                 "outputs": [{"Type": "output", "Format": "numpy.ndarray"}],
                 "label": "multiple_types_for_ape",
