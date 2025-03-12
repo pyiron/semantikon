@@ -219,7 +219,7 @@ def _get_data_edges(analyzer, func):
 
 
 def _dtype_to_str(dtype):
-    return dtype.__module__
+    return dtype.__name__
 
 
 def _to_ape(data, func):
