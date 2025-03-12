@@ -504,7 +504,7 @@ class TestDataclass(unittest.TestCase):
         doubles = [(EX[tag[0]], EX[tag[1]]) for tag in tags]
         graph = dataclass_to_knowledge_graph(Animal, EX)
         self.assertEqual(list(graph.subject_objects(None)), doubles)
-        self.assertRaises(ValueError):
+        with self.assertRaises(ValueError):
             graph = dataclass_to_knowledge_graph(ForbiddenAnimal, EX)
 
 
