@@ -218,12 +218,8 @@ def _get_data_edges(analyzer, func):
     return data_edges
 
 
-def _dtype_to_ape_format(dtype):
-    standard_dict = {str: "String", float: "Float", bool: "Bool", int: "Int"}
-    if dtype in standard_dict:
-        return standard_dict[dtype]
-    else:
-        return dtype.__module__ + "." + dtype.__name__
+def _dtype_to_str(dtype):
+    return dtype.__module__
 
 
 def _to_ape(data, func):
@@ -233,7 +229,7 @@ def _to_ape(data, func):
         raise KeyError(f"uri not found in metadata of {func.__name__}")
     data["id"] = data["label"] + "_" + _hash_function(func)
     for io_ in ["inputs", "outputs"]:
-        data[io_] = [{"Type": value["dtype"]} for value in data[io_].values()]
+        data[io_] = [{"Type": _dtype_to_str(v["dtype"])} for v in data[io_].values()]
     return data
 
 

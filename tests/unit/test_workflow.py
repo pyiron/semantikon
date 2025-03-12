@@ -65,8 +65,12 @@ def example_invalid_local_var_def(a=10, b=20):
     return result
 
 
+class ApeClass:
+    pass
+
+
 @u(uri="my_function")
-def multiple_types_for_ape(a: int, b: int) -> np.ndarray:
+def multiple_types_for_ape(a: ApeClass, b: ApeClass) -> ApeClass:
     return a + b
 
 
@@ -109,10 +113,10 @@ class TestWorkflow(unittest.TestCase):
             node_dict,
             {
                 "inputs": [
-                    {"Type": "int"},
-                    {"Type": "int"},
+                    {"Type": "ApeClass"},
+                    {"Type": "ApeClass"},
                 ],
-                "outputs": [{"Type": "numpy.ndarray"}],
+                "outputs": [{"Type": "ApeClass"}],
                 "label": "multiple_types_for_ape",
                 "taxonomyOperations": ["my_function"],
             },
