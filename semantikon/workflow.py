@@ -233,18 +233,7 @@ def _to_ape(data, func):
         raise KeyError(f"uri not found in metadata of {func.__name__}")
     data["id"] = data["label"] + "_" + _hash_function(func)
     for io_ in ["inputs", "outputs"]:
-        io_data = []
-        for key, value in data[io_].items():
-            try:
-                d = {"Type": value["uri"]}
-                if io_ == "outputs":
-                    d["Format"] = _dtype_to_ape_format(value["dtype"])
-                io_data.append(d)
-            except KeyError:
-                raise KeyError(
-                    f"uri not found in {io_} metadata of {func.__name__} {key}"
-                )
-        data[io_] = io_data
+        data[io_] = [{"Type": value["dtype"]} for value in data[io_].values()]
     return data
 
 
