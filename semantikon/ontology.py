@@ -498,9 +498,8 @@ def get_knowledge_graph(
 def _is_unique(tag, graph):
     return tag not in [h for g in graph.subject_objects(None, None) for h in g]
 
-def _dataclass_to_knowledge_graph(
-    parent, name_space, graph=None, parent_name=None
-):
+
+def _dataclass_to_knowledge_graph(parent, name_space, graph=None, parent_name=None):
     if graph is None:
         graph = Graph()
     for name, obj in vars(parent).items():
@@ -516,6 +515,7 @@ def _dataclass_to_knowledge_graph(
                 raise ValueError(f"{name} used multiple times")
             _dataclass_to_knowledge_graph(obj, name_space, graph, name)
     return graph
+
 
 def dataclass_to_knowledge_graph(class_name, name_space):
     return _dataclass_to_knowledge_graph(

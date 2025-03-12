@@ -453,6 +453,7 @@ class Animal:
     class Mammal:
         class Dog:
             pass
+
         class Cat:
             pass
 
@@ -462,6 +463,7 @@ class Animal:
 
         class Snake:
             pass
+
 
 class ForbiddenAnimal:
     class Mamal:
