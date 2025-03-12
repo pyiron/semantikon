@@ -66,7 +66,7 @@ def example_invalid_local_var_def(a=10, b=20):
 
 
 @u(uri="my_function")
-def multiple_types_for_ape(a: int, b: int) -> np.ndarray::
+def multiple_types_for_ape(a: int, b: int) -> np.ndarray:
     return a + b
 
 
