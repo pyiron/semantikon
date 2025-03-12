@@ -15,6 +15,7 @@ from semantikon.ontology import (
     PNS,
     _inherit_properties,
     validate_values,
+    dataclass_to_knowledge_graph,
 )
 from semantikon.workflow import workflow
 from dataclasses import dataclass
@@ -448,6 +449,28 @@ def get_run_md(inp: Input):
     return result
 
 
+class Animal:
+    class Mammal:
+        class Dog:
+            pass
+
+        class Cat:
+            pass
+
+    class Reptile:
+        class Lizard:
+            pass
+
+        class Snake:
+            pass
+
+
+class ForbiddenAnimal:
+    class Mamal:
+        class ForbiddenAnimal:
+            pass
+
+
 class TestDataclass(unittest.TestCase):
     def test_dataclass(self):
         wf_dict = get_run_md.run(Input(T=300.0, n=100))
@@ -469,6 +492,23 @@ class TestDataclass(unittest.TestCase):
                     msg=f"{triple} not found",
                 )
         self.assertIsNone(graph.value(URIRef(f"{i_txt}.not_dataclass.b.value")))
+
+    def test_dataclass_to_knowledge_graph(self):
+        EX = Namespace("http://example.org/")
+        tags = [
+            ("Cat", "Mammal"),
+            ("Lizard", "Reptile"),
+            ("Mammal", "Animal"),
+            ("Dog", "Mammal"),
+            ("Snake", "Reptile"),
+            ("Reptile", "Animal"),
+        ]
+        doubles = sorted([(EX[tag[0]], EX[tag[1]]) for tag in tags])
+        graph = dataclass_to_knowledge_graph(Animal, EX)
+        self.maxDiff = None
+        self.assertEqual(sorted(graph.subject_objects(None)), doubles)
+        with self.assertRaises(ValueError):
+            graph = dataclass_to_knowledge_graph(ForbiddenAnimal, EX)
 
 
 if __name__ == "__main__":
