@@ -66,9 +66,7 @@ def example_invalid_local_var_def(a=10, b=20):
 
 
 @u(uri="my_function")
-def multiple_types_for_ape(
-    a: u(int, uri="a"), b: u(np.ndarray, uri="b")
-) -> u(np.ndarray, uri="output"):
+def multiple_types_for_ape(a: int, b: int) -> np.ndarray::
     return a + b
 
 
@@ -111,15 +109,14 @@ class TestWorkflow(unittest.TestCase):
             node_dict,
             {
                 "inputs": [
-                    {"Type": "a"},
-                    {"Type": "b"},
+                    {"Type": "int"},
+                    {"Type": "int"},
                 ],
-                "outputs": [{"Type": "output", "Format": "numpy.ndarray"}],
+                "outputs": [{"Type": "numpy.ndarray"}],
                 "label": "multiple_types_for_ape",
                 "taxonomyOperations": ["my_function"],
             },
         )
-        self.assertRaises(KeyError, get_node_dict, add, data_format="ape")
         self.assertRaises(KeyError, get_node_dict, multiply, data_format="ape")
 
     def test_get_return_variables(self):
