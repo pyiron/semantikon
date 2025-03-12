@@ -518,6 +518,16 @@ def _dataclass_to_knowledge_graph(parent, name_space, graph=None, parent_name=No
 
 
 def dataclass_to_knowledge_graph(class_name, name_space):
+    """
+    Convert a dataclass to a knowledge graph
+
+    Args:
+        class_name (dataclass): dataclass to be converted
+        name_space (rdflib.Namespace): namespace to be used
+
+    Returns:
+        (rdflib.Graph): knowledge graph
+    """
     return _dataclass_to_knowledge_graph(
         class_name, name_space, graph=None, parent_name=class_name.__name__
     )
