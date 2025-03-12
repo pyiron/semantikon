@@ -501,9 +501,10 @@ class TestDataclass(unittest.TestCase):
             ("Snake", "Reptile"),
             ("Reptile", "Animal"),
         ]
-        doubles = [(EX[tag[0]], EX[tag[1]]) for tag in tags]
+        doubles = sorted([(EX[tag[0]], EX[tag[1]]) for tag in tags])
         graph = dataclass_to_knowledge_graph(Animal, EX)
-        self.assertEqual(list(graph.subject_objects(None)), doubles)
+        self.maxDiff = None
+        self.assertEqual(sorted(graph.subject_objects(None)), doubles)
         with self.assertRaises(ValueError):
             graph = dataclass_to_knowledge_graph(ForbiddenAnimal, EX)
 
