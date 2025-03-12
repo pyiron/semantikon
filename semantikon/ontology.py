@@ -493,3 +493,31 @@ def get_knowledge_graph(
     if append_missing_items:
         graph = _append_missing_items(graph)
     return graph
+
+
+def _is_unique(tag, graph):
+    return tag not in [h for g in graph.subject_objects(None, None) for h in g]
+
+def _dataclass_to_knowledge_graph(
+    parent, name_space, graph=None, parent_name=None
+):
+    if graph is None:
+        graph = Graph()
+    for name, obj in vars(parent).items():
+        if isinstance(obj, type):  # Check if it's a class
+            if _is_unique(name_space[name], graph):
+                if parent_name is not None:
+                    graph.add(
+                        (name_space[name], RDFS.subClassOf, name_space[parent_name])
+                    )
+                else:
+                    graph.add((name_space[name], RDF.type, RDFS.Class))
+            else:
+                raise ValueError(f"{name} used multiple times")
+            _dataclass_to_knowledge_graph(obj, name_space, graph, name)
+    return graph
+
+def dataclass_to_knowledge_graph(class_name, name_space):
+    return _dataclass_to_knowledge_graph(
+        class_name, name_space, graph=None, parent_name=class_name.__name__
+    )
