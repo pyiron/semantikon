@@ -121,7 +121,6 @@ class TestWorkflow(unittest.TestCase):
                 "taxonomyOperations": ["my_function"],
             },
         )
-        self.assertRaises(KeyError, get_node_dict, multiply, data_format="ape")
 
     def test_get_return_variables(self):
         self.assertEqual(get_return_variables(example_macro), ["f"])

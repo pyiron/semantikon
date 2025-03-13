@@ -223,10 +223,7 @@ def _dtype_to_str(dtype):
 
 
 def _to_ape(data, func):
-    try:
-        data["taxonomyOperations"] = [data.pop("uri")]
-    except KeyError:
-        raise KeyError(f"uri not found in metadata of {func.__name__}")
+    data["taxonomyOperations"] = [data.pop("uri", func.__name__)]
     data["id"] = data["label"] + "_" + _hash_function(func)
     for io_ in ["inputs", "outputs"]:
         data[io_] = [{"Type": _dtype_to_str(v["dtype"])} for v in data[io_].values()]
