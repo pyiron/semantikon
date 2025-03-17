@@ -23,7 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "numpy==2.2.3",
+    "numpy==2.2.4",
     "pint==0.24.4"
 ]
 dynamic = [ "version",]
