@@ -3,7 +3,7 @@ channels:
 dependencies:
 - coveralls
 - coverage
-- numpy =2.2.3
+- numpy =2.2.4
 - pint =0.24.4
 - rdflib =7.1.1
 - owlrl =7.1.2
