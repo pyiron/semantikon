@@ -236,7 +236,7 @@ def get_node_dict(func, data_format="semantikon"):
 
     Args:
         func (callable): The function to be analyzed.
-        data_format (str): The format of the output. Options are "semantiokn" and
+        data_format (str): The format of the output. Options are "semantikon" and
             "ape".
 
     Returns:
