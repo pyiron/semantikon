@@ -226,7 +226,13 @@ def _to_ape(data, func):
     data["taxonomyOperations"] = [data.pop("uri", func.__name__)]
     data["id"] = data["label"] + "_" + _hash_function(func)
     for io_ in ["inputs", "outputs"]:
-        data[io_] = [{"Type": _dtype_to_str(v["dtype"])} for v in data[io_].values()]
+        d = []
+        for v in data[io_].values():
+            if "uri" in v:
+                d.append({"Type": str(v["uri"]), "Format": _dtype_to_str(v["dtype"])})
+            else:
+                d.append({"Type": _dtype_to_str(v["dtype"])})
+        data[io_] = d
     return data
 
 
