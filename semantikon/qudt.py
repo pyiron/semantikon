@@ -63,9 +63,12 @@ def get_units_dict(graph):
     for uri, tag in graph.subject_objects(RDFS.label):
         if tag.language is not None and not tag.language.startswith("en"):
             continue
+        key = str(tag).lower()
+        units_dict[key] = uri
         try:
             key = str(ureg[str(tag).lower()].units)
+            if key not in units_dict or len(uri) < len(units_dict[key]):
+                units_dict[key] = uri
         except:
-            key = str(tag).lower()
-        units_dict[key] = uri
+            pass
     return units_dict
