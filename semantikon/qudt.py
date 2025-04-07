@@ -8,7 +8,7 @@ import requests
 def download_data(version=None, store_data=False):
     if version is None:
         version = "3.1.0"
-    data = requests.get(f"https://qudt.org/{version}/vocab/unit").text
+    data = requests.get(f"https://qudt.org/{version}/vocab/unit", timeout=300).text
     graph = Graph()
     graph.parse(data=data, format="ttl")
     graph_with_only_label = Graph()
