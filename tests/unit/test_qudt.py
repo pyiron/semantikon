@@ -15,6 +15,10 @@ class TestQUDT(unittest.TestCase):
             str(self.ud["Cubic Meter per Square Meter"]),
             "http://qudt.org/vocab/unit/M3-PER-M2",
         )
+        self.assertEqual(
+            str(self.ud["http://qudt.org/vocab/unit/M"]),
+            "http://qudt.org/vocab/unit/M"
+        )
 
     def test_graph_consistency(self):
         ud = UnitsDict()

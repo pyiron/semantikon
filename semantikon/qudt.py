@@ -1,6 +1,6 @@
 import re
 import os
-from rdflib import Graph, RDFS
+from rdflib import Graph, RDFS, URIRef
 from pint import UnitRegistry
 import requests
 
@@ -39,13 +39,14 @@ class UnitsDict:
         self._ureg = UnitRegistry()
 
     def __getitem__(self, key):
+        if key.startswith("http"):
+            return URIRef(key)
         key = key.lower()
         if key in self._units_dict:
             return self._units_dict[key]
         key = str(self._ureg[str(key)].units)
         if key in self._units_dict:
             return self._units_dict[key]
-        return None
 
 
 def get_graph(location=None):
