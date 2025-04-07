@@ -2,6 +2,7 @@ import os
 from rdflib import Graph, RDFS, URIRef
 from pint import UnitRegistry
 from pint.errors import UndefinedUnitError, OffsetUnitCalculusError, DimensionalityError
+from tokenize import TokenError
 import requests
 
 
@@ -70,6 +71,11 @@ def get_units_dict(graph):
             key = str(ureg[str(tag).lower()].units)
             if key not in units_dict or len(uri) < len(units_dict[key]):
                 units_dict[key] = uri
-        except (UndefinedUnitError, OffsetUnitCalculusError, DimensionalityError):
+        except (
+            UndefinedUnitError,
+            OffsetUnitCalculusError,
+            DimensionalityError,
+            TokenError,
+        ):
             pass
     return units_dict
