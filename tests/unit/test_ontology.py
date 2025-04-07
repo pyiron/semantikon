@@ -242,7 +242,14 @@ class TestOntology(unittest.TestCase):
         obj = URIRef("http://example.org/object")
         label = URIRef("get_speed.calculate_speed_0.outputs.output")
         self.assertGreater(
-            len(list(graph.triples((None, PNS.hasUnits, URIRef("meter/second"))))), 0
+            len(
+                list(
+                    graph.subjects(
+                        PNS.hasUnits, URIRef("http://qudt.org/vocab/unit/M-PER-SEC")
+                    )
+                )
+            ),
+            0,
         )
         ex_triple = (
             None,

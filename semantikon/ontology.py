@@ -4,6 +4,7 @@ import warnings
 from rdflib import Graph, Literal, RDF, RDFS, URIRef, OWL, PROV, Namespace, BNode, SH
 from dataclasses import is_dataclass
 from semantikon.converter import meta_to_dict, get_function_dict
+from semantikon.qudt import UnitsDict
 from owlrl import DeductiveClosure, OWLRL_Semantics
 
 
@@ -16,6 +17,9 @@ class PNS:
     inputOf = BASE["inputOf"]
     outputOf = BASE["outputOf"]
     hasValue = BASE["hasValue"]
+
+
+ud = UnitsDict()
 
 
 def _translate_has_value(
@@ -65,7 +69,14 @@ def _translate_has_value(
         if value is not None:
             triples.append((tag_uri, RDF.value, Literal(value)))
         if units is not None:
-            triples.append((tag_uri, ontology.hasUnits, URIRef(units)))
+            if isinstance(units, str):
+                key = ud[units]
+                if key is not None:
+                    triples.append((tag_uri, ontology.hasUnits, key))
+                else:
+                    triples.append((tag_uri, ontology.hasUnits, URIRef(units)))
+            else:
+                triples.append((tag_uri, ontology.hasUnits, URIRef(units)))
     return triples
 
 
