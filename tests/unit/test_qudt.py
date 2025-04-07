@@ -13,12 +13,13 @@ class TestQUDT(unittest.TestCase):
         self.assertEqual(str(meter), "http://qudt.org/vocab/unit/M")
         self.assertEqual(
             str(self.ud["Cubic Meter per Square Meter"]),
-            'http://qudt.org/vocab/unit/M3-PER-M2',
+            "http://qudt.org/vocab/unit/M3-PER-M2",
         )
 
     def test_graph_consistency(self):
         ud = UnitsDict()
         self.assertEqual(ud["second"], self.ud["second"])
+
 
 if __name__ == "__main__":
     unittest.main()

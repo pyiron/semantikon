@@ -17,7 +17,7 @@ def download_data(version=None, store_data=False):
             graph_with_only_label.add((s, p, o))
     if store_data:
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        location = os.path.join(script_dir, 'data', 'qudt.ttl')
+        location = os.path.join(script_dir, "data", "qudt.ttl")
         graph_with_only_label.serialize(destination=location, format="ttl")
     return graph_with_only_label
 
@@ -51,7 +51,7 @@ class UnitsDict:
 def get_graph(location=None):
     if location is None:
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        location = os.path.join(script_dir, 'data', 'qudt.ttl')
+        location = os.path.join(script_dir, "data", "qudt.ttl")
     graph = Graph()
     graph.parse(location=location, format="ttl")
     return graph
