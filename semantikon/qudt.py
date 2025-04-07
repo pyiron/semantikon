@@ -5,12 +5,9 @@ from pint import UnitRegistry
 import requests
 
 
-def contains_special_char(s):
-    # This pattern matches any character that is NOT a letter, digit, or underscore
-    return bool(re.search(r'[^a-zA-Z0-9_./ ]', s))
-
-
-def download_data(version="3.1.0", store_data=False):
+def download_data(version=None, store_data=False):
+    if version is None:
+        version = "3.1.0"
     data = requests.get(f"https://qudt.org/{version}/vocab/unit").text
     graph = Graph()
     graph.parse(data=data, format="ttl")
