@@ -322,8 +322,8 @@ def _convert_to_uriref(value):
         raise TypeError(f"Unsupported type: {type(value)}")
 
 
-def _function_to_triples(node: dict, node_label: str, ontology=PNS) -> list:
-    f_dict = get_function_dict(node["function"])
+def _function_to_triples(function: callable, node_label: str, ontology=PNS) -> list:
+    f_dict = get_function_dict(function)
     triples = []
     if f_dict.get("uri", None) is not None:
         triples.append((node_label, RDF.type, f_dict["uri"]))
@@ -412,8 +412,10 @@ def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
 
 
 def _parse_workflow(
-    wf_dict: dict, label=None, full_edge_dict=None, ontology=PNS
+    wf_dict: dict, label=None, full_edge_dict=None, ontology=PNS, function_dict=None,
 ) -> list:
+    if function_dict is None:
+        function_dict = wf_dict["function_dict"]
     if full_edge_dict is None:
         full_edge_dict = _get_full_edge_dict(wf_dict)
     if label is None:
@@ -442,10 +444,10 @@ def _parse_workflow(
         for n_label, node in wf_dict["nodes"].items():
             node_label = _dot(label, n_label)
             triples.append((label, ontology.hasNode, node_label))
-            for n in _parse_workflow(node, node_label, full_edge_dict, ontology):
+            for n in _parse_workflow(node, node_label, full_edge_dict, ontology, function_dict):
                 triples.append(n)
     elif "function" in wf_dict:
-        triples.extend(_function_to_triples(wf_dict, label, ontology))
+        triples.extend(_function_to_triples(function_dict[wf_dict["function"]], label, ontology))
     else:
         raise ValueError("Invalid workflow dictionary")
     return triples
