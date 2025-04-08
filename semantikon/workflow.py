@@ -161,6 +161,8 @@ def _get_nodes(data, output_counts):
                 "inputs": parse_input_args(func),
                 "outputs": _get_node_outputs(func, output_counts.get(node, 1)),
             }
+        if hasattr(func, "_semantikon_metadata"):
+            result[node].update(func._semantikon_metadata)
     return result
 
 

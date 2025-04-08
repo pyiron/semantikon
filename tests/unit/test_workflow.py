@@ -153,6 +153,7 @@ class TestWorkflow(unittest.TestCase):
                     },
                     "outputs": {"output": {"dtype": float}},
                     "function": add,
+                    "uri": "add",
                 },
                 "multiply_0": {
                     "inputs": {
@@ -201,6 +202,7 @@ class TestWorkflow(unittest.TestCase):
                                 "y": {"dtype": float, "default": 1},
                             },
                             "outputs": {"output": {"dtype": float}},
+                            "uri": "add",
                         },
                         "multiply_0": {
                             "function": multiply,
@@ -228,6 +230,7 @@ class TestWorkflow(unittest.TestCase):
                         "y": {"dtype": float, "default": 1},
                     },
                     "outputs": {"output": {"dtype": float}},
+                    "uri": "add",
                 },
             },
             "data_edges": [
