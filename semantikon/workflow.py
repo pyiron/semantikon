@@ -11,7 +11,7 @@ from semantikon.converter import parse_input_args, parse_output_args
 
 
 def _hash_function(func):
-    return sha256(inspect.getsource(func).encode()).hexdigest()
+    return f"{func.__name__}_{sha256(inspect.getsource(func).encode()).hexdigest()}"
 
 
 def _check_node(node):
