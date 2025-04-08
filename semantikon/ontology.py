@@ -412,7 +412,11 @@ def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
 
 
 def _parse_workflow(
-    wf_dict: dict, label=None, full_edge_dict=None, ontology=PNS, function_dict=None,
+    wf_dict: dict,
+    label=None,
+    full_edge_dict=None,
+    ontology=PNS,
+    function_dict=None,
 ) -> list:
     if function_dict is None:
         function_dict = wf_dict["function_dict"]
@@ -444,10 +448,14 @@ def _parse_workflow(
         for n_label, node in wf_dict["nodes"].items():
             node_label = _dot(label, n_label)
             triples.append((label, ontology.hasNode, node_label))
-            for n in _parse_workflow(node, node_label, full_edge_dict, ontology, function_dict):
+            for n in _parse_workflow(
+                node, node_label, full_edge_dict, ontology, function_dict
+            ):
                 triples.append(n)
     elif "function" in wf_dict:
-        triples.extend(_function_to_triples(function_dict[wf_dict["function"]], label, ontology))
+        triples.extend(
+            _function_to_triples(function_dict[wf_dict["function"]], label, ontology)
+        )
     else:
         raise ValueError("Invalid workflow dictionary")
     return triples
