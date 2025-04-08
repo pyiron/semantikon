@@ -151,19 +151,23 @@ def _get_output_counts(data):
 
 def _get_nodes(data, output_counts):
     result = {}
+    function_dict = {}
     for node, func in data.items():
         if hasattr(func, "_semantikon_workflow"):
+            function_dict.update(func._semantikon_workflow.pop("function_dict"))
             result[node] = func._semantikon_workflow.copy()
             result[node]["label"] = node
         else:
+            function_hash = _hash_function(func)
             result[node] = {
-                "function": func,
+                "function": function_hash,
                 "inputs": parse_input_args(func),
                 "outputs": _get_node_outputs(func, output_counts.get(node, 1)),
             }
+            function_dict[function_hash] = func
         if hasattr(func, "_semantikon_metadata"):
             result[node].update(func._semantikon_metadata)
-    return result
+    return result, function_dict
 
 
 def _remove_index(s):
@@ -265,12 +269,14 @@ def get_node_dict(func, data_format="semantikon"):
 def get_workflow_dict(func):
     analyzer = analyze_function(func)
     output_counts = _get_output_counts(analyzer.graph.edges.data())
+    nodes, function_dict = _get_nodes(analyzer.function_defs, output_counts)
     data = {
         "inputs": parse_input_args(func),
         "outputs": _get_workflow_outputs(func),
-        "nodes": _get_nodes(analyzer.function_defs, output_counts),
+        "nodes": nodes,
         "data_edges": _get_data_edges(analyzer, func),
         "label": func.__name__,
+        "function_dict": function_dict,
     }
     return data
 
