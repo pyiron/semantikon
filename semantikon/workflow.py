@@ -154,8 +154,10 @@ def _get_nodes(data, output_counts):
     function_dict = {}
     for node, func in data.items():
         if hasattr(func, "_semantikon_workflow"):
-            function_dict.update(func._semantikon_workflow.pop("function_dict"))
-            result[node] = func._semantikon_workflow.copy()
+            data_dict = func._semantikon_workflow.copy()
+            if "function_dict" in data_dict:
+                function_dict.update(data_dict.pop("function_dict"))
+            result[node] = data_dict
             result[node]["label"] = node
         else:
             function_hash = _hash_function(func)
@@ -297,8 +299,11 @@ def _get_missing_edges(edges):
 
 
 class _Workflow:
-    def __init__(self, workflow_dict):
+    def __init__(self, workflow_dict, function_dict=None):
         self._workflow = workflow_dict
+        if function_dict is None:
+            function_dict = workflow_dict["function_dict"]
+        self._function_dict = function_dict
 
     @cached_property
     def _all_edges(self):
@@ -369,14 +374,14 @@ class _Workflow:
         except KeyError:
             raise KeyError(f"value not defined for {function}")
         if "function" not in node:
-            workflow = _Workflow(node)
+            workflow = _Workflow(node, self._function_dict)
             outputs = [
                 d["value"] for d in workflow.run(**input_data)["outputs"].values()
             ]
             if len(outputs) == 1:
                 outputs = outputs[0]
         else:
-            outputs = node["function"](**input_data)
+            outputs = self._function_dict[node["function"]](**input_data)
         return outputs
 
     def _set_value(self, tag, value):
