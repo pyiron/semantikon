@@ -167,7 +167,9 @@ def _get_nodes(data, output_counts):
                 "outputs": _get_node_outputs(func, output_counts.get(node, 1)),
             }
             if function_name in function_dict:
-                assert _hash_function(func) == _hash_function(function_dict[function_name])
+                assert _hash_function(func) == _hash_function(
+                    function_dict[function_name]
+                )
             function_dict[function_name] = func
         if hasattr(func, "_semantikon_metadata"):
             result[node].update(func._semantikon_metadata)
