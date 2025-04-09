@@ -145,7 +145,7 @@ class TestWorkflow(unittest.TestCase):
                         "output_0": {"dtype": float},
                         "output_1": {"dtype": float},
                     },
-                    "function": operation.__name__,
+                    "function": "operation",
                 },
                 "add_0": {
                     "inputs": {
@@ -153,7 +153,7 @@ class TestWorkflow(unittest.TestCase):
                         "y": {"dtype": float, "default": 1},
                     },
                     "outputs": {"output": {"dtype": float}},
-                    "function": add.__name__,
+                    "function": "add",
                     "uri": "add",
                 },
                 "multiply_0": {
@@ -162,7 +162,7 @@ class TestWorkflow(unittest.TestCase):
                         "y": {"dtype": float, "default": 5},
                     },
                     "outputs": {"output": {"dtype": float}},
-                    "function": multiply.__name__,
+                    "function": "multiply",
                 },
             },
             "data_edges": [
@@ -175,9 +175,9 @@ class TestWorkflow(unittest.TestCase):
             ],
             "label": "example_macro",
             "function_dict": {
-                operation.__name__: operation,
-                add.__name__: add,
-                multiply.__name__: multiply,
+                "operation": operation,
+                "add": add,
+                "multiply": multiply,
             },
         }
         self.assertEqual(get_workflow_dict(example_macro), ref_data)
@@ -194,7 +194,7 @@ class TestWorkflow(unittest.TestCase):
                     "outputs": {"f": {}},
                     "nodes": {
                         "operation_0": {
-                            "function": operation.__name__,
+                            "function": "operation",
                             "inputs": {"x": {"dtype": float}, "y": {"dtype": float}},
                             "outputs": {
                                 "output_0": {"dtype": float},
@@ -202,7 +202,7 @@ class TestWorkflow(unittest.TestCase):
                             },
                         },
                         "add_0": {
-                            "function": add.__name__,
+                            "function": "add",
                             "inputs": {
                                 "x": {"dtype": float, "default": 2.0},
                                 "y": {"dtype": float, "default": 1},
@@ -211,7 +211,7 @@ class TestWorkflow(unittest.TestCase):
                             "uri": "add",
                         },
                         "multiply_0": {
-                            "function": multiply.__name__,
+                            "function": "multiply",
                             "inputs": {
                                 "x": {"dtype": float},
                                 "y": {"dtype": float, "default": 5},
@@ -230,7 +230,7 @@ class TestWorkflow(unittest.TestCase):
                     "label": "example_macro_0",
                 },
                 "add_0": {
-                    "function": add.__name__,
+                    "function": "add",
                     "inputs": {
                         "x": {"dtype": float, "default": 2.0},
                         "y": {"dtype": float, "default": 1},
@@ -248,9 +248,9 @@ class TestWorkflow(unittest.TestCase):
             ],
             "label": "example_workflow",
             "function_dict": {
-                operation.__name__: operation,
-                add.__name__: add,
-                multiply.__name__: multiply,
+                "operation": operation,
+                "add": add,
+                "multiply": multiply,
             },
         }
         self.assertEqual(result, ref_data, msg=result)
