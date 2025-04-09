@@ -45,6 +45,7 @@ class UnitsDict:
     The dictionary is created from the QUDT data and can be used to
     convert between different units.
     """
+
     def __init__(
         self,
         graph=None,
