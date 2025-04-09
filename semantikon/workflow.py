@@ -160,7 +160,7 @@ def _get_nodes(data, output_counts):
             result[node] = data_dict
             result[node]["label"] = node
         else:
-            function_hash = _hash_function(func)
+            function_hash = func.__name__
             result[node] = {
                 "function": function_hash,
                 "inputs": parse_input_args(func),
