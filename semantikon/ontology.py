@@ -488,11 +488,11 @@ def _restore_types(wf_dict: dict, class_dict=None) -> dict:
     elif class_dict is None:
         class_dict = wf_dict.pop("class_dict")
     for io_ in ["inputs", "outputs"]:
-        for key, channel_dict in wf_dict[io_].items():
+        for channel_dict in wf_dict[io_].values():
             if "dtype" in channel_dict and isinstance(channel_dict["dtype"], str):
                 channel_dict["dtype"] = class_dict[channel_dict["dtype"]]
     if "nodes" in wf_dict:
-        for n_label, node in wf_dict["nodes"].items():
+        for node in wf_dict["nodes"].values():
             node = _restore_types(node, class_dict)
     return wf_dict
 
