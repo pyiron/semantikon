@@ -329,7 +329,7 @@ def _get_missing_edges(edges):
 class _Workflow:
     def __init__(self, workflow_dict, function_dict=None):
         self._workflow = workflow_dict
-        if function_dict is None:
+        if function_dict is None and "function_dict" in workflow_dict:
             function_dict = workflow_dict["function_dict"]
         self._function_dict = function_dict
 
@@ -391,6 +391,11 @@ class _Workflow:
         except KeyError:
             raise KeyError(f"{path} not found in {node}")
 
+    def _f_key_to_f(self, f_key):
+        if self._function_dict is not None and f_key in self._function_dict:
+            return self._function_dict[f_key]
+        return f_key
+
     def _execute_node(self, function):
         node = self._workflow["nodes"][function]
         input_data = {}
@@ -409,7 +414,7 @@ class _Workflow:
             if len(outputs) == 1:
                 outputs = outputs[0]
         else:
-            outputs = self._function_dict[node["function"]](**input_data)
+            outputs = self._f_key_to_f(node["function"])(**input_data)
         return outputs
 
     def _set_value(self, tag, value):
