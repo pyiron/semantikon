@@ -448,9 +448,7 @@ def _parse_workflow(
             for n in _parse_workflow(node, node_label, full_edge_dict, ontology):
                 triples.append(n)
     elif "function" in wf_dict:
-        triples.extend(
-            _function_to_triples(wf_dict["function"], label, ontology)
-        )
+        triples.extend(_function_to_triples(wf_dict["function"], label, ontology))
     else:
         raise ValueError("Invalid workflow dictionary")
     return triples
@@ -501,7 +499,9 @@ def _restore_functions(wf_dict: dict, function_dict=None) -> dict:
         for node in wf_dict["nodes"].values():
             node = _restore_functions(node, function_dict)
     elif "function" in wf_dict:
-        wf_dict["function"] = function_dict.get(wf_dict["function"], wf_dict["function"])
+        wf_dict["function"] = function_dict.get(
+            wf_dict["function"], wf_dict["function"]
+        )
     return wf_dict
 
 
