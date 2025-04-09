@@ -151,29 +151,20 @@ def _get_output_counts(data):
 
 def _get_nodes(data, output_counts):
     result = {}
-    function_dict = {}
     for node, func in data.items():
         if hasattr(func, "_semantikon_workflow"):
             data_dict = func._semantikon_workflow.copy()
-            if "function_dict" in data_dict:
-                function_dict.update(data_dict.pop("function_dict"))
             result[node] = data_dict
             result[node]["label"] = node
         else:
-            function_name = func.__name__
             result[node] = {
-                "function": function_name,
+                "function": func,
                 "inputs": parse_input_args(func),
                 "outputs": _get_node_outputs(func, output_counts.get(node, 1)),
             }
-            if function_name in function_dict:
-                assert _hash_function(func) == _hash_function(
-                    function_dict[function_name]
-                )
-            function_dict[function_name] = func
         if hasattr(func, "_semantikon_metadata"):
             result[node].update(func._semantikon_metadata)
-    return result, function_dict
+    return result
 
 
 def _remove_index(s):
@@ -272,18 +263,33 @@ def get_node_dict(func, data_format="semantikon"):
     return data
 
 
-def get_workflow_dict(func):
+def _separate_functions(data):
+    if "function_dict" not in data:
+        data["function_dict"] = {}
+    if "nodes" in data:
+        for key, node in data["nodes"].items():
+            child_node = _separate_functions(node)
+            data["function_dict"].update(child_node.pop("function_dict"))
+            data["nodes"][key] = child_node
+    elif "function" in data and not isinstance(data["function"], str):
+        data["function_dict"][data["function"].__name__] = data["function"]
+        data["function"] = data["function"].__name__
+    return data
+
+
+def get_workflow_dict(func, separate_functions=True):
     analyzer = analyze_function(func)
     output_counts = _get_output_counts(analyzer.graph.edges.data())
-    nodes, function_dict = _get_nodes(analyzer.function_defs, output_counts)
+    nodes = _get_nodes(analyzer.function_defs, output_counts)
     data = {
         "inputs": parse_input_args(func),
         "outputs": _get_workflow_outputs(func),
         "nodes": nodes,
         "data_edges": _get_data_edges(analyzer, func),
         "label": func.__name__,
-        "function_dict": function_dict,
     }
+    if separate_functions:
+        data = _separate_functions(data)
     return data
 
 
