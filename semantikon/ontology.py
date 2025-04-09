@@ -482,6 +482,21 @@ def _parse_cancel(nodes: dict, label: str) -> list:
     return [tuple([_convert_to_uriref(tt) for tt in t]) for t in triples]
 
 
+def _restore_types(wf_dict: dict, class_dict=None) -> dict:
+    if class_dict is None and "class_dict" not in wf_dict:
+        return class_dict
+    elif class_dict is None:
+        class_dict = wf_dict.pop("class_dict")
+    for io_ in ["inputs", "outputs"]:
+        for key, channel_dict in wf_dict[io_].items():
+            if "dtype" in channel_dict and isinstance(channel_dict["dtype"], str):
+                channel_dict["dtype"] = class_dict[channel_dict["dtype"]]
+    if "nodes" in wf_dict:
+        for n_label, node in wf_dict["nodes"].items():
+            node = _restore_types(node, class_dict)
+    return wf_dict
+
+
 def get_knowledge_graph(
     wf_dict: dict,
     graph: Graph | None = None,
@@ -502,6 +517,7 @@ def get_knowledge_graph(
     """
     if graph is None:
         graph = Graph()
+    wf_dict = _restore_types(wf_dict.copy())
     triples = _parse_workflow(wf_dict, ontology=ontology)
     triples_to_cancel = _parse_cancel(wf_dict["nodes"], wf_dict["label"])
     for triple in triples:

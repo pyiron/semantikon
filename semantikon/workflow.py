@@ -263,6 +263,22 @@ def get_node_dict(func, data_format="semantikon"):
     return data
 
 
+def _separate_types(data):
+    if "class_dict" not in data:
+        data["class_dict"] = {}
+    if "nodes" in data:
+        for key, node in data["nodes"].items():
+            child_node = _separate_types(node)
+            data["class_dict"].update(child_node.pop("class_dict"))
+            data["nodes"][key] = child_node
+    for io_ in ["inputs", "outputs"]:
+        for key, content in data[io_].items():
+            if "dtype" in content and isinstance(content["dtype"], type):
+                data["class_dict"][content["dtype"].__name__] = content["dtype"]
+                data[io_][key]["dtype"] = content["dtype"].__name__
+    return data
+
+
 def _separate_functions(data):
     if "function_dict" not in data:
         data["function_dict"] = {}
@@ -277,7 +293,7 @@ def _separate_functions(data):
     return data
 
 
-def get_workflow_dict(func, separate_functions=True):
+def get_workflow_dict(func, separate_functions=True, separate_types=True):
     analyzer = analyze_function(func)
     output_counts = _get_output_counts(analyzer.graph.edges.data())
     nodes = _get_nodes(analyzer.function_defs, output_counts)
@@ -290,6 +306,8 @@ def get_workflow_dict(func, separate_functions=True):
     }
     if separate_functions:
         data = _separate_functions(data)
+    if separate_types:
+        data = _separate_types(data)
     return data
 
 
