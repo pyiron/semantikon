@@ -160,13 +160,17 @@ def _get_nodes(data, output_counts):
             result[node] = data_dict
             result[node]["label"] = node
         else:
-            function_hash = func.__name__
+            function_name = func.__name__
             result[node] = {
-                "function": function_hash,
+                "function": function_name,
                 "inputs": parse_input_args(func),
                 "outputs": _get_node_outputs(func, output_counts.get(node, 1)),
             }
-            function_dict[function_hash] = func
+            if function_name in function_dict:
+                assert _hash_function(func) == _hash_function(
+                    function_dict[function_name]
+                )
+            function_dict[function_name] = func
         if hasattr(func, "_semantikon_metadata"):
             result[node].update(func._semantikon_metadata)
     return result, function_dict
