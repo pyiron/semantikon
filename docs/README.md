@@ -3,6 +3,8 @@
 [![Push-Pull](https://github.com/pyiron/semantikon/actions/workflows/push-pull.yml/badge.svg)](https://github.com/pyiron/semantikon/actions/workflows/push-pull.yml)
 [![Coverage Status](https://coveralls.io/repos/github/pyiron/semantikon/badge.svg?branch=main)](https://coveralls.io/github/pyiron/semantikon?branch=main)
 
+<img src="../images/logo.jpeg" alt="Logo" width="300"/>
+
 ## Overview
 
 In the realm of the workflow management systems, there are well defined inputs and outputs for each node. `semantikon` is a Python package to give scientific context to node inputs and outputs by providing type hinting and interpreters. Therefore, it consists of two **fully** separate parts: type hinting and interpreters.
