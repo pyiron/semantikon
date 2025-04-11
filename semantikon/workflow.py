@@ -6,6 +6,7 @@ from collections import deque
 from functools import cached_property
 import warnings
 from hashlib import sha256
+import copy
 
 from semantikon.converter import parse_input_args, parse_output_args
 
@@ -263,12 +264,13 @@ def get_node_dict(func, data_format="semantikon"):
     return data
 
 
-def _separate_types(data):
+def separate_types(data):
+    data = copy.deepcopy(data)
     if "class_dict" not in data:
         data["class_dict"] = {}
     if "nodes" in data:
         for key, node in data["nodes"].items():
-            child_node = _separate_types(node)
+            child_node = separate_types(node)
             data["class_dict"].update(child_node.pop("class_dict"))
             data["nodes"][key] = child_node
     for io_ in ["inputs", "outputs"]:
@@ -279,12 +281,13 @@ def _separate_types(data):
     return data
 
 
-def _separate_functions(data):
+def separate_functions(data):
+    data = copy.deepcopy(data)
     if "function_dict" not in data:
         data["function_dict"] = {}
     if "nodes" in data:
         for key, node in data["nodes"].items():
-            child_node = _separate_functions(node)
+            child_node = separate_functions(node)
             data["function_dict"].update(child_node.pop("function_dict"))
             data["nodes"][key] = child_node
     elif "function" in data and not isinstance(data["function"], str):
@@ -293,7 +296,7 @@ def _separate_functions(data):
     return data
 
 
-def get_workflow_dict(func, separate_functions=True, separate_types=True):
+def get_workflow_dict(func):
     analyzer = analyze_function(func)
     output_counts = _get_output_counts(analyzer.graph.edges.data())
     nodes = _get_nodes(analyzer.function_defs, output_counts)
@@ -304,10 +307,6 @@ def get_workflow_dict(func, separate_functions=True, separate_types=True):
         "data_edges": _get_data_edges(analyzer, func),
         "label": func.__name__,
     }
-    if separate_functions:
-        data = _separate_functions(data)
-    if separate_types:
-        data = _separate_types(data)
     return data
 
 
