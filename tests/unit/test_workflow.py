@@ -288,9 +288,18 @@ class TestWorkflow(unittest.TestCase):
             {"operation": operation, "add": add, "multiply": multiply},
         )
         self.assertEqual(
+            data["nodes"]["example_macro_0"]["nodes"]["operation_0"]["function"],
+            "operation",
+        )
+        self.assertEqual(
             old_data["nodes"]["example_macro_0"]["nodes"]["operation_0"]["function"],
             operation,
         )
+
+    def test_separate_types(self):
+        old_data = example_workflow._semantikon_workflow
+        data = separate_types(old_data)
+        self.assertEqual(data["class_dict"], {"float": float})
 
 if __name__ == "__main__":
     unittest.main()
