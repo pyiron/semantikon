@@ -8,6 +8,8 @@ from semantikon.workflow import (
     workflow,
     find_parallel_execution_levels,
     get_node_dict,
+    separate_types,
+    separate_functions,
 )
 import numpy as np
 import json
@@ -278,6 +280,17 @@ class TestWorkflow(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             workflow(example_invalid_local_var_def)
 
+    def test_separate_functions(self):
+        old_data = example_workflow._semantikon_workflow
+        data = separate_functions(old_data)
+        self.assertEqual(
+            data["function_dict"],
+            {"operation": operation, "add": add, "multiply": multiply},
+        )
+        self.assertEqual(
+            old_data["nodes"]["example_macro_0"]["nodes"]["operation_0"]["function"],
+            operation,
+        )
 
 if __name__ == "__main__":
     unittest.main()

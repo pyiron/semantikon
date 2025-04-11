@@ -265,6 +265,7 @@ def get_node_dict(func, data_format="semantikon"):
 
 
 def separate_types(data):
+    data = copy.deepcopy(data)
     if "class_dict" not in data:
         data["class_dict"] = {}
     if "nodes" in data:
