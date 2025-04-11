@@ -6,6 +6,7 @@ from collections import deque
 from functools import cached_property
 import warnings
 from hashlib import sha256
+import copy
 
 from semantikon.converter import parse_input_args, parse_output_args
 
@@ -280,6 +281,7 @@ def separate_types(data):
 
 
 def separate_functions(data):
+    data = copy.deepcopy(data)
     if "function_dict" not in data:
         data["function_dict"] = {}
     if "nodes" in data:
