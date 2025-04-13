@@ -8,6 +8,8 @@ from semantikon.workflow import (
     workflow,
     find_parallel_execution_levels,
     get_node_dict,
+    separate_types,
+    separate_functions,
 )
 import numpy as np
 import json
@@ -140,29 +142,29 @@ class TestWorkflow(unittest.TestCase):
             "outputs": {"f": {}},
             "nodes": {
                 "operation_0": {
-                    "inputs": {"x": {"dtype": "float"}, "y": {"dtype": "float"}},
+                    "inputs": {"x": {"dtype": float}, "y": {"dtype": float}},
                     "outputs": {
-                        "output_0": {"dtype": "float"},
-                        "output_1": {"dtype": "float"},
+                        "output_0": {"dtype": float},
+                        "output_1": {"dtype": float},
                     },
-                    "function": "operation",
+                    "function": operation,
                 },
                 "add_0": {
                     "inputs": {
-                        "x": {"dtype": "float", "default": 2.0},
-                        "y": {"dtype": "float", "default": 1},
+                        "x": {"dtype": float, "default": 2.0},
+                        "y": {"dtype": float, "default": 1},
                     },
-                    "outputs": {"output": {"dtype": "float"}},
-                    "function": "add",
+                    "outputs": {"output": {"dtype": float}},
+                    "function": add,
                     "uri": "add",
                 },
                 "multiply_0": {
                     "inputs": {
-                        "x": {"dtype": "float"},
-                        "y": {"dtype": "float", "default": 5},
+                        "x": {"dtype": float},
+                        "y": {"dtype": float, "default": 5},
                     },
-                    "outputs": {"output": {"dtype": "float"}},
-                    "function": "multiply",
+                    "outputs": {"output": {"dtype": float}},
+                    "function": multiply,
                 },
             },
             "data_edges": [
@@ -174,14 +176,6 @@ class TestWorkflow(unittest.TestCase):
                 ["multiply_0.outputs.output", "outputs.f"],
             ],
             "label": "example_macro",
-            "function_dict": {
-                "operation": operation,
-                "add": add,
-                "multiply": multiply,
-            },
-            "class_dict": {
-                "float": float,
-            },
         }
         self.assertEqual(get_workflow_dict(example_macro), ref_data)
         self.assertEqual(example_macro._semantikon_workflow, ref_data)
@@ -197,29 +191,29 @@ class TestWorkflow(unittest.TestCase):
                     "outputs": {"f": {}},
                     "nodes": {
                         "operation_0": {
-                            "function": "operation",
-                            "inputs": {"x": {"dtype": "float"}, "y": {"dtype": "float"}},
+                            "function": operation,
+                            "inputs": {"x": {"dtype": float}, "y": {"dtype": float}},
                             "outputs": {
-                                "output_0": {"dtype": "float"},
-                                "output_1": {"dtype": "float"},
+                                "output_0": {"dtype": float},
+                                "output_1": {"dtype": float},
                             },
                         },
                         "add_0": {
-                            "function": "add",
+                            "function": add,
                             "inputs": {
-                                "x": {"dtype": "float", "default": 2.0},
-                                "y": {"dtype": "float", "default": 1},
+                                "x": {"dtype": float, "default": 2.0},
+                                "y": {"dtype": float, "default": 1},
                             },
-                            "outputs": {"output": {"dtype": "float"}},
+                            "outputs": {"output": {"dtype": float}},
                             "uri": "add",
                         },
                         "multiply_0": {
-                            "function": "multiply",
+                            "function": multiply,
                             "inputs": {
-                                "x": {"dtype": "float"},
-                                "y": {"dtype": "float", "default": 5},
+                                "x": {"dtype": float},
+                                "y": {"dtype": float, "default": 5},
                             },
-                            "outputs": {"output": {"dtype": "float"}},
+                            "outputs": {"output": {"dtype": float}},
                         },
                     },
                     "data_edges": [
@@ -233,12 +227,12 @@ class TestWorkflow(unittest.TestCase):
                     "label": "example_macro_0",
                 },
                 "add_0": {
-                    "function": "add",
+                    "function": add,
                     "inputs": {
-                        "x": {"dtype": "float", "default": 2.0},
-                        "y": {"dtype": "float", "default": 1},
+                        "x": {"dtype": float, "default": 2.0},
+                        "y": {"dtype": float, "default": 1},
                     },
-                    "outputs": {"output": {"dtype": "float"}},
+                    "outputs": {"output": {"dtype": float}},
                     "uri": "add",
                 },
             },
@@ -250,14 +244,6 @@ class TestWorkflow(unittest.TestCase):
                 ["add_0.outputs.output", "outputs.z"],
             ],
             "label": "example_workflow",
-            "function_dict": {
-                "operation": operation,
-                "add": add,
-                "multiply": multiply,
-            },
-            "class_dict": {
-                "float": float,
-            },
         }
         self.assertEqual(result, ref_data, msg=result)
 
@@ -294,6 +280,26 @@ class TestWorkflow(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             workflow(example_invalid_local_var_def)
 
+    def test_separate_functions(self):
+        old_data = example_workflow._semantikon_workflow
+        data = separate_functions(old_data)
+        self.assertEqual(
+            data["function_dict"],
+            {"operation": operation, "add": add, "multiply": multiply},
+        )
+        self.assertEqual(
+            data["nodes"]["example_macro_0"]["nodes"]["operation_0"]["function"],
+            "operation",
+        )
+        self.assertEqual(
+            old_data["nodes"]["example_macro_0"]["nodes"]["operation_0"]["function"],
+            operation,
+        )
+
+    def test_separate_types(self):
+        old_data = example_workflow._semantikon_workflow
+        data = separate_types(old_data)
+        self.assertEqual(data["class_dict"], {"float": float})
 
 if __name__ == "__main__":
     unittest.main()
