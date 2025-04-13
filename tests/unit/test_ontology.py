@@ -17,7 +17,7 @@ from semantikon.ontology import (
     validate_values,
     dataclass_to_knowledge_graph,
 )
-from semantikon.workflow import workflow
+from semantikon.workflow import workflow, separate_types, separate_functions
 from dataclasses import dataclass
 
 
@@ -409,7 +409,6 @@ class TestOntology(unittest.TestCase):
         self.maxDiff = None
         graph = get_knowledge_graph(get_macro.run())
         self.assertEqual(graph.serialize(format="turtle"), txt)
-        # print(graph.serialize(format="turtle"))
 
     def test_wrong_order(self):
         graph = get_knowledge_graph(get_wrong_order._semantikon_workflow)
@@ -424,6 +423,15 @@ class TestOntology(unittest.TestCase):
                 ]
             ],
         )
+
+    def test_separate(self):
+        wf = get_speed.run()
+        graph_normal = get_knowledge_graph(wf)
+        graph_sep = get_knowledge_graph(separate_types(separate_functions(wf)))
+        self.assertEqual(
+            len(graph_normal), len(graph_sep), msg="Graphs are not equal"
+        )
+
 
 
 @dataclass
