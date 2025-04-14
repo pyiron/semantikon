@@ -301,11 +301,13 @@ def get_workflow_dict(func):
     output_counts = _get_output_counts(analyzer.graph.edges.data())
     nodes = _get_nodes(analyzer.function_defs, output_counts)
     data = {
-        "inputs": parse_input_args(func),
-        "outputs": _get_workflow_outputs(func),
-        "nodes": nodes,
-        "data_edges": _get_data_edges(analyzer, func),
-        "label": func.__name__,
+        func.__name__: {
+            "inputs": parse_input_args(func),
+            "outputs": _get_workflow_outputs(func),
+            "nodes": nodes,
+            "data_edges": _get_data_edges(analyzer, func),
+            "label": func.__name__,
+        }
     }
     return data
 
