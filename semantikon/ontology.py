@@ -334,7 +334,7 @@ def _function_to_triples(function: callable, node_label: str, ontology=PNS) -> l
 
 
 def _parse_channel(
-    channel_dict: dict, channel_label: str, edge_dict: str, prefix: str, ontology=PNS
+    channel_dict: dict, channel_label: str, edge_dict: str, ontology=PNS
 ):
     triples = []
     triples.append((channel_label, RDF.type, PROV.Entity))
