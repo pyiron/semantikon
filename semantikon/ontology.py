@@ -429,7 +429,7 @@ def _parse_workflow(
             channel_label = _remove_us(label, io_, key)
             triples.extend(
                 _parse_channel(
-                    channel_dict, channel_label, full_edge_dict, label, ontology
+                    channel_dict, channel_label, full_edge_dict, ontology
                 )
             )
             if io_ == "inputs":
