@@ -298,7 +298,7 @@ class TestWorkflow(unittest.TestCase):
 
     def test_separate_types(self):
         old_data = example_workflow._semantikon_workflow
-        data, class_dict = separate_types(old_data)
+        class_dict = separate_types(old_data)[1]
         self.assertEqual(class_dict, {"float": float})
 
 if __name__ == "__main__":
