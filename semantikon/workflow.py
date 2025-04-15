@@ -264,36 +264,36 @@ def get_node_dict(func, data_format="semantikon"):
     return data
 
 
-def separate_types(data):
+def separate_types(data, class_dict=None):
     data = copy.deepcopy(data)
-    if "class_dict" not in data:
-        data["class_dict"] = {}
+    if class_dict is None:
+        class_dict = {}
     if "nodes" in data:
         for key, node in data["nodes"].items():
-            child_node = separate_types(node)
-            data["class_dict"].update(child_node.pop("class_dict"))
+            child_node, child_class_dict = separate_types(node, class_dict)
+            class_dict.update(child_class_dict)
             data["nodes"][key] = child_node
     for io_ in ["inputs", "outputs"]:
         for key, content in data[io_].items():
             if "dtype" in content and isinstance(content["dtype"], type):
-                data["class_dict"][content["dtype"].__name__] = content["dtype"]
+                class_dict[content["dtype"].__name__] = content["dtype"]
                 data[io_][key]["dtype"] = content["dtype"].__name__
-    return data
+    return data, class_dict
 
 
-def separate_functions(data):
+def separate_functions(data, function_dict=None):
     data = copy.deepcopy(data)
-    if "function_dict" not in data:
-        data["function_dict"] = {}
+    if function_dict is None:
+        function_dict = {}
     if "nodes" in data:
         for key, node in data["nodes"].items():
-            child_node = separate_functions(node)
-            data["function_dict"].update(child_node.pop("function_dict"))
+            child_node, child_function_dict = separate_functions(node, function_dict)
+            function_dict.update(child_function_dict)
             data["nodes"][key] = child_node
     elif "function" in data and not isinstance(data["function"], str):
-        data["function_dict"][data["function"].__name__] = data["function"]
+        function_dict[data["function"].__name__] = data["function"]
         data["function"] = data["function"].__name__
-    return data
+    return data, function_dict
 
 
 def get_workflow_dict(func):
@@ -301,13 +301,11 @@ def get_workflow_dict(func):
     output_counts = _get_output_counts(analyzer.graph.edges.data())
     nodes = _get_nodes(analyzer.function_defs, output_counts)
     data = {
-        func.__name__: {
-            "inputs": parse_input_args(func),
-            "outputs": _get_workflow_outputs(func),
-            "nodes": nodes,
-            "data_edges": _get_data_edges(analyzer, func),
-            "label": func.__name__,
-        }
+        "inputs": parse_input_args(func),
+        "outputs": _get_workflow_outputs(func),
+        "nodes": nodes,
+        "data_edges": _get_data_edges(analyzer, func),
+        "label": func.__name__,
     }
     return data
 
@@ -328,11 +326,8 @@ def _get_missing_edges(edges):
 
 
 class _Workflow:
-    def __init__(self, workflow_dict, function_dict=None):
+    def __init__(self, workflow_dict):
         self._workflow = workflow_dict
-        if function_dict is None and "function_dict" in workflow_dict:
-            function_dict = workflow_dict["function_dict"]
-        self._function_dict = function_dict
 
     @cached_property
     def _all_edges(self):
@@ -392,11 +387,6 @@ class _Workflow:
         except KeyError:
             raise KeyError(f"{path} not found in {node}")
 
-    def _f_key_to_f(self, f_key):
-        if self._function_dict is not None and f_key in self._function_dict:
-            return self._function_dict[f_key]
-        return f_key
-
     def _execute_node(self, function):
         node = self._workflow["nodes"][function]
         input_data = {}
@@ -408,14 +398,14 @@ class _Workflow:
         except KeyError:
             raise KeyError(f"value not defined for {function}")
         if "function" not in node:
-            workflow = _Workflow(node, self._function_dict)
+            workflow = _Workflow(node)
             outputs = [
                 d["value"] for d in workflow.run(**input_data)["outputs"].values()
             ]
             if len(outputs) == 1:
                 outputs = outputs[0]
         else:
-            outputs = self._f_key_to_f(node["function"])(**input_data)
+            outputs = node["function"](**input_data)
         return outputs
 
     def _set_value(self, tag, value):
