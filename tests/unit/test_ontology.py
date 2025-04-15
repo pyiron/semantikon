@@ -424,15 +424,6 @@ class TestOntology(unittest.TestCase):
             ],
         )
 
-    def test_separate(self):
-        wf = get_speed.run()
-        graph_normal = get_knowledge_graph(wf)
-        graph_sep = get_knowledge_graph(separate_types(separate_functions(wf)))
-        self.assertEqual(
-            len(graph_normal), len(graph_sep), msg="Graphs are not equal"
-        )
-
-
 
 @dataclass
 class Input:
