@@ -334,7 +334,7 @@ def _function_to_triples(function: callable, node_label: str, ontology=PNS) -> l
 
 
 def _parse_channel(
-    channel_dict: dict, channel_label: str, edge_dict: str, prefix: str, ontology=PNS
+    channel_dict: dict, channel_label: str, edge_dict: str, ontology=PNS
 ):
     triples = []
     triples.append((channel_label, RDF.type, PROV.Entity))
@@ -428,9 +428,7 @@ def _parse_workflow(
                 channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
             channel_label = _remove_us(label, io_, key)
             triples.extend(
-                _parse_channel(
-                    channel_dict, channel_label, full_edge_dict, label, ontology
-                )
+                _parse_channel(channel_dict, channel_label, full_edge_dict, ontology)
             )
             if io_ == "inputs":
                 triples.append((channel_label, ontology.inputOf, label))
