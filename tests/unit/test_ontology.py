@@ -429,6 +429,8 @@ class TestOntology(unittest.TestCase):
         data = get_macro.run()
         results = serialize_data(data)
         self.assertIn("get_macro.add_three_0.inputs.c", results)
+        for key, value in results.items():
+            print(f"{key}: {value}")
 
 
 @dataclass
