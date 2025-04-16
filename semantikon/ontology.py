@@ -543,3 +543,7 @@ def dataclass_to_knowledge_graph(class_name, name_space):
     return _dataclass_to_knowledge_graph(
         class_name, name_space, graph=None, parent_name=class_name.__name__
     )
+
+def serialize_data(wf_dict, prefix=None):
+    if prefix is None:
+        prefix = wf_dict["label"]
