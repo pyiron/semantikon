@@ -543,3 +543,21 @@ def dataclass_to_knowledge_graph(class_name, name_space):
     return _dataclass_to_knowledge_graph(
         class_name, name_space, graph=None, parent_name=class_name.__name__
     )
+
+
+def serialize_data(wf_dict, prefix=None):
+    node_dict = {}
+    edge_list = []
+    if prefix is None:
+        prefix = wf_dict["label"]
+    for io_ in ["inputs", "outputs"]:
+        for key, channel_dict in wf_dict[io_].items():
+            channel_label = _remove_us(prefix, io_, key)
+            node_dict[channel_label] = channel_dict
+    for key, node in wf_dict.get("nodes", {}).items():
+        child_node, child_edges = serialize_data(node, prefix=_dot(prefix, key))
+        node_dict.update(child_node)
+        edge_list.extend(child_edges)
+    for args in wf_dict.get("data_edges", []):
+        edge_list.append([_remove_us(prefix, a) for a in args])
+    return node_dict, edge_list
