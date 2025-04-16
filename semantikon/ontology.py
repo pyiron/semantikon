@@ -452,24 +452,18 @@ def _parse_workflow(
     return triples
 
 
-def _parse_cancel(nodes: dict, label: str) -> list:
+def _parse_cancel(wf_channels: dict) -> list:
     triples = []
-    for n_label, node in nodes.items():
-        node_label = _dot(label, n_label)
-        if "nodes" in node:
-            triples.extend(_parse_cancel(node["nodes"], node_label))
-        for io_ in ["inputs", "outputs"]:
-            for key, channel_dict in node[io_].items():
-                if "cancel" in channel_dict:
-                    cancel = channel_dict["cancel"]
-                    assert isinstance(cancel, list | tuple)
-                    assert len(cancel) > 0
-                    if not isinstance(cancel[0], list | tuple):
-                        cancel = [cancel]
-                    for c in cancel:
-                        triples.append(
-                            _parse_triple(c, label=_remove_us(node_label, io_, key))
-                        )
+    for n_label, channel_dict in wf_channels.items():
+        if "cancel" not in channel_dict:
+            continue
+        cancel = channel_dict["cancel"]
+        assert isinstance(cancel, list | tuple)
+        assert len(cancel) > 0
+        if not isinstance(cancel[0], list | tuple):
+            cancel = [cancel]
+        for c in cancel:
+            triples.append(_parse_triple(c, label=n_label))
     return [tuple([_convert_to_uriref(tt) for tt in t]) for t in triples]
 
 
@@ -494,7 +488,8 @@ def get_knowledge_graph(
     if graph is None:
         graph = Graph()
     triples = _parse_workflow(wf_dict, ontology=ontology)
-    triples_to_cancel = _parse_cancel(wf_dict["nodes"], wf_dict["label"])
+    wf_channels = serialize_data(wf_dict)
+    triples_to_cancel = _parse_cancel(wf_channels[0])
     for triple in triples:
         if any(t is None for t in triple):
             continue
