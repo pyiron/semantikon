@@ -16,6 +16,7 @@ from semantikon.ontology import (
     _inherit_properties,
     validate_values,
     dataclass_to_knowledge_graph,
+    serialize_data,
 )
 from semantikon.workflow import workflow, separate_types, separate_functions
 from dataclasses import dataclass
@@ -423,6 +424,11 @@ class TestOntology(unittest.TestCase):
                 ]
             ],
         )
+
+    def test_serialize_data(self):
+        data = get_macro.run()
+        results = serialize_data(data)
+        self.assertIn("get_macro.add_three_0.inputs.c", results)
 
 
 @dataclass

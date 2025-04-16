@@ -545,5 +545,14 @@ def dataclass_to_knowledge_graph(class_name, name_space):
     )
 
 def serialize_data(wf_dict, prefix=None):
+    node_dict = {}
     if prefix is None:
         prefix = wf_dict["label"]
+    for io_ in ["inputs", "outputs"]:
+        for key, channel_dict in wf_dict[io_].items():
+            channel_label = _remove_us(prefix, io_, key)
+            node_dict[channel_label] = channel_dict
+    for key, node in wf_dict.get("nodes", {}).items():
+        node_label = _dot(prefix, key)
+        node_dict.update(serialize_data(node, prefix=node_label))
+    return node_dict
