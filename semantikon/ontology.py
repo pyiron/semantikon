@@ -544,6 +544,7 @@ def dataclass_to_knowledge_graph(class_name, name_space):
         class_name, name_space, graph=None, parent_name=class_name.__name__
     )
 
+
 def serialize_data(wf_dict, prefix=None):
     node_dict = {}
     edge_list = []
