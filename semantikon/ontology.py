@@ -359,20 +359,13 @@ def _remove_us(*arg) -> str:
     return ".".join(t.split("__")[-1] for t in s.split("."))
 
 
-def _get_all_edge_dict(data, prefix=None):
-    if prefix is None:
-        prefix = data["label"]
-    else:
-        prefix = prefix + "." + data["label"]
+def _get_all_edge_dict(data):
     edges = {}
-    for e in data["data_edges"]:
-        if e[0].startswith("inputs.") and ".inputs." in e[1]:
-            edges[_remove_us(prefix, e[0])] = _remove_us(prefix, e[1])
+    for e in data:
+        if all(["inputs." in ee for ee in e]):
+            edges[e[0]] = e[1]
         else:
-            edges[_remove_us(prefix, e[1])] = _remove_us(prefix, e[0])
-    for node in data["nodes"].values():
-        if "nodes" in node:
-            edges.update(_get_all_edge_dict(node, prefix))
+            edges[e[1]] = e[0]
     return edges
 
 
@@ -383,8 +376,8 @@ def _order_edge_dict(data):
     return data
 
 
-def _get_full_edge_dict(data, prefix=None):
-    edges = _get_all_edge_dict(data, prefix)
+def _get_full_edge_dict(data):
+    edges = _get_all_edge_dict(data)
     edges = _order_edge_dict(edges)
     return edges
 
@@ -418,7 +411,7 @@ def _parse_workflow(
     ontology=PNS,
 ) -> list:
     if full_edge_dict is None:
-        full_edge_dict = _get_full_edge_dict(wf_dict)
+        full_edge_dict = _get_full_edge_dict(serialize_data(wf_dict)[1])
     if label is None:
         label = wf_dict["label"]
     triples = [(label, RDF.type, PROV.Activity)]
