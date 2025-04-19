@@ -405,15 +405,12 @@ def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
 
 
 def _parse_workflow(
-    wf_dict: dict,
-    label=None,
-    full_edge_dict=None,
+    node_dict: dict,
+    edge_list: list,
     ontology=PNS,
 ) -> list:
     if full_edge_dict is None:
-        full_edge_dict = _get_full_edge_dict(serialize_data(wf_dict)[1])
-    if label is None:
-        label = wf_dict["label"]
+        full_edge_dict = _get_full_edge_dict(edge_list)
     triples = [(label, RDF.type, PROV.Activity)]
     for io_ in ["inputs", "outputs"]:
         for key, channel_dict in wf_dict[io_].items():
@@ -480,9 +477,9 @@ def get_knowledge_graph(
     """
     if graph is None:
         graph = Graph()
-    triples = _parse_workflow(wf_dict, ontology=ontology)
-    wf_channels = serialize_data(wf_dict)
-    triples_to_cancel = _parse_cancel(wf_channels[0])
+    node_dict, edge_list = serialize_data(wf_dict)
+    triples = _parse_workflow(node_dict, edge_list, ontology=ontology)
+    triples_to_cancel = _parse_cancel(node_dict)
     for triple in triples:
         if any(t is None for t in triple):
             continue
