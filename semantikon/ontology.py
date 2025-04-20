@@ -19,6 +19,11 @@ class PNS:
     hasValue = BASE["hasValue"]
 
 
+class NS:
+    PREFIX = "semantikon_parent_prefix"
+    IO = "semantikon_io"
+
+
 ud = UnitsDict()
 
 
@@ -538,8 +543,12 @@ def serialize_data(wf_dict, prefix=None):
     for io_ in ["inputs", "outputs"]:
         for key, channel_dict in wf_dict[io_].items():
             channel_label = _remove_us(prefix, io_, key)
-            assert "prefix" not in channel_dict, "parent_prefix already set"
-            node_dict[channel_label] = channel_dict | {"parent_prefix": prefix}
+            assert NS.PREFIX not in channel_dict, f"{NS.PREFIX} already set"
+            assert NS.IO not in channel_dict, f"{NS.IO} already set"
+            node_dict[channel_label] = channel_dict | {
+                NS.PREFIX: prefix,
+                NS.IO: io_,
+            }
     for key, node in wf_dict.get("nodes", {}).items():
         child_node, child_edges = serialize_data(node, prefix=_dot(prefix, key))
         node_dict.update(child_node)

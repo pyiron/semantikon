@@ -17,6 +17,7 @@ from semantikon.ontology import (
     validate_values,
     dataclass_to_knowledge_graph,
     serialize_data,
+    NS,
 )
 from semantikon.workflow import workflow, separate_types, separate_functions
 from dataclasses import dataclass
@@ -429,7 +430,7 @@ class TestOntology(unittest.TestCase):
         data = get_macro.run()
         nodes, edges = serialize_data(data)
         for key, node in nodes.items():
-            self.assertTrue(key.startswith(node["parent_prefix"]))
+            self.assertTrue(key.startswith(node[NS.PREFIX]))
         self.assertIn("get_macro.add_three_0.inputs.c", nodes)
         for args in edges:
             self.assertIn(args[0], nodes)
