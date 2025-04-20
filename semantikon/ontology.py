@@ -417,24 +417,23 @@ def _parse_workflow(
     if full_edge_dict is None:
         full_edge_dict = _get_full_edge_dict(edge_list)
     triples = [(label, RDF.type, PROV.Activity)]
-    for io_ in ["inputs", "outputs"]:
-        for key, channel_dict in wf_dict[io_].items():
-            if "type_hint" in channel_dict:
-                channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
-            channel_label = _remove_us(label, io_, key)
-            triples.extend(
-                _parse_channel(channel_dict, channel_label, full_edge_dict, ontology)
-            )
-            if io_ == "inputs":
-                triples.append((channel_label, ontology.inputOf, label))
-            elif io_ == "outputs":
-                triples.append((channel_label, ontology.outputOf, label))
-            for t in _get_triples_from_restrictions(channel_dict):
-                triples.append(_parse_triple(t, ns=label, label=channel_label))
-    if "nodes" in wf_dict and "data_edges" in wf_dict:
+    for channel_label, channel_dict in node_dict.items():
+        if "type_hint" in channel_dict:
+            channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
         triples.extend(
-            _edges_to_triples(_get_edge_dict(wf_dict["data_edges"]), label, ontology)
+            _parse_channel(channel_dict, channel_label, full_edge_dict, ontology)
         )
+        if channel_dict[NS.IO] == "inputs":
+            triples.append((channel_label, ontology.inputOf, label))
+        elif channel_dict[NS.IO] == "outputs":
+            triples.append((channel_label, ontology.outputOf, label))
+        for t in _get_triples_from_restrictions(channel_dict):
+            triples.append(_parse_triple(t, ns=label, label=channel_label))
+    triples.extend(
+        _edges_to_triples(_get_edge_dict(data_edges), label, ontology)
+    )
+
+    if "nodes" in wf_dict and "data_edges" in wf_dict:
         for n_label, node in wf_dict["nodes"].items():
             node_label = _dot(label, n_label)
             triples.append((label, ontology.hasNode, node_label))
