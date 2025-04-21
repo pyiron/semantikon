@@ -342,6 +342,8 @@ def _parse_channel(
     channel_dict: dict, channel_label: str, edge_dict: str, ontology=PNS
 ):
     triples = []
+    if "type_hint" in channel_dict:
+        channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
     triples.append((channel_label, RDF.type, PROV.Entity))
     if channel_dict.get("uri", None) is not None:
         triples.append((channel_label, RDF.type, channel_dict["uri"]))
@@ -356,6 +358,12 @@ def _parse_channel(
             ontology=ontology,
         )
     )
+    if channel_dict[NS.TYPE] == "inputs":
+        triples.append((channel_label, ontology.inputOf, label))
+    elif channel_dict[NS.TYPE] == "outputs":
+        triples.append((channel_label, ontology.outputOf, label))
+    for t in _get_triples_from_restrictions(channel_dict):
+        triples.append(_parse_triple(t, ns=label, label=channel_label))
     return triples
 
 
@@ -418,17 +426,10 @@ def _parse_workflow(
         full_edge_dict = _get_full_edge_dict(edge_list)
     triples = [(label, RDF.type, PROV.Activity)]
     for channel_label, channel_dict in node_dict.items():
-        if "type_hint" in channel_dict:
-            channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
-        triples.extend(
-            _parse_channel(channel_dict, channel_label, full_edge_dict, ontology)
-        )
-        if channel_dict[NS.TYPE] == "inputs":
-            triples.append((channel_label, ontology.inputOf, label))
-        elif channel_dict[NS.TYPE] == "outputs":
-            triples.append((channel_label, ontology.outputOf, label))
-        for t in _get_triples_from_restrictions(channel_dict):
-            triples.append(_parse_triple(t, ns=label, label=channel_label))
+        if "node" not in channel_dict[NS.TYPE]:
+            triples.extend(
+                _parse_channel(channel_dict, channel_label, full_edge_dict, ontology)
+            )
     triples.extend(
         _edges_to_triples(_get_edge_dict(data_edges), label, ontology)
     )
