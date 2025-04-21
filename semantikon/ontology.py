@@ -21,7 +21,7 @@ class PNS:
 
 class NS:
     PREFIX = "semantikon_parent_prefix"
-    IO = "semantikon_io"
+    TYPE = "semantikon_type"
 
 
 ud = UnitsDict()
@@ -423,9 +423,9 @@ def _parse_workflow(
         triples.extend(
             _parse_channel(channel_dict, channel_label, full_edge_dict, ontology)
         )
-        if channel_dict[NS.IO] == "inputs":
+        if channel_dict[NS.TYPE] == "inputs":
             triples.append((channel_label, ontology.inputOf, label))
-        elif channel_dict[NS.IO] == "outputs":
+        elif channel_dict[NS.TYPE] == "outputs":
             triples.append((channel_label, ontology.outputOf, label))
         for t in _get_triples_from_restrictions(channel_dict):
             triples.append(_parse_triple(t, ns=label, label=channel_label))
@@ -543,15 +543,21 @@ def serialize_data(wf_dict, prefix=None):
         for key, channel_dict in wf_dict[io_].items():
             channel_label = _remove_us(prefix, io_, key)
             assert NS.PREFIX not in channel_dict, f"{NS.PREFIX} already set"
-            assert NS.IO not in channel_dict, f"{NS.IO} already set"
+            assert NS.TYPE not in channel_dict, f"{NS.TYPE} already set"
             node_dict[channel_label] = channel_dict | {
                 NS.PREFIX: prefix,
-                NS.IO: io_,
+                NS.TYPE: io_,
             }
-    for key, node in wf_dict.get("nodes", {}).items():
-        child_node, child_edges = serialize_data(node, prefix=_dot(prefix, key))
-        node_dict.update(child_node)
-        edge_list.extend(child_edges)
+    if "nodes" in wf_dict:
+        nodes = []
+        for key, node in wf_dict["nodes"].items():
+            nodes.append(_dot(prefix, key))
+            child_node, child_edges = serialize_data(node, prefix=nodes[-1])
+            node_dict.update(child_node)
+            edge_list.extend(child_edges)
+        node_dict[prefix] = {NS.TYPE: "macro_node", "child_nodes": nodes}
+    elif "function" in wf_dict:
+        node_dict[prefix] = {NS.TYPE: "leaf_node", "function": wf_dict["function"]}
     for args in wf_dict.get("data_edges", []):
         edge_list.append([_remove_us(prefix, a) for a in args])
     return node_dict, edge_list
