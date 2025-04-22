@@ -419,6 +419,7 @@ def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
 
 def _parse_workflow(
     node_dict: dict,
+    child_dict: dict,
     edge_list: list,
     ontology=PNS,
 ) -> list:
@@ -426,10 +427,9 @@ def _parse_workflow(
         full_edge_dict = _get_full_edge_dict(edge_list)
     triples = [(label, RDF.type, PROV.Activity)]
     for channel_label, channel_dict in node_dict.items():
-        if "node" not in channel_dict[NS.TYPE]:
-            triples.extend(
-                _parse_channel(channel_dict, channel_label, full_edge_dict, ontology)
-            )
+        triples.extend(
+            _parse_channel(channel_dict, channel_label, full_edge_dict, ontology)
+        )
     triples.extend(
         _edges_to_triples(_get_edge_dict(data_edges), label, ontology)
     )
@@ -482,8 +482,8 @@ def get_knowledge_graph(
     """
     if graph is None:
         graph = Graph()
-    node_dict, edge_list = serialize_data(wf_dict)
-    triples = _parse_workflow(node_dict, edge_list, ontology=ontology)
+    node_dict, channel_dict, edge_list = serialize_data(wf_dict)
+    triples = _parse_workflow(node_dict, channel_dict, edge_list, ontology=ontology)
     triples_to_cancel = _parse_cancel(node_dict)
     for triple in triples:
         if any(t is None for t in triple):
@@ -536,29 +536,33 @@ def dataclass_to_knowledge_graph(class_name, name_space):
 
 
 def serialize_data(wf_dict, prefix=None):
-    node_dict = {}
     edge_list = []
+    channel_dict = {}
     if prefix is None:
         prefix = wf_dict["label"]
+    node_dict = {
+        prefix: {
+            key: value
+            for key, value in wf_dict.items()
+            if key not in ["inputs", "outputs", "nodes", "data_edges", "label"]
+        }
+    }
     for io_ in ["inputs", "outputs"]:
-        for key, channel_dict in wf_dict[io_].items():
+        for key, channel in wf_dict[io_].items():
             channel_label = _remove_us(prefix, io_, key)
-            assert NS.PREFIX not in channel_dict, f"{NS.PREFIX} already set"
-            assert NS.TYPE not in channel_dict, f"{NS.TYPE} already set"
-            node_dict[channel_label] = channel_dict | {
+            assert NS.PREFIX not in channel, f"{NS.PREFIX} already set"
+            assert NS.IO not in channel, f"{NS.IO} already set"
+            node_dict[channel_label] = channel | {
                 NS.PREFIX: prefix,
                 NS.TYPE: io_,
             }
-    if "nodes" in wf_dict:
-        nodes = []
-        for key, node in wf_dict["nodes"].items():
-            nodes.append(_dot(prefix, key))
-            child_node, child_edges = serialize_data(node, prefix=nodes[-1])
-            node_dict.update(child_node)
-            edge_list.extend(child_edges)
-        node_dict[prefix] = {NS.TYPE: "macro_node", "child_nodes": nodes}
-    elif "function" in wf_dict:
-        node_dict[prefix] = {NS.TYPE: "leaf_node", "function": wf_dict["function"]}
+    for key, node in wf_dict.get("nodes", {}).items():
+        child_node, child_channel, child_edges = serialize_data(
+            node, prefix=_dot(prefix, key)
+        )
+        node_dict.update(child_node)
+        edge_list.extend(child_edges)
+        channel_dict.update(child_channel)
     for args in wf_dict.get("data_edges", []):
         edge_list.append([_remove_us(prefix, a) for a in args])
-    return node_dict, edge_list
+    return node_dict, channel_dict, edge_list
