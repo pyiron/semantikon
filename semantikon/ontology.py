@@ -545,7 +545,8 @@ def serialize_data(wf_dict, prefix=None):
         prefix = wf_dict["label"]
     node_dict = {
         prefix: {
-            key: value for key, value in wf_dict.items()
+            key: value
+            for key, value in wf_dict.items()
             if key not in ["inputs", "outputs", "nodes", "data_edges", "label"]
         }
     }
