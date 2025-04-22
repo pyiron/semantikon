@@ -539,16 +539,16 @@ def dataclass_to_knowledge_graph(class_name, name_space):
 
 
 def serialize_data(wf_dict, prefix=None):
-    node_dict = {}
     edge_list = []
     if prefix is None:
         prefix = wf_dict["label"]
+    node_dict = {prefix: {}}
     for io_ in ["inputs", "outputs"]:
         for key, channel_dict in wf_dict[io_].items():
             channel_label = _remove_us(prefix, io_, key)
             assert NS.PREFIX not in channel_dict, f"{NS.PREFIX} already set"
             assert NS.IO not in channel_dict, f"{NS.IO} already set"
-            node_dict[channel_label] = channel_dict | {
+            node_dict[prefix][channel_label] = channel_dict | {
                 NS.PREFIX: prefix,
                 NS.IO: io_,
             }
