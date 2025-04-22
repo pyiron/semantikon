@@ -428,8 +428,8 @@ class TestOntology(unittest.TestCase):
 
     def test_serialize_data(self):
         data = get_macro.run()
-        nodes, edges = serialize_data(data)
-        for key, node in nodes.items():
+        nodes, channels, edges = serialize_data(data)
+        for key, node in channels.items():
             self.assertTrue(key.startswith(node[NS.PREFIX]))
         self.assertIn("get_macro.add_three_0.inputs.c", nodes)
         for args in edges:
