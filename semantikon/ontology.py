@@ -416,7 +416,7 @@ def _parse_workflow(
     ontology=PNS,
 ) -> list:
     if full_edge_dict is None:
-        full_edge_dict = _get_full_edge_dict(serialize_data(wf_dict)[1])
+        full_edge_dict = _get_full_edge_dict(serialize_data(wf_dict)[2])
     if label is None:
         label = wf_dict["label"]
     triples = [(label, RDF.type, PROV.Activity)]
@@ -539,23 +539,33 @@ def dataclass_to_knowledge_graph(class_name, name_space):
 
 
 def serialize_data(wf_dict, prefix=None):
-    node_dict = {}
     edge_list = []
+    channel_dict = {}
     if prefix is None:
         prefix = wf_dict["label"]
+    node_dict = {
+        prefix: {
+            key: value
+            for key, value in wf_dict.items()
+            if key not in ["inputs", "outputs", "nodes", "data_edges", "label"]
+        }
+    }
     for io_ in ["inputs", "outputs"]:
-        for key, channel_dict in wf_dict[io_].items():
+        for key, channel in wf_dict[io_].items():
             channel_label = _remove_us(prefix, io_, key)
-            assert NS.PREFIX not in channel_dict, f"{NS.PREFIX} already set"
-            assert NS.IO not in channel_dict, f"{NS.IO} already set"
-            node_dict[channel_label] = channel_dict | {
+            assert NS.PREFIX not in channel, f"{NS.PREFIX} already set"
+            assert NS.IO not in channel, f"{NS.IO} already set"
+            node_dict[channel_label] = channel | {
                 NS.PREFIX: prefix,
                 NS.IO: io_,
             }
     for key, node in wf_dict.get("nodes", {}).items():
-        child_node, child_edges = serialize_data(node, prefix=_dot(prefix, key))
+        child_node, child_channel, child_edges = serialize_data(
+            node, prefix=_dot(prefix, key)
+        )
         node_dict.update(child_node)
         edge_list.extend(child_edges)
+        channel_dict.update(child_channel)
     for args in wf_dict.get("data_edges", []):
         edge_list.append([_remove_us(prefix, a) for a in args])
-    return node_dict, edge_list
+    return node_dict, channel_dict, edge_list
