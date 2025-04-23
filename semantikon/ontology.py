@@ -430,9 +430,7 @@ def _parse_workflow(
         triples.extend(
             _parse_channel(channel_dict, channel_label, full_edge_dict, ontology)
         )
-    triples.extend(
-        _edges_to_triples(_get_edge_dict(data_edges), label, ontology)
-    )
+    triples.extend(_edges_to_triples(_get_edge_dict(data_edges), label, ontology))
 
     if "nodes" in wf_dict and "data_edges" in wf_dict:
         for n_label, node in wf_dict["nodes"].items():
