@@ -417,7 +417,7 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(len(serialized_data), len(ref_data))
 
     def test_parse_cancel(self):
-        nodes, channels, edges = serialize_data(get_wrong_order._semantikon_workflow)
+        channels, edges = serialize_data(get_wrong_order._semantikon_workflow)[1:]
         self.assertTrue(any(["cancel" in channel for channel in channels.values()]))
         to_cancel = _parse_cancel(channels)
         self.assertEqual(len(to_cancel), 1)
