@@ -479,7 +479,7 @@ def get_knowledge_graph(
         graph = Graph()
     node_dict, channel_dict, edge_list = serialize_data(wf_dict)
     triples = _parse_workflow(node_dict, channel_dict, edge_list, ontology=ontology)
-    triples_to_cancel = _parse_cancel(node_dict)
+    triples_to_cancel = _parse_cancel(channel_dict)
     for triple in triples:
         if any(t is None for t in triple):
             continue
