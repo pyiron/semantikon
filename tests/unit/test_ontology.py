@@ -1,6 +1,7 @@
 import unittest
 from textwrap import dedent
 from rdflib import Graph, OWL, Namespace, URIRef, Literal, RDF, RDFS, SH
+from rdflib.compare import isomorphic
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from pyshacl import validate
 from semantikon.typing import u
@@ -408,9 +409,10 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_three_0.add_one_0> a prov:Activity ;
             ns1:hasSourceFunction <add_one> .\n\n"""
         )
-        self.maxDiff = None
         graph = get_knowledge_graph(get_macro.run())
-        self.assertEqual(graph.serialize(format="turtle"), txt)
+        graph_ref = Graph()
+        graph_ref.parse(data=txt, format="turtle")
+        self.assertTrue(isomorphic(graph, graph_ref))
 
     def test_wrong_order(self):
         graph = get_knowledge_graph(get_wrong_order._semantikon_workflow)
@@ -432,10 +434,10 @@ class TestOntology(unittest.TestCase):
         for key, node in channels.items():
             self.assertTrue(key.startswith(node[NS.PREFIX]))
             self.assertIn(node[NS.PREFIX], nodes)
-        self.assertIn("get_macro.add_three_0.inputs.c", nodes)
+        self.assertIn("get_macro.add_three_0.inputs.c", channels)
         for args in edges:
-            self.assertIn(args[0], nodes)
-            self.assertIn(args[1], nodes)
+            self.assertIn(args[0], channels)
+            self.assertIn(args[1], channels)
 
 
 @dataclass
