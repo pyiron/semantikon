@@ -18,6 +18,7 @@ from semantikon.ontology import (
     validate_values,
     dataclass_to_knowledge_graph,
     serialize_data,
+    _parse_cancel,
     NS,
 )
 from semantikon.workflow import workflow, separate_types, separate_functions
@@ -413,6 +414,20 @@ class TestOntology(unittest.TestCase):
         graph_ref = Graph()
         graph_ref.parse(data=txt, format="turtle")
         self.assertTrue(isomorphic(graph, graph_ref))
+
+    def test_parse_cancel(self):
+        nodes, channels, edges = serialize_data(get_wrong_order._semantikon_workflow)
+        self.assertTrue(any(["cancel" in channel for channel in channels.values()]))
+        to_cancel = _parse_cancel(channels)
+        self.assertEqual(len(to_cancel), 1)
+        self.assertEqual(
+            to_cancel[0],
+            (
+                URIRef('get_wrong_order.create_vacancy_0.outputs.output'),
+                URIRef('http://example.org/hasState'),
+                URIRef('http://example.org/relaxed')
+            ),
+        )
 
     def test_wrong_order(self):
         graph = get_knowledge_graph(get_wrong_order._semantikon_workflow)
