@@ -425,9 +425,9 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(
             to_cancel[0],
             (
-                URIRef('get_wrong_order.create_vacancy_0.outputs.output'),
-                URIRef('http://example.org/hasState'),
-                URIRef('http://example.org/relaxed')
+                URIRef("get_wrong_order.create_vacancy_0.outputs.output"),
+                URIRef("http://example.org/hasState"),
+                URIRef("http://example.org/relaxed"),
             ),
         )
 

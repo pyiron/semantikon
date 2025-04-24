@@ -359,9 +359,13 @@ def _parse_channel(
         )
     )
     if channel_dict[NS.TYPE] == "inputs":
-        triples.append((channel_label, ontology.inputOf, channel_label.split(".inputs.")[0]))
+        triples.append(
+            (channel_label, ontology.inputOf, channel_label.split(".inputs.")[0])
+        )
     elif channel_dict[NS.TYPE] == "outputs":
-        triples.append((channel_label, ontology.outputOf, channel_label.split(".outputs.")[0]))
+        triples.append(
+            (channel_label, ontology.outputOf, channel_label.split(".outputs.")[0])
+        )
     for t in _get_triples_from_restrictions(channel_dict):
         triples.append(
             _parse_triple(t, ns=channel_dict[NS.PREFIX], label=channel_label)
@@ -414,9 +418,7 @@ def _convert_edge_triples(inp: str, out: str, ontology=PNS) -> tuple:
 
 
 def _edges_to_triples(edges: list, ontology=PNS) -> list:
-    return [
-        _convert_edge_triples(inp, out, ontology) for inp, out in edges.items()
-    ]
+    return [_convert_edge_triples(inp, out, ontology) for inp, out in edges.items()]
 
 
 def _parse_workflow(

@@ -301,5 +301,6 @@ class TestWorkflow(unittest.TestCase):
         class_dict = separate_types(old_data)[1]
         self.assertEqual(class_dict, {"float": float})
 
+
 if __name__ == "__main__":
     unittest.main()
