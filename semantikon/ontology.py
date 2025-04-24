@@ -182,7 +182,6 @@ def _restriction_to_triple(
 
 def _parse_triple(
     triples: tuple,
-    ns: str | None = None,
     label: str | URIRef | None = None,
 ) -> tuple:
     """
@@ -207,9 +206,6 @@ def _parse_triple(
         subj = label
     if obj is None:
         obj = label
-    if obj.startswith("inputs.") or obj.startswith("outputs."):
-        assert ns is not None, "Namespace must not be None"
-        obj = _dot(ns, obj)
     return subj, pred, obj
 
 
@@ -333,7 +329,7 @@ def _function_to_triples(function: callable, node_label: str, ontology=PNS) -> l
     if f_dict.get("uri", None) is not None:
         triples.append((node_label, RDF.type, f_dict["uri"]))
     for t in _get_triples_from_restrictions(f_dict):
-        triples.append(_parse_triple(t, ns=node_label, label=node_label))
+        triples.append(_parse_triple(t, label=node_label))
     triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
     return triples
 
@@ -363,7 +359,7 @@ def _parse_channel(
     elif channel_dict[NS.TYPE] == "outputs":
         triples.append((channel_label, ontology.outputOf, channel_label.split(".outputs.")[0]))
     for t in _get_triples_from_restrictions(channel_dict):
-        triples.append(_parse_triple(t, ns=label, label=channel_label))
+        triples.append(_parse_triple(t, label=channel_label))
     return triples
 
 
