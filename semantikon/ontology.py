@@ -359,9 +359,9 @@ def _parse_channel(
         )
     )
     if channel_dict[NS.TYPE] == "inputs":
-        triples.append((channel_label, ontology.inputOf, label))
+        triples.append((channel_label, ontology.inputOf, channel_label))
     elif channel_dict[NS.TYPE] == "outputs":
-        triples.append((channel_label, ontology.outputOf, label))
+        triples.append((channel_label, ontology.outputOf, channel_label))
     for t in _get_triples_from_restrictions(channel_dict):
         triples.append(_parse_triple(t, ns=label, label=channel_label))
     return triples
@@ -405,15 +405,15 @@ def _dot(*args):
     return ".".join([a for a in args if a is not None])
 
 
-def _convert_edge_triples(inp: str, out: str, prefix: str, ontology=PNS) -> tuple:
+def _convert_edge_triples(inp: str, out: str, ontology=PNS) -> tuple:
     if inp.startswith("outputs.") or out.startswith("inputs."):
-        return (_dot(prefix, inp), OWL.sameAs, _dot(prefix, out))
-    return (_dot(prefix, inp), ontology.inheritsPropertiesFrom, _dot(prefix, out))
+        return (inp, OWL.sameAs, out)
+    return (inp, ontology.inheritsPropertiesFrom, out)
 
 
-def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
+def _edges_to_triples(edges: list, ontology=PNS) -> list:
     return [
-        _convert_edge_triples(inp, out, prefix, ontology) for inp, out in edges.items()
+        _convert_edge_triples(inp, out, ontology) for inp, out in edges.items()
     ]
 
 
@@ -426,7 +426,7 @@ def _parse_workflow(
     full_edge_dict = _get_full_edge_dict(edge_list)
     for label, content in channel_dict.items():
         triples = _parse_channel(content, label, full_edge_dict, ontology)
-    triples.extend(_edges_to_triples(_get_edge_dict(data_edges), label, ontology))
+    triples.extend(_edges_to_triples(_get_edge_dict(edge_list), label, ontology))
 
     for key, node in node_dict.items():
         triples.append((key, RDF.type, PROV.Activity))
