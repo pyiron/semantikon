@@ -21,7 +21,7 @@ class PNS:
 
 class NS:
     PREFIX = "semantikon_parent_prefix"
-    IO = "semantikon_io"
+    TYPE = "semantikon_type"
 
 
 ud = UnitsDict()
@@ -333,7 +333,7 @@ def _function_to_triples(function: callable, node_label: str, ontology=PNS) -> l
     if f_dict.get("uri", None) is not None:
         triples.append((node_label, RDF.type, f_dict["uri"]))
     for t in _get_triples_from_restrictions(f_dict):
-        triples.append(_parse_triple(t, ns=node_label, label=node_label))
+        triples.append(_parse_triple(t, label=node_label))
     triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
     return triples
 
@@ -342,6 +342,8 @@ def _parse_channel(
     channel_dict: dict, channel_label: str, edge_dict: str, ontology=PNS
 ):
     triples = []
+    if "type_hint" in channel_dict:
+        channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
     triples.append((channel_label, RDF.type, PROV.Entity))
     if channel_dict.get("uri", None) is not None:
         triples.append((channel_label, RDF.type, channel_dict["uri"]))
@@ -356,6 +358,18 @@ def _parse_channel(
             ontology=ontology,
         )
     )
+    if channel_dict[NS.TYPE] == "inputs":
+        triples.append(
+            (channel_label, ontology.inputOf, channel_label.split(".inputs.")[0])
+        )
+    elif channel_dict[NS.TYPE] == "outputs":
+        triples.append(
+            (channel_label, ontology.outputOf, channel_label.split(".outputs.")[0])
+        )
+    for t in _get_triples_from_restrictions(channel_dict):
+        triples.append(
+            _parse_triple(t, ns=channel_dict[NS.PREFIX], label=channel_label)
+        )
     return triples
 
 
@@ -397,56 +411,36 @@ def _dot(*args):
     return ".".join([a for a in args if a is not None])
 
 
-def _convert_edge_triples(inp: str, out: str, prefix: str, ontology=PNS) -> tuple:
-    if inp.startswith("outputs.") or out.startswith("inputs."):
-        return (_dot(prefix, inp), OWL.sameAs, _dot(prefix, out))
-    return (_dot(prefix, inp), ontology.inheritsPropertiesFrom, _dot(prefix, out))
+def _convert_edge_triples(inp: str, out: str, ontology=PNS) -> tuple:
+    if inp.split(".")[-2] == "outputs" or out.split(".")[-2] == "inputs":
+        return (inp, OWL.sameAs, out)
+    return (inp, ontology.inheritsPropertiesFrom, out)
 
 
-def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
-    return [
-        _convert_edge_triples(inp, out, prefix, ontology) for inp, out in edges.items()
-    ]
+def _edges_to_triples(edges: list, ontology=PNS) -> list:
+    return [_convert_edge_triples(inp, out, ontology) for inp, out in edges.items()]
 
 
 def _parse_workflow(
-    wf_dict: dict,
-    label=None,
-    full_edge_dict=None,
+    node_dict: dict,
+    channel_dict: dict,
+    edge_list: list,
     ontology=PNS,
 ) -> list:
-    if full_edge_dict is None:
-        full_edge_dict = _get_full_edge_dict(serialize_data(wf_dict)[2])
-    if label is None:
-        label = wf_dict["label"]
-    triples = [(label, RDF.type, PROV.Activity)]
-    for io_ in ["inputs", "outputs"]:
-        for key, channel_dict in wf_dict[io_].items():
-            if "type_hint" in channel_dict:
-                channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
-            channel_label = _remove_us(label, io_, key)
-            triples.extend(
-                _parse_channel(channel_dict, channel_label, full_edge_dict, ontology)
-            )
-            if io_ == "inputs":
-                triples.append((channel_label, ontology.inputOf, label))
-            elif io_ == "outputs":
-                triples.append((channel_label, ontology.outputOf, label))
-            for t in _get_triples_from_restrictions(channel_dict):
-                triples.append(_parse_triple(t, ns=label, label=channel_label))
-    if "nodes" in wf_dict and "data_edges" in wf_dict:
-        triples.extend(
-            _edges_to_triples(_get_edge_dict(wf_dict["data_edges"]), label, ontology)
-        )
-        for n_label, node in wf_dict["nodes"].items():
-            node_label = _dot(label, n_label)
-            triples.append((label, ontology.hasNode, node_label))
-            for n in _parse_workflow(node, node_label, full_edge_dict, ontology):
-                triples.append(n)
-    elif "function" in wf_dict:
-        triples.extend(_function_to_triples(wf_dict["function"], label, ontology))
-    else:
-        raise ValueError("Invalid workflow dictionary")
+    full_edge_dict = _get_full_edge_dict(edge_list)
+    triples = [
+        triple
+        for label, content in channel_dict.items()
+        for triple in _parse_channel(content, label, full_edge_dict, ontology)
+    ]
+    triples.extend(_edges_to_triples(_get_edge_dict(edge_list), ontology))
+
+    for key, node in node_dict.items():
+        triples.append((key, RDF.type, PROV.Activity))
+        if "function" in node:
+            triples.extend(_function_to_triples(node["function"], key, ontology))
+        if "." in key:
+            triples.append((".".join(key.split(".")[:-1]), ontology.hasNode, key))
     return triples
 
 
@@ -485,9 +479,9 @@ def get_knowledge_graph(
     """
     if graph is None:
         graph = Graph()
-    triples = _parse_workflow(wf_dict, ontology=ontology)
-    wf_channels = serialize_data(wf_dict)
-    triples_to_cancel = _parse_cancel(wf_channels[0])
+    node_dict, channel_dict, edge_list = serialize_data(wf_dict)
+    triples = _parse_workflow(node_dict, channel_dict, edge_list, ontology=ontology)
+    triples_to_cancel = _parse_cancel(channel_dict)
     for triple in triples:
         if any(t is None for t in triple):
             continue
@@ -554,10 +548,10 @@ def serialize_data(wf_dict, prefix=None):
         for key, channel in wf_dict[io_].items():
             channel_label = _remove_us(prefix, io_, key)
             assert NS.PREFIX not in channel, f"{NS.PREFIX} already set"
-            assert NS.IO not in channel, f"{NS.IO} already set"
-            node_dict[channel_label] = channel | {
+            assert NS.TYPE not in channel, f"{NS.TYPE} already set"
+            channel_dict[channel_label] = channel | {
                 NS.PREFIX: prefix,
-                NS.IO: io_,
+                NS.TYPE: io_,
             }
     for key, node in wf_dict.get("nodes", {}).items():
         child_node, child_channel, child_edges = serialize_data(

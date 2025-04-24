@@ -17,6 +17,7 @@ from semantikon.ontology import (
     validate_values,
     dataclass_to_knowledge_graph,
     serialize_data,
+    _parse_cancel,
     NS,
 )
 from semantikon.workflow import workflow, separate_types, separate_functions
@@ -408,9 +409,26 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_three_0.add_one_0> a prov:Activity ;
             ns1:hasSourceFunction <add_one> .\n\n"""
         )
-        self.maxDiff = None
+        ref_data = txt.splitlines()
         graph = get_knowledge_graph(get_macro.run())
-        self.assertEqual(graph.serialize(format="turtle"), txt)
+        serialized_data = graph.serialize(format="turtle").splitlines()
+        for line in serialized_data:
+            self.assertIn(line, ref_data, msg=f"{line} not in {ref_data}")
+        self.assertEqual(len(serialized_data), len(ref_data))
+
+    def test_parse_cancel(self):
+        channels, edges = serialize_data(get_wrong_order._semantikon_workflow)[1:]
+        self.assertTrue(any(["cancel" in channel for channel in channels.values()]))
+        to_cancel = _parse_cancel(channels)
+        self.assertEqual(len(to_cancel), 1)
+        self.assertEqual(
+            to_cancel[0],
+            (
+                URIRef("get_wrong_order.create_vacancy_0.outputs.output"),
+                URIRef("http://example.org/hasState"),
+                URIRef("http://example.org/relaxed"),
+            ),
+        )
 
     def test_wrong_order(self):
         graph = get_knowledge_graph(get_wrong_order._semantikon_workflow)
@@ -432,10 +450,10 @@ class TestOntology(unittest.TestCase):
         for key, node in channels.items():
             self.assertTrue(key.startswith(node[NS.PREFIX]))
             self.assertIn(node[NS.PREFIX], nodes)
-        self.assertIn("get_macro.add_three_0.inputs.c", nodes)
+        self.assertIn("get_macro.add_three_0.inputs.c", channels)
         for args in edges:
-            self.assertIn(args[0], nodes)
-            self.assertIn(args[1], nodes)
+            self.assertIn(args[0], channels)
+            self.assertIn(args[1], channels)
 
 
 @dataclass
