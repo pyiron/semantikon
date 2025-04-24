@@ -1,7 +1,6 @@
 import unittest
 from textwrap import dedent
 from rdflib import Graph, OWL, Namespace, URIRef, Literal, RDF, RDFS, SH
-from rdflib.compare import isomorphic
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from pyshacl import validate
 from semantikon.typing import u
