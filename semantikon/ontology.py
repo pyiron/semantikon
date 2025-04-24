@@ -182,6 +182,7 @@ def _restriction_to_triple(
 
 def _parse_triple(
     triples: tuple,
+    ns: str | None = None,
     label: str | URIRef | None = None,
 ) -> tuple:
     """
@@ -206,6 +207,9 @@ def _parse_triple(
         subj = label
     if obj is None:
         obj = label
+    if obj.startswith("inputs.") or obj.startswith("outputs."):
+        assert ns is not None, "Namespace must not be None"
+        obj = _dot(ns, obj)
     return subj, pred, obj
 
 
@@ -359,7 +363,9 @@ def _parse_channel(
     elif channel_dict[NS.TYPE] == "outputs":
         triples.append((channel_label, ontology.outputOf, channel_label.split(".outputs.")[0]))
     for t in _get_triples_from_restrictions(channel_dict):
-        triples.append(_parse_triple(t, label=channel_label))
+        triples.append(
+            _parse_triple(t, ns=channel_dict[NS.PREFIX], label=channel_label)
+        )
     return triples
 
 
