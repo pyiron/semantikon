@@ -424,14 +424,12 @@ def _parse_workflow(
     ontology=PNS,
 ) -> list:
     full_edge_dict = _get_full_edge_dict(edge_list)
-    triples = [(label, RDF.type, PROV.Activity)]
     for label, content in channel_dict.items():
-        triples.extend(
-            _parse_channel(content, channel_label, full_edge_dict, ontology)
-        )
+        triples = _parse_channel(content, label, full_edge_dict, ontology)
     triples.extend(_edges_to_triples(_get_edge_dict(data_edges), label, ontology))
 
     for key, node in node_dict.items():
+        triples.append((key, RDF.type, PROV.Activity))
         if "function" in node:
             triples.extend(_function_to_triples(node["function"], key, ontology))
         if "." in key:
