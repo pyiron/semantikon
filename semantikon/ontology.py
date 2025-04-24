@@ -419,16 +419,16 @@ def _edges_to_triples(edges: list, prefix: str, ontology=PNS) -> list:
 
 def _parse_workflow(
     node_dict: dict,
-    child_dict: dict,
+    channel_dict: dict,
     edge_list: list,
     ontology=PNS,
 ) -> list:
     if full_edge_dict is None:
         full_edge_dict = _get_full_edge_dict(edge_list)
     triples = [(label, RDF.type, PROV.Activity)]
-    for channel_label, channel_dict in node_dict.items():
+    for label, content in channel_dict.items():
         triples.extend(
-            _parse_channel(channel_dict, channel_label, full_edge_dict, ontology)
+            _parse_channel(content, channel_label, full_edge_dict, ontology)
         )
     triples.extend(_edges_to_triples(_get_edge_dict(data_edges), label, ontology))
 
