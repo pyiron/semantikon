@@ -550,7 +550,7 @@ def serialize_data(wf_dict, prefix=None):
             channel_label = _remove_us(prefix, io_, key)
             assert NS.PREFIX not in channel, f"{NS.PREFIX} already set"
             assert NS.TYPE not in channel, f"{NS.TYPE} already set"
-            node_dict[channel_label] = channel | {
+            channel_dict[channel_label] = channel | {
                 NS.PREFIX: prefix,
                 NS.TYPE: io_,
             }
