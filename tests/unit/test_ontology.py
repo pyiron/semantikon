@@ -410,10 +410,12 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_three_0.add_one_0> a prov:Activity ;
             ns1:hasSourceFunction <add_one> .\n\n"""
         )
+        ref_data = txt.splitlines()
         graph = get_knowledge_graph(get_macro.run())
-        graph_ref = Graph()
-        graph_ref.parse(data=txt, format="turtle")
-        self.assertTrue(isomorphic(graph, graph_ref))
+        serialized_data = graph.serialize(format="turtle").splitlines()
+        for line in serialized_data:
+            self.assertIn(line, ref_data, msg=f"{line} not in {ref_data}")
+        self.assertEqual(len(serialized_data), len(ref_data))
 
     def test_parse_cancel(self):
         nodes, channels, edges = serialize_data(get_wrong_order._semantikon_workflow)
