@@ -406,7 +406,7 @@ def _dot(*args):
 
 
 def _convert_edge_triples(inp: str, out: str, ontology=PNS) -> tuple:
-    if inp.startswith("outputs.") or out.startswith("inputs."):
+    if inp.split(".")[-2] == "outputs" or out.split(".")[-2] == "inputs":
         return (inp, OWL.sameAs, out)
     return (inp, ontology.inheritsPropertiesFrom, out)
 
@@ -424,8 +424,11 @@ def _parse_workflow(
     ontology=PNS,
 ) -> list:
     full_edge_dict = _get_full_edge_dict(edge_list)
-    for label, content in channel_dict.items():
-        triples = _parse_channel(content, label, full_edge_dict, ontology)
+    triples = [
+        triple
+        for label, content in channel_dict.items()
+        for triple in _parse_channel(content, label, full_edge_dict, ontology)
+    ]
     triples.extend(_edges_to_triples(_get_edge_dict(edge_list), ontology))
 
     for key, node in node_dict.items():
