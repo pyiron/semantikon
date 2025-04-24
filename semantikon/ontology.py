@@ -426,7 +426,7 @@ def _parse_workflow(
     full_edge_dict = _get_full_edge_dict(edge_list)
     for label, content in channel_dict.items():
         triples = _parse_channel(content, label, full_edge_dict, ontology)
-    triples.extend(_edges_to_triples(_get_edge_dict(edge_list), label, ontology))
+    triples.extend(_edges_to_triples(_get_edge_dict(edge_list), ontology))
 
     for key, node in node_dict.items():
         triples.append((key, RDF.type, PROV.Activity))
