@@ -85,15 +85,21 @@ def _translate_has_value(
     return triples
 
 
+def _align_triples(triples):
+    if isinstance(triples[0], tuple | list):
+        assert all(len(t) in (2, 3) for t in triples)
+        return list(triples)
+    else:
+        assert len(triples) in (2, 3)
+        return [triples]
+
+
 def _get_triples_from_restrictions(data: dict) -> list:
     triples = []
     if data.get("restrictions", None) is not None:
         triples = _restriction_to_triple(data["restrictions"])
     if data.get("triples", None) is not None:
-        if isinstance(data["triples"][0], tuple | list):
-            triples.extend(list(data["triples"]))
-        else:
-            triples.extend([data["triples"]])
+        triples.extend(_align_triples(data["triples"]))
     return triples
 
 
