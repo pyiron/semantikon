@@ -532,7 +532,17 @@ def dataclass_to_knowledge_graph(class_name, name_space):
     )
 
 
-def serialize_data(wf_dict, prefix=None):
+def serialize_data(wf_dict: dict, prefix: str | None = None) -> tuple[dict, dict, list]:
+    """
+    Serialize a nested workflow dictionary into a knowledge graph
+
+    Args:
+        wf_dict (dict): workflow dictionary
+        prefix (str): prefix to be used for the nodes
+
+    Returns:
+        (tuple[dict, dict, list]): node_dict, channel_dict, edge_list
+    """
     edge_list = []
     channel_dict = {}
     if prefix is None:
