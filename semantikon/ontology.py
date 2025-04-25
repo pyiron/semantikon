@@ -542,7 +542,7 @@ def serialize_data(wf_dict: dict, prefix: str | None = None) -> tuple[dict, dict
 
     Returns:
         (tuple[dict, dict, list]): node_dict, channel_dict, edge_list
-    """ 
+    """
     edge_list = []
     channel_dict = {}
     if prefix is None:
