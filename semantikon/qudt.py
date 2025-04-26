@@ -6,6 +6,18 @@ from tokenize import TokenError
 import requests
 
 
+def _is_english_label(pred, obj):
+    return (
+        pred == RDFS.label
+        and obj.language is not None
+        and obj.language.startswith("en")
+    )
+
+
+def _is_symbol(pred):
+    return pred == URIRef("http://qudt.org/schema/qudt/symbol")
+
+
 def download_data(version: str | None = None, store_data: bool = False) -> Graph:
     """
     Download the QUDT data from the QUDT website and parse it into a graph.
@@ -30,7 +42,7 @@ def download_data(version: str | None = None, store_data: bool = False) -> Graph
     graph.parse(data=data, format="ttl")
     graph_with_only_label = Graph()
     for s, p, o in graph:
-        if p == RDFS.label:
+        if _is_english_label(p, o) or _is_symbol(p):
             graph_with_only_label.add((s, p, o))
     if store_data:
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -115,20 +127,13 @@ def get_units_dict(graph: Graph) -> dict[str, URIRef]:
     """
     ureg = UnitRegistry()
     units_dict = {}
-    for uri, tag in graph.subject_objects(RDFS.label):
-        if tag.language is not None and not tag.language.startswith("en"):
-            continue
+    for uri, tag in graph.subject_objects(None):
         key = str(tag).lower()
         units_dict[key] = uri
         try:
             key = str(ureg[str(tag).lower()].units)
             if key not in units_dict or len(uri) < len(units_dict[key]):
                 units_dict[key] = uri
-        except (
-            UndefinedUnitError,
-            OffsetUnitCalculusError,
-            DimensionalityError,
-            TokenError,
-        ):
+        except Exception:
             pass
     return units_dict
