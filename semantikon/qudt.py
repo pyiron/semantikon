@@ -7,10 +7,15 @@ import requests
 
 
 def _is_english_label(pred, obj):
-    return pred == RDFS.label and obj.language is not None and obj.language.startswith("en")
+    return (
+        pred == RDFS.label
+        and obj.language is not None
+        and obj.language.startswith("en")
+    )
+
 
 def _is_symbol(pred):
-    return pred == URIRef('http://qudt.org/schema/qudt/symbol')
+    return pred == URIRef("http://qudt.org/schema/qudt/symbol")
 
 
 def download_data(version: str | None = None, store_data: bool = False) -> Graph:
