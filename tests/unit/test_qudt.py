@@ -11,6 +11,7 @@ class TestQUDT(unittest.TestCase):
         meter = self.ud["meter"]
         self.assertEqual(meter, self.ud["m"])
         self.assertEqual(str(meter), "http://qudt.org/vocab/unit/M")
+        self.assertEqual(str(self.ud["eV"]), "http://qudt.org/vocab/unit/EV")
         self.assertEqual(
             str(self.ud["Cubic Meter per Square Meter"]),
             "http://qudt.org/vocab/unit/M3-PER-M2",
