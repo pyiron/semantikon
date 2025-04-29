@@ -465,7 +465,6 @@ def _parse_cancel(wf_channels: dict) -> list:
     return [tuple([_convert_to_uriref(tt) for tt in t]) for t in triples]
 
 
-
 def get_knowledge_graph(
     wf_dict: dict,
     graph: Graph | None = None,
