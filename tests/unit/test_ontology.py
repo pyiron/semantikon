@@ -3,6 +3,7 @@ from textwrap import dedent
 from rdflib import Graph, OWL, Namespace, URIRef, Literal, RDF, RDFS, SH
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from pyshacl import validate
+from graphviz import Digraph
 from semantikon.typing import u
 from semantikon.converter import (
     parse_input_args,
@@ -21,6 +22,7 @@ from semantikon.ontology import (
     NS,
 )
 from semantikon.workflow import workflow, separate_types, separate_functions
+from semantikon.visualize import visualize
 from dataclasses import dataclass
 
 
@@ -454,6 +456,11 @@ class TestOntology(unittest.TestCase):
         for args in edges:
             self.assertIn(args[0], channels)
             self.assertIn(args[1], channels)
+
+    def test_visualize(self):
+        data = get_macro.run()
+        graph = get_knowledge_graph(data)
+        self.assertIsInstance(visualize(graph), Digraph)
 
 
 @dataclass
