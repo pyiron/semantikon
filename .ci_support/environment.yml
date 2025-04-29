@@ -3,7 +3,7 @@ channels:
 dependencies:
 - coveralls
 - coverage
-- ipython =9.2.0
+- ipython =9.0.2
 - numpy =2.2.3
 - pint =0.24.4
 - rdflib =7.1.1
