@@ -9,6 +9,7 @@ dependencies:
 - versioneer
 - coveralls
 - coverage
+- ipython =9.2.0
 - numpy =2.2.3
 - pint =0.24.4
 - rdflib =7.1.1
