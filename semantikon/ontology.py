@@ -499,7 +499,7 @@ def get_knowledge_graph(
     if append_missing_items:
         graph = _append_missing_items(graph)
     if len(list(graph.subject_objects(SNS.hasUnits))) > 0:
-        graph.bind("qudt", "http://qudt.org/vocab/unit/"
+        graph.bind("qudt", "http://qudt.org/vocab/unit/")
     return graph
 
 
