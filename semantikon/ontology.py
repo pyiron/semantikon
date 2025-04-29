@@ -209,13 +209,15 @@ def _parse_triple(
     else:
         raise ValueError("Triple must have 2 or 3 elements")
     assert pred is not None, "Predicate must not be None"
-    if subj is None:
-        subj = label
-    if obj is None:
-        obj = label
-    if obj.startswith("inputs.") or obj.startswith("outputs."):
-        assert ns is not None, "Namespace must not be None"
-        obj = _dot(ns, obj)
+    def _set_tag(tag, ns=None, label=None):
+        if tag is None:
+            return label
+        elif tag.startswith("inputs.") or tag.startswith("outputs."):
+            assert ns is not None, "Namespace must not be None"
+            return _dot(ns, tag)
+        return tag
+    subj = _set_tag(subj, ns, label)
+    obj = _set_tag(obj, ns, label)
     return subj, pred, obj
 
 
