@@ -56,13 +56,15 @@ def _to_node(tag, **kwargs):
     rows = f"<tr><td align='center'>{tag}</td></tr>"
     for key, value in kwargs.items():
         color = colors.get(key, "white")
-        rows += f'<tr><td bgcolor="{color}"><font point-size="9">{value}</font></td></tr>'
+        rows += (
+            f'<tr><td bgcolor="{color}"><font point-size="9">{value}</font></td></tr>'
+        )
     return html.substitute(rows=rows)
 
 
 def visualize(graph):
     dot = Digraph(comment="RDF Graph", format="png")
-    dot.attr('node', shape='none', margin='0')
+    dot.attr("node", shape="none", margin="0")
     data_dict, edge_list = _get_data(graph)
     for key, value in data_dict.items():
         if len(value) == 0:
