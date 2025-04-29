@@ -1,4 +1,4 @@
-from rdflib import RDF, URIRef, Literal, BNode, Graph
+from rdflib import RDF, URIRef, Literal, BNode
 from graphviz import Digraph
 
 
