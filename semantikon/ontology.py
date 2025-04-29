@@ -8,7 +8,7 @@ from semantikon.qudt import UnitsDict
 from owlrl import DeductiveClosure, OWLRL_Semantics
 
 
-class PNS:
+class SNS:
     BASE = Namespace("http://pyiron.org/ontology/")
     hasNode = BASE["hasNode"]
     hasSourceFunction = BASE["hasSourceFunction"]
@@ -34,7 +34,7 @@ def _translate_has_value(
     dtype: type | None = None,
     units: URIRef | None = None,
     parent: URIRef | None = None,
-    ontology=PNS,
+    ontology=SNS,
 ) -> Graph:
     tag_uri = URIRef(tag + ".value")
     triples = [(label, ontology.hasValue, tag_uri)]
@@ -220,7 +220,7 @@ def _parse_triple(
 
 
 def _inherit_properties(
-    graph: Graph, triples_to_cancel: list | None = None, n_max: int = 1000, ontology=PNS
+    graph: Graph, triples_to_cancel: list | None = None, n_max: int = 1000, ontology=SNS
 ):
     update_query = (
         f"PREFIX ns: <{ontology.BASE}>",
@@ -333,7 +333,7 @@ def _convert_to_uriref(value):
         raise TypeError(f"Unsupported type: {type(value)}")
 
 
-def _function_to_triples(function: callable, node_label: str, ontology=PNS) -> list:
+def _function_to_triples(function: callable, node_label: str, ontology=SNS) -> list:
     f_dict = get_function_dict(function)
     triples = []
     if f_dict.get("uri", None) is not None:
@@ -345,7 +345,7 @@ def _function_to_triples(function: callable, node_label: str, ontology=PNS) -> l
 
 
 def _parse_channel(
-    channel_dict: dict, channel_label: str, edge_dict: str, ontology=PNS
+    channel_dict: dict, channel_label: str, edge_dict: str, ontology=SNS
 ):
     triples = []
     if "type_hint" in channel_dict:
@@ -417,13 +417,13 @@ def _dot(*args):
     return ".".join([a for a in args if a is not None])
 
 
-def _convert_edge_triples(inp: str, out: str, ontology=PNS) -> tuple:
+def _convert_edge_triples(inp: str, out: str, ontology=SNS) -> tuple:
     if inp.split(".")[-2] == "outputs" or out.split(".")[-2] == "inputs":
         return (inp, OWL.sameAs, out)
     return (inp, ontology.inheritsPropertiesFrom, out)
 
 
-def _edges_to_triples(edges: list, ontology=PNS) -> list:
+def _edges_to_triples(edges: list, ontology=SNS) -> list:
     return [_convert_edge_triples(inp, out, ontology) for inp, out in edges.items()]
 
 
@@ -431,7 +431,7 @@ def _parse_workflow(
     node_dict: dict,
     channel_dict: dict,
     edge_list: list,
-    ontology=PNS,
+    ontology=SNS,
 ) -> list:
     full_edge_dict = _get_full_edge_dict(edge_list)
     triples = [
@@ -469,7 +469,7 @@ def get_knowledge_graph(
     wf_dict: dict,
     graph: Graph | None = None,
     inherit_properties: bool = True,
-    ontology=PNS,
+    ontology=SNS,
     append_missing_items: bool = True,
 ) -> Graph:
     """

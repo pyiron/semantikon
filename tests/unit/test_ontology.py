@@ -12,7 +12,7 @@ from semantikon.converter import (
 )
 from semantikon.ontology import (
     get_knowledge_graph,
-    PNS,
+    SNS,
     _inherit_properties,
     validate_values,
     dataclass_to_knowledge_graph,
@@ -58,7 +58,7 @@ def multiply(a: float, b: float) -> u(
     float,
     triples=(
         (EX.HasOperation, EX.Multiplication),
-        (PNS.inheritsPropertiesFrom, "inputs.a"),
+        (SNS.inheritsPropertiesFrom, "inputs.a"),
     ),
 ):
     return a * b
@@ -138,7 +138,7 @@ def create_vacancy(
 ) -> u(
     str,
     triples=(
-        (PNS.inheritsPropertiesFrom, "inputs.structure"),
+        (SNS.inheritsPropertiesFrom, "inputs.structure"),
         (EX.hasDefect, EX.vacancy),
     ),
     cancel=(EX.hasState, EX.relaxed),
@@ -151,7 +151,7 @@ def relax_structure(
 ) -> u(
     str,
     triples=(
-        (PNS.inheritsPropertiesFrom, "inputs.structure"),
+        (SNS.inheritsPropertiesFrom, "inputs.structure"),
         (EX.hasState, EX.relaxed),
     ),
 ):
@@ -223,7 +223,7 @@ class TestOntology(unittest.TestCase):
         query_txt = [
             "PREFIX ex: <http://example.org/>",
             "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
-            f"PREFIX pns: <{PNS.BASE}>",
+            f"PREFIX pns: <{SNS.BASE}>",
             "SELECT DISTINCT ?speed ?units",
             "WHERE {",
             "    ?output pns:hasValue ?output_tag .",
@@ -248,7 +248,7 @@ class TestOntology(unittest.TestCase):
             len(
                 list(
                     graph.subjects(
-                        PNS.hasUnits, URIRef("http://qudt.org/vocab/unit/M-PER-SEC")
+                        SNS.hasUnits, URIRef("http://qudt.org/vocab/unit/M-PER-SEC")
                     )
                 )
             ),
@@ -292,14 +292,14 @@ class TestOntology(unittest.TestCase):
         graph = get_knowledge_graph(get_macro.run())
         subj = list(
             graph.subjects(
-                PNS.hasValue,
+                SNS.hasValue,
                 URIRef("get_macro.add_three_0.add_one_0.inputs.a.value"),
             )
         )
         self.assertEqual(len(subj), 3)
         subj = list(
             graph.subjects(
-                PNS.hasValue,
+                SNS.hasValue,
                 URIRef("get_macro.add_three_0.add_two_0.outputs.output.value"),
             )
         )
@@ -518,7 +518,7 @@ class TestDataclass(unittest.TestCase):
             (URIRef(f"{i_txt}.n.value"), RDFS.subClassOf, URIRef(f"{i_txt}.value")),
             (URIRef(f"{i_txt}.n.value"), RDF.value, Literal(100)),
             (URIRef(f"{i_txt}.parameters.a.value"), RDF.value, Literal(2)),
-            (URIRef(o_txt), PNS.hasValue, URIRef(f"{o_txt}.E.value")),
+            (URIRef(o_txt), SNS.hasValue, URIRef(f"{o_txt}.E.value")),
         )
         s = graph.serialize(format="turtle")
         for ii, triple in enumerate(triples):
