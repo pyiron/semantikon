@@ -1,5 +1,6 @@
 from rdflib import RDF, URIRef, Literal, BNode
 from graphviz import Digraph
+from string import Template
 
 
 def short_label(graph, node):
@@ -45,20 +46,29 @@ def get_data(graph):
     return data_dict, edge_list
 
 
+def _to_node(tag, **kwargs):
+    colors = {"prefix": "lightblue", "value": "lightgreen"}
+    html = Template(
+        """<<table border="0" cellborder="1" cellspacing="0" cellpadding="4">
+        $rows
+        </table>>"""
+    )
+    rows = f"<tr><td align='center'>{tag}</td></tr>"
+    for key, value in kwargs.items():
+        color = colors.get(key, "white")
+        rows += f'<tr><td bgcolor="{color}"><font point-size="9">{value}</font></td></tr>'
+    return html.substitute(rows=rows)
+
+
 def visualize(graph):
     dot = Digraph(comment="RDF Graph", format="png")
-    dot.attr("node", shape="record")
+    dot.attr('node', shape='none', margin='0')
     data_dict, edge_list = get_data(graph)
     for key, value in data_dict.items():
         if len(value) == 0:
-            dot.node(key.replace(":", "_"), key)
+            dot.node(key.replace(":", "_"), _to_node(key))
         else:
-            dot.node(
-                key.replace(":", "_"),
-                "{"
-                + " | ".join([key] + [f"{kk}: {vv}" for kk, vv in value.items()])
-                + "}",
-            )
+            dot.node(key.replace(":", "_"), _to_node(key, **value))
     for edges in edge_list:
         dot.edge(edges[0], edges[1], label=edges[2])
 
