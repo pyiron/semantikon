@@ -9,3 +9,4 @@ dependencies:
 - owlrl =7.1.2
 - networkx =3.4.2
 - pyshacl =0.30.0
+- graphviz =12.2.1
