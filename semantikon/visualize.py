@@ -30,7 +30,7 @@ def get_data(graph):
     for subj, value in graph.subject_objects(RDF.value):
         label = short_label(graph, subj)
         data_dict[label] = get_value(graph, label, value=str(value.toPython()))
-    
+
     for subj, pred, obj in graph:
         if pred == RDF.value:
             continue
@@ -46,14 +46,19 @@ def get_data(graph):
 
 
 def visualize(graph):
-    dot = Digraph(comment="RDF Graph", format='png')
-    dot.attr('node', shape='record')
+    dot = Digraph(comment="RDF Graph", format="png")
+    dot.attr("node", shape="record")
     data_dict, edge_list = get_data(graph)
     for key, value in data_dict.items():
         if len(value) == 0:
             dot.node(key.replace(":", "_"), key)
         else:
-            dot.node(key.replace(":", "_"), "{" + " | ".join([key] + [f"{kk}: {vv}" for kk, vv in value.items()]) + "}")
+            dot.node(
+                key.replace(":", "_"),
+                "{"
+                + " | ".join([key] + [f"{kk}: {vv}" for kk, vv in value.items()])
+                + "}",
+            )
     for edges in edge_list:
         dot.edge(edges[0], edges[1], label=edges[2])
 

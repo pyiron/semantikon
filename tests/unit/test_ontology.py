@@ -3,7 +3,7 @@ from textwrap import dedent
 from rdflib import Graph, OWL, Namespace, URIRef, Literal, RDF, RDFS, SH
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from pyshacl import validate
-from IPython.display import Image
+from graphviz.graphs import Digraph
 from semantikon.typing import u
 from semantikon.converter import (
     parse_input_args,
@@ -460,7 +460,7 @@ class TestOntology(unittest.TestCase):
     def test_visualize(self):
         data = get_macro.run()
         graph = get_knowledge_graph(data)
-        self.assertIsInstance(visualize(graph), Image)
+        self.assertIsInstance(visualize(graph), Digraph)
 
 
 @dataclass
