@@ -16,3 +16,4 @@ dependencies:
 - owlrl =7.1.2
 - networkx =3.4.2
 - pyshacl =0.30.0
+- pydotplus =2.0.2
