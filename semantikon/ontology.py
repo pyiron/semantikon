@@ -340,8 +340,9 @@ def _function_to_triples(function: callable, node_label: str, ontology=SNS) -> l
     triples = []
     if f_dict.get("uri", None) is not None:
         triples.append((node_label, RDF.type, f_dict["uri"]))
-    for t in _get_triples_from_restrictions(f_dict):
-        triples.append(_parse_triple(t, label=node_label))
+    if f_dict.get("triples", None) is not None:
+        for t in _align_triples(f_dict["triples"]):
+            triples.append(_parse_triple(t, label=node_label))
     triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
     return triples
 
