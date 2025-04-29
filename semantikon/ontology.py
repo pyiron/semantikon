@@ -209,13 +209,17 @@ def _parse_triple(
     else:
         raise ValueError("Triple must have 2 or 3 elements")
     assert pred is not None, "Predicate must not be None"
-    if subj is None:
-        subj = label
-    if obj is None:
-        obj = label
-    if obj.startswith("inputs.") or obj.startswith("outputs."):
-        assert ns is not None, "Namespace must not be None"
-        obj = _dot(ns, obj)
+
+    def _set_tag(tag, ns=None, label=None):
+        if tag is None:
+            return label
+        elif tag.startswith("inputs.") or tag.startswith("outputs."):
+            assert ns is not None, "Namespace must not be None"
+            return _dot(ns, tag)
+        return tag
+
+    subj = _set_tag(subj, ns, label)
+    obj = _set_tag(obj, ns, label)
     return subj, pred, obj
 
 
@@ -338,8 +342,9 @@ def _function_to_triples(function: callable, node_label: str, ontology=SNS) -> l
     triples = []
     if f_dict.get("uri", None) is not None:
         triples.append((node_label, RDF.type, f_dict["uri"]))
-    for t in _get_triples_from_restrictions(f_dict):
-        triples.append(_parse_triple(t, label=node_label))
+    if f_dict.get("triples", None) is not None:
+        for t in _align_triples(f_dict["triples"]):
+            triples.append(_parse_triple(t, ns=node_label, label=node_label))
     triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
     return triples
 

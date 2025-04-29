@@ -1,6 +1,6 @@
 import unittest
 from textwrap import dedent
-from rdflib import Graph, OWL, Namespace, URIRef, Literal, RDF, RDFS, SH
+from rdflib import Graph, OWL, Namespace, URIRef, Literal, RDF, RDFS, SH, PROV
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from pyshacl import validate
 from graphviz import Digraph
@@ -51,7 +51,7 @@ def get_speed(distance=10.0, time=2.0):
     return speed
 
 
-@u(uri=EX.Addition)
+@u(uri=EX.Addition, triples=("inputs.a", PROV.wasGeneratedBy, None))
 def add(a: float, b: float) -> u(float, triples=(EX.HasOperation, EX.Addition)):
     return a + b
 
@@ -461,6 +461,16 @@ class TestOntology(unittest.TestCase):
         data = get_macro.run()
         graph = get_knowledge_graph(data)
         self.assertIsInstance(visualize(graph), Digraph)
+
+    def test_function_referencing(self):
+        graph = get_knowledge_graph(get_correct_analysis._semantikon_workflow)
+        self.assertEqual(
+            list(graph.subject_objects(PROV.wasGeneratedBy))[0],
+            (
+                URIRef("get_correct_analysis.add_0.inputs.a"),
+                URIRef("get_correct_analysis.add_0"),
+            ),
+        )
 
 
 @dataclass
