@@ -3,7 +3,7 @@ from textwrap import dedent
 from rdflib import Graph, OWL, Namespace, URIRef, Literal, RDF, RDFS, SH
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from pyshacl import validate
-from graphviz.graphs import Digraph
+from graphviz import Digraph
 from semantikon.typing import u
 from semantikon.converter import (
     parse_input_args,
