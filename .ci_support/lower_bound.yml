@@ -3,10 +3,8 @@ channels:
 dependencies:
 - coveralls
 - coverage
-- ipython =9.0.2
 - numpy =1.26.3
 - pint =0.23
 - rdflib =7.1.1
 - owlrl =7.1.2
 - networkx =3.4.2
-- pydotplus =2.0.2
