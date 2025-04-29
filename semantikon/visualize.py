@@ -3,7 +3,7 @@ from graphviz import Digraph
 from string import Template
 
 
-def short_label(graph, node):
+def _short_label(graph, node):
     """Use graph's prefixes to shorten URIs nicely."""
     if isinstance(node, URIRef):
         try:
@@ -18,30 +18,30 @@ def short_label(graph, node):
         return str(node)
 
 
-def get_value(graph, label, **kwargs):
+def _get_value(graph, label, **kwargs):
     if ":" in label:
         return {"prefix": dict(graph.namespaces())[label.split(":")[0]]} | kwargs
     else:
         return kwargs
 
 
-def get_data(graph):
+def _get_data(graph):
     data_dict = {}
     edge_list = []
     for subj, value in graph.subject_objects(RDF.value):
-        label = short_label(graph, subj)
-        data_dict[label] = get_value(graph, label, value=str(value.toPython()))
+        label = _short_label(graph, subj)
+        data_dict[label] = _get_value(graph, label, value=str(value.toPython()))
 
     for subj, pred, obj in graph:
         if pred == RDF.value:
             continue
         edges = []
         for tag in [subj, obj]:
-            label = short_label(graph, tag)
+            label = _short_label(graph, tag)
             if label not in data_dict:
-                data_dict[label] = get_value(graph, label)
+                data_dict[label] = _get_value(graph, label)
             edges.append(label.replace(":", "_"))
-        edges.append(short_label(graph, pred))
+        edges.append(_short_label(graph, pred))
         edge_list.append(edges)
     return data_dict, edge_list
 
@@ -63,7 +63,7 @@ def _to_node(tag, **kwargs):
 def visualize(graph):
     dot = Digraph(comment="RDF Graph", format="png")
     dot.attr('node', shape='none', margin='0')
-    data_dict, edge_list = get_data(graph)
+    data_dict, edge_list = _get_data(graph)
     for key, value in data_dict.items():
         if len(value) == 0:
             dot.node(key.replace(":", "_"), _to_node(key))
