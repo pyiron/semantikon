@@ -2,6 +2,8 @@ from rdflib import RDF, URIRef, Literal, BNode
 from graphviz import Digraph
 from string import Template
 
+from semantikon.ontology import SNS
+
 
 def _short_label(graph, node):
     """Use graph's prefixes to shorten URIs nicely."""
@@ -25,12 +27,37 @@ def _get_value(graph, label, **kwargs):
         return kwargs
 
 
+def _add_color(data_dict, graph, tag, color):
+    label = _short_label(graph, tag)
+    if label not in data_dict:
+        data_dict[label] = _get_value(graph, label) | {"bgcolor": color}
+    else:
+        data_dict[label]["bgcolor"] = color
+
+
 def _get_data(graph):
     data_dict = {}
     edge_list = []
     for subj, value in graph.subject_objects(RDF.value):
         label = _short_label(graph, subj)
         data_dict[label] = _get_value(graph, label, value=str(value.toPython()))
+
+    for obj in graph.objects(None, RDF.type):
+        _add_color(data_dict, graph, obj, "lightyellow")
+
+    for obj in graph.objects(None, SNS.hasSourceFunction):
+        _add_color(data_dict, graph, obj, "lightgreen")
+
+    for subj, obj in graph.subject_objects(SNS.inputOf):
+        _add_color(data_dict, graph, obj, "lightpink")
+        _add_color(data_dict, graph, subj, "lightskyblue")
+
+    for subj, obj in graph.subject_objects(SNS.outputOf):
+        _add_color(data_dict, graph, obj, "lightpink")
+        _add_color(data_dict, graph, subj, "lightcyan")
+
+    for obj in graph.objects(None, SNS.hasValue):
+        _add_color(data_dict, graph, obj, "peachpuff")
 
     for subj, pred, obj in graph:
         if pred == RDF.value:
@@ -47,18 +74,17 @@ def _get_data(graph):
 
 
 def _to_node(tag, **kwargs):
-    colors = {"prefix": "lightblue", "value": "lightgreen"}
+    colors = {"prefix": "green", "value": "red"}
     html = Template(
         """<<table border="0" cellborder="1" cellspacing="0" cellpadding="4">
         $rows
         </table>>"""
     )
-    rows = f"<tr><td align='center'>{tag}</td></tr>"
+    bgcolor = kwargs.pop("bgcolor", "white")
+    rows = f"<tr><td align='center' bgcolor='{bgcolor}'>{tag}</td></tr>"
     for key, value in kwargs.items():
-        color = colors.get(key, "white")
-        rows += (
-            f'<tr><td bgcolor="{color}"><font point-size="9">{value}</font></td></tr>'
-        )
+        color = colors.get(key, "black")
+        rows += f'<tr><td><font point-size="9" color="{color}">{value}</font></td></tr>'
     return html.substitute(rows=rows)
 
 
