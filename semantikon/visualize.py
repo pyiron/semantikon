@@ -84,9 +84,7 @@ def _to_node(tag, **kwargs):
     rows = f"<tr><td align='center' bgcolor='{bgcolor}'>{tag}</td></tr>"
     for key, value in kwargs.items():
         color = colors.get(key, "black")
-        rows += (
-            f'<tr><td><font point-size="9" color="{color}">{value}</font></td></tr>'
-        )
+        rows += f'<tr><td><font point-size="9" color="{color}">{value}</font></td></tr>'
     return html.substitute(rows=rows)
 
 
