@@ -47,17 +47,18 @@ def _get_data(graph):
 
 
 def _to_node(tag, **kwargs):
-    colors = {"prefix": "lightblue", "value": "lightgreen"}
+    colors = {"prefix": "green", "value": "red"}
     html = Template(
         """<<table border="0" cellborder="1" cellspacing="0" cellpadding="4">
         $rows
         </table>>"""
     )
+    bgcolor = kwargs.get("bgcolor", "white")
     rows = f"<tr><td align='center'>{tag}</td></tr>"
     for key, value in kwargs.items():
-        color = colors.get(key, "white")
+        color = colors.get(key, "black")
         rows += (
-            f'<tr><td bgcolor="{color}"><font point-size="9">{value}</font></td></tr>'
+            f'<tr><td><font point-size="9" color="{color}">{value}</font></td></tr>'
         )
     return html.substitute(rows=rows)
 
