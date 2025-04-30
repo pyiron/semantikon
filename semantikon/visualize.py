@@ -2,6 +2,8 @@ from rdflib import RDF, URIRef, Literal, BNode
 from graphviz import Digraph
 from string import Template
 
+from semantikon.ontology import SNS
+
 
 def _short_label(graph, node):
     """Use graph's prefixes to shorten URIs nicely."""
@@ -25,6 +27,14 @@ def _get_value(graph, label, **kwargs):
         return kwargs
 
 
+def _add_color(data_dict, graph, tag, color):
+    label = _short_label(graph, tag)
+    if label not in data_dict:
+        data_dict[label] = _get_value(graph, label) | {"bgcolor": color}
+    else:
+        data_dict[label]["bgcolor"] = color
+
+
 def _get_data(graph):
     data_dict = {}
     edge_list = []
@@ -33,8 +43,21 @@ def _get_data(graph):
         data_dict[label] = _get_value(graph, label, value=str(value.toPython()))
 
     for obj in graph.objects(None, RDF.type):
-        label = _short_label(graph, obj)
-        data_dict[label] = _get_value(graph, label) | {"bgcolor": "lightyellow"}
+        _add_color(data_dict, graph, obj, "lightyellow")
+
+    for obj in graph.objects(None, SNS.hasSourceFunction):
+        _add_color(data_dict, graph, obj, "lightgreen")
+
+    for subj, obj in graph.subject_objects(SNS.inputOf):
+        _add_color(data_dict, graph, obj, "lightpink")
+        _add_color(data_dict, graph, subj, "lightskyblue")
+
+    for subj, obj in graph.subject_objects(SNS.outputOf):
+        _add_color(data_dict, graph, obj, "lightpink")
+        _add_color(data_dict, graph, subj, "lightcyan")
+
+    for obj in graph.objects(None, SNS.hasValue):
+        _add_color(data_dict, graph, obj, "peachpuff")
 
     for subj, pred, obj in graph:
         if pred == RDF.value:
