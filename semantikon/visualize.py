@@ -32,6 +32,10 @@ def _get_data(graph):
         label = _short_label(graph, subj)
         data_dict[label] = _get_value(graph, label, value=str(value.toPython()))
 
+    for obj in graph.objects(None, RDF.type):
+        label = _short_label(graph, obj)
+        data_dict[label] = _get_value(graph, label) | {"bgcolor": "lightyellow"}
+
     for subj, pred, obj in graph:
         if pred == RDF.value:
             continue
@@ -53,8 +57,8 @@ def _to_node(tag, **kwargs):
         $rows
         </table>>"""
     )
-    bgcolor = kwargs.get("bgcolor", "white")
-    rows = f"<tr><td align='center'>{tag}</td></tr>"
+    bgcolor = kwargs.pop("bgcolor", "white")
+    rows = f"<tr><td align='center' bgcolor='{bgcolor}'>{tag}</td></tr>"
     for key, value in kwargs.items():
         color = colors.get(key, "black")
         rows += (
