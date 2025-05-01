@@ -88,8 +88,10 @@ def _to_node(tag, **kwargs):
     return html.substitute(rows=rows)
 
 
-def visualize(graph):
-    dot = Digraph(comment="RDF Graph", format="png")
+def visualize(graph, engine="dot"):
+    dot = Digraph(comment="RDF Graph", format="png", engine=engine)
+    dot.attr(overlap="false")
+    dot.attr(splines="true")
     dot.attr("node", shape="none", margin="0")
     data_dict, edge_list = _get_data(graph)
     for key, value in data_dict.items():
