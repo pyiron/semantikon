@@ -160,11 +160,19 @@ def units(func):
         if converter is None or ureg is None:
             return func(*args, **kwargs)
         args, kwargs = _apply_defaults(sig, args, kwargs)
-        args, kwargs, names = converter(ureg, sig, args, kwargs, strict=False)
+
+        # Extend kwargs to account for **kwargs
+        ext_kwargs = {
+            key: kwargs.get(key, 0) for key in list(sig.parameters.keys())[len(args) :]
+        }
+
+        args, kwargs, names = converter(ureg, sig, args, ext_kwargs, strict=False)
+
         try:
             output_units = _get_output_units(parse_output_args(func), ureg, names)
         except AttributeError:
             output_units = None
+
         if _is_dimensionless(output_units):
             return func(*args, **kwargs)
         elif isinstance(output_units, tuple):

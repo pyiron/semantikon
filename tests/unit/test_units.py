@@ -10,6 +10,9 @@ def get_speed_multiple_outputs(
     time: u(float, units="second"),
     duration: u(float, units="second"),
 ) -> tuple[u(float, units="meter/second"), u(float, units="meter/second")]:
+    assert isinstance(distance, float | int)
+    assert isinstance(time, float | int)
+    assert isinstance(duration, float | int)
     return distance / time, distance / duration
 
 
@@ -17,6 +20,8 @@ def get_speed_multiple_outputs(
 def get_speed_no_output_type(
     distance: u(float, units="meter"), time: u(float, units="second")
 ):
+    assert isinstance(distance, float | int)
+    assert isinstance(time, float | int)
     return distance / time
 
 
@@ -26,6 +31,8 @@ def get_speed_multiple_args(
     time: u(float, units="second"),
     duration: u(float | None, units="second") = None,
 ) -> u(float, units="meter/second"):
+    assert isinstance(distance, float | int)
+    assert isinstance(time, float | int)
     if duration is None:
         return distance / time
     else:
@@ -36,6 +43,8 @@ def get_speed_multiple_args(
 def get_speed_optional_args(
     distance: u(float, units="meter"), time: u(float, units="second") = 1
 ) -> u(float, units="meter/second"):
+    assert isinstance(distance, float | int)
+    assert isinstance(time, float | int)
     return distance / time
 
 
@@ -43,6 +52,8 @@ def get_speed_optional_args(
 def get_speed_ints(
     distance: u(int, units="meter"), time: u(int, units="second")
 ) -> u(int, units="meter/second"):
+    assert isinstance(distance, float | int)
+    assert isinstance(time, float | int)
     return distance / time
 
 
@@ -50,6 +61,8 @@ def get_speed_ints(
 def get_speed_floats(
     distance: u(float, units="meter"), time: u(float, units="second")
 ) -> u(float, units="meter/second"):
+    assert isinstance(distance, float | int)
+    assert isinstance(time, float | int)
     return distance / time
 
 
@@ -57,6 +70,8 @@ def get_speed_floats(
 def get_speed_relative(
     distance: u(float, units="=A"), time: u(float, units="=B")
 ) -> u(float, units="=A/B"):
+    assert isinstance(distance, float | int)
+    assert isinstance(time, float | int)
     return distance / time
 
 
@@ -64,7 +79,15 @@ def get_speed_relative(
 def return_dict(
     distance: u(float, units="meter"), time: u(float, units="second")
 ) -> dict:
+    assert isinstance(distance, float | int)
+    assert isinstance(time, float | int)
     return {"distance": distance, "time": time}
+
+
+@units
+def test_kwargs(x: u(float, units="meter"), **kwargs) -> u(float, units="meter"):
+    assert isinstance(x, float | int)
+    return x
 
 
 class TestUnits(unittest.TestCase):
@@ -181,6 +204,26 @@ class TestUnits(unittest.TestCase):
         self.assertEqual(return_dict(1, 1), {"distance": 1, "time": 1})
         ureg = UnitRegistry()
         self.assertIsInstance(return_dict(1 * ureg.meter, 1 * ureg.second), dict)
+
+    def test_kwargs(self):
+        self.assertEqual(test_kwargs(1), 1)
+        ureg = UnitRegistry()
+        self.assertEqual(
+            test_kwargs(1 * ureg.meter),
+            1 * ureg.meter,
+        )
+        self.assertEqual(
+            test_kwargs(1 * ureg.millimeter),
+            1 / 1000 * ureg.meter,
+        )
+        self.assertEqual(
+            test_kwargs(1 * ureg.millimeter, a=1),
+            1 / 1000 * ureg.meter,
+        )
+        self.assertEqual(
+            test_kwargs(1 * ureg.millimeter, a=1, b=2),
+            1 / 1000 * ureg.meter,
+        )
 
 
 if __name__ == "__main__":
