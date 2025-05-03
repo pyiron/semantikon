@@ -90,6 +90,13 @@ def test_kwargs(x: u(float, units="meter"), **kwargs) -> u(float, units="meter")
     return x
 
 
+# Imitate effects of from __future__ import annotations
+@units
+def test_future(x: 'u(float, units="meter")') -> 'u(float, units="meter")':
+    assert isinstance(x, float | int)
+    return x
+
+
 class TestUnits(unittest.TestCase):
     def test_relative(self):
         self.assertEqual(get_speed_relative(1, 1), 1)
@@ -222,6 +229,18 @@ class TestUnits(unittest.TestCase):
         )
         self.assertEqual(
             test_kwargs(1 * ureg.millimeter, a=1, b=2),
+            1 / 1000 * ureg.meter,
+        )
+
+    def test_future(self):
+        self.assertEqual(test_future(1), 1)
+        ureg = UnitRegistry()
+        self.assertEqual(
+            test_future(1 * ureg.meter),
+            1 * ureg.meter,
+        )
+        self.assertEqual(
+            test_future(1 * ureg.millimeter),
             1 / 1000 * ureg.meter,
         )
 

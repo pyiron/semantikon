@@ -94,12 +94,14 @@ def parse_output_args(func: callable):
         `label`, `triples`, `uri` and `shape`. See `semantikon.typing.u` for
         more details.
     """
-    sig = inspect.signature(func)
-    multiple_output = get_origin(sig.return_annotation) is tuple
+    ret = get_type_hints(func, include_extras=True).get(
+        "return", inspect.Parameter.empty
+    )
+    multiple_output = get_origin(ret) is tuple
     if multiple_output:
-        return tuple([meta_to_dict(ann) for ann in get_args(sig.return_annotation)])
+        return tuple([meta_to_dict(ann) for ann in get_args(ret)])
     else:
-        return meta_to_dict(sig.return_annotation)
+        return meta_to_dict(ret)
 
 
 def _get_converter(func):
