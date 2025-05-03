@@ -164,7 +164,9 @@ def units(func):
         # Extend kwargs to account for **kwargs
         ext_kwargs = {key: kwargs.get(key, 0) for key in sig.parameters.keys()}
 
-        args, filtered_kwargs, names = converter(ureg, sig, args, ext_kwargs, strict=False)
+        args, filtered_kwargs, names = converter(
+            ureg, sig, args, ext_kwargs, strict=False
+        )
 
         try:
             output_units = _get_output_units(parse_output_args(func), ureg, names)
