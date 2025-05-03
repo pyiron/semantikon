@@ -162,9 +162,11 @@ def units(func):
         args, kwargs = _apply_defaults(sig, args, kwargs)
 
         # Extend kwargs to account for **kwargs
-        ext_kwargs = {key: kwargs.get(key, 0) for key in sig.parameters.keys()}
+        ext_kwargs = {
+            key: kwargs.get(key, 0) for key in list(sig.parameters.keys())[len(args) :]
+        }
 
-        args, filtered_kwargs, names = converter(
+        args, kwargs, names = converter(
             ureg, sig, args, ext_kwargs, strict=False
         )
 
