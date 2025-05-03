@@ -67,6 +67,11 @@ def return_dict(
     return {"distance": distance, "time": time}
 
 
+@units
+def test_kwargs(x: u(float, units="meter"), **kwargs) -> u(float, units="meter"):
+    return x
+
+
 class TestUnits(unittest.TestCase):
     def test_relative(self):
         self.assertEqual(get_speed_relative(1, 1), 1)
@@ -181,6 +186,26 @@ class TestUnits(unittest.TestCase):
         self.assertEqual(return_dict(1, 1), {"distance": 1, "time": 1})
         ureg = UnitRegistry()
         self.assertIsInstance(return_dict(1 * ureg.meter, 1 * ureg.second), dict)
+
+    def test_kwargs(self):
+        self.assertEqual(test_kwargs(1), 1)
+        ureg = UnitRegistry()
+        self.assertEqual(
+            test_kwargs(1 * ureg.meter),
+            1 * ureg.meter,
+        )
+        self.assertEqual(
+            test_kwargs(1 * ureg.millimeter),
+            1 / 1000 * ureg.meter,
+        )
+        self.assertEqual(
+            test_kwargs(1 * ureg.millimeter, a=1),
+            1 / 1000 * ureg.meter,
+        )
+        self.assertEqual(
+            test_kwargs(1 * ureg.millimeter, a=1, b=2),
+            1 / 1000 * ureg.meter,
+        )
 
 
 if __name__ == "__main__":
