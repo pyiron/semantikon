@@ -11,7 +11,8 @@ from pint.registry_helpers import (
     _to_units_container,
     _replace_units,
 )
-from typing import get_origin, get_args, get_type_hints
+from typing import get_origin, get_args, get_type_hints, Annotated, _AnnotatedAlias
+import sys
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -63,6 +64,25 @@ def meta_to_dict(value, default=inspect.Parameter.empty):
     return result
 
 
+def get_annotated_type_hints(func):
+    if sys.version_info >= (3, 11):
+        # Use the official, public API
+        return get_type_hints(func, include_extras=True)
+    else:
+        # Manually inspect __annotations__ and resolve them
+        hints = {}
+        sig = inspect.signature(func)
+        for name, param in sig.parameters.items():
+            annotation = param.annotation
+            if isinstance(annotation, str):
+                # Lazy annotations: evaluate manually
+                annotation = eval(annotation, func.__globals__)
+            hints[name] = annotation
+        if sig.return_annotation is not inspect.Signature.empty:
+            hints['return'] = sig.return_annotation
+        return hints
+
+
 def parse_input_args(func: callable):
     """
     Parse the input arguments of a function.
@@ -74,7 +94,7 @@ def parse_input_args(func: callable):
         dictionary of the input arguments. Available keys are `units`, `label`,
         `triples`, `uri` and `shape`. See `semantikon.typing.u` for more details.
     """
-    type_hints = get_type_hints(func, include_extras=True)
+    type_hints = get_annotated_type_hints(func)
     return {
         key: meta_to_dict(type_hints.get(key, value.annotation), value.default)
         for key, value in inspect.signature(func).parameters.items()
