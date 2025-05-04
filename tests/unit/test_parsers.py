@@ -104,6 +104,20 @@ class TestParser(unittest.TestCase):
             u(float)
         self.assertEqual(str(context.exception), "No metadata provided.")
 
+    def test_optional_args(self):
+        def get_speed_multiple_args(
+            distance: u(float, units="meter"),
+            time: u(float, units="second"),
+            duration: u(float | None, units="second") = None,
+        ) -> u(float, units="meter/second"):
+            if duration is None:
+                return distance / time
+            else:
+                return distance / duration
+        input_args = parse_input_args(get_speed_multiple_args)
+        for value, key in zip(input_args.values(), ["meter", "second", "second"]):
+            self.assertEqual(value["units"], key)
+
 
 if __name__ == "__main__":
     unittest.main()

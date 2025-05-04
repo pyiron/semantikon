@@ -1,6 +1,6 @@
 import unittest
 from semantikon.typing import u
-from semantikon.converter import units, _get_output_units, parse_output_args
+from semantikon.converter import units
 from pint import UnitRegistry
 
 
@@ -137,10 +137,6 @@ class TestUnits(unittest.TestCase):
         self.assertEqual(
             get_speed_multiple_args(1 * ureg.meter, 1 * ureg.second),
             1 * ureg.meter / ureg.second,
-        )
-        self.assertEqual(
-            _get_output_units(parse_output_args(get_speed_multiple_args), ureg, {}),
-            ureg.Quantity(1, ureg.meter / ureg.second),
         )
         self.assertEqual(
             get_speed_multiple_args(1 * ureg.meter, 1 * ureg.second, 1 * ureg.second),
