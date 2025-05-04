@@ -11,7 +11,7 @@ from pint.registry_helpers import (
     _to_units_container,
     _replace_units,
 )
-from typing import get_origin, get_args, get_type_hints, Annotated, _AnnotatedAlias
+from typing import get_origin, get_args, get_type_hints
 import sys
 
 __author__ = "Sam Waseda"
@@ -79,7 +79,7 @@ def get_annotated_type_hints(func):
                 annotation = eval(annotation, func.__globals__)
             hints[name] = annotation
         if sig.return_annotation is not inspect.Signature.empty:
-            hints['return'] = sig.return_annotation
+            hints["return"] = sig.return_annotation
         return hints
 
 
