@@ -11,7 +11,8 @@ from pint.registry_helpers import (
     _to_units_container,
     _replace_units,
 )
-from typing import get_origin, get_args
+from typing import get_origin, get_args, get_type_hints
+import sys
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -63,6 +64,37 @@ def meta_to_dict(value, default=inspect.Parameter.empty):
     return result
 
 
+def get_annotated_type_hints(func):
+    """
+    Get the type hints of a function, including lazy annotations. The function
+    practically does the same as `get_type_hints` for Python 3.11 and later,
+
+    Args:
+        func: function to be parsed
+
+    Returns:
+        dictionary of the type hints. The keys are the names of the arguments
+        and the values are the type hints. The return type is stored under the
+        key "return".
+    """
+    if sys.version_info >= (3, 11):
+        # Use the official, public API
+        return get_type_hints(func, include_extras=True)
+    else:
+        # Manually inspect __annotations__ and resolve them
+        hints = {}
+        sig = inspect.signature(func)
+        for name, param in sig.parameters.items():
+            annotation = param.annotation
+            if isinstance(annotation, str):
+                # Lazy annotations: evaluate manually
+                annotation = eval(annotation, func.__globals__)
+            hints[name] = annotation
+        if sig.return_annotation is not inspect.Signature.empty:
+            hints["return"] = sig.return_annotation
+        return hints
+
+
 def parse_input_args(func: callable):
     """
     Parse the input arguments of a function.
@@ -74,8 +106,9 @@ def parse_input_args(func: callable):
         dictionary of the input arguments. Available keys are `units`, `label`,
         `triples`, `uri` and `shape`. See `semantikon.typing.u` for more details.
     """
+    type_hints = get_annotated_type_hints(func)
     return {
-        key: meta_to_dict(value.annotation, value.default)
+        key: meta_to_dict(type_hints.get(key, value.annotation), value.default)
         for key, value in inspect.signature(func).parameters.items()
     }
 
@@ -93,12 +126,14 @@ def parse_output_args(func: callable):
         `label`, `triples`, `uri` and `shape`. See `semantikon.typing.u` for
         more details.
     """
-    sig = inspect.signature(func)
-    multiple_output = get_origin(sig.return_annotation) is tuple
+    ret = get_type_hints(func, include_extras=True).get(
+        "return", inspect.Parameter.empty
+    )
+    multiple_output = get_origin(ret) is tuple
     if multiple_output:
-        return tuple([meta_to_dict(ann) for ann in get_args(sig.return_annotation)])
+        return tuple([meta_to_dict(ann) for ann in get_args(ret)])
     else:
-        return meta_to_dict(sig.return_annotation)
+        return meta_to_dict(ret)
 
 
 def _get_converter(func):
