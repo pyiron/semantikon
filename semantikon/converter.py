@@ -65,6 +65,18 @@ def meta_to_dict(value, default=inspect.Parameter.empty):
 
 
 def get_annotated_type_hints(func):
+    """
+    Get the type hints of a function, including lazy annotations. The function
+    practically does the same as `get_type_hints` for Python 3.11 and later,
+
+    Args:
+        func: function to be parsed
+
+    Returns:
+        dictionary of the type hints. The keys are the names of the arguments
+        and the values are the type hints. The return type is stored under the
+        key "return".
+    """
     if sys.version_info >= (3, 11):
         # Use the official, public API
         return get_type_hints(func, include_extras=True)
