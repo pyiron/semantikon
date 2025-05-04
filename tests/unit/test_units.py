@@ -33,6 +33,7 @@ def get_speed_multiple_args(
 ) -> u(float, units="meter/second"):
     assert isinstance(distance, float | int)
     assert isinstance(time, float | int)
+    assert isinstance(duration, float | int | None)
     if duration is None:
         return distance / time
     else:
