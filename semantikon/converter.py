@@ -77,21 +77,32 @@ def get_annotated_type_hints(func):
         and the values are the type hints. The return type is stored under the
         key "return".
     """
-    if sys.version_info >= (3, 11):
-        # Use the official, public API
-        return get_type_hints(func, include_extras=True)
-    else:
-        # Manually inspect __annotations__ and resolve them
+    try:
+        if sys.version_info >= (3, 11):
+            # Use the official, public API
+            return get_type_hints(func, include_extras=True)
+        else:
+            # Manually inspect __annotations__ and resolve them
+            hints = {}
+            sig = inspect.signature(func)
+            for name, param in sig.parameters.items():
+                annotation = param.annotation
+                if isinstance(annotation, str):
+                    # Lazy annotations: evaluate manually
+                    annotation = eval(annotation, func.__globals__)
+                hints[name] = annotation
+            if sig.return_annotation is not inspect.Signature.empty:
+                hints["return"] = sig.return_annotation
+            return hints
+    except NameError:
         hints = {}
-        sig = inspect.signature(func)
-        for name, param in sig.parameters.items():
-            annotation = param.annotation
-            if isinstance(annotation, str):
-                # Lazy annotations: evaluate manually
-                annotation = eval(annotation, func.__globals__)
-            hints[name] = annotation
-        if sig.return_annotation is not inspect.Signature.empty:
-            hints["return"] = sig.return_annotation
+        for key, value in func.__annotations__.items():
+            try:
+                hints[key] = eval(value, func.__globals__)
+            except NameError:
+                hints[key] = value
+        if hasattr(func, "__return_annotation__"):
+            hints["return"] = func.__return_annotation__
         return hints
 
 

@@ -118,6 +118,14 @@ class TestParser(unittest.TestCase):
         for value, key in zip(input_args.values(), ["meter", "second", "second"]):
             self.assertEqual(value["units"], key)
 
+    def test_future(self):
+        def test_another_future(x: "Atoms", y: "u(float, units='second')") -> "Atoms":
+            return x
+        input_args = parse_input_args(test_another_future)
+        self.assertEqual(input_args["x"]["dtype"], "Atoms")
+        self.assertIn("units", input_args["y"]) 
+        self.assertEqual(input_args["y"]["units"], "second")
+
 
 if __name__ == "__main__":
     unittest.main()
