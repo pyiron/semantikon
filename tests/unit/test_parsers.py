@@ -123,7 +123,7 @@ class TestParser(unittest.TestCase):
             return x
         input_args = parse_input_args(test_another_future)
         self.assertEqual(input_args["x"]["dtype"], "Atoms")
-        self.assertIn("units", input_args["y"]) 
+        self.assertIn("units", input_args["y"])
         self.assertEqual(input_args["y"]["units"], "second")
 
 
