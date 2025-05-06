@@ -217,7 +217,10 @@ def units(func):
             key: kwargs.get(key, 0) for key in list(sig.parameters.keys())[len(args) :]
         }
 
-        args, kwargs, names = converter(ureg, sig, args, ext_kwargs, strict=False)
+        args, new_kwargs, names = converter(ureg, sig, args, ext_kwargs, strict=False)
+        for key in list(new_kwargs.keys()):
+            if key not in kwargs:
+                new_kwargs.pop(key)
 
         try:
             output_units = _get_output_units(parse_output_args(func), ureg, names)
@@ -225,13 +228,13 @@ def units(func):
             output_units = None
 
         if _is_dimensionless(output_units):
-            return func(*args, **kwargs)
+            return func(*args, **new_kwargs)
         elif isinstance(output_units, tuple):
             return tuple(
-                [oo * ff for oo, ff in zip(output_units, func(*args, **kwargs))]
+                [oo * ff for oo, ff in zip(output_units, func(*args, **new_kwargs))]
             )
         else:
-            return output_units * func(*args, **kwargs)
+            return output_units * func(*args, **new_kwargs)
 
     return wrapper
 

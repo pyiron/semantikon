@@ -88,6 +88,7 @@ def return_dict(
 @units
 def test_kwargs(x: u(float, units="meter"), **kwargs) -> u(float, units="meter"):
     assert isinstance(x, float | int), type(x)
+    assert len(kwargs) == 0, kwargs
     return x
 
 
