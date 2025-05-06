@@ -141,6 +141,8 @@ def parse_output_args(func: callable):
         ret = get_type_hints(func, include_extras=True).get(
             "return", inspect.Parameter.empty
         )
+    # NameError is raised if the type hint is a string with a lazy annotation
+    # and the class is not imported
     except NameError:
         ret = func.__annotations__.get("return", inspect.Parameter.empty)
     multiple_output = get_origin(ret) is tuple
