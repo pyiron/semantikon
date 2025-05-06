@@ -125,6 +125,8 @@ class TestParser(unittest.TestCase):
         self.assertEqual(input_args["x"]["dtype"], "Atoms")
         self.assertIn("units", input_args["y"])
         self.assertEqual(input_args["y"]["units"], "second")
+        output_args = parse_output_args(test_another_future)
+        self.assertEqual(output_args["dtype"], "Atoms")
 
 
 if __name__ == "__main__":
