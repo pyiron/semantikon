@@ -142,3 +142,8 @@ Interpreters can distinguish between annotated arguments and non-anotated argume
 Regardless of type hints are given or not, the interpreter acts only when the input values contain units and ontological types. If the input values do not contain units and ontological types, the interpreter will pass the input values to the function as is.
 
 
+## License
+
+This project is licensed under the BSD 3-Clause License - see the [../LICENSE](LICENSE) file for details.
+
+Copyright (c) 2024, Max-Planck-Institut für Nachhaltige Materialien GmbH - Computational Materials Design (CM) Department
