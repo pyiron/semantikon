@@ -17,6 +17,21 @@ def get_speed(distance: float, time: float) -> float:
 
 For you as a human, it is clear that this is a function to calculate the speed for a given distance and a time. But for a computer, it is just a function that takes two floats and returns a float. The computer does not know what the inputs and outputs mean. This is where `semantikon` comes in. It provides a way to give scientific context to the inputs and outputs, as well as to the function itself.
 
+
+## Installation
+
+You can install `semantikon` via `pip`:
+
+```bash
+pip install semantikon
+```
+
+You can also install `semantikon` via `conda`:
+
+```bash
+conda install -c conda-forge semantikon
+```
+
 ## Overview
 
 In the realm of the workflow management systems, there are well defined inputs and outputs for each node. `semantikon` is a Python package to give scientific context to node inputs and outputs by providing type hinting and interpreters. Therefore, it consists of two **fully** separate parts: type hinting and interpreters.
