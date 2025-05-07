@@ -103,10 +103,10 @@ Example:
 ...     return a / b
 >>> 
 >>> print(parse_input_args(get_speed))
-{'a': {'units': 'meter', 'dtype': <class 'float'>, 'uri': rdflib.term.URIRef('http://example.org/distance')}, 'b': {'units': 'second', 'dtype': <class 'float'>, 'uri': rdflib.term.URIRef('http://example.org/time')}}
+{'a': {'units': 'meter', 'uri': rdflib.term.URIRef('http://example.org/distance'), 'dtype': <class 'float'>}, 'b': {'units': 'second', 'uri': rdflib.term.URIRef('http://example.org/time'), 'dtype': <class 'float'>}}
 
 >>> print(parse_output_args(get_speed))
-{'units': 'meter/second', 'label': 'speed', 'dtype': <class 'float'>, 'uri': rdflib.term.URIRef('http://example.org/speed')}
+{'units': 'meter/second', 'label': 'speed', 'uri': rdflib.term.URIRef('http://example.org/speed'), 'dtype': <class 'float'>}
 
 ```
 
