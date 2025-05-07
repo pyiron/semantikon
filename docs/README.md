@@ -5,6 +5,18 @@
 
 <img src="../images/logo.jpeg" alt="Logo" width="300"/>
 
+
+## Motivation
+
+Let's take a look at the following function:
+
+```python
+def get_speed(distance: float, time: float) -> float:
+    return distance / time
+```
+
+For you as a human, it is clear that this is a function to calculate the speed for a given distance and a time. But for a computer, it is just a function that takes two floats and returns a float. The computer does not know what the inputs and outputs mean. This is where `semantikon` comes in. It provides a way to give scientific context to the inputs and outputs, as well as to the function itself.
+
 ## Overview
 
 In the realm of the workflow management systems, there are well defined inputs and outputs for each node. `semantikon` is a Python package to give scientific context to node inputs and outputs by providing type hinting and interpreters. Therefore, it consists of two **fully** separate parts: type hinting and interpreters.
@@ -15,11 +27,14 @@ In the realm of the workflow management systems, there are well defined inputs a
 
 ```python
 >>> from semantikon.typing import u
+>>> from rdflib import Namespace
+>>>
+>>> EX = Namespace("http://example.org/")
 >>> 
->>> def my_function(
-...     distance: u(int, units="meter"),
-...     time: u(int, units="second")
-... ) -> u(int, units="meter/second", label="speed"):
+>>> def get_speed(
+...     distance: u(float, units="meter", uri=EX.distance),
+...     time: u(float, units="second", uri=EX.time),
+... ) -> u(float, units="meter/second", label="speed", uri=EX.speed):
 ...     return distance / time
 
 ```
@@ -32,14 +47,17 @@ You can also type-hint the inputs and outputs of a function using a class, i.e.:
 ```python
 >>> from semantikon.typing import u
 >>> from semantikon.converter import semantikon_class
+>>> from rdflib import Namespace
+>>>
+>>> EX = Namespace("http://example.org/")
 >>> 
 >>> @semantikon_class
 ... class MyRecord:
-...     distance: u(int, units="meter")
-...     time: u(int, units="second")
-...     result: u(int, units="meter/second", label="speed")
+...     distance: u(float, units="meter", uri=EX.distance)
+...     time: u(float, units="second", uri=EX.time)
+...     result: u(float, units="meter/second", label="speed", uri=EX.speed)
 >>> 
->>> def my_function(distance: MyRecord.distance, time: MyRecord.time) -> MyRecord.result:
+>>> def get_speed(distance: MyRecord.distance, time: MyRecord.time) -> MyRecord.result:
 ...     return distance / time
 
 ```
@@ -57,18 +75,21 @@ Example:
 ```python
 >>> from semantikon.typing import u
 >>> from semantikon.converter import parse_input_args, parse_output_args
+>>> from rdflib import Namespace
+>>>
+>>> EX = Namespace("http://example.org/")
 >>> 
->>> def my_function(
-...     a: u(int, units="meter"),
-...     b: u(int, units="second")
-... ) -> u(int, units="meter/second", label="speed"):
+>>> def get_speed(
+...     a: u(float, units="meter", uri=EX.distance),
+...     b: u(float, units="second", uri=EX.time),
+... ) -> u(float, units="meter/second", label="speed", uri=EX.speed):
 ...     return a / b
 >>> 
->>> print(parse_input_args(my_function))
-{'a': {'units': 'meter', 'dtype': <class 'int'>}, 'b': {'units': 'second', 'dtype': <class 'int'>}}
+>>> print(parse_input_args(get_speed))
+{'a': {'units': 'meter', 'dtype': <class 'float'>, 'uri': rdflib.term.URIRef('http://example.org/distance')}, 'b': {'units': 'second', 'dtype': <class 'float'>, 'uri': rdflib.term.URIRef('http://example.org/time')}}
 
->>> print(parse_output_args(my_function))
-{'units': 'meter/second', 'label': 'speed', 'dtype': <class 'int'>}
+>>> print(parse_output_args(get_speed))
+{'units': 'meter/second', 'label': 'speed', 'dtype': <class 'float'>, 'uri': rdflib.term.URIRef('http://example.org/speed')}
 
 ```
 
@@ -82,22 +103,22 @@ Example:
 >>> from pint import UnitRegistry
 >>> 
 >>> @units
-... def my_function(
-...     a: u(int, units="meter"),
-...     b: u(int, units="second")
-... ) -> u(int, units="meter/second", label="speed"):
+... def get_speed(
+...     a: u(float, units="meter"),
+...     b: u(float, units="second")
+... ) -> u(float, units="meter/second", label="speed"):
 ...     return a / b
 >>> 
 >>> ureg = UnitRegistry()
 >>> 
->>> print(my_function(1 * ureg.meter, 1 * ureg.second))
+>>> print(get_speed(1 * ureg.meter, 1 * ureg.second))
 1.0 meter / second
 
 ```
 
 The interpreters check all types and, if necessary, convert them to the expected types **before** the function is executed, in order for all possible errors would be raised before the function execution. The interpreters convert the types in the way that the underlying function would receive the raw values.
 
-In case there are multiple outputs, the type hints are to be passed as a tuple (e.g. `tuple[u(int, "meter"), u(int, "second"))`).
+In case there are multiple outputs, the type hints are to be passed as a tuple (e.g. `tuple[u(float, "meter"), u(float, "second"))`).
 
 It is not totally garanteed as a functionality, but relative units as given [on this page](https://pint.readthedocs.io/en/0.10.1/wrapping.html#specifying-relations-between-arguments) can be also used.
 
