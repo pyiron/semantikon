@@ -54,7 +54,7 @@ In the realm of the workflow management systems, there are well defined inputs a
 
 ```
 
-`semantikon`'s type hinting does not require to follow any particular standard. It only needs to be compatible with the interpreter applied.
+`semantikon`'s type hinting does not require to follow any particular standard. It only needs to be compatible with the interpreter applied (s. below).
 
 You can also type-hint the inputs and outputs of a function using a class, i.e.:
 
@@ -81,9 +81,11 @@ This is equivalent to the previous example. Moreover, if you need to modify some
 
 ### **Interpreters**
 
+Interpreters are wrappers or decorators that inspect and process type-hinted metadata at runtime.
+
 #### General interpreter
 
-In order to extract argument information, you can use the functions `parse_input_args` and `parse_output_args`. `parse_input_args` parses the input variables and return a dictionary with the variable names as keys and the variable information as values. `parse_output_args` parses the output variables and return a dictionary with the variable information as values if there is one output variable, or a list of dictionaries if it is a tuple.
+In order to extract argument information, you can use the functions `parse_input_args` and `parse_output_args`. `parse_input_args` parses the input variables and return a dictionary with the variable names as keys and the variable information as values. `parse_output_args` parses the output variables and returns a dictionary with the variable information if there is a single output variable, or a list of dictionaries if it is a tuple.
 
 Example:
 
@@ -135,11 +137,11 @@ The interpreters check all types and, if necessary, convert them to the expected
 
 In case there are multiple outputs, the type hints are to be passed as a tuple (e.g. `tuple[u(float, "meter"), u(float, "second"))`).
 
-It is not totally garanteed as a functionality, but relative units as given [on this page](https://pint.readthedocs.io/en/0.10.1/wrapping.html#specifying-relations-between-arguments) can be also used.
+It is not fully guaranteed as a feature, but relative units as given [on this page](https://pint.readthedocs.io/en/0.10.1/wrapping.html#specifying-relations-between-arguments) can be also used.
 
 Interpreters can distinguish between annotated arguments and non-anotated arguments. If the argument is annotated, the interpreter will try to convert the argument to the expected type. If the argument is not annotated, the interpreter will pass the argument as is.
 
-Regardless of type hints are given or not, the interpreter acts only when the input values contain units and ontological types. If the input values do not contain units and ontological types, the interpreter will pass the input values to the function as is.
+Regardless of whether type hints are provided, the interpreter acts only when the input values contain units and ontological types. If the input values do not contain units and ontological types, the interpreter will pass the input values to the function as is.
 
 
 ## License
