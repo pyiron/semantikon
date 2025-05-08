@@ -114,6 +114,7 @@ class TestParser(unittest.TestCase):
                 return distance / time
             else:
                 return distance / duration
+
         input_args = parse_input_args(get_speed_multiple_args)
         for value, key in zip(input_args.values(), ["meter", "second", "second"]):
             self.assertEqual(value["units"], key)
@@ -121,6 +122,7 @@ class TestParser(unittest.TestCase):
     def test_future(self):
         def test_another_future(x: "Atoms", y: "u(float, units='second')") -> "Atoms":
             return x
+
         input_args = parse_input_args(test_another_future)
         self.assertEqual(input_args["x"]["dtype"], "Atoms")
         self.assertIn("units", input_args["y"])
@@ -131,6 +133,7 @@ class TestParser(unittest.TestCase):
     def test_semantikon_and_future(self):
         def test_more_future(x: "u(Atoms, uri='metadata')") -> "Atoms":
             return x
+
         input_args = parse_input_args(test_more_future)
         self.assertEqual(input_args["x"]["uri"], "metadata")
         self.assertEqual(input_args["x"]["dtype"], "Atoms")

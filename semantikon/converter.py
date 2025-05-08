@@ -16,7 +16,6 @@ import sys
 import re
 
 
-
 __author__ = "Sam Waseda"
 __copyright__ = (
     "Copyright 2021, Max-Planck-Institut für Eisenforschung GmbH "
@@ -92,9 +91,7 @@ def _resolve_annotation(annotation, func_globals=None):
         undefined_name = extract_undefined_name(str(e))
         if undefined_name == annotation:
             return annotation
-        new_annotations = eval(
-            annotation, func_globals | {undefined_name: object}
-        )
+        new_annotations = eval(annotation, func_globals | {undefined_name: object})
         return Annotated[undefined_name, *get_args(new_annotations)[1:]]
 
 
