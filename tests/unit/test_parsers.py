@@ -137,6 +137,15 @@ class TestParser(unittest.TestCase):
         output_args = parse_output_args(test_another_future)
         self.assertEqual(output_args["dtype"], "Atoms")
 
+    def test_semantikon_and_future(self):
+        # This imitates a future import
+        def test_more_future(x: "u(Atoms, uri='metadata')") -> "Atoms":
+            return x
+
+        input_args = parse_input_args(test_more_future)
+        self.assertEqual(input_args["x"]["uri"], "metadata")
+        self.assertEqual(input_args["x"]["dtype"], "Atoms")
+
 
 if __name__ == "__main__":
     unittest.main()

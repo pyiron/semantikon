@@ -3,9 +3,10 @@
 # Distributed under the terms of "New BSD License", see the LICENSE file.
 
 import inspect
+import re
 import sys
 from functools import wraps
-from typing import get_args, get_origin, get_type_hints
+from typing import Annotated, get_args, get_origin, get_type_hints
 
 from pint import Quantity
 from pint.registry_helpers import (
@@ -55,7 +56,10 @@ def meta_to_dict(value, default=inspect.Parameter.empty):
     default_is_defined = default is not inspect.Parameter.empty
     if semantikon_was_used:
         result = {k: v for k, v in parse_metadata(value).items() if v is not None}
-        result["dtype"] = value.__args__[0]
+        if hasattr(value.__args__[0], "__forward_arg__"):
+            result["dtype"] = value.__args__[0].__forward_arg__
+        else:
+            result["dtype"] = value.__args__[0]
     else:
         result = {}
         if type_hint_was_present:
@@ -63,6 +67,34 @@ def meta_to_dict(value, default=inspect.Parameter.empty):
     if default_is_defined:
         result["default"] = default
     return result
+
+
+def extract_undefined_name(error_message):
+    match = re.search(r"name '(.+?)' is not defined", error_message)
+    if match:
+        return match.group(1)
+    raise ValueError(
+        "No undefined name found in the error message: {}".format(error_message)
+    )
+
+
+def _resolve_annotation(annotation, func_globals=None):
+    if func_globals is None:
+        func_globals = globals()
+    if not isinstance(annotation, str):
+        return annotation
+    # Lazy annotations: evaluate manually
+    try:
+        return eval(annotation, func_globals)
+    except NameError as e:
+        # Handle undefined names in lazy annotations
+        undefined_name = extract_undefined_name(str(e))
+        if undefined_name == annotation:
+            return annotation
+        new_annotations = eval(annotation, func_globals | {undefined_name: object})
+        args = get_args(new_annotations)
+        assert len(args) == 2, "Invalid annotation format"
+        return Annotated[undefined_name, args[1]]
 
 
 def get_annotated_type_hints(func):
@@ -87,23 +119,20 @@ def get_annotated_type_hints(func):
             hints = {}
             sig = inspect.signature(func)
             for name, param in sig.parameters.items():
-                annotation = param.annotation
-                if isinstance(annotation, str):
-                    # Lazy annotations: evaluate manually
-                    annotation = eval(annotation, func.__globals__)
-                hints[name] = annotation
+                hints[name] = _resolve_annotation(param.annotation, func.__globals__)
             if sig.return_annotation is not inspect.Signature.empty:
-                hints["return"] = sig.return_annotation
+                hints["return"] = _resolve_annotation(
+                    sig.return_annotation, func.__globals__
+                )
             return hints
     except NameError:
         hints = {}
         for key, value in func.__annotations__.items():
-            try:
-                hints[key] = eval(value, func.__globals__)
-            except NameError:
-                hints[key] = value
+            hints[key] = _resolve_annotation(value, func.__globals__)
         if hasattr(func, "__return_annotation__"):
-            hints["return"] = func.__return_annotation__
+            hints["return"] = _resolve_annotation(
+                func.__return_annotation__, func.__globals__
+            )
         return hints
 
 
@@ -138,14 +167,7 @@ def parse_output_args(func: callable):
         `label`, `triples`, `uri` and `shape`. See `semantikon.typing.u` for
         more details.
     """
-    try:
-        ret = get_type_hints(func, include_extras=True).get(
-            "return", inspect.Parameter.empty
-        )
-    # NameError is raised if the type hint is a string with a lazy annotation
-    # and the class is not imported
-    except NameError:
-        ret = func.__annotations__.get("return", inspect.Parameter.empty)
+    ret = get_annotated_type_hints(func).get("return", inspect.Parameter.empty)
     multiple_output = get_origin(ret) is tuple
     if multiple_output:
         return tuple([meta_to_dict(ann) for ann in get_args(ret)])
