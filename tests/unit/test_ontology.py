@@ -1,14 +1,12 @@
 import unittest
 from textwrap import dedent
 from rdflib import OWL, Namespace, URIRef, Literal, RDF, RDFS, SH, PROV
-from owlrl import DeductiveClosure, OWLRL_Semantics
 from pyshacl import validate
 from graphviz import Digraph
 from semantikon.typing import u
 from semantikon.ontology import (
     get_knowledge_graph,
     SNS,
-    _inherit_properties,
     validate_values,
     dataclass_to_knowledge_graph,
     serialize_data,

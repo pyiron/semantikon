@@ -16,6 +16,7 @@ import os
 import shutil
 import subprocess
 from sphinx.ext.apidoc import main
+import importlib.util
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -146,7 +147,6 @@ modindex_common_prefix = [
 #    raise ImportError("You need to install bootstrap: pip install sphinx_bootstrap_theme")
 #    html_theme = 'default'
 
-import importlib.util
 
 if importlib.util.find_spec("sphinx_rtd_theme") is not None:
     # sphinx_rtd_theme is available
