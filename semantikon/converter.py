@@ -123,7 +123,7 @@ def get_annotated_type_hints(func):
                     sig.return_annotation, func.__globals__
                 )
             return hints
-    except (NameError, TypeError):
+    except NameError:
         hints = {}
         for key, value in func.__annotations__.items():
             hints[key] = _resolve_annotation(value, func.__globals__)

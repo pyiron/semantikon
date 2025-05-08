@@ -129,10 +129,10 @@ class TestParser(unittest.TestCase):
         self.assertEqual(output_args["dtype"], "Atoms")
 
     def test_semantikon_and_future(self):
-        def test_more_future(x: "u('Atoms', uri='atoms')") -> "Atoms":
+        def test_more_future(x: "u(Atoms, uri='metadata')") -> "Atoms":
             return x
         input_args = parse_input_args(test_more_future)
-        print(input_args)
+        self.assertEqual(input_args["x"]["uri"], "metadata")
 
 
 if __name__ == "__main__":
