@@ -92,7 +92,9 @@ def _resolve_annotation(annotation, func_globals=None):
         if undefined_name == annotation:
             return annotation
         new_annotations = eval(annotation, func_globals | {undefined_name: object})
-        return Annotated[undefined_name, *get_args(new_annotations)[1:]]
+        args = get_args(new_annotations)
+        assert len(args) == 2, "Invalid annotation format"
+        return Annotated[undefined_name, args[1]]
 
 
 def get_annotated_type_hints(func):
