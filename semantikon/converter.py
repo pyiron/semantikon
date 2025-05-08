@@ -11,8 +11,11 @@ from pint.registry_helpers import (
     _to_units_container,
     _replace_units,
 )
-from typing import get_origin, get_args, get_type_hints
+from typing import Annotated, get_origin, get_args, get_type_hints
 import sys
+import re
+
+
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -64,6 +67,34 @@ def meta_to_dict(value, default=inspect.Parameter.empty):
     return result
 
 
+def extract_undefined_name(error_message):
+    match = re.search(r"name '(.+?)' is not defined", error_message)
+    if match:
+        return match.group(1)
+    raise ValueError(
+        "No undefined name found in the error message: {}".format(error_message)
+    )
+
+
+def _resolve_annotation(annotation, func_globals=None):
+    if func_globals is None:
+        func_globals = globals()
+    if not isinstance(annotation, str):
+        return annotation
+    # Lazy annotations: evaluate manually
+    try:
+        return eval(annotation, func_globals)
+    except NameError as e:
+        # Handle undefined names in lazy annotations
+        undefined_name = extract_undefined_name(str(e))
+        if undefined_name == annotation:
+            return annotation
+        new_annotations = eval(
+            annotation, func_globals | {undefined_name: object}
+        )
+        return Annotated[undefined_name, *get_args(new_annotations)[1:]]
+
+
 def get_annotated_type_hints(func):
     """
     Get the type hints of a function, including lazy annotations. The function
@@ -86,23 +117,20 @@ def get_annotated_type_hints(func):
             hints = {}
             sig = inspect.signature(func)
             for name, param in sig.parameters.items():
-                annotation = param.annotation
-                if isinstance(annotation, str):
-                    # Lazy annotations: evaluate manually
-                    annotation = eval(annotation, func.__globals__)
-                hints[name] = annotation
+                hints[name] = _resolve_annotation(param.annotation, func.__globals__)
             if sig.return_annotation is not inspect.Signature.empty:
-                hints["return"] = sig.return_annotation
+                hints["return"] = _resolve_annotation(
+                    sig.return_annotation, func.__globals__
+                )
             return hints
     except NameError:
         hints = {}
         for key, value in func.__annotations__.items():
-            try:
-                hints[key] = eval(value, func.__globals__)
-            except NameError:
-                hints[key] = value
+            hints[key] = _resolve_annotation(value, func.__globals__)
         if hasattr(func, "__return_annotation__"):
-            hints["return"] = func.__return_annotation__
+            hints["return"] = f_resolve_annotation(
+                func.__return_annotation__, func.__globals__
+            )
         return hints
 
 
