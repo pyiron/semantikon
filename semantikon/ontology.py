@@ -267,7 +267,7 @@ def _validate_values_by_python(graph: Graph) -> list:
         if on_property and some_values_from:
             for cls in graph.subjects(OWL.equivalentClass, restrictions):
                 for instance in graph.subjects(RDF.type, cls):
-                    if not (instance, on_property, some_values_from) in graph:
+                    if (instance, on_property, some_values_from) not in graph:
                         missing_triples.append(
                             (instance, on_property, some_values_from)
                         )
