@@ -12,7 +12,6 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
 import os
 import shutil
 import subprocess
@@ -147,12 +146,14 @@ modindex_common_prefix = [
 #    raise ImportError("You need to install bootstrap: pip install sphinx_bootstrap_theme")
 #    html_theme = 'default'
 
-try:
-    import sphinx_rtd_theme
+import importlib.util
 
+if importlib.util.find_spec("sphinx_rtd_theme") is not None:
+    # sphinx_rtd_theme is available
     html_theme = "sphinx_rtd_theme"
-except ImportError:
-    html_theme = "default"
+else:
+    # fallback theme
+    html_theme = "alabaster"
 
 
 # Theme options are theme-specific and customize the look and feel of a theme
