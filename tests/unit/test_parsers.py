@@ -131,6 +131,7 @@ class TestParser(unittest.TestCase):
         self.assertEqual(output_args["dtype"], "Atoms")
 
     def test_semantikon_and_future(self):
+        # This imitates a future import
         def test_more_future(x: "u(Atoms, uri='metadata')") -> "Atoms":
             return x
 
