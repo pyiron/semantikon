@@ -12,10 +12,11 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
+import importlib.util
 import os
 import shutil
 import subprocess
+
 from sphinx.ext.apidoc import main
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -147,12 +148,13 @@ modindex_common_prefix = [
 #    raise ImportError("You need to install bootstrap: pip install sphinx_bootstrap_theme")
 #    html_theme = 'default'
 
-try:
-    import sphinx_rtd_theme
 
+if importlib.util.find_spec("sphinx_rtd_theme") is not None:
+    # sphinx_rtd_theme is available
     html_theme = "sphinx_rtd_theme"
-except ImportError:
-    html_theme = "default"
+else:
+    # fallback theme
+    html_theme = "alabaster"
 
 
 # Theme options are theme-specific and customize the look and feel of a theme

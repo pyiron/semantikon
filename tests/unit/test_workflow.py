@@ -1,18 +1,17 @@
 import unittest
+
 from semantikon.typing import u
 from semantikon.workflow import (
-    analyze_function,
-    get_return_variables,
     _get_output_counts,
-    get_workflow_dict,
-    workflow,
+    analyze_function,
     find_parallel_execution_levels,
     get_node_dict,
-    separate_types,
+    get_return_variables,
+    get_workflow_dict,
     separate_functions,
+    separate_types,
+    workflow,
 )
-import numpy as np
-import json
 
 
 def operation(x: float, y: float) -> tuple[float, float]:

@@ -1,4 +1,5 @@
 from typing import Annotated, get_origin
+
 from semantikon.converter import parse_metadata
 
 __author__ = "Sam Waseda"

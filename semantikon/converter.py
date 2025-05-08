@@ -2,17 +2,18 @@
 # Copyright (c) Max-Planck-Institut für Eisenforschung GmbH - Computational Materials Design (CM) Department
 # Distributed under the terms of "New BSD License", see the LICENSE file.
 
-from pint import Quantity
 import inspect
+import sys
 from functools import wraps
+from typing import get_args, get_origin, get_type_hints
+
+from pint import Quantity
 from pint.registry_helpers import (
     _apply_defaults,
     _parse_wrap_args,
-    _to_units_container,
     _replace_units,
+    _to_units_container,
 )
-from typing import get_origin, get_args, get_type_hints
-import sys
 
 __author__ = "Sam Waseda"
 __copyright__ = (

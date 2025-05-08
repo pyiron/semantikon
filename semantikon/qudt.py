@@ -1,9 +1,8 @@
 import os
-from rdflib import Graph, RDFS, URIRef
-from pint import UnitRegistry
-from pint.errors import UndefinedUnitError, OffsetUnitCalculusError, DimensionalityError
-from tokenize import TokenError
+
 import requests
+from pint import UnitRegistry
+from rdflib import RDFS, Graph, URIRef
 
 
 def _is_english_label(pred, obj):

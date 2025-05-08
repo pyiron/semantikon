@@ -1,11 +1,12 @@
-from typing import TypeAlias, Any
 import warnings
-
-from rdflib import Graph, Literal, RDF, RDFS, URIRef, OWL, PROV, Namespace, BNode, SH
 from dataclasses import is_dataclass
-from semantikon.converter import meta_to_dict, get_function_dict
-from semantikon.qudt import UnitsDict
+from typing import Any, TypeAlias
+
 from owlrl import DeductiveClosure, OWLRL_Semantics
+from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
+
+from semantikon.converter import get_function_dict, meta_to_dict
+from semantikon.qudt import UnitsDict
 
 
 class SNS:
@@ -267,7 +268,7 @@ def _validate_values_by_python(graph: Graph) -> list:
         if on_property and some_values_from:
             for cls in graph.subjects(OWL.equivalentClass, restrictions):
                 for instance in graph.subjects(RDF.type, cls):
-                    if not (instance, on_property, some_values_from) in graph:
+                    if (instance, on_property, some_values_from) not in graph:
                         missing_triples.append(
                             (instance, on_property, some_values_from)
                         )
