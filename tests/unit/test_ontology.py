@@ -1,30 +1,23 @@
 import unittest
-from textwrap import dedent
-from rdflib import Graph, OWL, Namespace, URIRef, Literal, RDF, RDFS, SH, PROV
-from owlrl import DeductiveClosure, OWLRL_Semantics
-from pyshacl import validate
-from graphviz import Digraph
-from semantikon.typing import u
-from semantikon.converter import (
-    parse_input_args,
-    parse_output_args,
-    parse_metadata,
-    get_function_dict,
-)
-from semantikon.ontology import (
-    get_knowledge_graph,
-    SNS,
-    _inherit_properties,
-    validate_values,
-    dataclass_to_knowledge_graph,
-    serialize_data,
-    _parse_cancel,
-    NS,
-)
-from semantikon.workflow import workflow, separate_types, separate_functions
-from semantikon.visualize import visualize
 from dataclasses import dataclass
+from textwrap import dedent
 
+from graphviz import Digraph
+from pyshacl import validate
+from rdflib import OWL, PROV, RDF, RDFS, SH, Literal, Namespace, URIRef
+
+from semantikon.ontology import (
+    NS,
+    SNS,
+    _parse_cancel,
+    dataclass_to_knowledge_graph,
+    get_knowledge_graph,
+    serialize_data,
+    validate_values,
+)
+from semantikon.typing import u
+from semantikon.visualize import visualize
+from semantikon.workflow import workflow
 
 EX = Namespace("http://example.org/")
 
@@ -537,7 +530,6 @@ class TestDataclass(unittest.TestCase):
             (URIRef(f"{i_txt}.parameters.a.value"), RDF.value, Literal(2)),
             (URIRef(o_txt), SNS.hasValue, URIRef(f"{o_txt}.E.value")),
         )
-        s = graph.serialize(format="turtle")
         for ii, triple in enumerate(triples):
             with self.subTest(i=ii):
                 self.assertEqual(

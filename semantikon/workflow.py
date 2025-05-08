@@ -1,12 +1,13 @@
 import ast
-import networkx as nx
-from networkx.algorithms.dag import topological_sort
+import copy
 import inspect
+import warnings
 from collections import deque
 from functools import cached_property
-import warnings
 from hashlib import sha256
-import copy
+
+import networkx as nx
+from networkx.algorithms.dag import topological_sort
 
 from semantikon.converter import parse_input_args, parse_output_args
 

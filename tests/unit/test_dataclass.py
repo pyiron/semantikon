@@ -1,8 +1,9 @@
 import unittest
-from semantikon.typing import u
-from typing import Annotated
 from dataclasses import dataclass
-from semantikon.converter import semantikon_class, parse_metadata
+from typing import Annotated
+
+from semantikon.converter import parse_metadata, semantikon_class
+from semantikon.typing import u
 
 
 @semantikon_class

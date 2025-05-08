@@ -1,7 +1,9 @@
 import unittest
-from semantikon.typing import u
-from semantikon.converter import units
+
 from pint import UnitRegistry
+
+from semantikon.converter import units
+from semantikon.typing import u
 
 
 @units

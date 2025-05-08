@@ -1,11 +1,18 @@
 import unittest
-from semantikon.typing import u
+from typing import TYPE_CHECKING
+
 from semantikon.converter import (
-    parse_input_args,
-    parse_output_args,
-    parse_metadata,
     get_function_dict,
+    parse_input_args,
+    parse_metadata,
+    parse_output_args,
 )
+from semantikon.typing import u
+
+if TYPE_CHECKING:
+
+    class Atoms:
+        pass
 
 
 class TestParser(unittest.TestCase):
