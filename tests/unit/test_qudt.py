@@ -1,4 +1,5 @@
 import unittest
+
 from semantikon.qudt import UnitsDict
 
 

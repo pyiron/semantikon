@@ -1,22 +1,22 @@
 import unittest
-from textwrap import dedent
-from rdflib import OWL, Namespace, URIRef, Literal, RDF, RDFS, SH, PROV
-from pyshacl import validate
-from graphviz import Digraph
-from semantikon.typing import u
-from semantikon.ontology import (
-    get_knowledge_graph,
-    SNS,
-    validate_values,
-    dataclass_to_knowledge_graph,
-    serialize_data,
-    _parse_cancel,
-    NS,
-)
-from semantikon.workflow import workflow
-from semantikon.visualize import visualize
 from dataclasses import dataclass
+from textwrap import dedent
 
+from graphviz import Digraph
+from pyshacl import validate
+from rdflib import OWL, PROV, RDF, RDFS, SH, Literal, Namespace, URIRef
+from semantikon.ontology import (
+    NS,
+    SNS,
+    _parse_cancel,
+    dataclass_to_knowledge_graph,
+    get_knowledge_graph,
+    serialize_data,
+    validate_values,
+)
+from semantikon.typing import u
+from semantikon.visualize import visualize
+from semantikon.workflow import workflow
 
 EX = Namespace("http://example.org/")
 

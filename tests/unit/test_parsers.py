@@ -1,12 +1,13 @@
 import unittest
-from semantikon.typing import u
-from semantikon.converter import (
-    parse_input_args,
-    parse_output_args,
-    parse_metadata,
-    get_function_dict,
-)
 from typing import TYPE_CHECKING
+
+from semantikon.converter import (
+    get_function_dict,
+    parse_input_args,
+    parse_metadata,
+    parse_output_args,
+)
+from semantikon.typing import u
 
 if TYPE_CHECKING:
 

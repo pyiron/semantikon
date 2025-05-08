@@ -1,6 +1,7 @@
-from rdflib import RDF, URIRef, Literal, BNode
-from graphviz import Digraph
 from string import Template
+
+from graphviz import Digraph
+from rdflib import RDF, BNode, Literal, URIRef
 
 from semantikon.ontology import SNS
 
