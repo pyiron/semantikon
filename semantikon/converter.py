@@ -137,14 +137,7 @@ def parse_output_args(func: callable):
         `label`, `triples`, `uri` and `shape`. See `semantikon.typing.u` for
         more details.
     """
-    try:
-        ret = get_type_hints(func, include_extras=True).get(
-            "return", inspect.Parameter.empty
-        )
-    # NameError is raised if the type hint is a string with a lazy annotation
-    # and the class is not imported
-    except NameError:
-        ret = func.__annotations__.get("return", inspect.Parameter.empty)
+    ret = get_annotated_type_hints(func).get("return", inspect.Parameter.empty)
     multiple_output = get_origin(ret) is tuple
     if multiple_output:
         return tuple([meta_to_dict(ann) for ann in get_args(ret)])
