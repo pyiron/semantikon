@@ -9,6 +9,7 @@ from semantikon.converter import (
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+
     class Atoms:
         pass
 
