@@ -11,8 +11,6 @@ from semantikon.workflow import (
     separate_types,
     separate_functions,
 )
-import numpy as np
-import json
 
 
 def operation(x: float, y: float) -> tuple[float, float]:

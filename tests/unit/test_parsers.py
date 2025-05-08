@@ -6,6 +6,11 @@ from semantikon.converter import (
     parse_metadata,
     get_function_dict,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    class Atoms:
+        pass
 
 
 class TestParser(unittest.TestCase):
