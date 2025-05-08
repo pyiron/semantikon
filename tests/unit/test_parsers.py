@@ -128,6 +128,12 @@ class TestParser(unittest.TestCase):
         output_args = parse_output_args(test_another_future)
         self.assertEqual(output_args["dtype"], "Atoms")
 
+    def test_semantikon_and_future(self):
+        def test_more_future(x: "u('Atoms', uri='atoms')") -> "Atoms":
+            return x
+        input_args = parse_input_args(test_more_future)
+        print(input_args)
+
 
 if __name__ == "__main__":
     unittest.main()
