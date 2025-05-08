@@ -1,7 +1,6 @@
 import os
 from rdflib import Graph, RDFS, URIRef
 from pint import UnitRegistry
-from tokenize import TokenError
 import requests
 
 
