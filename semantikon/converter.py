@@ -57,7 +57,10 @@ def meta_to_dict(value, default=inspect.Parameter.empty):
     default_is_defined = default is not inspect.Parameter.empty
     if semantikon_was_used:
         result = {k: v for k, v in parse_metadata(value).items() if v is not None}
-        result["dtype"] = value.__args__[0]
+        if hasattr(value.__args__[0], "__forward_arg__"):
+            result["dtype"] = value.__args__[0].__forward_arg__
+        else:
+            result["dtype"] = value.__args__[0]
     else:
         result = {}
         if type_hint_was_present:

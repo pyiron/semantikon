@@ -133,6 +133,7 @@ class TestParser(unittest.TestCase):
             return x
         input_args = parse_input_args(test_more_future)
         self.assertEqual(input_args["x"]["uri"], "metadata")
+        self.assertEqual(input_args["x"]["dtype"], "Atoms")
 
 
 if __name__ == "__main__":
