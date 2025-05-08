@@ -130,7 +130,7 @@ def get_annotated_type_hints(func):
         for key, value in func.__annotations__.items():
             hints[key] = _resolve_annotation(value, func.__globals__)
         if hasattr(func, "__return_annotation__"):
-            hints["return"] = f_resolve_annotation(
+            hints["return"] = _resolve_annotation(
                 func.__return_annotation__, func.__globals__
             )
         return hints
