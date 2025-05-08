@@ -1,16 +1,10 @@
 import unittest
 from textwrap import dedent
-from rdflib import Graph, OWL, Namespace, URIRef, Literal, RDF, RDFS, SH, PROV
+from rdflib import OWL, Namespace, URIRef, Literal, RDF, RDFS, SH, PROV
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from pyshacl import validate
 from graphviz import Digraph
 from semantikon.typing import u
-from semantikon.converter import (
-    parse_input_args,
-    parse_output_args,
-    parse_metadata,
-    get_function_dict,
-)
 from semantikon.ontology import (
     get_knowledge_graph,
     SNS,
@@ -21,7 +15,7 @@ from semantikon.ontology import (
     _parse_cancel,
     NS,
 )
-from semantikon.workflow import workflow, separate_types, separate_functions
+from semantikon.workflow import workflow
 from semantikon.visualize import visualize
 from dataclasses import dataclass
 
@@ -537,7 +531,6 @@ class TestDataclass(unittest.TestCase):
             (URIRef(f"{i_txt}.parameters.a.value"), RDF.value, Literal(2)),
             (URIRef(o_txt), SNS.hasValue, URIRef(f"{o_txt}.E.value")),
         )
-        s = graph.serialize(format="turtle")
         for ii, triple in enumerate(triples):
             with self.subTest(i=ii):
                 self.assertEqual(
