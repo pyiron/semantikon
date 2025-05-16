@@ -58,70 +58,75 @@ def get_return_variables(func):
     return []
 
 
-class FunctionFlowAnalyzer(ast.NodeVisitor):
-    def __init__(self, scope):
+class FunctionDictFlowAnalyzer:
+    def __init__(self, ast_dict, scope):
         self.graph = nx.DiGraph()
+        self.scope = scope  # mapping from function names to objects
         self.function_defs = {}
-        self.scope = scope
         self._var_index = {}
+        self.ast_dict = ast_dict
+        self._call_counter = {}
 
-    @staticmethod
-    def _is_variable(arg):
-        return isinstance(arg, ast.Name)
+    def analyze(self):
+        for node in self.ast_dict.get('body', []):
+            self._visit_node(node)
 
-    def _parse_outputs(self, node, called_func):
-        is_multi_outputs = len(node.targets) == 1 and isinstance(
-            node.targets[0], ast.Tuple
-        )
-        if is_multi_outputs:
-            for index, target in enumerate(node.targets[0].elts):
-                self._add_output_edge(called_func, target, output_index=index)
+    def _visit_node(self, node):
+        if node['_type'] == 'Assign':
+            self._handle_assign(node)
+
+    def _handle_assign(self, node):
+        value = node['value']
+        if value['_type'] != 'Call':
+            raise NotImplementedError("Only function calls allowed on RHS")
+
+        func_node = value['func']
+        if func_node['_type'] != 'Name':
+            raise NotImplementedError("Only simple function names allowed")
+
+        func_name = func_node['id']
+        called_func = self._get_unique_func_name(func_name)
+
+        if func_name not in self.scope:
+            raise ValueError(f"Function {func_name} not found in scope")
+
+        self.function_defs[called_func] = self.scope[func_name]
+
+        # Parse outputs
+        self._parse_outputs(node['targets'], called_func)
+
+        # Parse inputs (positional + keyword)
+        for i, arg in enumerate(value.get('args', [])):
+            self._add_input_edge(arg, called_func, input_index=i)
+        for kw in value.get('keywords', []):
+            self._add_input_edge(kw['value'], called_func, input_name=kw['arg'])
+
+    def _parse_outputs(self, targets, called_func):
+        if len(targets) == 1 and targets[0]['_type'] == 'Tuple':
+            for idx, elt in enumerate(targets[0]['elts']):
+                self._add_output_edge(called_func, elt, output_index=idx)
         else:
-            for target in node.targets:
+            for target in targets:
                 self._add_output_edge(called_func, target)
 
     def _add_output_edge(self, source, target, **kwargs):
-        if target.id not in self._var_index:
-            self._var_index[target.id] = 0
-        else:
-            self._var_index[target.id] += 1
-        count = self._var_index[target.id]
-        self.graph.add_edge(source, f"{target.id}_{count}", type="output", **kwargs)
-
-    def _parse_inputs(self, node, called_func):
-        for index, arg in enumerate(node.value.args):
-            self._add_input_edge(arg, called_func, input_index=index)
-        for kw in node.value.keywords:
-            self._add_input_edge(kw.value, called_func, input_name=kw.arg)
+        var_name = target['id']
+        self._var_index[var_name] = self._var_index.get(var_name, -1) + 1
+        versioned = f"{var_name}_{self._var_index[var_name]}"
+        self.graph.add_edge(source, versioned, type="output", **kwargs)
 
     def _add_input_edge(self, source, target, **kwargs):
-        if not self._is_variable(source):
-            raise NotImplementedError(f"Invalid input: {ast.dump(source)}")
-        if source.id not in self._var_index:
-            tag = f"{source.id}_0"
-        else:
-            tag = f"{source.id}_{self._var_index[source.id]}"
-        self.graph.add_edge(tag, target, type="input", **kwargs)
+        if source['_type'] != 'Name':
+            raise NotImplementedError(f"Only variable inputs supported, got: {source}")
+        var_name = source['id']
+        idx = self._var_index.get(var_name, 0)
+        versioned = f"{var_name}_{idx}"
+        self.graph.add_edge(versioned, target, type="input", **kwargs)
 
-    def _get_func_name(self, node):
-        for ii in range(100):
-            if f"{node.value.func.id}_{ii}" not in self.graph:
-                return f"{node.value.func.id}_{ii}"
-        raise AssertionError("Too many times function used")
-
-    def visit_Assign(self, node):
-        """Handles variable assignments including tuple unpacking."""
-        if not isinstance(node.value, ast.Call) or not isinstance(
-            node.value.func, ast.Name
-        ):
-            raise NotImplementedError("Only function calls are allowed in assignments")
-        called_func = self._get_func_name(node)
-        if node.value.func.id not in self.scope:
-            raise ValueError(f"Function {node.value.func.id} not defined")
-        self.function_defs[called_func] = self.scope[node.value.func.id]
-        self._parse_outputs(node, called_func)
-        self._parse_inputs(node, called_func)
-        self.generic_visit(node)
+    def _get_unique_func_name(self, base_name):
+        i = self._call_counter.get(base_name, 0)
+        self._call_counter[base_name] = i + 1
+        return f"{base_name}_{i}"
 
 
 def analyze_function(func):
@@ -129,8 +134,9 @@ def analyze_function(func):
     source_code = inspect.getsource(func)
     scope = inspect.getmodule(func).__dict__
     tree = ast.parse(source_code)
-    analyzer = FunctionFlowAnalyzer(scope)
-    analyzer.visit(tree)
+    ast_dict = _function_to_ast_dict(tree)
+    analyzer = FunctionDictFlowAnalyzer(ast_dict['body'][0], scope)
+    analyzer.analyze()
     return analyzer
 
 
