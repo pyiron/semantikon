@@ -11,8 +11,8 @@
 Let's take a look at the following function:
 
 ```python
->>> def get_speed(distance: float, time: float) -> float:
-...     return distance / time
+def get_speed(distance: float, time: float) -> float:
+    return distance / time
 ```
 
 For you as a human, it is clear that this is a function to calculate the speed for a given distance and a time. But for a computer, it is just a function that takes two floats and returns a float. The computer does not know what the inputs and outputs mean. This is where `semantikon` comes in. It provides a way to give scientific context to the inputs and outputs, as well as to the function itself.
