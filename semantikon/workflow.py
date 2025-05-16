@@ -12,6 +12,18 @@ from networkx.algorithms.dag import topological_sort
 from semantikon.converter import parse_input_args, parse_output_args
 
 
+def _function_to_ast_dict(node):
+    if isinstance(node, ast.AST):
+        result = {'_type': type(node).__name__}
+        for field, value in ast.iter_fields(node):
+            result[field] = _function_to_ast_dict(value)
+        return result
+    elif isinstance(node, list):
+        return [_function_to_ast_dict(item) for item in node]
+    else:
+        return node
+
+
 def _hash_function(func):
     return f"{func.__name__}_{sha256(inspect.getsource(func).encode()).hexdigest()}"
 
