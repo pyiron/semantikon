@@ -14,7 +14,7 @@ from semantikon.converter import parse_input_args, parse_output_args
 
 def _function_to_ast_dict(node):
     if isinstance(node, ast.AST):
-        result = {'_type': type(node).__name__}
+        result = {"_type": type(node).__name__}
         for field, value in ast.iter_fields(node):
             result[field] = _function_to_ast_dict(value)
         return result
@@ -68,23 +68,23 @@ class FunctionDictFlowAnalyzer:
         self._call_counter = {}
 
     def analyze(self):
-        for node in self.ast_dict.get('body', []):
+        for node in self.ast_dict.get("body", []):
             self._visit_node(node)
 
     def _visit_node(self, node):
-        if node['_type'] == 'Assign':
+        if node["_type"] == "Assign":
             self._handle_assign(node)
 
     def _handle_assign(self, node):
-        value = node['value']
-        if value['_type'] != 'Call':
+        value = node["value"]
+        if value["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed on RHS")
 
-        func_node = value['func']
-        if func_node['_type'] != 'Name':
+        func_node = value["func"]
+        if func_node["_type"] != "Name":
             raise NotImplementedError("Only simple function names allowed")
 
-        func_name = func_node['id']
+        func_name = func_node["id"]
         called_func = self._get_unique_func_name(func_name)
 
         if func_name not in self.scope:
@@ -93,32 +93,32 @@ class FunctionDictFlowAnalyzer:
         self.function_defs[called_func] = self.scope[func_name]
 
         # Parse outputs
-        self._parse_outputs(node['targets'], called_func)
+        self._parse_outputs(node["targets"], called_func)
 
         # Parse inputs (positional + keyword)
-        for i, arg in enumerate(value.get('args', [])):
+        for i, arg in enumerate(value.get("args", [])):
             self._add_input_edge(arg, called_func, input_index=i)
-        for kw in value.get('keywords', []):
-            self._add_input_edge(kw['value'], called_func, input_name=kw['arg'])
+        for kw in value.get("keywords", []):
+            self._add_input_edge(kw["value"], called_func, input_name=kw["arg"])
 
     def _parse_outputs(self, targets, called_func):
-        if len(targets) == 1 and targets[0]['_type'] == 'Tuple':
-            for idx, elt in enumerate(targets[0]['elts']):
+        if len(targets) == 1 and targets[0]["_type"] == "Tuple":
+            for idx, elt in enumerate(targets[0]["elts"]):
                 self._add_output_edge(called_func, elt, output_index=idx)
         else:
             for target in targets:
                 self._add_output_edge(called_func, target)
 
     def _add_output_edge(self, source, target, **kwargs):
-        var_name = target['id']
+        var_name = target["id"]
         self._var_index[var_name] = self._var_index.get(var_name, -1) + 1
         versioned = f"{var_name}_{self._var_index[var_name]}"
         self.graph.add_edge(source, versioned, type="output", **kwargs)
 
     def _add_input_edge(self, source, target, **kwargs):
-        if source['_type'] != 'Name':
+        if source["_type"] != "Name":
             raise NotImplementedError(f"Only variable inputs supported, got: {source}")
-        var_name = source['id']
+        var_name = source["id"]
         idx = self._var_index.get(var_name, 0)
         versioned = f"{var_name}_{idx}"
         self.graph.add_edge(versioned, target, type="input", **kwargs)
@@ -135,7 +135,7 @@ def analyze_function(func):
     scope = inspect.getmodule(func).__dict__
     tree = ast.parse(source_code)
     ast_dict = _function_to_ast_dict(tree)
-    analyzer = FunctionDictFlowAnalyzer(ast_dict['body'][0], scope)
+    analyzer = FunctionDictFlowAnalyzer(ast_dict["body"][0], scope)
     analyzer.analyze()
     return analyzer
 
