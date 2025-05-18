@@ -129,12 +129,17 @@ class FunctionDictFlowAnalyzer:
         return f"{base_name}_{i}"
 
 
+def get_ast_dict(func: callable) -> dict:
+    """Get the AST dictionary representation of a function."""
+    source_code = inspect.getsource(func)
+    tree = ast.parse(source_code)
+    return _function_to_ast_dict(tree)
+
+
 def analyze_function(func):
     """Extracts the variable flow graph from a function"""
-    source_code = inspect.getsource(func)
+    ast_dict = get_ast_dict(func)
     scope = inspect.getmodule(func).__dict__
-    tree = ast.parse(source_code)
-    ast_dict = _function_to_ast_dict(tree)
     analyzer = FunctionDictFlowAnalyzer(ast_dict["body"][0], scope)
     analyzer.analyze()
     return analyzer
