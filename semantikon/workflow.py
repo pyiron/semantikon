@@ -130,7 +130,7 @@ class FunctionDictFlowAnalyzer:
 
 
 def get_ast_dict(func: callable) -> dict:
-    """Get the AST dictionary representation of a function. """
+    """Get the AST dictionary representation of a function."""
     source_code = inspect.getsource(func)
     tree = ast.parse(source_code)
     return _function_to_ast_dict(tree)
