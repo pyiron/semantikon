@@ -81,6 +81,11 @@ def seemingly_cyclic_workflow(a=10, b=20):
     return a
 
 
+def workflow_to_use_undefined_variable(a=10, b=20):
+    result = add(a, u)
+    return result
+
+
 class TestWorkflow(unittest.TestCase):
     def test_analyzer(self):
         graph = analyze_function(example_macro)[0]
@@ -310,6 +315,10 @@ class TestWorkflow(unittest.TestCase):
         data = get_workflow_dict(seemingly_cyclic_workflow)
         self.assertIn("a", data["inputs"])
         self.assertIn("a", data["outputs"])
+
+    def test_workflow_to_use_undefined_variable(self):
+        with self.assertRaises(ValueError):
+            workflow(workflow_to_use_undefined_variable)
 
 
 if __name__ == "__main__":

@@ -68,6 +68,9 @@ class FunctionDictFlowAnalyzer:
         self._call_counter = {}
 
     def analyze(self):
+        for arg in self.ast_dict.get("args", {}).get("args", []):
+            if arg["_type"] == "arg":
+                self._var_index[arg["arg"]] = 0
         for node in self.ast_dict.get("body", []):
             self._visit_node(node)
         return self.graph, self.function_defs
@@ -121,7 +124,7 @@ class FunctionDictFlowAnalyzer:
             raise NotImplementedError(f"Only variable inputs supported, got: {source}")
         var_name = source["id"]
         if var_name not in self._var_index:
-            self._var_index[var_name] = 0
+            raise ValueError(f"Variable {var_name} not found in scope")
         idx = self._var_index[var_name]
         versioned = f"{var_name}_{idx}"
         self.graph.add_edge(versioned, target, type="input", **kwargs)
