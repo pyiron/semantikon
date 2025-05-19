@@ -76,9 +76,14 @@ def multiple_types_for_ape(a: ApeClass, b: ApeClass) -> ApeClass:
     return a + b
 
 
+def seemingly_cyclic_workflow(a=10, b=20):
+    a = add(a, b)
+    return a
+
+
 class TestWorkflow(unittest.TestCase):
     def test_analyzer(self):
-        analyzer = analyze_function(example_macro)
+        graph = analyze_function(example_macro)[0]
         all_data = [
             ("operation_0", "c_0", {"type": "output", "output_index": 0}),
             ("operation_0", "d_0", {"type": "output", "output_index": 1}),
@@ -90,9 +95,10 @@ class TestWorkflow(unittest.TestCase):
             ("e_0", "multiply_0", {"type": "input", "input_index": 0}),
             ("multiply_0", "f_0", {"type": "output"}),
         ]
+        self.maxDiff = None
         self.assertEqual(
-            [data for data in analyzer.graph.edges.data()],
-            all_data,
+            sorted([data for data in graph.edges.data()]),
+            sorted(all_data),
         )
 
     def test_get_node_dict(self):
@@ -131,8 +137,8 @@ class TestWorkflow(unittest.TestCase):
         self.assertRaises(ValueError, get_return_variables, operation)
 
     def test_get_output_counts(self):
-        analyzer = analyze_function(example_macro)
-        output_counts = _get_output_counts(analyzer.graph.edges.data())
+        graph = analyze_function(example_macro)[0]
+        output_counts = _get_output_counts(graph)
         self.assertEqual(output_counts, {"operation": 2, "add": 1, "multiply": 1})
 
     def test_get_workflow_dict(self):
@@ -247,9 +253,9 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(result, ref_data, msg=result)
 
     def test_parallel_execution(self):
-        analyzer = analyze_function(parallel_execution)
+        graph = analyze_function(parallel_execution)[0]
         self.assertEqual(
-            find_parallel_execution_levels(analyzer.graph),
+            find_parallel_execution_levels(graph),
             [
                 ["a_0", "b_0"],
                 ["add_0", "multiply_0"],
@@ -299,6 +305,11 @@ class TestWorkflow(unittest.TestCase):
         old_data = example_workflow._semantikon_workflow
         class_dict = separate_types(old_data)[1]
         self.assertEqual(class_dict, {"float": float})
+
+    def test_seemingly_cyclic_workflow(self):
+        data = get_workflow_dict(seemingly_cyclic_workflow)
+        self.assertIn("a", data["inputs"])
+        self.assertIn("a", data["outputs"])
 
 
 if __name__ == "__main__":

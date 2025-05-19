@@ -70,6 +70,7 @@ class FunctionDictFlowAnalyzer:
     def analyze(self):
         for node in self.ast_dict.get("body", []):
             self._visit_node(node)
+        return self.graph, self.function_defs
 
     def _visit_node(self, node):
         if node["_type"] == "Assign":
@@ -92,14 +93,14 @@ class FunctionDictFlowAnalyzer:
 
         self.function_defs[called_func] = self.scope[func_name]
 
-        # Parse outputs
-        self._parse_outputs(node["targets"], called_func)
-
         # Parse inputs (positional + keyword)
         for i, arg in enumerate(value.get("args", [])):
             self._add_input_edge(arg, called_func, input_index=i)
         for kw in value.get("keywords", []):
             self._add_input_edge(kw["value"], called_func, input_name=kw["arg"])
+
+        # Parse outputs
+        self._parse_outputs(node["targets"], called_func)
 
     def _parse_outputs(self, targets, called_func):
         if len(targets) == 1 and targets[0]["_type"] == "Tuple":
@@ -119,7 +120,9 @@ class FunctionDictFlowAnalyzer:
         if source["_type"] != "Name":
             raise NotImplementedError(f"Only variable inputs supported, got: {source}")
         var_name = source["id"]
-        idx = self._var_index.get(var_name, 0)
+        if var_name not in self._var_index:
+            self._var_index[var_name] = 0
+        idx = self._var_index[var_name]
         versioned = f"{var_name}_{idx}"
         self.graph.add_edge(versioned, target, type="input", **kwargs)
 
@@ -141,8 +144,7 @@ def analyze_function(func):
     ast_dict = get_ast_dict(func)
     scope = inspect.getmodule(func).__dict__
     analyzer = FunctionDictFlowAnalyzer(ast_dict["body"][0], scope)
-    analyzer.analyze()
-    return analyzer
+    return analyzer.analyze()
 
 
 def _get_workflow_outputs(func):
@@ -163,13 +165,22 @@ def _get_node_outputs(func, counts):
         return {"output": outputs}
 
 
-def _get_output_counts(data):
+def _get_output_counts(graph: nx.DiGraph) -> dict:
+    """
+    Get the number of outputs for each node in the graph.
+
+    Args:
+        graph (nx.DiGraph): The directed graph representing the function.
+
+    Returns:
+        dict: A dictionary mapping node names to the number of outputs.
+    """
     f_dict = {}
-    for edge in data:
+    for edge in graph.edges.data():
         if edge[2]["type"] != "output":
             continue
         f_name = "_".join(edge[0].split("_")[:-1])
-        if f_name not in f_dict or f_dict[f_name] < edge[2].get("output_index", 0) + 1:
+        if f_dict.get(f_name, -1) < edge[2].get("output_index", 0) + 1:
             f_dict[f_name] = edge[2].get("output_index", 0) + 1
     return f_dict
 
@@ -202,23 +213,18 @@ def _get_sorted_edges(graph):
     return sorted(graph.edges.data(), key=lambda edge: node_order[edge[0]])
 
 
-def _get_data_edges(analyzer, func):
+def _get_data_edges(graph, functions, func):
     input_dict = {
-        name: list(parse_input_args(func).keys())
-        for name, func in analyzer.function_defs.items()
+        name: list(parse_input_args(func).keys()) for name, func in functions.items()
     }
     output_labels = list(_get_workflow_outputs(func).keys())
     data_edges = []
     output_dict = {}
-    ordered_edges = _get_sorted_edges(analyzer.graph)
+    ordered_edges = _get_sorted_edges(graph)
     for edge in ordered_edges:
         if edge[2]["type"] == "output":
-            if hasattr(analyzer.function_defs[edge[0]], "_semantikon_workflow"):
-                keys = list(
-                    analyzer.function_defs[edge[0]]
-                    ._semantikon_workflow["outputs"]
-                    .keys()
-                )
+            if hasattr(functions[edge[0]], "_semantikon_workflow"):
+                keys = list(functions[edge[0]]._semantikon_workflow["outputs"].keys())
                 output_index = 0
                 if "output_index" in edge[2]:
                     output_index = edge[2]["output_index"]
@@ -321,14 +327,14 @@ def separate_functions(data, function_dict=None):
 
 
 def get_workflow_dict(func):
-    analyzer = analyze_function(func)
-    output_counts = _get_output_counts(analyzer.graph.edges.data())
-    nodes = _get_nodes(analyzer.function_defs, output_counts)
+    graph, f_dict = analyze_function(func)
+    output_counts = _get_output_counts(graph)
+    nodes = _get_nodes(f_dict, output_counts)
     data = {
         "inputs": parse_input_args(func),
         "outputs": _get_workflow_outputs(func),
         "nodes": nodes,
-        "data_edges": _get_data_edges(analyzer, func),
+        "data_edges": _get_data_edges(graph, f_dict, func),
         "label": func.__name__,
     }
     return data
