@@ -1,9 +1,11 @@
+import ast
 import unittest
 
 from semantikon.typing import u
 from semantikon.workflow import (
     _get_output_counts,
     analyze_function,
+    ast_from_dict,
     find_parallel_execution_levels,
     get_node_dict,
     get_return_variables,
@@ -319,6 +321,15 @@ class TestWorkflow(unittest.TestCase):
     def test_workflow_to_use_undefined_variable(self):
         with self.assertRaises(ValueError):
             workflow(workflow_to_use_undefined_variable)
+
+    def test_ast_from_dict(self):
+        d = {
+            "_type": "Compare",
+            "left": {"_type": "Name", "id": "x", "ctx": {"_type": "Load"}},
+            "ops": [{"_type": "Lt"}],
+            "comparators": [{"_type": "Constant", "value": 0, "kind": None}],
+        }
+        self.assertEqual(ast.unparse(ast_from_dict(d)), "x < 0")
 
 
 if __name__ == "__main__":
