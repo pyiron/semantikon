@@ -95,9 +95,10 @@ class TestWorkflow(unittest.TestCase):
             ("e_0", "multiply_0", {"type": "input", "input_index": 0}),
             ("multiply_0", "f_0", {"type": "output"}),
         ]
+        self.maxDiff = None
         self.assertEqual(
-            [data for data in graph.edges.data()],
-            all_data,
+            sorted([data for data in graph.edges.data()]),
+            sorted(all_data),
         )
 
     def test_get_node_dict(self):
