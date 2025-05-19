@@ -76,6 +76,10 @@ def multiple_types_for_ape(a: ApeClass, b: ApeClass) -> ApeClass:
     return a + b
 
 
+def seemingly_cyclic_workflow(a=10, b=20):
+    a = add(a, b)
+    return a
+
 class TestWorkflow(unittest.TestCase):
     def test_analyzer(self):
         graph = analyze_function(example_macro)[0]
@@ -300,6 +304,10 @@ class TestWorkflow(unittest.TestCase):
         class_dict = separate_types(old_data)[1]
         self.assertEqual(class_dict, {"float": float})
 
+    def test_seemingly_cyclic_workflow(self):
+        data = get_workflow_dict(seemingly_cyclic_workflow)
+        self.assertIn("a", data["inputs"])
+        self.assertIn("a", data["outputs"])
 
 if __name__ == "__main__":
     unittest.main()

@@ -93,14 +93,14 @@ class FunctionDictFlowAnalyzer:
 
         self.function_defs[called_func] = self.scope[func_name]
 
-        # Parse outputs
-        self._parse_outputs(node["targets"], called_func)
-
         # Parse inputs (positional + keyword)
         for i, arg in enumerate(value.get("args", [])):
             self._add_input_edge(arg, called_func, input_index=i)
         for kw in value.get("keywords", []):
             self._add_input_edge(kw["value"], called_func, input_name=kw["arg"])
+
+        # Parse outputs
+        self._parse_outputs(node["targets"], called_func)
 
     def _parse_outputs(self, targets, called_func):
         if len(targets) == 1 and targets[0]["_type"] == "Tuple":
