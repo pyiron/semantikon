@@ -215,8 +215,7 @@ def _get_sorted_edges(graph):
 
 def _get_data_edges(graph, functions, func):
     input_dict = {
-        name: list(parse_input_args(func).keys())
-        for name, func in functions.items()
+        name: list(parse_input_args(func).keys()) for name, func in functions.items()
     }
     output_labels = list(_get_workflow_outputs(func).keys())
     data_edges = []
@@ -225,9 +224,7 @@ def _get_data_edges(graph, functions, func):
     for edge in ordered_edges:
         if edge[2]["type"] == "output":
             if hasattr(functions[edge[0]], "_semantikon_workflow"):
-                keys = list(
-                    functions[edge[0]]._semantikon_workflow["outputs"].keys()
-                )
+                keys = list(functions[edge[0]]._semantikon_workflow["outputs"].keys())
                 output_index = 0
                 if "output_index" in edge[2]:
                     output_index = edge[2]["output_index"]

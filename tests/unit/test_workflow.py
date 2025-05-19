@@ -80,6 +80,7 @@ def seemingly_cyclic_workflow(a=10, b=20):
     a = add(a, b)
     return a
 
+
 class TestWorkflow(unittest.TestCase):
     def test_analyzer(self):
         graph = analyze_function(example_macro)[0]
@@ -308,6 +309,7 @@ class TestWorkflow(unittest.TestCase):
         data = get_workflow_dict(seemingly_cyclic_workflow)
         self.assertIn("a", data["inputs"])
         self.assertIn("a", data["outputs"])
+
 
 if __name__ == "__main__":
     unittest.main()
