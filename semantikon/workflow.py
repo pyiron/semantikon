@@ -12,6 +12,18 @@ from networkx.algorithms.dag import topological_sort
 from semantikon.converter import parse_input_args, parse_output_args
 
 
+def ast_from_dict(d):
+    """Recursively convert a dict to an ast.AST node"""
+    if isinstance(d, dict):
+        node_type = getattr(ast, d["_type"])
+        fields = {k: ast_from_dict(v) for k, v in d.items() if k != "_type"}
+        return node_type(**fields)
+    elif isinstance(d, list):
+        return [ast_from_dict(x) for x in d]
+    else:
+        return d
+
+
 def _function_to_ast_dict(node):
     if isinstance(node, ast.AST):
         result = {"_type": type(node).__name__}
