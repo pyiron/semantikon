@@ -120,7 +120,9 @@ class FunctionDictFlowAnalyzer:
         if source["_type"] != "Name":
             raise NotImplementedError(f"Only variable inputs supported, got: {source}")
         var_name = source["id"]
-        idx = self._var_index.get(var_name, 0)
+        if var_name not in self._var_index:
+            self._var_index[var_name] = 0
+        idx = self._var_index[var_name]
         versioned = f"{var_name}_{idx}"
         self.graph.add_edge(versioned, target, type="input", **kwargs)
 
