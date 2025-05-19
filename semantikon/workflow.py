@@ -331,7 +331,7 @@ def separate_functions(data, function_dict=None):
 
 def get_workflow_dict(func):
     analyzer = analyze_function(func)
-    output_counts = _get_output_counts(analyzer)
+    output_counts = _get_output_counts(analyzer.graph)
     nodes = _get_nodes(analyzer.function_defs, output_counts)
     data = {
         "inputs": parse_input_args(func),

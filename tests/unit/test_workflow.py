@@ -132,7 +132,7 @@ class TestWorkflow(unittest.TestCase):
 
     def test_get_output_counts(self):
         analyzer = analyze_function(example_macro)
-        output_counts = _get_output_counts(analyzer.graph.edges.data())
+        output_counts = _get_output_counts(analyzer.graph)
         self.assertEqual(output_counts, {"operation": 2, "add": 1, "multiply": 1})
 
     def test_get_workflow_dict(self):
