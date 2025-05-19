@@ -78,7 +78,7 @@ def multiple_types_for_ape(a: ApeClass, b: ApeClass) -> ApeClass:
 
 class TestWorkflow(unittest.TestCase):
     def test_analyzer(self):
-        analyzer = analyze_function(example_macro)
+        graph = analyze_function(example_macro)[0]
         all_data = [
             ("operation_0", "c_0", {"type": "output", "output_index": 0}),
             ("operation_0", "d_0", {"type": "output", "output_index": 1}),
@@ -91,7 +91,7 @@ class TestWorkflow(unittest.TestCase):
             ("multiply_0", "f_0", {"type": "output"}),
         ]
         self.assertEqual(
-            [data for data in analyzer.graph.edges.data()],
+            [data for data in graph.edges.data()],
             all_data,
         )
 
@@ -131,8 +131,8 @@ class TestWorkflow(unittest.TestCase):
         self.assertRaises(ValueError, get_return_variables, operation)
 
     def test_get_output_counts(self):
-        analyzer = analyze_function(example_macro)
-        output_counts = _get_output_counts(analyzer.graph)
+        graph = analyze_function(example_macro)[0]
+        output_counts = _get_output_counts(graph)
         self.assertEqual(output_counts, {"operation": 2, "add": 1, "multiply": 1})
 
     def test_get_workflow_dict(self):
@@ -247,9 +247,9 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(result, ref_data, msg=result)
 
     def test_parallel_execution(self):
-        analyzer = analyze_function(parallel_execution)
+        graph = analyze_function(parallel_execution)[0]
         self.assertEqual(
-            find_parallel_execution_levels(analyzer.graph),
+            find_parallel_execution_levels(graph),
             [
                 ["a_0", "b_0"],
                 ["add_0", "multiply_0"],
