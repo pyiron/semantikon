@@ -163,13 +163,22 @@ def _get_node_outputs(func, counts):
         return {"output": outputs}
 
 
-def _get_output_counts(data):
+def _get_output_counts(graph: nx.DiGraph) -> dict:
+    """
+    Get the number of outputs for each node in the graph.
+
+    Args:
+        graph (nx.DiGraph): The directed graph representing the function.
+
+    Returns:
+        dict: A dictionary mapping node names to the number of outputs.
+    """
     f_dict = {}
-    for edge in data:
+    for edge in graph.edges.data():
         if edge[2]["type"] != "output":
             continue
         f_name = "_".join(edge[0].split("_")[:-1])
-        if f_name not in f_dict or f_dict[f_name] < edge[2].get("output_index", 0) + 1:
+        if f_dict.get(f_name, -1) < edge[2].get("output_index", 0) + 1:
             f_dict[f_name] = edge[2].get("output_index", 0) + 1
     return f_dict
 
@@ -322,7 +331,7 @@ def separate_functions(data, function_dict=None):
 
 def get_workflow_dict(func):
     analyzer = analyze_function(func)
-    output_counts = _get_output_counts(analyzer.graph.edges.data())
+    output_counts = _get_output_counts(analyzer)
     nodes = _get_nodes(analyzer.function_defs, output_counts)
     data = {
         "inputs": parse_input_args(func),
