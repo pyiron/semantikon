@@ -90,6 +90,12 @@ class FunctionDictFlowAnalyzer:
     def _visit_node(self, node):
         if node["_type"] == "Assign":
             self._handle_assign(node)
+        elif node["_type"] == "While":
+            self._handle_while(node)
+
+    def _handle_while(self, node):
+        if node["test"]["_type"] != "Call":
+            raise NotImplementedError("Only function calls allowed in while test")
 
     def _handle_assign(self, node):
         value = node["value"]
