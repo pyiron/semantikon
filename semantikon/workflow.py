@@ -24,6 +24,40 @@ def ast_from_dict(d):
         return d
 
 
+def _extract_variables_from_ast_body(body: dict) -> tuple[set, set]:
+    """
+    Extracts assigned and used variables from the AST body.
+
+    Args:
+        body (list): The body of the AST function.
+
+    Returns:
+        tuple: A tuple containing two sets:
+            - assigned_vars: Set of variable names assigned in the body.
+            - used_vars: Set of variable names used in the body.
+    """
+    assigned_vars = set()
+    used_vars = set()
+
+    for node in body:
+        if node["_type"] == "Assign":
+            # Handle left-hand side (targets)
+            for target in node["targets"]:
+                if target["_type"] == "Name":
+                    assigned_vars.add(target["id"])
+                elif target["_type"] == "Tuple":
+                    for elt in target["elts"]:
+                        if elt["_type"] == "Name":
+                            assigned_vars.add(elt["id"])
+
+            # Handle right-hand side (value)
+            if node["value"]["_type"] == "Call":
+                for arg in node["value"]["args"]:
+                    if arg["_type"] == "Name":
+                        used_vars.add(arg["id"])
+    return assigned_vars, used_vars
+
+
 def _function_to_ast_dict(node):
     if isinstance(node, ast.AST):
         result = {"_type": type(node).__name__}

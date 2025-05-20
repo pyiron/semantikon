@@ -3,6 +3,8 @@ import unittest
 
 from semantikon.typing import u
 from semantikon.workflow import (
+    _extract_variables_from_ast_body,
+    _function_to_ast_dict,
     _get_output_counts,
     analyze_function,
     ast_from_dict,
@@ -330,6 +332,14 @@ class TestWorkflow(unittest.TestCase):
             "comparators": [{"_type": "Constant", "value": 0, "kind": None}],
         }
         self.assertEqual(ast.unparse(ast_from_dict(d)), "x < 0")
+
+    def test_extract_variables_from_ast_body(self):
+        body = _function_to_ast_dict(
+            ast.parse("x = g(y)\ny = h(Z)\nz = f(x, y)").body
+        )
+        variables = _extract_variables_from_ast_body(body)
+        self.assertEqual(variables[0], {"x", "y", "z"})
+        self.assertEqual(variables[1], {"y", "Z", "x"})
 
 
 if __name__ == "__main__":
