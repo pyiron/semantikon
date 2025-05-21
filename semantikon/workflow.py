@@ -222,7 +222,26 @@ def _remove_index(s):
     return "_".join(s.split("_")[:-1])
 
 
-def _get_sorted_edges(graph):
+def _get_sorted_edges(graph: nx.DiGraph) -> list:
+    """
+    Sort the edges of the graph based on the topological order of the nodes.
+
+    Args:
+        graph (nx.DiGraph): The directed graph representing the function.
+
+    Returns:
+        list: A sorted list of edges in the graph.
+
+    Example:
+
+    >>> graph.add_edges_from([('A', 'B'), ('B', 'D'), ('A', 'C'), ('C', 'D')])
+    >>> sorted_edges = _get_sorted_edges(graph)
+    >>> print(sorted_edges)
+
+    Output:
+
+    >>> [('A', 'B', {}), ('A', 'C', {}), ('B', 'D', {}), ('C', 'D', {})]
+    """
     topo_order = list(topological_sort(graph))
     node_order = {node: i for i, node in enumerate(topo_order)}
     return sorted(graph.edges.data(), key=lambda edge: node_order[edge[0]])

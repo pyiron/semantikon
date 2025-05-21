@@ -1,9 +1,12 @@
 import ast
 import unittest
 
+import networkx as nx
+
 from semantikon.typing import u
 from semantikon.workflow import (
     _get_output_counts,
+    _get_sorted_edges,
     analyze_function,
     ast_from_dict,
     find_parallel_execution_levels,
@@ -330,6 +333,15 @@ class TestWorkflow(unittest.TestCase):
             "comparators": [{"_type": "Constant", "value": 0, "kind": None}],
         }
         self.assertEqual(ast.unparse(ast_from_dict(d)), "x < 0")
+
+    def test_get_sorted_edges(self):
+        graph = nx.DiGraph()
+        graph.add_edges_from([("A", "B"), ("B", "D"), ("A", "C"), ("C", "D")])
+        sorted_edges = _get_sorted_edges(graph)
+        self.assertEqual(
+            sorted_edges,
+            [("A", "B", {}), ("A", "C", {}), ("B", "D", {}), ("C", "D", {})],
+        )
 
 
 if __name__ == "__main__":
