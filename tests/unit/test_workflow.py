@@ -336,11 +336,11 @@ class TestWorkflow(unittest.TestCase):
 
     def test_get_sorted_edges(self):
         graph = nx.DiGraph()
-        graph.add_edges_from([('A', 'B'), ('B', 'D'), ('A', 'C'), ('C', 'D')])
+        graph.add_edges_from([("A", "B"), ("B", "D"), ("A", "C"), ("C", "D")])
         sorted_edges = _get_sorted_edges(graph)
         self.assertEqual(
             sorted_edges,
-            [('A', 'B', {}), ('A', 'C', {}), ('B', 'D', {}), ('C', 'D', {})]
+            [("A", "B", {}), ("A", "C", {}), ("B", "D", {}), ("C", "D", {})],
         )
 
 
