@@ -289,7 +289,7 @@ def _get_sorted_edges(graph: nx.DiGraph) -> list:
 
 def _get_data_edges(graph, functions, func):
     input_dict = {
-        name: list(parse_input_args(func).keys()) for name, func in functions.items()
+        name: list(parse_input_args(f).keys()) for name, f in functions.items()
     }
     output_labels = list(_get_workflow_outputs(func).keys())
     data_edges = []
