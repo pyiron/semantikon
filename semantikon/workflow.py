@@ -399,19 +399,39 @@ def separate_functions(data, function_dict=None):
     return data, function_dict
 
 
+def _to_data_dict(inputs, outputs, nodes, data_edges, label):
+    assert isinstance(inputs, dict)
+    assert all(isinstance(v, dict) for v in inputs.values())
+    assert isinstance(outputs, dict)
+    assert all(isinstance(v, dict) for v in outputs.values())
+    assert isinstance(nodes, dict)
+    assert all(isinstance(v, dict) for v in nodes.values())
+    assert all("inputs" in v for v in nodes.values())
+    assert all("outputs" in v for v in nodes.values())
+    assert all("function" in v or "nodes" in v for v in nodes.values())
+    assert isinstance(data_edges, list)
+    assert all(isinstance(edge, list) and len(edge) == 2 for edge in data_edges)
+    assert isinstance(label, str)
+    return {
+        "inputs": inputs,
+        "outputs": outputs,
+        "nodes": nodes,
+        "data_edges": data_edges,
+        "label": label,
+    }
+
+
 def get_workflow_dict(func):
     graph, f_dict = analyze_function(func)
     output_counts = _get_output_counts(graph)
-    nodes = _get_nodes(f_dict, output_counts)
     output_labels = list(_get_workflow_outputs(func).keys())
-    data = {
-        "inputs": parse_input_args(func),
-        "outputs": _get_workflow_outputs(func),
-        "nodes": nodes,
-        "data_edges": _get_data_edges(graph, f_dict, output_labels),
-        "label": func.__name__,
-    }
-    return data
+    return _to_data_dict(
+        parse_input_args(func),
+        _get_workflow_outputs(func),
+        _get_nodes(f_dict, output_counts),
+        _get_data_edges(graph, f_dict, output_labels),
+        func.__name__,
+    )
 
 
 def _get_missing_edges(edges):
