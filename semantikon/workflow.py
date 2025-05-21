@@ -410,7 +410,9 @@ def _to_data_dict(inputs, outputs, nodes, data_edges, label):
     assert all(isinstance(v, dict) for v in nodes.values())
     assert all("inputs" in v for v in nodes.values())
     assert all("outputs" in v for v in nodes.values())
-    assert all("function" in v or "nodes" in v for v in nodes.values())
+    assert all(
+        "function" in v or ("nodes" in v and "data_edges" in v) for v in nodes.values()
+    )
     assert isinstance(data_edges, list)
     assert all(isinstance(edge, list) and len(edge) == 2 for edge in data_edges)
     assert isinstance(label, str)
