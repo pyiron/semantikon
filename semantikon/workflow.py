@@ -105,7 +105,9 @@ def get_return_variables(func):
 
 
 class FunctionDictFlowAnalyzer:
-    def __init__(self, ast_dict, scope, input_vars=[]):
+    def __init__(self, ast_dict, scope, input_vars=None):
+        if input_vars is None:
+            input_vars = []
         self.graph = nx.DiGraph()
         self.scope = scope  # mapping from function names to objects
         self.function_defs = {}
