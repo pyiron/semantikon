@@ -262,7 +262,7 @@ def _remove_index(s):
     return "_".join(s.split("_")[:-1])
 
 
-def _get_sorted_edges(graph):
+def _get_sorted_edges(graph: nx.DiGraph) -> list:
     topo_order = list(topological_sort(graph))
     node_order = {node: i for i, node in enumerate(topo_order)}
     return sorted(graph.edges.data(), key=lambda edge: node_order[edge[0]])
