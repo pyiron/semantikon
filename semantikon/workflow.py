@@ -287,11 +287,10 @@ def _get_sorted_edges(graph: nx.DiGraph) -> list:
     return sorted(graph.edges.data(), key=lambda edge: node_order[edge[0]])
 
 
-def _get_data_edges(graph, functions, func):
+def _get_data_edges(graph, functions, output_labels):
     input_dict = {
         name: list(parse_input_args(f).keys()) for name, f in functions.items()
     }
-    output_labels = list(_get_workflow_outputs(func).keys())
     data_edges = []
     output_dict = {}
     ordered_edges = _get_sorted_edges(graph)
@@ -404,11 +403,12 @@ def get_workflow_dict(func):
     graph, f_dict = analyze_function(func)
     output_counts = _get_output_counts(graph)
     nodes = _get_nodes(f_dict, output_counts)
+    output_labels = list(_get_workflow_outputs(func).keys())
     data = {
         "inputs": parse_input_args(func),
         "outputs": _get_workflow_outputs(func),
         "nodes": nodes,
-        "data_edges": _get_data_edges(graph, f_dict, func),
+        "data_edges": _get_data_edges(graph, f_dict, output_labels),
         "label": func.__name__,
     }
     return data
