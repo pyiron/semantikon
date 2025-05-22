@@ -140,9 +140,6 @@ class FunctionDictFlowAnalyzer:
         if node["iter"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
 
-        injected_for_loop = lambda x: x
-        func_name = self_get_unique_func_name("injected_for_loop")
-
     def _handle_assign(self, node):
         value = node["value"]
         if value["_type"] != "Call":
