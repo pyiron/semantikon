@@ -128,9 +128,15 @@ class FunctionDictFlowAnalyzer:
             self._handle_assign(node)
         elif node["_type"] == "While":
             self._handle_while(node)
+        elif node["_type"] == "For":
+            self._handle_for(node)
 
     def _handle_while(self, node):
         if node["test"]["_type"] != "Call":
+            raise NotImplementedError("Only function calls allowed in while test")
+
+    def _handle_for(self, node):
+        if node["iter"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
 
     def _handle_assign(self, node):
@@ -401,7 +407,7 @@ def separate_functions(data, function_dict=None):
     return data, function_dict
 
 
-def _to_data_dict(inputs, outputs, nodes, data_edges, label):
+def _to_data_dict(inputs, outputs, nodes, data_edges, label, **kwargs):
     assert isinstance(inputs, dict)
     assert all(isinstance(v, dict) for v in inputs.values())
     assert isinstance(outputs, dict)
@@ -422,7 +428,7 @@ def _to_data_dict(inputs, outputs, nodes, data_edges, label):
         "nodes": nodes,
         "data_edges": data_edges,
         "label": label,
-    }
+    } | kwargs
 
 
 def get_workflow_dict(func):
