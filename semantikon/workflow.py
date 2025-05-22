@@ -259,11 +259,11 @@ def _get_nodes(data, output_counts):
             result[node] = data_dict
             result[node]["label"] = node
         else:
-            result[node] = {
-                "function": func,
-                "inputs": parse_input_args(func),
-                "outputs": _get_node_outputs(func, output_counts.get(node, 1)),
-            }
+            result[node] = _to_node_dict_entry(
+                func,
+                parse_input_args(func),
+                _get_node_outputs(func, output_counts.get(node, 1)),
+            )
         if hasattr(func, "_semantikon_metadata"):
             result[node].update(func._semantikon_metadata)
     return result
@@ -408,6 +408,15 @@ def separate_functions(data, function_dict=None):
         function_dict[data["function"].__name__] = data["function"]
         data["function"] = data["function"].__name__
     return data, function_dict
+
+
+def _to_node_dict_entry(function: callable, inputs: dict, outputs: dict) -> dict:
+    assert isinstance(inputs, dict)
+    assert all(isinstance(v, dict) for v in inputs.values())
+    assert isinstance(outputs, dict)
+    assert all(isinstance(v, dict) for v in outputs.values())
+    assert callable(function)
+    return {"function": function, "inputs": inputs, "outputs": outputs}
 
 
 def _to_workflow_dict_entry(inputs, outputs, nodes, data_edges, label, **kwargs):
