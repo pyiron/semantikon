@@ -1,4 +1,5 @@
 import ast
+import builtins
 import copy
 import inspect
 import warnings
@@ -208,7 +209,7 @@ def get_ast_dict(func: callable) -> dict:
 def analyze_function(func):
     """Extracts the variable flow graph from a function"""
     ast_dict = get_ast_dict(func)
-    scope = inspect.getmodule(func).__dict__
+    scope = inspect.getmodule(func).__dict__ | vars(builtins)
     analyzer = FunctionDictFlowAnalyzer(ast_dict["body"][0], scope)
     return analyzer.analyze()
 
@@ -448,11 +449,11 @@ def get_workflow_dict(func):
     output_counts = _get_output_counts(graph)
     output_labels = list(_get_workflow_outputs(func).keys())
     return _to_workflow_dict_entry(
-        parse_input_args(func),
-        _get_workflow_outputs(func),
-        _get_nodes(f_dict, output_counts),
-        _get_data_edges(graph, f_dict, output_labels),
-        func.__name__,
+        inputs=parse_input_args(func),
+        outputs=_get_workflow_outputs(func),
+        nodes=_get_nodes(f_dict, output_counts),
+        data_edges=_get_data_edges(graph, f_dict, output_labels),
+        label=func.__name__,
     )
 
 
