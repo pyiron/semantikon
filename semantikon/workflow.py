@@ -139,6 +139,9 @@ class FunctionDictFlowAnalyzer:
         if node["iter"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
 
+        injected_for_loop = lambda x: x
+        func_name = self_get_unique_func_name("injected_for_loop")
+
     def _handle_assign(self, node):
         value = node["value"]
         if value["_type"] != "Call":
@@ -407,7 +410,7 @@ def separate_functions(data, function_dict=None):
     return data, function_dict
 
 
-def _to_data_dict(inputs, outputs, nodes, data_edges, label, **kwargs):
+def _to_workflow_dict_entry(inputs, outputs, nodes, data_edges, label, **kwargs):
     assert isinstance(inputs, dict)
     assert all(isinstance(v, dict) for v in inputs.values())
     assert isinstance(outputs, dict)
@@ -435,7 +438,7 @@ def get_workflow_dict(func):
     graph, f_dict = analyze_function(func)
     output_counts = _get_output_counts(graph)
     output_labels = list(_get_workflow_outputs(func).keys())
-    return _to_data_dict(
+    return _to_workflow_dict_entry(
         parse_input_args(func),
         _get_workflow_outputs(func),
         _get_nodes(f_dict, output_counts),
