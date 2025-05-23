@@ -268,7 +268,7 @@ def _get_data_edges(graph, functions, func):
             else:
                 tag = f"{edge[0]}.outputs.output"
             if _remove_index(edge[1]) in output_labels:
-                data_edges.append([tag, f"outputs.{_remove_index(edge[1])}"])
+                data_edges.append((tag, f"outputs.{_remove_index(edge[1])}"))
             else:
                 output_dict[edge[1]] = tag
         else:
@@ -282,7 +282,7 @@ def _get_data_edges(graph, functions, func):
                 target = (
                     f"{edge[1]}.inputs.{input_dict[edge[1]][edge[2]['input_index']]}"
                 )
-            data_edges.append([source, target])
+            data_edges.append((source, target))
     return data_edges
 
 
@@ -381,9 +381,9 @@ def _get_missing_edges(edges):
             if len(tag.split(".")) < 3:
                 continue
             if tag.split(".")[1] == "inputs":
-                new_edge = [tag, tag.split(".")[0]]
+                new_edge = (tag, tag.split(".")[0])
             elif tag.split(".")[1] == "outputs":
-                new_edge = [tag.split(".")[0], tag]
+                new_edge = (tag.split(".")[0], tag)
             if new_edge not in extra_edges:
                 extra_edges.append(new_edge)
     return extra_edges
