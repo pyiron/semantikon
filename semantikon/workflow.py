@@ -430,7 +430,7 @@ def _to_workflow_dict_entry(inputs, outputs, nodes, data_edges, label, **kwargs)
         "function" in v or ("nodes" in v and "data_edges" in v) for v in nodes.values()
     )
     assert isinstance(data_edges, list)
-    assert all(isinstance(edge, list) and len(edge) == 2 for edge in data_edges)
+    assert all(isinstance(edge, tuple) and len(edge) == 2 for edge in data_edges)
     assert isinstance(label, str)
     return {
         "inputs": inputs,
