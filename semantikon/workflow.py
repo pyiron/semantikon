@@ -433,6 +433,9 @@ def separate_functions(data, function_dict=None):
     elif "function" in data and not isinstance(data["function"], str):
         function_dict[data["function"].__name__] = data["function"]
         data["function"] = data["function"].__name__
+    if "test" in data and not isinstance(data["test"]["function"], str):
+        function_dict[data["test"]["function"].__name__] = data["test"]["function"]
+        data["test"]["function"] = data["test"]["function"].__name__
     return data, function_dict
 
 
