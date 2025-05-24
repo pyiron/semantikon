@@ -365,7 +365,7 @@ class TestWorkflow(unittest.TestCase):
 
     def test_workflow_with_while(self):
         wf = workflow(workflow_with_while)._semantikon_workflow
-        self.assertIn("injected_while_loop", wf["nodes"])
+        self.assertIn("injected_while_loop_0", wf["nodes"])
 
 
 if __name__ == "__main__":
