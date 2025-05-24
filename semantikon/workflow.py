@@ -368,7 +368,9 @@ def _get_data_edges(graph, functions, output_labels):
         if edge[2]["type"] == "output":
             if hasattr(functions[edge[0]]["function"], "_semantikon_workflow"):
                 keys = list(
-                    functions[edge[0]]["function"]._semantikon_workflow["outputs"].keys()
+                    functions[edge[0]]["function"]
+                    ._semantikon_workflow["outputs"]
+                    .keys()
                 )
                 output_index = 0
                 if "output_index" in edge[2]:
