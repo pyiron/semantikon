@@ -1,4 +1,5 @@
 import ast
+import json
 import unittest
 
 import networkx as nx
@@ -72,6 +73,18 @@ def example_invalid_multiple_operation(a=10, b=20):
 def example_invalid_local_var_def(a=10, b=20):
     result = add(a, 2)
     return result
+
+
+def my_while_condition(a=10, b=20):
+    return a < b
+
+
+def workflow_with_while(a=10, b=20):
+    x = add(a, b)
+    while my_while_condition(x, b):
+        x = add(a, b)
+        b = multiply(a, b)
+    return b
 
 
 class ApeClass:
@@ -350,6 +363,10 @@ class TestWorkflow(unittest.TestCase):
             sorted_edges,
             [("A", "B", {}), ("A", "C", {}), ("B", "D", {}), ("C", "D", {})],
         )
+
+    def test_workflow_with_while(self):
+        wf = workflow(workflow_with_while)._semantikon_workflow
+        self.assertIn("injected_while_loop", wf["nodes"])
 
 
 if __name__ == "__main__":
