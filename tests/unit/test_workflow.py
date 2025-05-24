@@ -5,6 +5,8 @@ import networkx as nx
 
 from semantikon.typing import u
 from semantikon.workflow import (
+    _extract_variables_from_ast_body,
+    _function_to_ast_dict,
     _get_output_counts,
     _get_sorted_edges,
     analyze_function,
@@ -70,6 +72,18 @@ def example_invalid_multiple_operation(a=10, b=20):
 def example_invalid_local_var_def(a=10, b=20):
     result = add(a, 2)
     return result
+
+
+def my_while_condition(a=10, b=20):
+    return a < b
+
+
+def workflow_with_while(a=10, b=20):
+    x = add(a, b)
+    while my_while_condition(x, b):
+        x = add(a, b)
+        b = multiply(a, b)
+    return b
 
 
 class ApeClass:
@@ -334,6 +348,12 @@ class TestWorkflow(unittest.TestCase):
         }
         self.assertEqual(ast.unparse(ast_from_dict(d)), "x < 0")
 
+    def test_extract_variables_from_ast_body(self):
+        body = _function_to_ast_dict(ast.parse("x = g(y)\ny = h(Z)\nz = f(x, y)"))
+        variables = _extract_variables_from_ast_body(body)
+        self.assertEqual(variables[0], {"x", "y", "z"})
+        self.assertEqual(variables[1], {"y", "Z", "x"})
+
     def test_get_sorted_edges(self):
         graph = nx.DiGraph()
         graph.add_edges_from([("A", "B"), ("B", "D"), ("A", "C"), ("C", "D")])
@@ -342,6 +362,10 @@ class TestWorkflow(unittest.TestCase):
             sorted_edges,
             [("A", "B", {}), ("A", "C", {}), ("B", "D", {}), ("C", "D", {})],
         )
+
+    def test_workflow_with_while(self):
+        wf = workflow(workflow_with_while)._semantikon_workflow
+        self.assertIn("injected_while_loop", wf["nodes"])
 
 
 if __name__ == "__main__":
