@@ -82,7 +82,7 @@ def workflow_with_while(a=10, b=20):
     x = add(a, b)
     while my_while_condition(x, b):
         x = add(a, b)
-        b = multiply(a, b)
+        b = multiply(a, x)
     return b
 
 
@@ -366,6 +366,23 @@ class TestWorkflow(unittest.TestCase):
     def test_workflow_with_while(self):
         wf = workflow(workflow_with_while)._semantikon_workflow
         self.assertIn("injected_while_loop_0", wf["nodes"])
+        self.maxDiff = None
+        print(wf["nodes"]["injected_while_loop_0"]["data_edges"])
+        self.assertEqual(
+            sorted(wf["nodes"]["injected_while_loop_0"]["data_edges"]),
+            sorted(
+                [
+                    ("inputs.x", "test.inputs.a"),
+                    ("inputs.b", "test.inputs.b"),
+                    ("inputs.b", "add_0.inputs.y"),
+                    ("inputs.a", "add_0.inputs.x"),
+                    ("inputs.a", "multiply_0.inputs.x"),
+                    ("add_0.outputs.output", "multiply_0.inputs.y"),
+                    ("add_0.outputs.output", "outputs.x"),
+                    ("multiply_0.outputs.output", "outputs.b"),
+                ]
+            ),
+        )
 
 
 if __name__ == "__main__":
