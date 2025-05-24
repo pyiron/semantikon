@@ -30,7 +30,7 @@ def _extract_variables_from_ast_body(body: dict) -> tuple[set, set]:
     Extracts assigned and used variables from the AST body.
 
     Args:
-        body (list): The body of the AST function.
+        body (dict): The body of the AST function.
 
     Returns:
         tuple: A tuple containing two sets:
@@ -40,7 +40,7 @@ def _extract_variables_from_ast_body(body: dict) -> tuple[set, set]:
     assigned_vars = set()
     used_vars = set()
 
-    for node in body:
+    for node in body.get("body", []):
         if node["_type"] == "Assign":
             # Handle left-hand side (targets)
             for target in node["targets"]:
@@ -56,6 +56,12 @@ def _extract_variables_from_ast_body(body: dict) -> tuple[set, set]:
                 for arg in node["value"]["args"]:
                     if arg["_type"] == "Name":
                         used_vars.add(arg["id"])
+
+    if "test" in body:
+        if body["test"]["_type"] == "Call":
+            for arg in body["test"]["args"]:
+                if arg["_type"] == "Name":
+                    used_vars.add(arg["id"])
     return assigned_vars, used_vars
 
 
@@ -153,7 +159,7 @@ class FunctionDictFlowAnalyzer:
                 func, parse_input_args(func), {"output": parse_output_args(func)}
             )
         }
-        output_vars, input_vars = _extract_variables_from_ast_body(node["body"])
+        output_vars, input_vars = _extract_variables_from_ast_body(node)
         graph, f_dict = FunctionDictFlowAnalyzer(
             node, self.scope, input_vars=input_vars
         ).analyze()
