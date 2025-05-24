@@ -105,8 +105,9 @@ def get_return_variables(func):
     return []
 
 
-def injected_while_loop(x):
-    return x
+class InjectedLoop:
+    def __init__(self, semantikon_workflow):
+        self._semantikon_workflow = semantikon_workflow
 
 
 class FunctionDictFlowAnalyzer:
@@ -161,8 +162,7 @@ class FunctionDictFlowAnalyzer:
                 label="injected_while_loop",
             )
         )
-        self.function_defs["injected_while_loop"] = injected_while_loop
-        self.function_defs["injected_while_loop"]._semantikon_workflow = while_dict
+        self.function_defs["injected_while_loop"] = InjectedLoop(while_dict)
 
     def _handle_for(self, node):
         if node["iter"]["_type"] != "Call":
@@ -325,9 +325,12 @@ def _get_sorted_edges(graph: nx.DiGraph) -> list:
 
 
 def _get_data_edges(graph, functions, output_labels):
-    input_dict = {
-        name: list(parse_input_args(f).keys()) for name, f in functions.items()
-    }
+    input_dict = {}
+    for name, f in functions.items():
+        if hasattr(f, "_semantikon_workflow"):
+            input_dict[name] = list(f._semantikon_workflow["inputs"].keys())
+        else:
+            input_dict[name] = list(parse_input_args(f).keys())
     data_edges = []
     output_dict = {}
     ordered_edges = _get_sorted_edges(graph)
