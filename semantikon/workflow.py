@@ -130,6 +130,7 @@ class FunctionDictFlowAnalyzer:
                 self.ast_dict["test"],
                 func_name=self.ast_dict["test"]["func"]["id"],
                 unique_func_name="test",
+                f_type="While",
             )
         for node in self.ast_dict.get("body", []):
             self._visit_node(node)
@@ -168,7 +169,10 @@ class FunctionDictFlowAnalyzer:
                 label="injected_while_loop",
             )
         )
-        self.function_defs["injected_while_loop"] = InjectedLoop(while_dict)
+        self.function_defs["injected_while_loop"] = {
+            "function": InjectedLoop(while_dict),
+            "type": "Assign",
+        }
 
     def _handle_for(self, node):
         if node["iter"]["_type"] != "Call":
@@ -180,7 +184,9 @@ class FunctionDictFlowAnalyzer:
         # Parse outputs
         self._parse_outputs(node["targets"], unique_func_name)
 
-    def _parse_function_call(self, value, func_name=None, unique_func_name=None):
+    def _parse_function_call(
+        self, value, func_name=None, unique_func_name=None, f_type="Assign"
+    ):
         if value["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed on RHS")
 
@@ -196,7 +202,10 @@ class FunctionDictFlowAnalyzer:
         if func_name not in self.scope:
             raise ValueError(f"Function {func_name} not found in scope")
 
-        self.function_defs[unique_func_name] = self.scope[func_name]
+        self.function_defs[unique_func_name] = {
+            "function": self.scope[func_name],
+            "type": f_type,
+        }
 
         # Parse inputs (positional + keyword)
         for i, arg in enumerate(value.get("args", [])):
@@ -290,7 +299,10 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
 
 def _get_nodes(data, output_counts):
     result = {}
-    for node, func in data.items():
+    for node, function in data.items():
+        if function["type"] != "Assign":
+            continue
+        func = function["function"]
         if hasattr(func, "_semantikon_workflow"):
             data_dict = func._semantikon_workflow.copy()
             result[node] = data_dict
@@ -337,7 +349,8 @@ def _get_sorted_edges(graph: nx.DiGraph) -> list:
 
 def _get_data_edges(graph, functions, output_labels):
     input_dict = {}
-    for name, f in functions.items():
+    for name, func in functions.items():
+        f = func["function"]
         if hasattr(f, "_semantikon_workflow"):
             input_dict[name] = list(f._semantikon_workflow["inputs"].keys())
         else:
@@ -347,8 +360,10 @@ def _get_data_edges(graph, functions, output_labels):
     ordered_edges = _get_sorted_edges(graph)
     for edge in ordered_edges:
         if edge[2]["type"] == "output":
-            if hasattr(functions[edge[0]], "_semantikon_workflow"):
-                keys = list(functions[edge[0]]._semantikon_workflow["outputs"].keys())
+            if hasattr(functions[edge[0]]["function"], "_semantikon_workflow"):
+                keys = list(
+                    functions[edge[0]]["function"]._semantikon_workflow["outputs"].keys()
+                )
                 output_index = 0
                 if "output_index" in edge[2]:
                     output_index = edge[2]["output_index"]
