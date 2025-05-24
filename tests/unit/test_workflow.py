@@ -1,5 +1,4 @@
 import ast
-import json
 import unittest
 
 import networkx as nx
