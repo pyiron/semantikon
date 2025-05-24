@@ -125,10 +125,14 @@ class FunctionDictFlowAnalyzer:
         for arg in self.ast_dict.get("args", {}).get("args", []):
             if arg["_type"] == "arg":
                 self._var_index[arg["arg"]] = 0
+        if "test" in self.ast_dict:
+            self._parse_function_call(
+                self.ast_dict["test"],
+                func_name=self.ast_dict["test"]["func"]["id"],
+                unique_func_name="test",
+            )
         for node in self.ast_dict.get("body", []):
             self._visit_node(node)
-        if "test" in self.ast_dict:
-            self._parse_function_call(self.ast_dict["test"])
         return self.graph, self.function_defs
 
     def _visit_node(self, node):
@@ -176,7 +180,7 @@ class FunctionDictFlowAnalyzer:
         # Parse outputs
         self._parse_outputs(node["targets"], unique_func_name)
 
-    def _parse_function_call(self, value):
+    def _parse_function_call(self, value, func_name=None, unique_func_name=None):
         if value["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed on RHS")
 
@@ -184,8 +188,10 @@ class FunctionDictFlowAnalyzer:
         if func_node["_type"] != "Name":
             raise NotImplementedError("Only simple functions allowed")
 
-        func_name = func_node["id"]
-        unique_func_name = self._get_unique_func_name(func_name)
+        if func_name is None:
+            func_name = func_node["id"]
+        if unique_func_name is None:
+            unique_func_name = self._get_unique_func_name(func_name)
 
         if func_name not in self.scope:
             raise ValueError(f"Function {func_name} not found in scope")
