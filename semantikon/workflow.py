@@ -127,6 +127,8 @@ class FunctionDictFlowAnalyzer:
                 self._var_index[arg["arg"]] = 0
         for node in self.ast_dict.get("body", []):
             self._visit_node(node)
+        if "test" in self.ast_dict:
+            self._parse_function_call(self.ast_dict["test"])
         return self.graph, self.function_defs
 
     def _visit_node(self, node):
@@ -170,6 +172,11 @@ class FunctionDictFlowAnalyzer:
 
     def _handle_assign(self, node):
         value = node["value"]
+        called_func = self._parse_function_call(value)
+        # Parse outputs
+        self._parse_outputs(node["targets"], called_func)
+
+    def _parse_function_call(self, value):
         if value["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed on RHS")
 
@@ -190,9 +197,8 @@ class FunctionDictFlowAnalyzer:
             self._add_input_edge(arg, called_func, input_index=i)
         for kw in value.get("keywords", []):
             self._add_input_edge(kw["value"], called_func, input_name=kw["arg"])
+        return called_func
 
-        # Parse outputs
-        self._parse_outputs(node["targets"], called_func)
 
     def _parse_outputs(self, targets, called_func):
         if len(targets) == 1 and targets[0]["_type"] == "Tuple":
