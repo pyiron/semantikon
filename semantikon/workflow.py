@@ -199,7 +199,6 @@ class FunctionDictFlowAnalyzer:
             self._add_input_edge(kw["value"], called_func, input_name=kw["arg"])
         return called_func
 
-
     def _parse_outputs(self, targets, called_func):
         if len(targets) == 1 and targets[0]["_type"] == "Tuple":
             for idx, elt in enumerate(targets[0]["elts"]):
