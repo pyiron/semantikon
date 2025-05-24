@@ -105,6 +105,10 @@ def get_return_variables(func):
     return []
 
 
+def injected_while_loop(x):
+    return x
+
+
 class FunctionDictFlowAnalyzer:
     def __init__(self, ast_dict, scope, input_vars=None):
         if input_vars is None:
@@ -135,6 +139,30 @@ class FunctionDictFlowAnalyzer:
     def _handle_while(self, node):
         if node["test"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
+        func = self.scope[node["test"]["func"]["id"]]
+        while_dict = {
+            "test": _to_node_dict_entry(
+                func, parse_input_args(func), {"output": parse_output_args(func)}
+            )
+        }
+        output_vars, input_vars = _extract_variables_from_ast_body(node["body"])
+        graph, f_dict = FunctionDictFlowAnalyzer(
+            node, self.scope, input_vars=input_vars
+        ).analyze()
+        output_counts = _get_output_counts(graph)
+        nodes = _get_nodes(f_dict, output_counts)
+        data_edges = _get_data_edges(graph, f_dict, output_vars)
+        while_dict.update(
+            _to_workflow_dict_entry(
+                inputs={key: {} for key in input_vars},
+                outputs={key: {} for key in output_vars},
+                nodes=nodes,
+                data_edges=data_edges,
+                label="injected_while_loop",
+            )
+        )
+        self.function_defs["injected_while_loop"] = injected_while_loop
+        self.function_defs["injected_while_loop"]._semantikon_workflow = while_dict
 
     def _handle_for(self, node):
         if node["iter"]["_type"] != "Call":
