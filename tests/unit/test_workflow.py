@@ -91,6 +91,13 @@ def workflow_to_use_undefined_variable(a=10, b=20):
     return result
 
 
+def reused_args(a=10, b=20):
+    a, b = operation(a, b)
+    f = add(a, y=b)
+    f = multiply(f)
+    return f
+
+
 class TestWorkflow(unittest.TestCase):
     def test_analyzer(self):
         graph = analyze_function(example_macro)[0]
@@ -341,6 +348,13 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(
             sorted_edges,
             [("A", "B", {}), ("A", "C", {}), ("B", "D", {}), ("C", "D", {})],
+        )
+
+    def test_reused_args(self):
+        data = get_workflow_dict(reused_args)
+        self.assertEqual(
+            sorted(data["data_edges"]),
+            sorted(example_macro._semantikon_workflow["data_edges"]),
         )
 
 
