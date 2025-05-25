@@ -370,7 +370,6 @@ class TestWorkflow(unittest.TestCase):
             [("A", "B", {}), ("A", "C", {}), ("B", "D", {}), ("C", "D", {})],
         )
 
-
     def test_workflow_with_while(self):
         wf = workflow(workflow_with_while)._semantikon_workflow
         self.assertIn("injected_while_loop_0", wf["nodes"])
@@ -391,12 +390,11 @@ class TestWorkflow(unittest.TestCase):
             ),
         )
 
-
     def test_reused_args(self):
         data = get_workflow_dict(reused_args)
         self.assertEqual(
             sorted(data["data_edges"]),
-            sorted(example_macro._semantikon_workflow["data_edges"])
+            sorted(example_macro._semantikon_workflow["data_edges"]),
         )
 
 
