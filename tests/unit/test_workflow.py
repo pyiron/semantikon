@@ -354,7 +354,7 @@ class TestWorkflow(unittest.TestCase):
         data = get_workflow_dict(reused_args)
         self.assertEqual(
             sorted(data["data_edges"]),
-            sorted(example_macro._semantikon_workflow["data_edges"])
+            sorted(example_macro._semantikon_workflow["data_edges"]),
         )
 
 

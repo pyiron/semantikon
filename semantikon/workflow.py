@@ -270,7 +270,8 @@ def _get_data_edges(graph, functions, func):
                 tag = f"{edge[0]}.outputs.output"
             if _remove_index(edge[1]) in output_labels:
                 output_candidate[_remove_index(edge[1])] = (
-                    tag, f"outputs.{_remove_index(edge[1])}"
+                    tag,
+                    f"outputs.{_remove_index(edge[1])}",
                 )
             output_dict[edge[1]] = tag
         else:
