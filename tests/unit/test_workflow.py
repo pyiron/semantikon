@@ -374,6 +374,14 @@ class TestWorkflow(unittest.TestCase):
         wf = workflow(workflow_with_while)._semantikon_workflow
         self.assertIn("injected_while_loop_0", wf["nodes"])
         self.assertEqual(
+            sorted(wf["nodes"]["injected_while_loop_0"]["inputs"].keys()),
+            ["a", "b", "x"],
+        )
+        self.assertEqual(
+            sorted(wf["nodes"]["injected_while_loop_0"]["outputs"].keys()),
+            ["b", "x"],
+        )
+        self.assertEqual(
             sorted(wf["nodes"]["injected_while_loop_0"]["data_edges"]),
             sorted(
                 [
