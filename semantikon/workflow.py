@@ -184,6 +184,35 @@ class FunctionDictFlowAnalyzer:
     def _handle_for(self, node):
         if node["iter"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
+        func = self.scope[node["iter"]["func"]["id"]]
+        for_dict = {
+            "iter": _to_node_dict_entry(
+                func, parse_input_args(func), {"output": parse_output_args(func)}
+            )
+        }
+        output_vars, input_vars = _extract_variables_from_ast_body(node)
+        input_vars = list(input_vars) + [node["iter"]["args"][0]["id"]]
+        graph, f_dict = FunctionDictFlowAnalyzer(
+            node, self.scope, input_vars=input_vars
+        ).analyze()
+        output_counts = _get_output_counts(graph)
+        nodes = _get_nodes(f_dict, output_counts)
+        data_edges = _get_data_edges(graph, f_dict, output_vars)
+        unique_func_name = self._get_unique_func_name("injected_for_loop")
+        for_dict.update(
+            _to_workflow_dict_entry(
+                inputs={key: {} for key in input_vars},
+                outputs={key: {} for key in output_vars},
+                nodes=nodes,
+                data_edges=data_edges,
+                label=unique_func_name,
+            )
+        )
+        self.function_defs[unique_func_name] = {
+            "function": InjectedLoop(for_dict),
+            "type": "Assign",
+        }
+
 
     def _handle_assign(self, node):
         value = node["value"]
