@@ -397,6 +397,8 @@ class TestWorkflow(unittest.TestCase):
                 ]
             ),
         )
+        self.assertIn("add_0", wf["nodes"]["injected_while_loop_0"]["nodes"])
+        self.assertIn("add_1", wf["nodes"]["injected_while_loop_0"]["nodes"])
 
     def test_reused_args(self):
         data = get_workflow_dict(reused_args)
