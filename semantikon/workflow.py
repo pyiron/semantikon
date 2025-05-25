@@ -254,6 +254,7 @@ def _get_data_edges(graph, functions, func):
     output_labels = list(_get_workflow_outputs(func).keys())
     data_edges = []
     output_dict = {}
+    output_candidate = {}
     ordered_edges = _get_sorted_edges(graph)
     for edge in ordered_edges:
         if edge[2]["type"] == "output":
@@ -268,9 +269,10 @@ def _get_data_edges(graph, functions, func):
             else:
                 tag = f"{edge[0]}.outputs.output"
             if _remove_index(edge[1]) in output_labels:
-                data_edges.append((tag, f"outputs.{_remove_index(edge[1])}"))
-            else:
-                output_dict[edge[1]] = tag
+                output_candidate[_remove_index(edge[1])] = (
+                    tag, f"outputs.{_remove_index(edge[1])}"
+                )
+            output_dict[edge[1]] = tag
         else:
             if edge[0] not in output_dict:
                 source = f"inputs.{_remove_index(edge[0])}"
@@ -283,6 +285,8 @@ def _get_data_edges(graph, functions, func):
                     f"{edge[1]}.inputs.{input_dict[edge[1]][edge[2]['input_index']]}"
                 )
             data_edges.append((source, target))
+    for edges in output_candidate.values():
+        data_edges.append(edges)
     return data_edges
 
 
