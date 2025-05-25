@@ -373,7 +373,6 @@ class TestWorkflow(unittest.TestCase):
     def test_workflow_with_while(self):
         wf = workflow(workflow_with_while)._semantikon_workflow
         self.assertIn("injected_while_loop_0", wf["nodes"])
-        self.maxDiff = None
         self.assertEqual(
             sorted(wf["nodes"]["injected_while_loop_0"]["data_edges"]),
             sorted(
