@@ -82,8 +82,9 @@ def workflow_with_while(a=10, b=20):
     x = add(a, b)
     while my_while_condition(x, b):
         x = add(a, b)
-        b = multiply(a, x)
-    return b
+        # Poor implementation to define variable inside the loop, but allowed
+        z = multiply(a, x)
+    return z
 
 
 class ApeClass:
@@ -379,7 +380,7 @@ class TestWorkflow(unittest.TestCase):
         )
         self.assertEqual(
             sorted(wf["nodes"]["injected_while_loop_0"]["outputs"].keys()),
-            ["b", "x"],
+            ["x", "z"],
         )
         self.assertEqual(
             sorted(wf["nodes"]["injected_while_loop_0"]["data_edges"]),
@@ -392,7 +393,7 @@ class TestWorkflow(unittest.TestCase):
                     ("inputs.a", "multiply_0.inputs.x"),
                     ("add_0.outputs.output", "multiply_0.inputs.y"),
                     ("add_0.outputs.output", "outputs.x"),
-                    ("multiply_0.outputs.output", "outputs.b"),
+                    ("multiply_0.outputs.output", "outputs.z"),
                 ]
             ),
         )
