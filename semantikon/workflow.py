@@ -364,8 +364,8 @@ def _get_data_edges(graph, functions, output_labels):
             input_dict[name] = list(parse_input_args(f).keys())
     data_edges = []
     output_dict = {}
-    ordered_edges = _get_sorted_edges(graph)
-    for edge in ordered_edges:
+    sorted_edges = _get_sorted_edges(graph)
+    for edge in sorted_edges:
         if edge[2]["type"] == "output":
             if hasattr(functions[edge[0]]["function"], "_semantikon_workflow"):
                 keys = list(
