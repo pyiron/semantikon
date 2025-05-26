@@ -12,7 +12,6 @@ from networkx.algorithms.dag import topological_sort
 
 from semantikon.converter import parse_input_args, parse_output_args
 
-
 F = TypeVar("F", bound=Callable[..., object])
 
 
