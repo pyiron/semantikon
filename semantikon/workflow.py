@@ -191,7 +191,7 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
     Returns:
         dict: A dictionary mapping node names to the number of outputs.
     """
-    f_dict = {}
+    f_dict: dict = {}
     for edge in graph.edges.data():
         if edge[2]["type"] != "output":
             continue
