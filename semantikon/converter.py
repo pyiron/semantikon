@@ -199,7 +199,7 @@ def parse_input_args(func: callable):
     }
 
 
-def parse_output_args(func: callable, separate_tuple: bool=True):
+def parse_output_args(func: callable, separate_tuple: bool = True):
     """
     Parse the output arguments of a function.
 

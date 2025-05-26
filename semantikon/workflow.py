@@ -9,7 +9,11 @@ from hashlib import sha256
 import networkx as nx
 from networkx.algorithms.dag import topological_sort
 
-from semantikon.converter import parse_input_args, parse_output_args, get_return_expressions
+from semantikon.converter import (
+    get_return_expressions,
+    parse_input_args,
+    parse_output_args,
+)
 
 
 def ast_from_dict(d):
