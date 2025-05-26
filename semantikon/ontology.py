@@ -29,7 +29,7 @@ ud = UnitsDict()
 
 
 def _translate_has_value(
-    label: URIRef,
+    label: URIRef | str | BNode,
     tag: str,
     value: Any = None,
     dtype: type | None = None,
@@ -120,7 +120,7 @@ def _validate_restriction_format(
         raise ValueError("Restrictions must be tuples of URIRefs")
 
 
-def _get_restriction_type(restriction: tuple[_rest_type]) -> str:
+def _get_restriction_type(restriction: tuple[tuple[URIRef, URIRef], ...]) -> str:
     if restriction[0][0].startswith(OWL):
         return "OWL"
     elif restriction[0][0].startswith(SH):
@@ -359,11 +359,10 @@ def _parse_channel(
     triples.append((channel_label, RDF.type, PROV.Entity))
     if channel_dict.get("uri", None) is not None:
         triples.append((channel_label, RDF.type, channel_dict["uri"]))
-    tag = edge_dict.get(*2 * [channel_label])
     triples.extend(
         _translate_has_value(
             label=channel_label,
-            tag=tag,
+            tag=str(edge_dict.get(*2 * [channel_label])),
             value=channel_dict.get("value", None),
             dtype=channel_dict.get("dtype", None),
             units=channel_dict.get("units", None),
@@ -419,7 +418,7 @@ def _get_edge_dict(edges: list) -> dict:
     return d
 
 
-def _dot(*args):
+def _dot(*args) -> str:
     return ".".join([a for a in args if a is not None])
 
 
@@ -429,7 +428,7 @@ def _convert_edge_triples(inp: str, out: str, ontology=SNS) -> tuple:
     return (inp, ontology.inheritsPropertiesFrom, out)
 
 
-def _edges_to_triples(edges: list, ontology=SNS) -> list:
+def _edges_to_triples(edges: dict, ontology=SNS) -> list:
     return [_convert_edge_triples(inp, out, ontology) for inp, out in edges.items()]
 
 
