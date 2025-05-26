@@ -6,6 +6,7 @@ from semantikon.converter import (
     parse_input_args,
     parse_metadata,
     parse_output_args,
+    get_return_expressions,
 )
 from semantikon.typing import u
 
@@ -145,6 +146,11 @@ class TestParser(unittest.TestCase):
         input_args = parse_input_args(test_more_future)
         self.assertEqual(input_args["x"]["uri"], "metadata")
         self.assertEqual(input_args["x"]["dtype"], "Atoms")
+
+    def test_get_return_expressions(self):
+        def f(x, y):
+            return x, y
+        self.assertEqual(get_return_expressions(f), ("x", "y"))
 
 
 if __name__ == "__main__":

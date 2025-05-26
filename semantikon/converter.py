@@ -2,9 +2,11 @@
 # Copyright (c) Max-Planck-Institut für Eisenforschung GmbH - Computational Materials Design (CM) Department
 # Distributed under the terms of "New BSD License", see the LICENSE file.
 
+import ast
 import inspect
 import re
 import sys
+import textwrap
 from functools import wraps
 from typing import Annotated, get_args, get_origin, get_type_hints
 
@@ -95,6 +97,42 @@ def _resolve_annotation(annotation, func_globals=None):
         args = get_args(new_annotations)
         assert len(args) == 2, "Invalid annotation format"
         return Annotated[undefined_name, args[1]]
+
+
+def _to_tag(item, count=None):
+    if isinstance(item, ast.Name):
+        return item.id
+    elif count is None:
+        return "output"
+    else:
+        return f"output_{count}"
+
+
+def get_return_expressions(func):
+    source = inspect.getsource(func)
+    source = textwrap.dedent(source)
+    parsed = ast.parse(source)
+
+    func_node = next(n for n in parsed.body if isinstance(n, ast.FunctionDef))
+
+    return_expressions = []
+
+    for node in ast.walk(func_node):
+        if isinstance(node, ast.Return):
+            value = node.value
+            if value is None:
+                return_expressions.append(['None'])
+            elif isinstance(value, ast.Tuple):
+                return_expressions.append(
+                    tuple([_to_tag(elt, ii) for ii, elt in enumerate(value.elts)])
+                )
+            else:
+                return_expressions.append(_to_tag(value))
+
+    if len(set(return_expressions)) == 1:
+        return return_expressions[0]
+    else:
+        return "output"
 
 
 def get_annotated_type_hints(func):
