@@ -1,6 +1,6 @@
 from copy import deepcopy
-from typing import Annotated, Callable, get_origin, TypeVar, Generic
 from functools import update_wrapper
+from typing import Annotated, Callable, get_origin, TypeVar, Generic
 
 from semantikon.converter import parse_metadata
 
