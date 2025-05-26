@@ -143,13 +143,20 @@ def _get_workflow_outputs(func):
 
 
 def _get_node_outputs(func, counts):
-    outputs = parse_output_args(func)
-    if outputs == {} and counts > 1:
-        outputs = counts * [{}]
-    if isinstance(outputs, tuple):
-        return {f"output_{ii}": v for ii, v in enumerate(outputs)}
-    else:
-        return {"output": outputs}
+    output_hints = parse_output_args(func, separate_tuple=counts > 1)
+    output_vars = get_return_expressions(func)
+    if len(output_vars) == 0:
+        return {}
+    if counts == 1:
+        if isinstance(output_vars, str):
+            return {output_vars: output_hints}
+        else:
+            return {"output": output_hints}
+    assert isinstance(output_vars, tuple) and len(output_vars) == counts
+    if output_hints == {}:
+        output_hints = counts * [{}]
+    assert len(output_vars) == len(output_hints)
+    return {key: value for key, value in zip(output_vars, output_hints)}
 
 
 def _get_output_counts(graph: nx.DiGraph) -> dict:

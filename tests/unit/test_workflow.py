@@ -5,6 +5,7 @@ import networkx as nx
 
 from semantikon.typing import u
 from semantikon.workflow import (
+    _get_node_outputs,
     _get_output_counts,
     _get_sorted_edges,
     analyze_function,
@@ -98,6 +99,10 @@ def reused_args(a=10, b=20):
 
 
 class TestWorkflow(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.maxDiff = None
+
     def test_analyzer(self):
         graph = analyze_function(example_macro)[0]
         all_data = [
@@ -348,6 +353,24 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(
             sorted(data["data_edges"]),
             sorted(example_macro._semantikon_workflow["data_edges"]),
+        )
+
+    def test_get_node_outputs(self):
+        self.assertEqual(
+            _get_node_outputs(operation, counts=2),
+            {"output_0": {"dtype": float}, "output_1": {"dtype": float}},
+        )
+        self.assertEqual(
+            _get_node_outputs(operation, counts=1),
+            {"output": {"dtype": tuple[float, float]}},
+        )
+        self.assertEqual(
+            _get_node_outputs(parallel_execution, counts=2),
+            {"e": {}, "f": {}},
+        )
+        self.assertEqual(
+            _get_node_outputs(parallel_execution, counts=1),
+            {"output": {}},
         )
 
 

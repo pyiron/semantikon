@@ -199,7 +199,7 @@ def parse_input_args(func: callable):
     }
 
 
-def parse_output_args(func: callable):
+def parse_output_args(func: callable, separate_tuple: bool=True):
     """
     Parse the output arguments of a function.
 
@@ -213,8 +213,7 @@ def parse_output_args(func: callable):
         more details.
     """
     ret = get_annotated_type_hints(func).get("return", inspect.Parameter.empty)
-    multiple_output = get_origin(ret) is tuple
-    if multiple_output:
+    if get_origin(ret) is tuple and separate_tuple:
         return tuple([meta_to_dict(ann) for ann in get_args(ret)])
     else:
         return meta_to_dict(ret)
