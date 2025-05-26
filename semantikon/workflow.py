@@ -227,7 +227,7 @@ def _get_sorted_edges(graph: nx.DiGraph) -> list:
     return sorted(graph.edges.data(), key=lambda edge: node_order[edge[0]])
 
 
-def _get_data_edges(graph, functions, func):
+def _get_data_edges(graph, functions, func, nodes):
     input_dict = {
         name: list(parse_input_args(ff).keys()) for name, ff in functions.items()
     }
@@ -240,14 +240,14 @@ def _get_data_edges(graph, functions, func):
         if edge[2]["type"] == "output":
             if hasattr(functions[edge[0]], "_semantikon_workflow"):
                 keys = list(functions[edge[0]]._semantikon_workflow["outputs"].keys())
-                output_index = 0
+                output_key = keys[0]
                 if "output_index" in edge[2]:
-                    output_index = edge[2]["output_index"]
-                tag = f"{edge[0]}.outputs.{keys[output_index]}"
+                    output_key = keys[edge[2]["output_index"]]
             elif "output_index" in edge[2]:
-                tag = f"{edge[0]}.outputs.output_{edge[2]['output_index']}"
+                output_key = list(nodes[edge[0]]["outputs"].keys())[edges[2]["output_index"]]
             else:
-                tag = f"{edge[0]}.outputs.output"
+                output_key = list(nodes[edge[0]]["outputs"].keys())[0]
+            tag = f"{edge[0]}.outputs.{output_key}"
             if _remove_index(edge[1]) in output_labels:
                 output_candidate[_remove_index(edge[1])] = (
                     tag,
@@ -353,7 +353,7 @@ def get_workflow_dict(func):
         "inputs": parse_input_args(func),
         "outputs": _get_workflow_outputs(func),
         "nodes": nodes,
-        "data_edges": _get_data_edges(graph, f_dict, func),
+        "data_edges": _get_data_edges(graph, f_dict, func, nodes),
         "label": func.__name__,
     }
     return data

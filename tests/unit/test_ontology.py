@@ -295,13 +295,13 @@ class TestOntology(unittest.TestCase):
         subj = list(
             graph.subjects(
                 SNS.hasValue,
-                URIRef("get_macro.add_three_0.add_two_0.outputs.output.value"),
+                URIRef("get_macro.add_three_0.add_two_0.outputs.result.value"),
             )
         )
         self.assertEqual(len(subj), 3)
         for ii, tag in enumerate(
             [
-                "add_three_0.add_two_0.outputs.output",
+                "add_three_0.add_two_0.outputs.result",
                 "add_three_0.outputs.w",
                 "add_one_0.inputs.a",
             ]
@@ -314,7 +314,7 @@ class TestOntology(unittest.TestCase):
         prefix = "get_macro.add_three_0"
         sub_obj = [
             ("add_one_0.inputs.a", "inputs.c"),
-            ("outputs.w", "add_two_0.outputs.output"),
+            ("outputs.w", "add_two_0.outputs.result"),
         ]
         sub_obj = [(prefix + "." + s, prefix + "." + o) for s, o in sub_obj]
         self.assertEqual(len(same_as), 4)
@@ -332,7 +332,7 @@ class TestOntology(unittest.TestCase):
         @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
         <get_macro.add_one_0.inputs.a> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.output.value> ;
+            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
             ns1:inheritsPropertiesFrom <get_macro.add_three_0.outputs.w> ;
             ns1:inputOf <get_macro.add_one_0> ;
             ns1:outputOf <get_macro.add_three_0> .
@@ -343,26 +343,26 @@ class TestOntology(unittest.TestCase):
             owl:sameAs <get_macro.add_three_0.inputs.c> .
 
         <get_macro.add_three_0.add_two_0.inputs.b> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.output.value> ;
-            ns1:inheritsPropertiesFrom <get_macro.add_three_0.add_one_0.outputs.output> ;
+            ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> ;
+            ns1:inheritsPropertiesFrom <get_macro.add_three_0.add_one_0.outputs.result> ;
             ns1:inputOf <get_macro.add_three_0.add_two_0> ;
             ns1:outputOf <get_macro.add_three_0.add_one_0> .
 
         <get_macro.outputs.result> a prov:Entity ;
-            ns1:hasValue <get_macro.add_one_0.outputs.output.value> ;
+            ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
             ns1:outputOf <get_macro> ;
-            owl:sameAs <get_macro.add_one_0.outputs.output> .
+            owl:sameAs <get_macro.add_one_0.outputs.result> .
 
-        <get_macro.add_one_0.outputs.output> a prov:Entity ;
-            ns1:hasValue <get_macro.add_one_0.outputs.output.value> ;
+        <get_macro.add_one_0.outputs.result> a prov:Entity ;
+            ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
             ns1:outputOf <get_macro.add_one_0> .
 
-        <get_macro.add_three_0.add_one_0.outputs.output> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.output.value> ;
+        <get_macro.add_three_0.add_one_0.outputs.result> a prov:Entity ;
+            ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> ;
             ns1:outputOf <get_macro.add_three_0.add_one_0> .
 
-        <get_macro.add_three_0.add_two_0.outputs.output> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.output.value> ;
+        <get_macro.add_three_0.add_two_0.outputs.result> a prov:Entity ;
+            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
             ns1:outputOf <get_macro.add_three_0.add_two_0> .
 
         <get_macro.add_three_0.inputs.c> a prov:Entity ;
@@ -371,9 +371,9 @@ class TestOntology(unittest.TestCase):
             owl:sameAs <get_macro.inputs.c> .
 
         <get_macro.add_three_0.outputs.w> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.output.value> ;
+            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
             ns1:outputOf <get_macro.add_three_0> ;
-            owl:sameAs <get_macro.add_three_0.add_two_0.outputs.output> .
+            owl:sameAs <get_macro.add_three_0.add_two_0.outputs.result> .
 
         <get_macro.inputs.c> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
@@ -383,9 +383,9 @@ class TestOntology(unittest.TestCase):
             ns1:hasNode <get_macro.add_one_0>,
                 <get_macro.add_three_0> .
 
-        <get_macro.add_one_0.outputs.output.value> rdf:value 5 .
+        <get_macro.add_one_0.outputs.result.value> rdf:value 5 .
 
-        <get_macro.add_three_0.add_one_0.outputs.output.value> rdf:value 2 .
+        <get_macro.add_three_0.add_one_0.outputs.result.value> rdf:value 2 .
 
         <get_macro.add_one_0> a prov:Activity ;
             ns1:hasSourceFunction <add_one> .
@@ -395,7 +395,7 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_three_0.add_two_0> a prov:Activity ;
             ns1:hasSourceFunction <add_two> .
 
-        <get_macro.add_three_0.add_two_0.outputs.output.value> rdf:value 4 .
+        <get_macro.add_three_0.add_two_0.outputs.result.value> rdf:value 4 .
 
         <get_macro.add_three_0> a prov:Activity ;
             ns1:hasNode <get_macro.add_three_0.add_one_0>,
@@ -523,7 +523,7 @@ class TestDataclass(unittest.TestCase):
         wf_dict = get_run_md.run(Input(T=300.0, n=100))
         graph = get_knowledge_graph(wf_dict)
         i_txt = "get_run_md.run_md_0.inputs.inp"
-        o_txt = "get_run_md.run_md_0.outputs.output"
+        o_txt = "get_run_md.run_md_0.outputs.out"
         triples = (
             (URIRef(f"{i_txt}.n.value"), RDFS.subClassOf, URIRef(f"{i_txt}.value")),
             (URIRef(f"{i_txt}.n.value"), RDF.value, Literal(100)),
