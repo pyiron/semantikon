@@ -107,10 +107,6 @@ def wrong_analysis_sh(
     return a
 
 
-def multiple_outputs(a: int = 1, b: int = 2) -> tuple[int, int]:
-    return a, b
-
-
 def add_one(a: int):
     result = a + 1
     return result
@@ -213,6 +209,10 @@ def get_wrong_order(structure="abc"):
 
 
 class TestOntology(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.maxDiff = None
+
     def test_units_with_sparql(self):
         graph = get_knowledge_graph(get_speed.run())
         query_txt = [
@@ -419,7 +419,7 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(
             to_cancel[0],
             (
-                URIRef("get_wrong_order.create_vacancy_0.outputs.output"),
+                URIRef("get_wrong_order.create_vacancy_0.outputs.structure"),
                 URIRef("http://example.org/hasState"),
                 URIRef("http://example.org/relaxed"),
             ),
