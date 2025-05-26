@@ -192,6 +192,11 @@ class TestParser(unittest.TestCase):
 
         self.assertIsNone(get_return_expressions(f))
 
+        def f(x):
+            return
+        
+        self.assertEqual(get_return_expressions(f), "None")
+
 
 if __name__ == "__main__":
     unittest.main()

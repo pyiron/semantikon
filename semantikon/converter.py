@@ -121,7 +121,7 @@ def get_return_expressions(func):
         if isinstance(node, ast.Return):
             value = node.value
             if value is None:
-                ret_list.append(["None"])
+                ret_list.append("None")
             elif isinstance(value, ast.Tuple):
                 ret_list.append(
                     tuple([_to_tag(elt, ii) for ii, elt in enumerate(value.elts)])
