@@ -173,9 +173,7 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
     for edge in graph.edges.data():
         if edge[2]["type"] != "output":
             continue
-        f_name = "_".join(edge[0].split("_")[:-1])
-        if f_dict.get(f_name, -1) < edge[2].get("output_index", 0) + 1:
-            f_dict[f_name] = edge[2].get("output_index", 0) + 1
+        f_dict[edge[0]] = f_dict.get(edge[0], 0) + 1
     return f_dict
 
 
@@ -190,7 +188,7 @@ def _get_nodes(data, output_counts):
             result[node] = {
                 "function": func,
                 "inputs": parse_input_args(func),
-                "outputs": _get_node_outputs(func, output_counts.get(node, 1)),
+                "outputs": _get_node_outputs(func, output_counts[node]),
             }
         if hasattr(func, "_semantikon_metadata"):
             result[node].update(func._semantikon_metadata)
