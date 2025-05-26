@@ -194,7 +194,7 @@ class TestParser(unittest.TestCase):
 
         def f(x):
             return
-        
+
         self.assertEqual(get_return_expressions(f), "None")
 
 
