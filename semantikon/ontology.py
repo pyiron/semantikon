@@ -120,7 +120,7 @@ def _validate_restriction_format(
         raise ValueError("Restrictions must be tuples of URIRefs")
 
 
-def _get_restriction_type(restriction: tuple[_rest_type]) -> URIRef:
+def _get_restriction_type(restriction: tuple[_rest_type]) -> str:
     if restriction[0][0].startswith(OWL):
         return "OWL"
     elif restriction[0][0].startswith(SH):
@@ -351,7 +351,7 @@ def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> l
 
 
 def _parse_channel(
-    channel_dict: dict, channel_label: str, edge_dict: str, ontology=SNS
+    channel_dict: dict, channel_label: str, edge_dict: dict, ontology=SNS
 ):
     triples = []
     if "type_hint" in channel_dict:
