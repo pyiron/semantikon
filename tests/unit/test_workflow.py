@@ -169,7 +169,7 @@ class TestWorkflow(unittest.TestCase):
                         "output_0": {"dtype": float},
                         "output_1": {"dtype": float},
                     },
-                    "function": operation,
+                    "function": "operation",
                 },
                 "add_0": {
                     "inputs": {
@@ -177,7 +177,7 @@ class TestWorkflow(unittest.TestCase):
                         "y": {"dtype": float, "default": 1},
                     },
                     "outputs": {"output": {"dtype": float}},
-                    "function": add,
+                    "function": "add",
                     "uri": "add",
                 },
                 "multiply_0": {
@@ -186,7 +186,7 @@ class TestWorkflow(unittest.TestCase):
                         "y": {"dtype": float, "default": 5},
                     },
                     "outputs": {"output": {"dtype": float}},
-                    "function": multiply,
+                    "function": "multiply",
                 },
             },
             "data_edges": [
@@ -199,8 +199,9 @@ class TestWorkflow(unittest.TestCase):
             ],
             "label": "example_macro",
         }
-        self.assertEqual(get_workflow_dict(example_macro), ref_data)
-        self.assertEqual(example_macro._semantikon_workflow, ref_data)
+        self.assertEqual(
+            separate_functions(example_macro._semantikon_workflow)[0], ref_data
+        )
 
     def test_get_workflow_dict_macro(self):
         result = get_workflow_dict(example_workflow)
@@ -213,7 +214,7 @@ class TestWorkflow(unittest.TestCase):
                     "outputs": {"f": {}},
                     "nodes": {
                         "operation_0": {
-                            "function": operation,
+                            "function": "operation",
                             "inputs": {"x": {"dtype": float}, "y": {"dtype": float}},
                             "outputs": {
                                 "output_0": {"dtype": float},
@@ -221,7 +222,7 @@ class TestWorkflow(unittest.TestCase):
                             },
                         },
                         "add_0": {
-                            "function": add,
+                            "function": "add",
                             "inputs": {
                                 "x": {"dtype": float, "default": 2.0},
                                 "y": {"dtype": float, "default": 1},
@@ -230,7 +231,7 @@ class TestWorkflow(unittest.TestCase):
                             "uri": "add",
                         },
                         "multiply_0": {
-                            "function": multiply,
+                            "function": "multiply",
                             "inputs": {
                                 "x": {"dtype": float},
                                 "y": {"dtype": float, "default": 5},
@@ -249,7 +250,7 @@ class TestWorkflow(unittest.TestCase):
                     "label": "example_macro_0",
                 },
                 "add_0": {
-                    "function": add,
+                    "function": "add",
                     "inputs": {
                         "x": {"dtype": float, "default": 2.0},
                         "y": {"dtype": float, "default": 1},
@@ -267,7 +268,7 @@ class TestWorkflow(unittest.TestCase):
             ],
             "label": "example_workflow",
         }
-        self.assertEqual(result, ref_data, msg=result)
+        self.assertEqual(separate_functions(result)[0], ref_data, msg=result)
 
     def test_parallel_execution(self):
         graph = analyze_function(parallel_execution)[0]
@@ -305,9 +306,11 @@ class TestWorkflow(unittest.TestCase):
     def test_separate_functions(self):
         old_data = example_workflow._semantikon_workflow
         data, function_dict = separate_functions(old_data)
+        # add is deep copied due to the decorator
+        del function_dict["add"]
         self.assertEqual(
             function_dict,
-            {"operation": operation, "add": add, "multiply": multiply},
+            {"operation": operation, "multiply": multiply},
         )
         self.assertEqual(
             data["nodes"]["example_macro_0"]["nodes"]["operation_0"]["function"],

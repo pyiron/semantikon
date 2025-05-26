@@ -1,4 +1,6 @@
-from typing import Annotated, Callable, get_origin
+from copy import deepcopy
+from typing import Annotated, Callable, get_origin, TypeVar, Generic
+from functools import update_wrapper
 
 from semantikon.converter import parse_metadata
 
@@ -12,6 +14,25 @@ __maintainer__ = "Sam Waseda"
 __email__ = "waseda@mpie.de"
 __status__ = "development"
 __date__ = "Aug 21, 2021"
+
+F = TypeVar("F", bound=Callable[..., object])
+
+
+class FunctionWithMetadata(Generic[F]):
+    def __init__(self, func: F, metadata: dict[str, object]) -> None:
+        self.func = func
+        self._semantikon_metadata: dict[str, object] = metadata
+        update_wrapper(self, func)  # Copies __name__, __doc__, etc.
+
+    def __call__(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+
+    def __getattr__(self, item):
+        return getattr(self.func, item)
+
+    def __deepcopy__(self, memo=None):
+        new_func = deepcopy(self.func, memo)
+        return FunctionWithMetadata(new_func, self._semantikon_metadata)
 
 
 def _is_annotated(type_):
@@ -69,8 +90,9 @@ def _function_metadata(
             data.pop(key)
 
     def decorator(func: Callable):
-        func._semantikon_metadata = data
-        return func
+        if not callable(func):
+            raise TypeError(f"Expected a callable, got {type(func)}")
+        return FunctionWithMetadata(func, data)
 
     return decorator
 

@@ -15,7 +15,7 @@ from semantikon.converter import parse_input_args, parse_output_args
 F = TypeVar("F", bound=Callable[..., object])
 
 
-class FunctionWithMetadata(Generic[F]):
+class FunctionWithWorkflow(Generic[F]):
     def __init__(self, func: F, workflow, run) -> None:
         self.func = func
         self._semantikon_workflow: dict[str, object] = workflow
@@ -551,5 +551,5 @@ def find_parallel_execution_levels(G):
 def workflow(func):
     workflow_dict = get_workflow_dict(func)
     w = _Workflow(workflow_dict)
-    func_with_metadata = FunctionWithMetadata(func, workflow_dict, w.run)
+    func_with_metadata = FunctionWithWorkflow(func, workflow_dict, w.run)
     return func_with_metadata
