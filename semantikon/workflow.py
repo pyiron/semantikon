@@ -1,7 +1,6 @@
 import ast
 import copy
 import inspect
-import warnings
 from collections import deque
 from functools import cached_property
 from hashlib import sha256
