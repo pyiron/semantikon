@@ -6,7 +6,7 @@ import inspect
 import re
 import sys
 from functools import wraps
-from typing import Annotated, get_args, get_origin, get_type_hints
+from typing import Annotated, Callable, get_args, get_origin, get_type_hints
 
 from pint import Quantity
 from pint.registry_helpers import (
@@ -136,7 +136,7 @@ def get_annotated_type_hints(func):
         return hints
 
 
-def parse_input_args(func: callable):
+def parse_input_args(func: Callable):
     """
     Parse the input arguments of a function.
 
@@ -154,7 +154,7 @@ def parse_input_args(func: callable):
     }
 
 
-def parse_output_args(func: callable):
+def parse_output_args(func: Callable):
     """
     Parse the output arguments of a function.
 

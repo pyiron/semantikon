@@ -1,4 +1,4 @@
-from typing import Annotated, get_origin
+from typing import Annotated, Callable, get_origin
 
 from semantikon.converter import parse_metadata
 
@@ -68,7 +68,7 @@ def _function_metadata(
         if value is None:
             data.pop(key)
 
-    def decorator(func: callable):
+    def decorator(func: Callable):
         func._semantikon_metadata = data
         return func
 

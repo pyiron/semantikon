@@ -5,6 +5,7 @@ import warnings
 from collections import deque
 from functools import cached_property
 from hashlib import sha256
+from typing import Callable
 
 import networkx as nx
 from networkx.algorithms.dag import topological_sort
@@ -147,7 +148,7 @@ class FunctionDictFlowAnalyzer:
         return f"{base_name}_{i}"
 
 
-def get_ast_dict(func: callable) -> dict:
+def get_ast_dict(func: Callable) -> dict:
     """Get the AST dictionary representation of a function."""
     source_code = inspect.getsource(func)
     tree = ast.parse(source_code)
@@ -314,7 +315,7 @@ def get_node_dict(func, data_format="semantikon"):
     Get a dictionary representation of the function node.
 
     Args:
-        func (callable): The function to be analyzed.
+        func (Callable): The function to be analyzed.
         data_format (str): The format of the output. Options are "semantikon" and
             "ape".
 

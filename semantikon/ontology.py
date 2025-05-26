@@ -1,6 +1,6 @@
 import warnings
 from dataclasses import is_dataclass
-from typing import Any, TypeAlias
+from typing import Any, Callable, TypeAlias
 
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
@@ -338,7 +338,7 @@ def _convert_to_uriref(value):
         raise TypeError(f"Unsupported type: {type(value)}")
 
 
-def _function_to_triples(function: callable, node_label: str, ontology=SNS) -> list:
+def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> list:
     f_dict = get_function_dict(function)
     triples = []
     if f_dict.get("uri", None) is not None:
