@@ -121,7 +121,7 @@ def get_return_expressions(func):
         if isinstance(node, ast.Return):
             value = node.value
             if value is None:
-                ret_list.append(['None'])
+                ret_list.append(["None"])
             elif isinstance(value, ast.Tuple):
                 ret_list.append(
                     tuple([_to_tag(elt, ii) for ii, elt in enumerate(value.elts)])
@@ -129,9 +129,14 @@ def get_return_expressions(func):
             else:
                 ret_list.append(_to_tag(value))
 
-    if len(set(ret_list)) == 1:
+    if len(ret_list) == 0:
+        return None
+    elif len(set(ret_list)) == 1:
         return ret_list[0]
-    elif all(isinstance(exp, tuple) for exp in ret_list) and len(set(len(r) for r in ret_list)) == 1:
+    elif (
+        all(isinstance(exp, tuple) for exp in ret_list)
+        and len(set(len(r) for r in ret_list)) == 1
+    ):
         return tuple([f"output_{i}" for i in range(len(ret_list[0]))])
     else:
         return "output"
