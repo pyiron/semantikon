@@ -3,10 +3,10 @@ from typing import TYPE_CHECKING
 
 from semantikon.converter import (
     get_function_dict,
+    get_return_expressions,
     parse_input_args,
     parse_metadata,
     parse_output_args,
-    get_return_expressions,
 )
 from semantikon.typing import u
 
