@@ -148,12 +148,33 @@ class TestParser(unittest.TestCase):
         self.assertEqual(input_args["x"]["dtype"], "Atoms")
 
     def test_get_return_expressions(self):
+        def f(x):
+            return x
+        self.assertEqual(get_return_expressions(f), "x")
         def f(x, y):
             return x, y
         self.assertEqual(get_return_expressions(f), ("x", "y"))
         def f(x, y):
             return x, -y
         self.assertEqual(get_return_expressions(f), ("x", "output_1"))
+        def f(x, y):
+            if x < 0:
+                return x, y
+            else:
+                return x, y
+        self.assertEqual(get_return_expressions(f), ("x", "y"))
+        def f(x, y):
+            if x < 0:
+                return x, y
+            else:
+                return y, x
+        self.assertEqual(get_return_expressions(f), ("output_0", "output_1"))
+        def f(x, y):
+            if x < 0:
+                return x
+            else:
+                return y, x
+        self.assertEqual(get_return_expressions(f), "output")
 
 
 if __name__ == "__main__":

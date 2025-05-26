@@ -115,22 +115,24 @@ def get_return_expressions(func):
 
     func_node = next(n for n in parsed.body if isinstance(n, ast.FunctionDef))
 
-    return_expressions = []
+    ret_list = []
 
     for node in ast.walk(func_node):
         if isinstance(node, ast.Return):
             value = node.value
             if value is None:
-                return_expressions.append(['None'])
+                ret_list.append(['None'])
             elif isinstance(value, ast.Tuple):
-                return_expressions.append(
+                ret_list.append(
                     tuple([_to_tag(elt, ii) for ii, elt in enumerate(value.elts)])
                 )
             else:
-                return_expressions.append(_to_tag(value))
+                ret_list.append(_to_tag(value))
 
-    if len(set(return_expressions)) == 1:
-        return return_expressions[0]
+    if len(set(ret_list)) == 1:
+        return ret_list[0]
+    elif all(isinstance(exp, tuple) for exp in ret_list) and len(set(len(r) for r in ret_list)) == 1:
+        return tuple([f"output_{i}" for i in range(len(ret_list[0]))])
     else:
         return "output"
 
