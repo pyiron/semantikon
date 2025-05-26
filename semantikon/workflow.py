@@ -9,7 +9,7 @@ from hashlib import sha256
 import networkx as nx
 from networkx.algorithms.dag import topological_sort
 
-from semantikon.converter import parse_input_args, parse_output_args
+from semantikon.converter import parse_input_args, parse_output_args, get_return_expressions
 
 
 def ast_from_dict(d):
@@ -38,36 +38,6 @@ def _function_to_ast_dict(node):
 
 def _hash_function(func):
     return f"{func.__name__}_{sha256(inspect.getsource(func).encode()).hexdigest()}"
-
-
-def _check_node(node):
-    if isinstance(node.value, (ast.BinOp, ast.Call, ast.Attribute, ast.Subscript)):
-        warnings.warn(
-            "Return statement contains an operation or function call, replaced"
-            " by `output`",
-            SyntaxWarning,
-        )
-        return ["output"]
-    elif isinstance(node.value, ast.Tuple):  # If returning multiple values
-        for elt in node.value.elts:
-            if not isinstance(elt, ast.Name):
-                raise ValueError(f"Invalid return value: {ast.dump(elt)}")
-        return [elt.id for elt in node.value.elts if isinstance(elt, ast.Name)]
-
-    elif isinstance(node.value, ast.Name):  # If returning a single variable
-        return [node.value.id]
-
-    else:
-        raise ValueError(f"Invalid return value: {ast.dump(node.value)}")
-
-
-def get_return_variables(func):
-    source = ast.parse(inspect.getsource(func))
-    for node in ast.walk(source):
-        if not isinstance(node, ast.Return):
-            continue
-        return _check_node(node)
-    return []
 
 
 class FunctionDictFlowAnalyzer:
@@ -163,7 +133,9 @@ def analyze_function(func):
 
 
 def _get_workflow_outputs(func):
-    var_output = get_return_variables(func)
+    var_output = get_return_expressions(func)
+    if isinstance(var_output, str):
+        var_output = [var_output]
     data_output = parse_output_args(func)
     if isinstance(data_output, dict):
         data_output = [data_output]

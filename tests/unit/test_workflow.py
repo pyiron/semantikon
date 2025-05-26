@@ -11,7 +11,6 @@ from semantikon.workflow import (
     ast_from_dict,
     find_parallel_execution_levels,
     get_node_dict,
-    get_return_variables,
     get_workflow_dict,
     separate_functions,
     separate_types,
@@ -146,12 +145,6 @@ class TestWorkflow(unittest.TestCase):
                 "taxonomyOperations": ["my_function"],
             },
         )
-
-    def test_get_return_variables(self):
-        self.assertEqual(get_return_variables(example_macro), ["f"])
-        with self.assertWarns(SyntaxWarning):
-            self.assertEqual(get_return_variables(add), ["output"])
-        self.assertRaises(ValueError, get_return_variables, operation)
 
     def test_get_output_counts(self):
         graph = analyze_function(example_macro)[0]
