@@ -51,8 +51,3 @@ include = [ "semantikon*",]
 
 [tool.setuptools.dynamic.version]
 attr = "semantikon.__version__"
-
-[project.optional-dependencies]
-dev = [
-    "types-requests"
-]
