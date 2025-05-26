@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 from semantikon.converter import (
     get_function_dict,
+    get_return_expressions,
     parse_input_args,
     parse_metadata,
     parse_output_args,
@@ -145,6 +146,56 @@ class TestParser(unittest.TestCase):
         input_args = parse_input_args(test_more_future)
         self.assertEqual(input_args["x"]["uri"], "metadata")
         self.assertEqual(input_args["x"]["dtype"], "Atoms")
+
+    def test_get_return_expressions(self):
+        def f(x):
+            return x
+
+        self.assertEqual(get_return_expressions(f), "x")
+
+        def f(x, y):
+            return x, y
+
+        self.assertEqual(get_return_expressions(f), ("x", "y"))
+
+        def f(x, y):
+            return x, -y
+
+        self.assertEqual(get_return_expressions(f), ("x", "output_1"))
+
+        def f(x, y):
+            if x < 0:
+                return x, y
+            else:
+                return x, y
+
+        self.assertEqual(get_return_expressions(f), ("x", "y"))
+
+        def f(x, y):
+            if x < 0:
+                return x, y
+            else:
+                return y, x
+
+        self.assertEqual(get_return_expressions(f), ("output_0", "output_1"))
+
+        def f(x, y):
+            if x < 0:
+                return x
+            else:
+                return y, x
+
+        self.assertEqual(get_return_expressions(f), "output")
+
+        def f(x):
+            print("hello")
+
+        self.assertIsNone(get_return_expressions(f))
+
+        def f(x):
+            return
+
+        self.assertEqual(get_return_expressions(f), "None")
 
 
 if __name__ == "__main__":
