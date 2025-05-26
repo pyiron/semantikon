@@ -90,40 +90,45 @@ class FunctionDictFlowAnalyzer:
     def _visit_node(self, node):
         if node["_type"] == "Assign":
             self._handle_assign(node)
+        elif node["_type"] == "Expr":
+            self._handle_expr(node)
 
-    def _handle_assign(self, node):
+    def _handle_expr(self, node):
         value = node["value"]
         if value["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed on RHS")
 
         func_node = value["func"]
         if func_node["_type"] != "Name":
-            raise NotImplementedError("Only simple function names allowed")
+            raise NotImplementedError("Only simple functions allowed")
 
         func_name = func_node["id"]
-        called_func = self._get_unique_func_name(func_name)
+        unique_func_name = self._get_unique_func_name(func_name)
 
         if func_name not in self.scope:
             raise ValueError(f"Function {func_name} not found in scope")
 
-        self.function_defs[called_func] = self.scope[func_name]
+        self.function_defs[unique_func_name] = self.scope[func_name]
 
         # Parse inputs (positional + keyword)
         for i, arg in enumerate(value.get("args", [])):
-            self._add_input_edge(arg, called_func, input_index=i)
+            self._add_input_edge(arg, unique_func_name, input_index=i)
         for kw in value.get("keywords", []):
-            self._add_input_edge(kw["value"], called_func, input_name=kw["arg"])
+            self._add_input_edge(kw["value"], unique_func_name, input_name=kw["arg"])
+        return unique_func_name
 
+    def _handle_assign(self, node):
+        unique_func_name = self._handle_expr(node)
         # Parse outputs
-        self._parse_outputs(node["targets"], called_func)
+        self._parse_outputs(node["targets"], unique_func_name)
 
-    def _parse_outputs(self, targets, called_func):
+    def _parse_outputs(self, targets, unique_func_name):
         if len(targets) == 1 and targets[0]["_type"] == "Tuple":
             for idx, elt in enumerate(targets[0]["elts"]):
-                self._add_output_edge(called_func, elt, output_index=idx)
+                self._add_output_edge(unique_func_name, elt, output_index=idx)
         else:
             for target in targets:
-                self._add_output_edge(called_func, target)
+                self._add_output_edge(unique_func_name, target)
 
     def _add_output_edge(self, source, target, **kwargs):
         var_name = target["id"]
@@ -176,6 +181,8 @@ def _get_node_outputs(func, counts):
         outputs = counts * [{}]
     if isinstance(outputs, tuple):
         return {f"output_{ii}": v for ii, v in enumerate(outputs)}
+    elif counts == 0 and len(outputs) == 0:
+        return {}
     else:
         return {"output": outputs}
 
@@ -211,7 +218,7 @@ def _get_nodes(data, output_counts):
             result[node] = {
                 "function": func,
                 "inputs": parse_input_args(func),
-                "outputs": _get_node_outputs(func, output_counts.get(node, 1)),
+                "outputs": _get_node_outputs(func, output_counts.get(node, 0)),
             }
         if hasattr(func, "_semantikon_metadata"):
             result[node].update(func._semantikon_metadata)
