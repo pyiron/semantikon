@@ -15,6 +15,7 @@ from semantikon.converter import parse_input_args, parse_output_args
 
 F = TypeVar("F", bound=Callable[..., object])
 
+
 class FunctionWithMetadata(Generic[F]):
     def __init__(self, func: F, workflow, run) -> None:
         self.func = func
