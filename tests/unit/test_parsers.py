@@ -151,6 +151,9 @@ class TestParser(unittest.TestCase):
         def f(x, y):
             return x, y
         self.assertEqual(get_return_expressions(f), ("x", "y"))
+        def f(x, y):
+            return x, -y
+        self.assertEqual(get_return_expressions(f), ("x", "output_1"))
 
 
 if __name__ == "__main__":
