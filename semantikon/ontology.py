@@ -137,7 +137,7 @@ def _owl_restriction_to_triple(restriction: tuple[_rest_type]) -> list:
 
 def _sh_restriction_to_triple(restrictions: tuple[_rest_type]) -> list:
     label = BNode()
-    node = restrictions[0][0] + "Node"
+    node = str(restrictions[0][0]) + "Node"
     triples = [
         (None, RDF.type, node),
         (node, RDF.type, SH.NodeShape),
