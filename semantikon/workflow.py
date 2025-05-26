@@ -244,7 +244,9 @@ def _get_data_edges(graph, functions, func, nodes):
                 if "output_index" in edge[2]:
                     output_key = keys[edge[2]["output_index"]]
             elif "output_index" in edge[2]:
-                output_key = list(nodes[edge[0]]["outputs"].keys())[edges[2]["output_index"]]
+                output_key = list(nodes[edge[0]]["outputs"].keys())[
+                    edges[2]["output_index"]
+                ]
             else:
                 output_key = list(nodes[edge[0]]["outputs"].keys())[0]
             tag = f"{edge[0]}.outputs.{output_key}"
