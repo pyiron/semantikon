@@ -75,7 +75,7 @@ def _function_metadata(
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
 ):
-    data = {
+    data: dict[str, object] = {
         k: v
         for k, v in {
             "triples": triples,
