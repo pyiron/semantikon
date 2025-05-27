@@ -2,7 +2,6 @@ import ast
 import builtins
 import copy
 import inspect
-import warnings
 from collections import deque
 from functools import cached_property
 from hashlib import sha256
@@ -10,7 +9,11 @@ from hashlib import sha256
 import networkx as nx
 from networkx.algorithms.dag import topological_sort
 
-from semantikon.converter import parse_input_args, parse_output_args
+from semantikon.converter import (
+    get_return_expressions,
+    parse_input_args,
+    parse_output_args,
+)
 
 
 def ast_from_dict(d):
@@ -81,36 +84,6 @@ def _hash_function(func):
     return f"{func.__name__}_{sha256(inspect.getsource(func).encode()).hexdigest()}"
 
 
-def _check_node(node):
-    if isinstance(node.value, (ast.BinOp, ast.Call, ast.Attribute, ast.Subscript)):
-        warnings.warn(
-            "Return statement contains an operation or function call, replaced"
-            " by `output`",
-            SyntaxWarning,
-        )
-        return ["output"]
-    elif isinstance(node.value, ast.Tuple):  # If returning multiple values
-        for elt in node.value.elts:
-            if not isinstance(elt, ast.Name):
-                raise ValueError(f"Invalid return value: {ast.dump(elt)}")
-        return [elt.id for elt in node.value.elts if isinstance(elt, ast.Name)]
-
-    elif isinstance(node.value, ast.Name):  # If returning a single variable
-        return [node.value.id]
-
-    else:
-        raise ValueError(f"Invalid return value: {ast.dump(node.value)}")
-
-
-def get_return_variables(func):
-    source = ast.parse(inspect.getsource(func))
-    for node in ast.walk(source):
-        if not isinstance(node, ast.Return):
-            continue
-        return _check_node(node)
-    return []
-
-
 class InjectedLoop:
     def __init__(self, semantikon_workflow):
         self._semantikon_workflow = semantikon_workflow
@@ -145,6 +118,8 @@ class FunctionDictFlowAnalyzer:
     def _visit_node(self, node):
         if node["_type"] == "Assign":
             self._handle_assign(node)
+        elif node["_type"] == "Expr":
+            self._handle_expr(node)
         elif node["_type"] == "While":
             self._handle_while(node)
         elif node["_type"] == "For":
@@ -165,7 +140,7 @@ class FunctionDictFlowAnalyzer:
         ).analyze()
         output_counts = _get_output_counts(graph)
         nodes = _get_nodes(f_dict, output_counts)
-        data_edges = _get_data_edges(graph, f_dict, output_vars)
+        data_edges = _get_data_edges(graph, f_dict, output_vars, nodes)
         unique_func_name = self._get_unique_func_name("injected_while_loop")
         while_dict.update(
             _to_workflow_dict_entry(
@@ -214,11 +189,9 @@ class FunctionDictFlowAnalyzer:
         }
 
 
-    def _handle_assign(self, node):
+    def _handle_expr(self, node):
         value = node["value"]
-        unique_func_name = self._parse_function_call(value)
-        # Parse outputs
-        self._parse_outputs(node["targets"], unique_func_name)
+        return self._parse_function_call(value)
 
     def _parse_function_call(
         self, value, func_name=None, unique_func_name=None, f_type="Assign"
@@ -249,6 +222,11 @@ class FunctionDictFlowAnalyzer:
         for kw in value.get("keywords", []):
             self._add_input_edge(kw["value"], unique_func_name, input_name=kw["arg"])
         return unique_func_name
+
+    def _handle_assign(self, node):
+        unique_func_name = self._handle_expr(node)
+        # Parse outputs
+        self._parse_outputs(node["targets"], unique_func_name)
 
     def _parse_outputs(self, targets, unique_func_name):
         if len(targets) == 1 and targets[0]["_type"] == "Tuple":
@@ -296,7 +274,9 @@ def analyze_function(func):
 
 
 def _get_workflow_outputs(func):
-    var_output = get_return_variables(func)
+    var_output = get_return_expressions(func)
+    if isinstance(var_output, str):
+        var_output = [var_output]
     data_output = parse_output_args(func)
     if isinstance(data_output, dict):
         data_output = [data_output]
@@ -304,13 +284,20 @@ def _get_workflow_outputs(func):
 
 
 def _get_node_outputs(func, counts):
-    outputs = parse_output_args(func)
-    if outputs == {} and counts > 1:
-        outputs = counts * [{}]
-    if isinstance(outputs, tuple):
-        return {f"output_{ii}": v for ii, v in enumerate(outputs)}
-    else:
-        return {"output": outputs}
+    output_hints = parse_output_args(func, separate_tuple=counts > 1)
+    output_vars = get_return_expressions(func)
+    if output_vars is None or len(output_vars) == 0:
+        return {}
+    if counts == 1:
+        if isinstance(output_vars, str):
+            return {output_vars: output_hints}
+        else:
+            return {"output": output_hints}
+    assert isinstance(output_vars, tuple) and len(output_vars) == counts
+    if output_hints == {}:
+        output_hints = counts * [{}]
+    assert len(output_vars) == len(output_hints)
+    return {key: value for key, value in zip(output_vars, output_hints)}
 
 
 def _get_output_counts(graph: nx.DiGraph) -> dict:
@@ -327,9 +314,7 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
     for edge in graph.edges.data():
         if edge[2]["type"] != "output":
             continue
-        f_name = "_".join(edge[0].split("_")[:-1])
-        if f_dict.get(f_name, -1) < edge[2].get("output_index", 0) + 1:
-            f_dict[f_name] = edge[2].get("output_index", 0) + 1
+        f_dict[edge[0]] = f_dict.get(edge[0], 0) + 1
     return f_dict
 
 
@@ -347,7 +332,7 @@ def _get_nodes(data, output_counts):
             result[node] = _to_node_dict_entry(
                 func,
                 parse_input_args(func),
-                _get_node_outputs(func, output_counts.get(node, 1)),
+                _get_node_outputs(func, output_counts.get(node, 0)),
             )
         if hasattr(func, "_semantikon_metadata"):
             result[node].update(func._semantikon_metadata)
@@ -383,7 +368,7 @@ def _get_sorted_edges(graph: nx.DiGraph) -> list:
     return sorted(graph.edges.data(), key=lambda edge: node_order[edge[0]])
 
 
-def _get_data_edges(graph, functions, output_labels):
+def _get_data_edges(graph, functions, output_labels, nodes):
     input_dict = {}
     for name, func in functions.items():
         f = func["function"]
@@ -402,14 +387,16 @@ def _get_data_edges(graph, functions, output_labels):
                     ._semantikon_workflow["outputs"]
                     .keys()
                 )
-                output_index = 0
+                output_key = keys[0]
                 if "output_index" in edge[2]:
-                    output_index = edge[2]["output_index"]
-                tag = f"{edge[0]}.outputs.{keys[output_index]}"
+                    output_key = keys[edge[2]["output_index"]]
             elif "output_index" in edge[2]:
-                tag = f"{edge[0]}.outputs.output_{edge[2]['output_index']}"
+                output_key = list(nodes[edge[0]]["outputs"].keys())[
+                    edge[2]["output_index"]
+                ]
             else:
-                tag = f"{edge[0]}.outputs.output"
+                output_key = list(nodes[edge[0]]["outputs"].keys())[0]
+            tag = f"{edge[0]}.outputs.{output_key}"
             if _remove_index(edge[1]) in output_labels:
                 output_candidate[_remove_index(edge[1])] = (
                     tag,
@@ -547,11 +534,12 @@ def get_workflow_dict(func):
     graph, f_dict = analyze_function(func)
     output_counts = _get_output_counts(graph)
     output_labels = list(_get_workflow_outputs(func).keys())
+    nodes = _get_nodes(f_dict, output_counts)
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),
         nodes=_get_nodes(f_dict, output_counts),
-        data_edges=_get_data_edges(graph, f_dict, output_labels),
+        data_edges=_get_data_edges(graph, f_dict, output_labels, nodes),
         label=func.__name__,
     )
 
