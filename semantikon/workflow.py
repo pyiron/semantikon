@@ -188,7 +188,6 @@ class FunctionDictFlowAnalyzer:
             "type": "Assign",
         }
 
-
     def _handle_expr(self, node):
         value = node["value"]
         return self._parse_function_call(value)
