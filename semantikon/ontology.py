@@ -110,14 +110,41 @@ _rest_type: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
 def _validate_restriction_format(
     restrictions: _rest_type | tuple[_rest_type] | list[_rest_type],
 ) -> tuple[_rest_type]:
-    if not all(isinstance(r, tuple) for r in restrictions):
+    if isinstance(restrictions, list):
+        restrictions = tuple(restrictions)
+    if (
+        isinstance(restrictions, tuple)
+        and isinstance(restrictions[0], tuple | list)
+        and isinstance(restrictions[0][0], URIRef)
+    ):
+        if isinstance(restrictions[0], list):
+            # If the first element is a list, convert it to a tuple
+            restrictions = tuple(tuple(r) for r in restrictions)
+        # it's just _rest_type, wrap it
+        restrictions = (restrictions,)
+    elif not (
+        isinstance(restrictions, tuple)
+        and all(
+            isinstance(r, tuple) and all(isinstance(uri, URIRef) for uri in r)
+            for r in restrictions
+        )
+    ):
         raise ValueError("Restrictions must be tuples of URIRefs")
-    elif all(isinstance(rr, URIRef) for r in restrictions for rr in r):
-        return (restrictions,)
-    elif all(isinstance(rrr, URIRef) for r in restrictions for rr in r for rrr in rr):
-        return restrictions
-    else:
-        raise ValueError("Restrictions must be tuples of URIRefs")
+
+    return restrictions
+
+
+# def _validate_restriction_format(
+#     restrictions: _rest_type | tuple[_rest_type] | list[_rest_type],
+# ) -> tuple[_rest_type]:
+#     if not all(isinstance(r, tuple) for r in restrictions):
+#         raise ValueError("Restrictions must be tuples of URIRefs")
+#     elif all(isinstance(rr, URIRef) for r in restrictions for rr in r):
+#         return (restrictions,)
+#     elif all(isinstance(rrr, URIRef) for r in restrictions for rr in r for rrr in rr):
+#         return restrictions
+#     else:
+#         raise ValueError("Restrictions must be tuples of URIRefs")
 
 
 def _get_restriction_type(restriction: tuple[tuple[URIRef, URIRef], ...]) -> str:
