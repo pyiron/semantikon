@@ -2,6 +2,7 @@ import ast
 import unittest
 
 import networkx as nx
+
 from semantikon.typing import u
 from semantikon.workflow import (
     _get_node_outputs,

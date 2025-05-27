@@ -5,6 +5,7 @@ from textwrap import dedent
 from graphviz import Digraph
 from pyshacl import validate
 from rdflib import OWL, PROV, RDF, RDFS, SH, Literal, Namespace, URIRef
+
 from semantikon.ontology import (
     NS,
     SNS,
