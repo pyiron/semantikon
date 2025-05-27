@@ -1,4 +1,5 @@
 import ast
+import builtins
 import copy
 import inspect
 from collections import deque
@@ -27,6 +28,46 @@ def ast_from_dict(d):
         return d
 
 
+def _extract_variables_from_ast_body(body: dict) -> tuple[set, set]:
+    """
+    Extracts assigned and used variables from the AST body.
+
+    Args:
+        body (dict): The body of the AST function.
+
+    Returns:
+        tuple: A tuple containing two sets:
+            - assigned_vars: Set of variable names assigned in the body.
+            - used_vars: Set of variable names used in the body.
+    """
+    assigned_vars = set()
+    used_vars = set()
+
+    for node in body.get("body", []):
+        if node["_type"] == "Assign":
+            # Handle left-hand side (targets)
+            for target in node["targets"]:
+                if target["_type"] == "Name":
+                    assigned_vars.add(target["id"])
+                elif target["_type"] == "Tuple":
+                    for elt in target["elts"]:
+                        if elt["_type"] == "Name":
+                            assigned_vars.add(elt["id"])
+
+            # Handle right-hand side (value)
+            if node["value"]["_type"] == "Call":
+                for arg in node["value"]["args"]:
+                    if arg["_type"] == "Name":
+                        used_vars.add(arg["id"])
+
+    for key in ["test", "or_else", "iter"]:
+        if key in body and body[key]["_type"] == "Call":
+            for arg in body[key]["args"]:
+                if arg["_type"] == "Name":
+                    used_vars.add(arg["id"])
+    return assigned_vars, used_vars
+
+
 def _function_to_ast_dict(node):
     if isinstance(node, ast.AST):
         result = {"_type": type(node).__name__}
@@ -43,12 +84,19 @@ def _hash_function(func):
     return f"{func.__name__}_{sha256(inspect.getsource(func).encode()).hexdigest()}"
 
 
+class InjectedLoop:
+    def __init__(self, semantikon_workflow):
+        self._semantikon_workflow = semantikon_workflow
+
+
 class FunctionDictFlowAnalyzer:
-    def __init__(self, ast_dict, scope):
+    def __init__(self, ast_dict, scope, input_vars=None):
+        if input_vars is None:
+            input_vars = []
         self.graph = nx.DiGraph()
         self.scope = scope  # mapping from function names to objects
         self.function_defs = {}
-        self._var_index = {}
+        self._var_index = {input_var: 0 for input_var in input_vars}
         self.ast_dict = ast_dict
         self._call_counter = {}
 
@@ -56,6 +104,13 @@ class FunctionDictFlowAnalyzer:
         for arg in self.ast_dict.get("args", {}).get("args", []):
             if arg["_type"] == "arg":
                 self._var_index[arg["arg"]] = 0
+        if "test" in self.ast_dict:
+            self._parse_function_call(
+                self.ast_dict["test"],
+                func_name=self.ast_dict["test"]["func"]["id"],
+                unique_func_name="test",
+                f_type="While",
+            )
         for node in self.ast_dict.get("body", []):
             self._visit_node(node)
         return self.graph, self.function_defs
@@ -65,9 +120,53 @@ class FunctionDictFlowAnalyzer:
             self._handle_assign(node)
         elif node["_type"] == "Expr":
             self._handle_expr(node)
+        elif node["_type"] == "While":
+            self._handle_while(node)
+        elif node["_type"] == "For":
+            self._handle_for(node)
+
+    def _handle_while(self, node):
+        if node["test"]["_type"] != "Call":
+            raise NotImplementedError("Only function calls allowed in while test")
+        func = self.scope[node["test"]["func"]["id"]]
+        while_dict = {
+            "test": _to_node_dict_entry(
+                func, parse_input_args(func), _get_node_outputs(func, 1)
+            )
+        }
+        output_vars, input_vars = _extract_variables_from_ast_body(node)
+        graph, f_dict = FunctionDictFlowAnalyzer(
+            node, self.scope, input_vars=input_vars
+        ).analyze()
+        output_counts = _get_output_counts(graph)
+        nodes = _get_nodes(f_dict, output_counts)
+        data_edges = _get_data_edges(graph, f_dict, output_vars, nodes)
+        unique_func_name = self._get_unique_func_name("injected_while_loop")
+        while_dict.update(
+            _to_workflow_dict_entry(
+                inputs={key: {} for key in input_vars},
+                outputs={key: {} for key in output_vars},
+                nodes=nodes,
+                data_edges=data_edges,
+                label=unique_func_name,
+            )
+        )
+        self.function_defs[unique_func_name] = {
+            "function": InjectedLoop(while_dict),
+            "type": "Assign",
+        }
+
+    def _handle_for(self, node):
+        if node["iter"]["_type"] != "Call":
+            raise NotImplementedError("Only function calls allowed in while test")
 
     def _handle_expr(self, node):
         value = node["value"]
+        return self._parse_function_call(value)
+
+    def _parse_function_call(
+        self, value, func_name=None, unique_func_name=None, f_type="Assign"
+    ):
         if value["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed on RHS")
 
@@ -75,13 +174,18 @@ class FunctionDictFlowAnalyzer:
         if func_node["_type"] != "Name":
             raise NotImplementedError("Only simple functions allowed")
 
-        func_name = func_node["id"]
-        unique_func_name = self._get_unique_func_name(func_name)
+        if func_name is None:
+            func_name = func_node["id"]
+        if unique_func_name is None:
+            unique_func_name = self._get_unique_func_name(func_name)
 
         if func_name not in self.scope:
             raise ValueError(f"Function {func_name} not found in scope")
 
-        self.function_defs[unique_func_name] = self.scope[func_name]
+        self.function_defs[unique_func_name] = {
+            "function": self.scope[func_name],
+            "type": f_type,
+        }
 
         # Parse inputs (positional + keyword)
         for i, arg in enumerate(value.get("args", [])):
@@ -135,7 +239,7 @@ def get_ast_dict(func: callable) -> dict:
 def analyze_function(func):
     """Extracts the variable flow graph from a function"""
     ast_dict = get_ast_dict(func)
-    scope = inspect.getmodule(func).__dict__
+    scope = inspect.getmodule(func).__dict__ | vars(builtins)
     analyzer = FunctionDictFlowAnalyzer(ast_dict["body"][0], scope)
     return analyzer.analyze()
 
@@ -187,17 +291,20 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
 
 def _get_nodes(data, output_counts):
     result = {}
-    for node, func in data.items():
+    for node, function in data.items():
+        if function["type"] != "Assign":
+            continue
+        func = function["function"]
         if hasattr(func, "_semantikon_workflow"):
             data_dict = func._semantikon_workflow.copy()
             result[node] = data_dict
             result[node]["label"] = node
         else:
-            result[node] = {
-                "function": func,
-                "inputs": parse_input_args(func),
-                "outputs": _get_node_outputs(func, output_counts.get(node, 0)),
-            }
+            result[node] = _to_node_dict_entry(
+                func,
+                parse_input_args(func),
+                _get_node_outputs(func, output_counts.get(node, 0)),
+            )
         if hasattr(func, "_semantikon_metadata"):
             result[node].update(func._semantikon_metadata)
     return result
@@ -232,19 +339,25 @@ def _get_sorted_edges(graph: nx.DiGraph) -> list:
     return sorted(graph.edges.data(), key=lambda edge: node_order[edge[0]])
 
 
-def _get_data_edges(graph, functions, func, nodes):
-    input_dict = {
-        name: list(parse_input_args(ff).keys()) for name, ff in functions.items()
-    }
-    output_labels = list(_get_workflow_outputs(func).keys())
+def _get_data_edges(graph, functions, output_labels, nodes):
+    input_dict = {}
+    for name, func in functions.items():
+        f = func["function"]
+        if hasattr(f, "_semantikon_workflow"):
+            input_dict[name] = list(f._semantikon_workflow["inputs"].keys())
+        else:
+            input_dict[name] = list(parse_input_args(f).keys())
     data_edges = []
     output_dict = {}
     output_candidate = {}
-    ordered_edges = _get_sorted_edges(graph)
-    for edge in ordered_edges:
+    for edge in _get_sorted_edges(graph):
         if edge[2]["type"] == "output":
-            if hasattr(functions[edge[0]], "_semantikon_workflow"):
-                keys = list(functions[edge[0]]._semantikon_workflow["outputs"].keys())
+            if hasattr(functions[edge[0]]["function"], "_semantikon_workflow"):
+                keys = list(
+                    functions[edge[0]]["function"]
+                    ._semantikon_workflow["outputs"]
+                    .keys()
+                )
                 output_key = keys[0]
                 if "output_index" in edge[2]:
                     output_key = keys[edge[2]["output_index"]]
@@ -349,21 +462,57 @@ def separate_functions(data, function_dict=None):
     elif "function" in data and not isinstance(data["function"], str):
         function_dict[data["function"].__name__] = data["function"]
         data["function"] = data["function"].__name__
+    if "test" in data and not isinstance(data["test"]["function"], str):
+        function_dict[data["test"]["function"].__name__] = data["test"]["function"]
+        data["test"]["function"] = data["test"]["function"].__name__
     return data, function_dict
+
+
+def _to_node_dict_entry(function: callable, inputs: dict, outputs: dict) -> dict:
+    assert isinstance(inputs, dict)
+    assert all(isinstance(v, dict) for v in inputs.values())
+    assert isinstance(outputs, dict)
+    assert all(isinstance(v, dict) for v in outputs.values())
+    assert callable(function)
+    return {"function": function, "inputs": inputs, "outputs": outputs}
+
+
+def _to_workflow_dict_entry(inputs, outputs, nodes, data_edges, label, **kwargs):
+    assert isinstance(inputs, dict)
+    assert all(isinstance(v, dict) for v in inputs.values())
+    assert isinstance(outputs, dict)
+    assert all(isinstance(v, dict) for v in outputs.values())
+    assert isinstance(nodes, dict)
+    assert all(isinstance(v, dict) for v in nodes.values())
+    assert all("inputs" in v for v in nodes.values())
+    assert all("outputs" in v for v in nodes.values())
+    assert all(
+        "function" in v or ("nodes" in v and "data_edges" in v) for v in nodes.values()
+    )
+    assert isinstance(data_edges, list)
+    assert all(isinstance(edge, tuple) and len(edge) == 2 for edge in data_edges)
+    assert isinstance(label, str)
+    return {
+        "inputs": inputs,
+        "outputs": outputs,
+        "nodes": nodes,
+        "data_edges": data_edges,
+        "label": label,
+    } | kwargs
 
 
 def get_workflow_dict(func):
     graph, f_dict = analyze_function(func)
     output_counts = _get_output_counts(graph)
+    output_labels = list(_get_workflow_outputs(func).keys())
     nodes = _get_nodes(f_dict, output_counts)
-    data = {
-        "inputs": parse_input_args(func),
-        "outputs": _get_workflow_outputs(func),
-        "nodes": nodes,
-        "data_edges": _get_data_edges(graph, f_dict, func, nodes),
-        "label": func.__name__,
-    }
-    return data
+    return _to_workflow_dict_entry(
+        inputs=parse_input_args(func),
+        outputs=_get_workflow_outputs(func),
+        nodes=_get_nodes(f_dict, output_counts),
+        data_edges=_get_data_edges(graph, f_dict, output_labels, nodes),
+        label=func.__name__,
+    )
 
 
 def _get_missing_edges(edges):

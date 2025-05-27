@@ -5,6 +5,8 @@ import networkx as nx
 
 from semantikon.typing import u
 from semantikon.workflow import (
+    _extract_variables_from_ast_body,
+    _function_to_ast_dict,
     _get_node_outputs,
     _get_output_counts,
     _get_sorted_edges,
@@ -70,6 +72,19 @@ def example_invalid_multiple_operation(a=10, b=20):
 def example_invalid_local_var_def(a=10, b=20):
     result = add(a, 2)
     return result
+
+
+def my_while_condition(a=10, b=20):
+    return a < b
+
+
+def workflow_with_while(a=10, b=20):
+    x = add(a, b)
+    while my_while_condition(x, b):
+        x = add(a, b)
+        # Poor implementation to define variable inside the loop, but allowed
+        z = multiply(a, x)
+    return z
 
 
 class ApeClass:
@@ -350,6 +365,12 @@ class TestWorkflow(unittest.TestCase):
         }
         self.assertEqual(ast.unparse(ast_from_dict(d)), "x < 0")
 
+    def test_extract_variables_from_ast_body(self):
+        body = _function_to_ast_dict(ast.parse("x = g(y)\ny = h(Z)\nz = f(x, y)"))
+        variables = _extract_variables_from_ast_body(body)
+        self.assertEqual(variables[0], {"x", "y", "z"})
+        self.assertEqual(variables[1], {"y", "Z", "x"})
+
     def test_get_sorted_edges(self):
         graph = nx.DiGraph()
         graph.add_edges_from([("A", "B"), ("B", "D"), ("A", "C"), ("C", "D")])
@@ -358,6 +379,35 @@ class TestWorkflow(unittest.TestCase):
             sorted_edges,
             [("A", "B", {}), ("A", "C", {}), ("B", "D", {}), ("C", "D", {})],
         )
+
+    def test_workflow_with_while(self):
+        wf = workflow(workflow_with_while)._semantikon_workflow
+        self.assertIn("injected_while_loop_0", wf["nodes"])
+        self.assertEqual(
+            sorted(wf["nodes"]["injected_while_loop_0"]["inputs"].keys()),
+            ["a", "b", "x"],
+        )
+        self.assertEqual(
+            sorted(wf["nodes"]["injected_while_loop_0"]["outputs"].keys()),
+            ["x", "z"],
+        )
+        self.assertEqual(
+            sorted(wf["nodes"]["injected_while_loop_0"]["data_edges"]),
+            sorted(
+                [
+                    ("inputs.x", "test.inputs.a"),
+                    ("inputs.b", "test.inputs.b"),
+                    ("inputs.b", "add_0.inputs.y"),
+                    ("inputs.a", "add_0.inputs.x"),
+                    ("inputs.a", "multiply_0.inputs.x"),
+                    ("add_0.outputs.output", "multiply_0.inputs.y"),
+                    ("add_0.outputs.output", "outputs.x"),
+                    ("multiply_0.outputs.output", "outputs.z"),
+                ]
+            ),
+        )
+        self.assertIn("add_0", wf["nodes"]["injected_while_loop_0"]["nodes"])
+        self.assertIn("multiply_0", wf["nodes"]["injected_while_loop_0"]["nodes"])
 
     def test_reused_args(self):
         data = get_workflow_dict(reused_args)
