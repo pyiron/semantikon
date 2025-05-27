@@ -153,7 +153,7 @@ def _get_workflow_outputs(func):
 def _get_node_outputs(func, counts):
     output_hints = parse_output_args(func, separate_tuple=counts > 1)
     output_vars = get_return_expressions(func)
-    if len(output_vars) == 0:
+    if output_vars is None or len(output_vars) == 0:
         return {}
     if counts == 1:
         if isinstance(output_vars, str):
@@ -196,7 +196,7 @@ def _get_nodes(data, output_counts):
             result[node] = {
                 "function": func,
                 "inputs": parse_input_args(func),
-                "outputs": _get_node_outputs(func, output_counts[node]),
+                "outputs": _get_node_outputs(func, output_counts.get(node, 0)),
             }
         if hasattr(func, "_semantikon_metadata"):
             result[node].update(func._semantikon_metadata)
