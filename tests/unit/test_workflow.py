@@ -5,13 +5,15 @@ import networkx as nx
 
 from semantikon.typing import u
 from semantikon.workflow import (
+    _extract_variables_from_ast_body,
+    _function_to_ast_dict,
+    _get_node_outputs,
     _get_output_counts,
     _get_sorted_edges,
     analyze_function,
     ast_from_dict,
     find_parallel_execution_levels,
     get_node_dict,
-    get_return_variables,
     get_workflow_dict,
     separate_functions,
     separate_types,
@@ -72,6 +74,19 @@ def example_invalid_local_var_def(a=10, b=20):
     return result
 
 
+def my_while_condition(a=10, b=20):
+    return a < b
+
+
+def workflow_with_while(a=10, b=20):
+    x = add(a, b)
+    while my_while_condition(x, b):
+        x = add(a, b)
+        # Poor implementation to define variable inside the loop, but allowed
+        z = multiply(a, x)
+    return z
+
+
 class ApeClass:
     pass
 
@@ -98,7 +113,22 @@ def reused_args(a=10, b=20):
     return f
 
 
+def check_positive(x):
+    if x < 0:
+        raise ValueError("It must not be negative")
+
+
+def workflow_with_leaf(x):
+    y = add(x, x)
+    check_positive(y)
+    return y
+
+
 class TestWorkflow(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.maxDiff = None
+
     def test_analyzer(self):
         graph = analyze_function(example_macro)[0]
         all_data = [
@@ -147,16 +177,10 @@ class TestWorkflow(unittest.TestCase):
             },
         )
 
-    def test_get_return_variables(self):
-        self.assertEqual(get_return_variables(example_macro), ["f"])
-        with self.assertWarns(SyntaxWarning):
-            self.assertEqual(get_return_variables(add), ["output"])
-        self.assertRaises(ValueError, get_return_variables, operation)
-
     def test_get_output_counts(self):
         graph = analyze_function(example_macro)[0]
         output_counts = _get_output_counts(graph)
-        self.assertEqual(output_counts, {"operation": 2, "add": 1, "multiply": 1})
+        self.assertEqual(output_counts, {"operation_0": 2, "add_0": 1, "multiply_0": 1})
 
     def test_get_workflow_dict(self):
         ref_data = {
@@ -344,6 +368,12 @@ class TestWorkflow(unittest.TestCase):
         }
         self.assertEqual(ast.unparse(ast_from_dict(d)), "x < 0")
 
+    def test_extract_variables_from_ast_body(self):
+        body = _function_to_ast_dict(ast.parse("x = g(y)\ny = h(Z)\nz = f(x, y)"))
+        variables = _extract_variables_from_ast_body(body)
+        self.assertEqual(variables[0], {"x", "y", "z"})
+        self.assertEqual(variables[1], {"y", "Z", "x"})
+
     def test_get_sorted_edges(self):
         graph = nx.DiGraph()
         graph.add_edges_from([("A", "B"), ("B", "D"), ("A", "C"), ("C", "D")])
@@ -353,12 +383,69 @@ class TestWorkflow(unittest.TestCase):
             [("A", "B", {}), ("A", "C", {}), ("B", "D", {}), ("C", "D", {})],
         )
 
+    def test_workflow_with_while(self):
+        wf = workflow(workflow_with_while)._semantikon_workflow
+        self.assertIn("injected_while_loop_0", wf["nodes"])
+        self.assertEqual(
+            sorted(wf["nodes"]["injected_while_loop_0"]["inputs"].keys()),
+            ["a", "b", "x"],
+        )
+        self.assertEqual(
+            sorted(wf["nodes"]["injected_while_loop_0"]["outputs"].keys()),
+            ["x", "z"],
+        )
+        self.assertEqual(
+            sorted(wf["nodes"]["injected_while_loop_0"]["data_edges"]),
+            sorted(
+                [
+                    ("inputs.x", "test.inputs.a"),
+                    ("inputs.b", "test.inputs.b"),
+                    ("inputs.b", "add_0.inputs.y"),
+                    ("inputs.a", "add_0.inputs.x"),
+                    ("inputs.a", "multiply_0.inputs.x"),
+                    ("add_0.outputs.output", "multiply_0.inputs.y"),
+                    ("add_0.outputs.output", "outputs.x"),
+                    ("multiply_0.outputs.output", "outputs.z"),
+                ]
+            ),
+        )
+        self.assertIn("add_0", wf["nodes"]["injected_while_loop_0"]["nodes"])
+        self.assertIn("multiply_0", wf["nodes"]["injected_while_loop_0"]["nodes"])
+
     def test_reused_args(self):
         data = get_workflow_dict(reused_args)
         self.assertEqual(
             sorted(data["data_edges"]),
             sorted(example_macro._semantikon_workflow["data_edges"]),
         )
+
+    def test_get_node_outputs(self):
+        self.assertEqual(
+            _get_node_outputs(operation, counts=2),
+            {"output_0": {"dtype": float}, "output_1": {"dtype": float}},
+        )
+        self.assertEqual(
+            _get_node_outputs(operation, counts=1),
+            {"output": {"dtype": tuple[float, float]}},
+        )
+        self.assertEqual(
+            _get_node_outputs(parallel_execution, counts=2),
+            {"e": {}, "f": {}},
+        )
+        self.assertEqual(
+            _get_node_outputs(parallel_execution, counts=1),
+            {"output": {}},
+        )
+
+    def test_workflow_with_leaf(self):
+        data = get_workflow_dict(workflow_with_leaf)
+        self.assertIn("check_positive_0", data["nodes"])
+        self.assertIn("add_0", data["nodes"])
+        self.assertIn("y", data["outputs"])
+        self.assertIn(
+            ("add_0.outputs.output", "check_positive_0.inputs.x"), data["data_edges"]
+        )
+        self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
 
 
 if __name__ == "__main__":

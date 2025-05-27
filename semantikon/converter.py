@@ -2,9 +2,11 @@
 # Copyright (c) Max-Planck-Institut für Eisenforschung GmbH - Computational Materials Design (CM) Department
 # Distributed under the terms of "New BSD License", see the LICENSE file.
 
+import ast
 import inspect
 import re
 import sys
+import textwrap
 from functools import wraps
 from typing import Annotated, Callable, get_args, get_origin, get_type_hints
 
@@ -97,6 +99,49 @@ def _resolve_annotation(annotation, func_globals=None):
         return Annotated[undefined_name, args[1]]
 
 
+def _to_tag(item, count=None):
+    if isinstance(item, ast.Name):
+        return item.id
+    elif count is None:
+        return "output"
+    else:
+        return f"output_{count}"
+
+
+def get_return_expressions(func):
+    source = inspect.getsource(func)
+    source = textwrap.dedent(source)
+    parsed = ast.parse(source)
+
+    func_node = next(n for n in parsed.body if isinstance(n, ast.FunctionDef))
+
+    ret_list = []
+
+    for node in ast.walk(func_node):
+        if isinstance(node, ast.Return):
+            value = node.value
+            if value is None:
+                ret_list.append("None")
+            elif isinstance(value, ast.Tuple):
+                ret_list.append(
+                    tuple([_to_tag(elt, ii) for ii, elt in enumerate(value.elts)])
+                )
+            else:
+                ret_list.append(_to_tag(value))
+
+    if len(ret_list) == 0:
+        return None
+    elif len(set(ret_list)) == 1:
+        return ret_list[0]
+    elif (
+        all(isinstance(exp, tuple) for exp in ret_list)
+        and len(set(len(r) for r in ret_list)) == 1
+    ):
+        return tuple([f"output_{i}" for i in range(len(ret_list[0]))])
+    else:
+        return "output"
+
+
 def get_annotated_type_hints(func):
     """
     Get the type hints of a function, including lazy annotations. The function
@@ -154,7 +199,7 @@ def parse_input_args(func: Callable):
     }
 
 
-def parse_output_args(func: Callable):
+def parse_output_args(func: Callable, separate_tuple: bool = True):
     """
     Parse the output arguments of a function.
 
@@ -168,8 +213,7 @@ def parse_output_args(func: Callable):
         more details.
     """
     ret = get_annotated_type_hints(func).get("return", inspect.Parameter.empty)
-    multiple_output = get_origin(ret) is tuple
-    if multiple_output:
+    if get_origin(ret) is tuple and separate_tuple:
         return tuple([meta_to_dict(ann) for ann in get_args(ret)])
     else:
         return meta_to_dict(ret)
