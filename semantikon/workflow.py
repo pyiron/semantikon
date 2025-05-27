@@ -140,7 +140,7 @@ class FunctionDictFlowAnalyzer:
         ).analyze()
         output_counts = _get_output_counts(graph)
         nodes = _get_nodes(f_dict, output_counts)
-        data_edges = _get_data_edges(graph, f_dict, output_vars)
+        data_edges = _get_data_edges(graph, f_dict, output_vars, nodes)
         unique_func_name = self._get_unique_func_name("injected_while_loop")
         while_dict.update(
             _to_workflow_dict_entry(
@@ -162,9 +162,7 @@ class FunctionDictFlowAnalyzer:
 
     def _handle_expr(self, node):
         value = node["value"]
-        unique_func_name = self._parse_function_call(value)
-        # Parse outputs
-        self._parse_outputs(node["targets"], unique_func_name)
+        return self._parse_function_call(value)
 
     def _parse_function_call(
         self, value, func_name=None, unique_func_name=None, f_type="Assign"
