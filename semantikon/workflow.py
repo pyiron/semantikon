@@ -60,9 +60,9 @@ def _extract_variables_from_ast_body(body: dict) -> tuple[set, set]:
                     if arg["_type"] == "Name":
                         used_vars.add(arg["id"])
 
-    if "test" in body:
-        if body["test"]["_type"] == "Call":
-            for arg in body["test"]["args"]:
+    for key in ["test", "or_else", "iter"]:
+        if key in body and body[key]["_type"] == "Call":
+            for arg in body[key]["args"]:
                 if arg["_type"] == "Name":
                     used_vars.add(arg["id"])
     return assigned_vars, used_vars
