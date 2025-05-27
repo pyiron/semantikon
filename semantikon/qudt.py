@@ -130,7 +130,9 @@ def get_units_dict(graph: Graph) -> dict[str, URIRef]:
         key = str(tag).lower()
         units_dict[key] = uri
         try:
-            key = str(ureg[str(tag).lower()])  # this is safe and works for both Quantity and Unit
+            key = str(
+                ureg[str(tag).lower()]
+            )  # this is safe and works for both Quantity and Unit
             if key not in units_dict or len(str(uri)) < len(str(units_dict[key])):
                 units_dict[key] = uri
         except Exception:
