@@ -98,6 +98,17 @@ def reused_args(a=10, b=20):
     return f
 
 
+def check_positive(x):
+    if x < 0:
+        raise ValueError("It must not be negative")
+
+
+def workflow_with_leaf(x):
+    y = add(x, x)
+    check_positive(y)
+    return y
+
+
 class TestWorkflow(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -372,6 +383,16 @@ class TestWorkflow(unittest.TestCase):
             _get_node_outputs(parallel_execution, counts=1),
             {"output": {}},
         )
+
+    def test_workflow_with_leaf(self):
+        data = get_workflow_dict(workflow_with_leaf)
+        self.assertIn("check_positive_0", data["nodes"])
+        self.assertIn("add_0", data["nodes"])
+        self.assertIn("y", data["outputs"])
+        self.assertIn(
+            ("add_0.outputs.output", "check_positive_0.inputs.x"), data["data_edges"]
+        )
+        self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
 
 
 if __name__ == "__main__":
