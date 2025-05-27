@@ -131,7 +131,7 @@ class FunctionDictFlowAnalyzer:
         func = self.scope[node["test"]["func"]["id"]]
         while_dict = {
             "test": _to_node_dict_entry(
-                func, parse_input_args(func), {"output": parse_output_args(func)}
+                func, parse_input_args(func), _get_node_outputs(func, 1)
             )
         }
         output_vars, input_vars = _extract_variables_from_ast_body(node)
