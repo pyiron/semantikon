@@ -172,7 +172,7 @@ class FunctionDictFlowAnalyzer:
         ).analyze()
         output_counts = _get_output_counts(graph)
         nodes = _get_nodes(f_dict, output_counts)
-        data_edges = _get_data_edges(graph, f_dict, output_vars)
+        data_edges = _get_data_edges(graph, f_dict, output_vars, nodes)
         unique_func_name = self._get_unique_func_name("injected_for_loop")
         for_dict.update(
             _to_workflow_dict_entry(
