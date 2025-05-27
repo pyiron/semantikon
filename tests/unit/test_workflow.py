@@ -7,13 +7,13 @@ from semantikon.typing import u
 from semantikon.workflow import (
     _extract_variables_from_ast_body,
     _function_to_ast_dict,
+    _get_node_outputs,
     _get_output_counts,
     _get_sorted_edges,
     analyze_function,
     ast_from_dict,
     find_parallel_execution_levels,
     get_node_dict,
-    get_return_variables,
     get_workflow_dict,
     separate_functions,
     separate_types,
@@ -113,7 +113,22 @@ def reused_args(a=10, b=20):
     return f
 
 
+def check_positive(x):
+    if x < 0:
+        raise ValueError("It must not be negative")
+
+
+def workflow_with_leaf(x):
+    y = add(x, x)
+    check_positive(y)
+    return y
+
+
 class TestWorkflow(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.maxDiff = None
+
     def test_analyzer(self):
         graph = analyze_function(example_macro)[0]
         all_data = [
@@ -162,16 +177,10 @@ class TestWorkflow(unittest.TestCase):
             },
         )
 
-    def test_get_return_variables(self):
-        self.assertEqual(get_return_variables(example_macro), ["f"])
-        with self.assertWarns(SyntaxWarning):
-            self.assertEqual(get_return_variables(add), ["output"])
-        self.assertRaises(ValueError, get_return_variables, operation)
-
     def test_get_output_counts(self):
         graph = analyze_function(example_macro)[0]
         output_counts = _get_output_counts(graph)
-        self.assertEqual(output_counts, {"operation": 2, "add": 1, "multiply": 1})
+        self.assertEqual(output_counts, {"operation_0": 2, "add_0": 1, "multiply_0": 1})
 
     def test_get_workflow_dict(self):
         ref_data = {
@@ -406,6 +415,34 @@ class TestWorkflow(unittest.TestCase):
             sorted(data["data_edges"]),
             sorted(example_macro._semantikon_workflow["data_edges"]),
         )
+
+    def test_get_node_outputs(self):
+        self.assertEqual(
+            _get_node_outputs(operation, counts=2),
+            {"output_0": {"dtype": float}, "output_1": {"dtype": float}},
+        )
+        self.assertEqual(
+            _get_node_outputs(operation, counts=1),
+            {"output": {"dtype": tuple[float, float]}},
+        )
+        self.assertEqual(
+            _get_node_outputs(parallel_execution, counts=2),
+            {"e": {}, "f": {}},
+        )
+        self.assertEqual(
+            _get_node_outputs(parallel_execution, counts=1),
+            {"output": {}},
+        )
+
+    def test_workflow_with_leaf(self):
+        data = get_workflow_dict(workflow_with_leaf)
+        self.assertIn("check_positive_0", data["nodes"])
+        self.assertIn("add_0", data["nodes"])
+        self.assertIn("y", data["outputs"])
+        self.assertIn(
+            ("add_0.outputs.output", "check_positive_0.inputs.x"), data["data_edges"]
+        )
+        self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
 
 
 if __name__ == "__main__":
