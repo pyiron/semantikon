@@ -2,7 +2,7 @@ import os
 
 import requests
 from pint import UnitRegistry
-from rdflib import RDFS, Graph, URIRef
+from rdflib import RDFS, Graph, URIRef, term
 
 
 def _is_english_label(pred, obj):
@@ -110,7 +110,7 @@ def get_graph(location: str | None = None) -> Graph:
     return graph
 
 
-def get_units_dict(graph: Graph) -> dict[str, URIRef]:
+def get_units_dict(graph: Graph) -> dict[str, term.Node]:
     """
     Create a dictionary of units from the QUDT data.
 
