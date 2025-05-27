@@ -390,8 +390,7 @@ class TestWorkflow(unittest.TestCase):
         self.assertIn("add_0", data["nodes"])
         self.assertIn("y", data["outputs"])
         self.assertIn(
-            ('add_0.outputs.output', 'check_positive_0.inputs.x'),
-            data["data_edges"]
+            ("add_0.outputs.output", "check_positive_0.inputs.x"), data["data_edges"]
         )
         self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
 
