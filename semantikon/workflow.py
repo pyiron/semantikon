@@ -485,7 +485,7 @@ def separate_functions(data, function_dict=None):
     return data, function_dict
 
 
-def _to_node_dict_entry(function: callable, inputs: dict, outputs: dict) -> dict:
+def _to_node_dict_entry(function: Callable, inputs: dict, outputs: dict) -> dict:
     assert isinstance(inputs, dict)
     assert all(isinstance(v, dict) for v in inputs.values())
     assert isinstance(outputs, dict)
