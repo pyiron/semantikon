@@ -11,14 +11,14 @@ from semantikon.qudt import UnitsDict
 
 
 class SNS:
-    BASE = Namespace("http://pyiron.org/ontology/")
-    hasNode = BASE["hasNode"]
-    hasSourceFunction = BASE["hasSourceFunction"]
-    hasUnits = BASE["hasUnits"]
-    inheritsPropertiesFrom = BASE["inheritsPropertiesFrom"]
-    inputOf = BASE["inputOf"]
-    outputOf = BASE["outputOf"]
-    hasValue = BASE["hasValue"]
+    BASE: Namespace = Namespace("http://pyiron.org/ontology/")
+    hasNode: URIRef = BASE["hasNode"]
+    hasSourceFunction: URIRef = BASE["hasSourceFunction"]
+    hasUnits: URIRef = BASE["hasUnits"]
+    inheritsPropertiesFrom: URIRef = BASE["inheritsPropertiesFrom"]
+    inputOf: URIRef = BASE["inputOf"]
+    outputOf: URIRef = BASE["outputOf"]
+    hasValue: URIRef = BASE["hasValue"]
 
 
 class NS:
@@ -27,6 +27,10 @@ class NS:
 
 
 ud = UnitsDict()
+
+_triple_type: TypeAlias = list[
+    tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str | None]
+]
 
 
 def _translate_has_value(
@@ -37,9 +41,9 @@ def _translate_has_value(
     units: URIRef | None = None,
     parent: URIRef | None = None,
     ontology=SNS,
-) -> Graph:
+) -> _triple_type:
     tag_uri = URIRef(tag + ".value")
-    triples = [(label, ontology.hasValue, tag_uri)]
+    triples: _triple_type = [(label, ontology.hasValue, tag_uri)]
     if is_dataclass(dtype):
         warnings.warn(
             "semantikon_class is experimental - triples may change in the future",
@@ -117,9 +121,9 @@ def _validate_restriction_format(
 
 
 def _get_restriction_type(restriction: tuple[tuple[URIRef, URIRef], ...]) -> str:
-    if restriction[0][0].startswith(OWL):
+    if restriction[0][0].startswith(str(OWL)):
         return "OWL"
-    elif restriction[0][0].startswith(SH):
+    elif restriction[0][0].startswith(str(SH)):
         return "SH"
     raise ValueError(f"Unknown restriction type {restriction}")
 
@@ -328,7 +332,7 @@ def _append_missing_items(graph: Graph) -> Graph:
     return graph
 
 
-def _convert_to_uriref(value):
+def _convert_to_uriref(value: URIRef | Literal | str | None) -> URIRef | Literal:
     if isinstance(value, URIRef) or isinstance(value, Literal):
         return value  # Already a URIRef
     elif isinstance(value, str):
@@ -352,7 +356,7 @@ def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> l
 def _parse_channel(
     channel_dict: dict, channel_label: str, edge_dict: dict, ontology=SNS
 ):
-    triples = []
+    triples: _triple_type = []
     if "type_hint" in channel_dict:
         channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
     triples.append((channel_label, RDF.type, PROV.Entity))
@@ -495,8 +499,8 @@ def get_knowledge_graph(
     for triple in triples:
         if any(t is None for t in triple):
             continue
-        converted_triples = (_convert_to_uriref(t) for t in triple)
-        graph.add(converted_triples)
+        s, p, o = tuple([_convert_to_uriref(t) for t in triple])
+        graph.add((s, p, o))
     if inherit_properties:
         _inherit_properties(graph, triples_to_cancel, ontology=ontology)
     if append_missing_items:
