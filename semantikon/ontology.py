@@ -330,7 +330,7 @@ def _append_missing_items(graph: Graph) -> Graph:
     return graph
 
 
-def _convert_to_uriref(value):
+def _convert_to_uriref(value: URIRef | Literal | str | None) -> URIRef | Literal:
     if isinstance(value, URIRef) or isinstance(value, Literal):
         return value  # Already a URIRef
     elif isinstance(value, str):
@@ -497,8 +497,8 @@ def get_knowledge_graph(
     for triple in triples:
         if any(t is None for t in triple):
             continue
-        converted_triples = (_convert_to_uriref(t) for t in triple)
-        graph.add(converted_triples)
+        s, p, o = tuple([_convert_to_uriref(t) for t in triple])
+        graph.add((s, p, o))
     if inherit_properties:
         _inherit_properties(graph, triples_to_cancel, ontology=ontology)
     if append_missing_items:
