@@ -110,41 +110,22 @@ _rest_type: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
 def _validate_restriction_format(
     restrictions: _rest_type | tuple[_rest_type] | list[_rest_type],
 ) -> tuple[_rest_type]:
-    if isinstance(restrictions, list):
-        restrictions = tuple(restrictions)
-    if (
-        isinstance(restrictions, tuple)
-        and isinstance(restrictions[0], tuple | list)
-        and isinstance(restrictions[0][0], URIRef)
-    ):
-        if isinstance(restrictions[0], list):
-            # If the first element is a list, convert it to a tuple
-            restrictions = tuple(tuple(r) for r in restrictions)
-        # it's just _rest_type, wrap it
+    def get_level(arr, current_level=0):
+        if all(isinstance(item, tuple | list) for item in arr):
+            return get_level(arr[0], current_level + 1)
+        elif all(isinstance(item, URIRef) for item in arr):
+            return current_level
+        else:
+            raise ValueError(
+                f"Invalid restriction format: {arr}. Expected tuples or lists of URIRefs."
+            )
+
+    if get_level(restrictions) == 1:
         restrictions = (restrictions,)
-    elif not (
-        isinstance(restrictions, tuple)
-        and all(
-            isinstance(r, tuple) and all(isinstance(uri, URIRef) for uri in r)
-            for r in restrictions
-        )
-    ):
-        raise ValueError("Restrictions must be tuples of URIRefs")
+    elif get_level(restrictions) != 2:
+        raise ValueError(f"Restrictions must be tuples of URIRefs: {restrictions}")
 
     return restrictions
-
-
-# def _validate_restriction_format(
-#     restrictions: _rest_type | tuple[_rest_type] | list[_rest_type],
-# ) -> tuple[_rest_type]:
-#     if not all(isinstance(r, tuple) for r in restrictions):
-#         raise ValueError("Restrictions must be tuples of URIRefs")
-#     elif all(isinstance(rr, URIRef) for r in restrictions for rr in r):
-#         return (restrictions,)
-#     elif all(isinstance(rrr, URIRef) for r in restrictions for rr in r for rrr in rr):
-#         return restrictions
-#     else:
-#         raise ValueError("Restrictions must be tuples of URIRefs")
 
 
 def _get_restriction_type(restriction: tuple[tuple[URIRef, URIRef], ...]) -> str:
