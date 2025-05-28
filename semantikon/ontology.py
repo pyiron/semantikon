@@ -108,23 +108,10 @@ _rest_type: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
 
 
 def _validate_restriction_format(
-    restrictions: _rest_type | tuple[_rest_type] | list[_rest_type],
+    restrictions: _rest_type | tuple[_rest_type],
 ) -> tuple[_rest_type]:
-    def get_level(arr, current_level=0):
-        if all(isinstance(item, tuple | list) for item in arr):
-            return get_level(arr[0], current_level + 1)
-        elif all(isinstance(item, URIRef) for item in arr):
-            return current_level
-        else:
-            raise ValueError(
-                f"Invalid restriction format: {arr}. Expected tuples or lists of URIRefs."
-            )
-
-    if get_level(restrictions) == 1:
-        restrictions = (restrictions,)
-    elif get_level(restrictions) != 2:
-        raise ValueError(f"Restrictions must be tuples of URIRefs: {restrictions}")
-
+    if isinstance(restrictions[0][0], URIRef):
+        return (restrictions,)
     return restrictions
 
 
