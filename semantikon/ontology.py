@@ -123,14 +123,18 @@ def _get_restriction_type(restriction: tuple[tuple[URIRef, URIRef], ...]) -> str
     raise ValueError(f"Unknown restriction type {restriction}")
 
 
-def _owl_restriction_to_triple(restriction: tuple[_rest_type]) -> tuple[_rest_type]:
+def _owl_restriction_to_triple(
+    restriction: tuple[_rest_type],
+) -> list[tuple[tuple[URIRef | None, URIRef, URIRef], ...]]:
     label = BNode()
     triples = [(None, RDF.type, label), (label, RDF.type, OWL.Restriction)]
     triples.extend([(label, r[0], r[1]) for r in restriction])
-    return tuple(triples)
+    return triples
 
 
-def _sh_restriction_to_triple(restrictions: tuple[_rest_type]) -> tuple[_rest_type]:
+def _sh_restriction_to_triple(
+    restrictions: tuple[_rest_type],
+) -> list[tuple[tuple[str | None, URIRef, URIRef], ...]]:
     label = BNode()
     node = str(restrictions[0][0]) + "Node"
     triples = [
@@ -140,12 +144,12 @@ def _sh_restriction_to_triple(restrictions: tuple[_rest_type]) -> tuple[_rest_ty
         (node, SH.property, label),
     ]
     triples.extend([(label, r[0], r[1]) for r in restrictions])
-    return tuple(triples)
+    return triples
 
 
 def _restriction_to_triple(
     restrictions: _rest_type | tuple[_rest_type],
-) -> list[tuple[URIRef | None, URIRef, URIRef]]:
+    ) -> list[tuple[tuple[URIRef | str | None, URIRef, URIRef], ...]]:
     """
     Convert restrictions to triples
 
@@ -172,7 +176,7 @@ def _restriction_to_triple(
     >>> )
     """
     restrictions_collection = _validate_restriction_format(restrictions)
-    triples = []
+    triples: list[tuple[tuple[URIRef | str | None, URIRef, URIRef], ...]] = []
     for r in restrictions_collection:
         if _get_restriction_type(r) == "OWL":
             triples.extend(_owl_restriction_to_triple(r))
