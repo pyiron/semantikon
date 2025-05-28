@@ -28,9 +28,7 @@ class NS:
 
 ud = UnitsDict()
 
-_triple_type: TypeAlias = list[
-    tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str | None]
-]
+_triple_type: TypeAlias = list[tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str | None]]
 
 
 def _translate_has_value(
