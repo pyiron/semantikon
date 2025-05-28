@@ -4,6 +4,7 @@ from typing import Any, Callable, TypeAlias, cast
 
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
+from rdflib.term import IdentifiedNode
 
 from semantikon.converter import get_function_dict, meta_to_dict
 from semantikon.qudt import UnitsDict
@@ -125,7 +126,7 @@ def _get_restriction_type(restriction: tuple[tuple[URIRef, URIRef], ...]) -> str
 
 def _owl_restriction_to_triple(
     restriction: _rest_type,
-) -> list[tuple[tuple[URIRef | None, URIRef, URIRef], ...]]:
+) -> list[tuple[BNode | None, URIRef, IdentifiedNode]]:
     label = BNode()
     triples = [(None, RDF.type, label), (label, RDF.type, OWL.Restriction)]
     triples.extend([(label, r[0], r[1]) for r in restriction])
@@ -149,7 +150,7 @@ def _sh_restriction_to_triple(
 
 def _restriction_to_triple(
     restrictions: _rest_type | tuple[_rest_type],
-) -> list[tuple[tuple[URIRef | str | None, URIRef, URIRef], ...]]:
+) -> list[tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str]]:
     """
     Convert restrictions to triples
 
@@ -176,7 +177,7 @@ def _restriction_to_triple(
     >>> )
     """
     restrictions_collection = _validate_restriction_format(restrictions)
-    triples: list[tuple[tuple[URIRef | str | None, URIRef, URIRef], ...]] = []
+    triples: list[tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str]] = []
     for r in restrictions_collection:
         if _get_restriction_type(r) == "OWL":
             triples.extend(_owl_restriction_to_triple(r))
