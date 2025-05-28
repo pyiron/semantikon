@@ -1,9 +1,10 @@
 import warnings
 from dataclasses import is_dataclass
-from typing import Any, TypeAlias
+from typing import Any, Callable, TypeAlias, cast
 
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
+from rdflib.term import IdentifiedNode
 
 from semantikon.converter import get_function_dict, meta_to_dict
 from semantikon.qudt import UnitsDict
@@ -29,7 +30,7 @@ ud = UnitsDict()
 
 
 def _translate_has_value(
-    label: URIRef,
+    label: URIRef | str | BNode,
     tag: str,
     value: Any = None,
     dtype: type | None = None,
@@ -108,19 +109,14 @@ _rest_type: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
 
 
 def _validate_restriction_format(
-    restrictions: _rest_type | tuple[_rest_type] | list[_rest_type],
+    restrictions: _rest_type | tuple[_rest_type],
 ) -> tuple[_rest_type]:
-    if not all(isinstance(r, tuple) for r in restrictions):
-        raise ValueError("Restrictions must be tuples of URIRefs")
-    elif all(isinstance(rr, URIRef) for r in restrictions for rr in r):
-        return (restrictions,)
-    elif all(isinstance(rrr, URIRef) for r in restrictions for rr in r for rrr in rr):
-        return restrictions
-    else:
-        raise ValueError("Restrictions must be tuples of URIRefs")
+    if isinstance(restrictions[0][0], URIRef):
+        return (cast(_rest_type, restrictions),)
+    return cast(tuple[_rest_type], restrictions)
 
 
-def _get_restriction_type(restriction: tuple[_rest_type]) -> URIRef:
+def _get_restriction_type(restriction: tuple[tuple[URIRef, URIRef], ...]) -> str:
     if restriction[0][0].startswith(OWL):
         return "OWL"
     elif restriction[0][0].startswith(SH):
@@ -128,16 +124,20 @@ def _get_restriction_type(restriction: tuple[_rest_type]) -> URIRef:
     raise ValueError(f"Unknown restriction type {restriction}")
 
 
-def _owl_restriction_to_triple(restriction: tuple[_rest_type]) -> list:
+def _owl_restriction_to_triple(
+    restriction: _rest_type,
+) -> list[tuple[BNode | None, URIRef, IdentifiedNode]]:
     label = BNode()
     triples = [(None, RDF.type, label), (label, RDF.type, OWL.Restriction)]
     triples.extend([(label, r[0], r[1]) for r in restriction])
     return triples
 
 
-def _sh_restriction_to_triple(restrictions: tuple[_rest_type]) -> list:
+def _sh_restriction_to_triple(
+    restrictions: _rest_type,
+) -> list[tuple[str | None, URIRef, URIRef | str]]:
     label = BNode()
-    node = restrictions[0][0] + "Node"
+    node = str(restrictions[0][0]) + "Node"
     triples = [
         (None, RDF.type, node),
         (node, RDF.type, SH.NodeShape),
@@ -149,8 +149,8 @@ def _sh_restriction_to_triple(restrictions: tuple[_rest_type]) -> list:
 
 
 def _restriction_to_triple(
-    restrictions: _rest_type | tuple[_rest_type] | list[_rest_type],
-) -> list[tuple[URIRef | None, URIRef, URIRef]]:
+    restrictions: _rest_type | tuple[_rest_type],
+) -> list[tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str]]:
     """
     Convert restrictions to triples
 
@@ -177,10 +177,9 @@ def _restriction_to_triple(
     >>> )
     """
     restrictions_collection = _validate_restriction_format(restrictions)
-    triples = []
+    triples: list[tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str]] = []
     for r in restrictions_collection:
-        restriction_type = _get_restriction_type(r)
-        if restriction_type == "OWL":
+        if _get_restriction_type(r) == "OWL":
             triples.extend(_owl_restriction_to_triple(r))
         else:
             triples.extend(_sh_restriction_to_triple(r))
@@ -338,7 +337,7 @@ def _convert_to_uriref(value):
         raise TypeError(f"Unsupported type: {type(value)}")
 
 
-def _function_to_triples(function: callable, node_label: str, ontology=SNS) -> list:
+def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> list:
     f_dict = get_function_dict(function)
     triples = []
     if f_dict.get("uri", None) is not None:
@@ -351,7 +350,7 @@ def _function_to_triples(function: callable, node_label: str, ontology=SNS) -> l
 
 
 def _parse_channel(
-    channel_dict: dict, channel_label: str, edge_dict: str, ontology=SNS
+    channel_dict: dict, channel_label: str, edge_dict: dict, ontology=SNS
 ):
     triples = []
     if "type_hint" in channel_dict:
@@ -359,11 +358,10 @@ def _parse_channel(
     triples.append((channel_label, RDF.type, PROV.Entity))
     if channel_dict.get("uri", None) is not None:
         triples.append((channel_label, RDF.type, channel_dict["uri"]))
-    tag = edge_dict.get(*2 * [channel_label])
     triples.extend(
         _translate_has_value(
             label=channel_label,
-            tag=tag,
+            tag=str(edge_dict.get(*2 * [channel_label])),
             value=channel_dict.get("value", None),
             dtype=channel_dict.get("dtype", None),
             units=channel_dict.get("units", None),
@@ -419,7 +417,7 @@ def _get_edge_dict(edges: list) -> dict:
     return d
 
 
-def _dot(*args):
+def _dot(*args) -> str:
     return ".".join([a for a in args if a is not None])
 
 
@@ -429,7 +427,7 @@ def _convert_edge_triples(inp: str, out: str, ontology=SNS) -> tuple:
     return (inp, ontology.inheritsPropertiesFrom, out)
 
 
-def _edges_to_triples(edges: list, ontology=SNS) -> list:
+def _edges_to_triples(edges: dict, ontology=SNS) -> list:
     return [_convert_edge_triples(inp, out, ontology) for inp, out in edges.items()]
 
 

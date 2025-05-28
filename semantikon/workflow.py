@@ -3,8 +3,9 @@ import builtins
 import copy
 import inspect
 from collections import deque
-from functools import cached_property
+from functools import cached_property, update_wrapper
 from hashlib import sha256
+from typing import Callable, Generic, TypeVar
 
 import networkx as nx
 from networkx.algorithms.dag import topological_sort
@@ -14,6 +15,22 @@ from semantikon.converter import (
     parse_input_args,
     parse_output_args,
 )
+
+F = TypeVar("F", bound=Callable[..., object])
+
+
+class FunctionWithWorkflow(Generic[F]):
+    def __init__(self, func: F, workflow, run) -> None:
+        self.func = func
+        self._semantikon_workflow: dict[str, object] = workflow
+        self.run = run
+        update_wrapper(self, func)  # Copies __name__, __doc__, etc.
+
+    def __call__(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+
+    def __getattr__(self, item):
+        return getattr(self.func, item)
 
 
 def ast_from_dict(d):
@@ -229,7 +246,7 @@ class FunctionDictFlowAnalyzer:
         return f"{base_name}_{i}"
 
 
-def get_ast_dict(func: callable) -> dict:
+def get_ast_dict(func: Callable) -> dict:
     """Get the AST dictionary representation of a function."""
     source_code = inspect.getsource(func)
     tree = ast.parse(source_code)
@@ -281,7 +298,7 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
     Returns:
         dict: A dictionary mapping node names to the number of outputs.
     """
-    f_dict = {}
+    f_dict: dict = {}
     for edge in graph.edges.data():
         if edge[2]["type"] != "output":
             continue
@@ -414,7 +431,7 @@ def get_node_dict(func, data_format="semantikon"):
     Get a dictionary representation of the function node.
 
     Args:
-        func (callable): The function to be analyzed.
+        func (Callable): The function to be analyzed.
         data_format (str): The format of the output. Options are "semantikon" and
             "ape".
 
@@ -468,7 +485,7 @@ def separate_functions(data, function_dict=None):
     return data, function_dict
 
 
-def _to_node_dict_entry(function: callable, inputs: dict, outputs: dict) -> dict:
+def _to_node_dict_entry(function: Callable, inputs: dict, outputs: dict) -> dict:
     assert isinstance(inputs, dict)
     assert all(isinstance(v, dict) for v in inputs.values())
     assert isinstance(outputs, dict)
@@ -670,6 +687,5 @@ def find_parallel_execution_levels(G):
 def workflow(func):
     workflow_dict = get_workflow_dict(func)
     w = _Workflow(workflow_dict)
-    func._semantikon_workflow = workflow_dict
-    func.run = w.run
-    return func
+    func_with_metadata = FunctionWithWorkflow(func, workflow_dict, w.run)
+    return func_with_metadata
