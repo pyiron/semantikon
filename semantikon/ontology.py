@@ -28,6 +28,8 @@ class NS:
 
 ud = UnitsDict()
 
+_triple_type: TypeAlias = list[tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str | None]]
+
 
 def _translate_has_value(
     label: URIRef | str | BNode,
@@ -37,9 +39,9 @@ def _translate_has_value(
     units: URIRef | None = None,
     parent: URIRef | None = None,
     ontology=SNS,
-) -> list[tuple[IdentifiedNode, URIRef, IdentifiedNode]]:
+) -> _triple_type:
     tag_uri = URIRef(tag + ".value")
-    triples = [(label, ontology.hasValue, tag_uri)]
+    triples: _triple_type = [(label, ontology.hasValue, tag_uri)]
     if is_dataclass(dtype):
         warnings.warn(
             "semantikon_class is experimental - triples may change in the future",
@@ -117,9 +119,9 @@ def _validate_restriction_format(
 
 
 def _get_restriction_type(restriction: tuple[tuple[URIRef, URIRef], ...]) -> str:
-    if restriction[0][0].startswith(OWL):
+    if restriction[0][0].startswith(str(OWL)):
         return "OWL"
-    elif restriction[0][0].startswith(SH):
+    elif restriction[0][0].startswith(str(SH)):
         return "SH"
     raise ValueError(f"Unknown restriction type {restriction}")
 
@@ -352,7 +354,7 @@ def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> l
 def _parse_channel(
     channel_dict: dict, channel_label: str, edge_dict: dict, ontology=SNS
 ):
-    triples = []
+    triples: _triple_type = []
     if "type_hint" in channel_dict:
         channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
     triples.append((channel_label, RDF.type, PROV.Entity))
