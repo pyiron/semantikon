@@ -149,7 +149,7 @@ def _sh_restriction_to_triple(
 
 def _restriction_to_triple(
     restrictions: _rest_type | tuple[_rest_type],
-    ) -> list[tuple[tuple[URIRef | str | None, URIRef, URIRef], ...]]:
+) -> list[tuple[tuple[URIRef | str | None, URIRef, URIRef], ...]]:
     """
     Convert restrictions to triples
 
