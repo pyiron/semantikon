@@ -11,14 +11,14 @@ from semantikon.qudt import UnitsDict
 
 
 class SNS:
-    BASE = Namespace("http://pyiron.org/ontology/")
-    hasNode = BASE["hasNode"]
-    hasSourceFunction = BASE["hasSourceFunction"]
-    hasUnits = BASE["hasUnits"]
-    inheritsPropertiesFrom = BASE["inheritsPropertiesFrom"]
-    inputOf = BASE["inputOf"]
-    outputOf = BASE["outputOf"]
-    hasValue = BASE["hasValue"]
+    BASE: Namespace = Namespace("http://pyiron.org/ontology/")
+    hasNode: URIRef = BASE["hasNode"]
+    hasSourceFunction: URIRef = BASE["hasSourceFunction"]
+    hasUnits: URIRef = BASE["hasUnits"]
+    inheritsPropertiesFrom: URIRef = BASE["inheritsPropertiesFrom"]
+    inputOf: URIRef = BASE["inputOf"]
+    outputOf: URIRef = BASE["outputOf"]
+    hasValue: URIRef = BASE["hasValue"]
 
 
 class NS:
@@ -37,7 +37,7 @@ def _translate_has_value(
     units: URIRef | None = None,
     parent: URIRef | None = None,
     ontology=SNS,
-) -> Graph:
+) -> list[tuple[IdentifiedNode, URIRef, IdentifiedNode]]:
     tag_uri = URIRef(tag + ".value")
     triples = [(label, ontology.hasValue, tag_uri)]
     if is_dataclass(dtype):
