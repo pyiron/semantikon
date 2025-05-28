@@ -124,7 +124,7 @@ def _get_restriction_type(restriction: tuple[tuple[URIRef, URIRef], ...]) -> str
 
 
 def _owl_restriction_to_triple(
-    restriction: tuple[_rest_type],
+    restriction: _rest_type,
 ) -> list[tuple[tuple[URIRef | None, URIRef, URIRef], ...]]:
     label = BNode()
     triples = [(None, RDF.type, label), (label, RDF.type, OWL.Restriction)]
@@ -133,8 +133,8 @@ def _owl_restriction_to_triple(
 
 
 def _sh_restriction_to_triple(
-    restrictions: tuple[_rest_type],
-) -> list[tuple[tuple[str | None, URIRef, URIRef], ...]]:
+    restrictions: _rest_type,
+) -> list[tuple[str | None, URIRef, URIRef | str]]:
     label = BNode()
     node = str(restrictions[0][0]) + "Node"
     triples = [
