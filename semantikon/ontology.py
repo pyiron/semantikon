@@ -1,6 +1,6 @@
 import warnings
 from dataclasses import is_dataclass
-from typing import Any, Callable, TypeAlias
+from typing import Any, Callable, TypeAlias, cast
 
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
@@ -111,8 +111,8 @@ def _validate_restriction_format(
     restrictions: _rest_type | tuple[_rest_type],
 ) -> tuple[_rest_type]:
     if isinstance(restrictions[0][0], URIRef):
-        return (restrictions,)
-    return restrictions
+        return (cast(_rest_type, restrictions),)
+    return cast(tuple[_rest_type], restrictions)
 
 
 def _get_restriction_type(restriction: tuple[tuple[URIRef, URIRef], ...]) -> str:
