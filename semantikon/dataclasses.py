@@ -102,10 +102,8 @@ class While(Workflow):
 
 
 @dataclasses.dataclass(slots=True)
-class For(Workflow):
-    raise NotImplementedError
+class For(Workflow): ...  # TODO
 
 
 @dataclasses.dataclass(slots=True)
-class If(Workflow):
-    raise NotImplementedError
+class If(Workflow): ...  # TODO
