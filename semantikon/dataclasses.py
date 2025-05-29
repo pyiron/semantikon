@@ -2,7 +2,7 @@ import abc
 import dataclasses
 import functools
 from types import FunctionType
-from typing import Any, ItemsView, TypeAlias
+from typing import Any, ItemsView
 
 
 class _HasToDictionary(abc.ABC):

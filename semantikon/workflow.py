@@ -6,11 +6,11 @@ from collections import deque
 from functools import cached_property, update_wrapper
 from hashlib import sha256
 from typing import Any, Callable, Generic, TypeAlias, TypeVar
-from webbrowser import Edge
 
 import networkx as nx
 from networkx.algorithms.dag import topological_sort
 
+import semantikon.dataclasses as sdc
 from semantikon.converter import (
     get_return_expressions,
     parse_input_args,
@@ -18,7 +18,6 @@ from semantikon.converter import (
 )
 
 F = TypeVar("F", bound=Callable[..., object])
-EdgeType: TypeAlias = tuple[str, str]
 
 
 class FunctionWithWorkflow(Generic[F]):
@@ -691,3 +690,7 @@ def workflow(func):
     w = _Workflow(workflow_dict)
     func_with_metadata = FunctionWithWorkflow(func, workflow_dict, w.run)
     return func_with_metadata
+
+
+def parse_input_args_to_inputs(func: Callable) -> sdc.InputsType:
+    return {k: sdc.Input(**v) for k, v in parse_input_args(func).items()}
