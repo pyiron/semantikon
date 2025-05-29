@@ -5,7 +5,8 @@ from typing import Any
 
 
 class Missing:
-    def __repr__(self): return "<MISSING>"
+    def __repr__(self):
+        return "<MISSING>"
 
 
 MISSING = Missing()
@@ -13,11 +14,9 @@ missing = functools.partial(dataclasses.field, default=MISSING)
 
 
 @dataclasses.dataclass(slots=True)
-class _VariadicDataclass():
+class _VariadicDataclass:
     def asdict(self) -> dict[str, Any]:
-        return {
-            k: v for (k, v) in dataclasses.asdict(self).items() if v is not MISSING
-        }
+        return {k: v for (k, v) in dataclasses.asdict(self).items() if v is not MISSING}
 
 
 @dataclasses.dataclass(slots=True)
@@ -26,7 +25,8 @@ class _Port(_VariadicDataclass):
 
 
 @dataclasses.dataclass(slots=True)
-class Output(_Port): pass
+class Output(_Port):
+    pass
 
 
 @dataclasses.dataclass(slots=True)
@@ -59,6 +59,7 @@ class _Node(_VariadicDataclass):
             else:
                 d[k] = v
         return d
+
 
 @dataclasses.dataclass(slots=True)
 class Function(_Node):
