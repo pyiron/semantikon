@@ -1,7 +1,22 @@
+import abc
 import dataclasses
 import functools
 from types import FunctionType
-from typing import Any
+from typing import Any, ItemsView, TypeAlias
+
+
+class _HasToDictionary(abc.ABC):
+    @abc.abstractmethod
+    def items(self) -> ItemsView[str, Any]: ...
+
+    def to_dictionary(self) -> dict[str, Any]:
+        d = {}
+        for k, v in self.items():
+            if isinstance(v, _HasToDictionary):
+                d[k] = v.to_dictionary()
+            else:
+                d[k] = v
+        return d
 
 
 class Missing:
@@ -14,9 +29,12 @@ missing = functools.partial(dataclasses.field, default=MISSING)
 
 
 @dataclasses.dataclass(slots=True)
-class _VariadicDataclass:
+class _VariadicDataclass(_HasToDictionary):
     def asdict(self) -> dict[str, Any]:
         return {k: v for (k, v) in dataclasses.asdict(self).items() if v is not MISSING}
+
+    def items(self) -> ItemsView[str, Any]:
+        return self.asdict().items()
 
 
 @dataclasses.dataclass(slots=True)
@@ -34,11 +52,17 @@ class Input(_Port):
     default: Any | Missing = missing()
 
 
+class Inputs(dict[str, Input], _HasToDictionary): ...
+
+
+class Outputs(dict[str, Output], _HasToDictionary): ...
+
+
 @dataclasses.dataclass(slots=True)
 class _Node(_VariadicDataclass):
     label: str
-    inputs: dict[str, Input]
-    outputs: dict[str, Output]
+    inputs: Inputs
+    outputs: Outputs
 
     @property
     def type(self) -> str:
