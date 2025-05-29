@@ -181,7 +181,7 @@ def get_annotated_type_hints(func):
         return hints
 
 
-def parse_input_args(func: Callable):
+def parse_input_args(func: Callable) -> dict[str, dict]:
     """
     Parse the input arguments of a function.
 
@@ -199,7 +199,7 @@ def parse_input_args(func: Callable):
     }
 
 
-def parse_output_args(func: Callable, separate_tuple: bool = True):
+def parse_output_args(func: Callable, separate_tuple: bool = True) -> dict | tuple:
     """
     Parse the output arguments of a function.
 
@@ -219,7 +219,7 @@ def parse_output_args(func: Callable, separate_tuple: bool = True):
         return meta_to_dict(ret)
 
 
-def _get_converter(func):
+def _get_converter(func: Callable) -> Callable | None:
     args = []
     for value in parse_input_args(func).values():
         if value is not None:
