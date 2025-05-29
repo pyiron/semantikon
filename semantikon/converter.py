@@ -99,7 +99,7 @@ def _resolve_annotation(annotation, func_globals=None):
         return Annotated[undefined_name, args[1]]
 
 
-def _to_tag(item, count=None):
+def _to_tag(item: Any, count=None) -> str:
     if isinstance(item, ast.Name):
         return item.id
     elif count is None:
@@ -115,7 +115,7 @@ def get_return_expressions(func: Callable) -> str | tuple | None:
 
     func_node = next(n for n in parsed.body if isinstance(n, ast.FunctionDef))
 
-    ret_list = []
+    ret_list: list[str | tuple[str, ...]] = []
 
     for node in ast.walk(func_node):
         if isinstance(node, ast.Return):
@@ -244,9 +244,8 @@ def _get_ret_units(
 
 def _get_output_units(
     output: dict | tuple, ureg: UnitRegistry, names: dict[str, Any]
-) -> Quantity | tuple[Quantity, ...] | None:
-    multiple_output_args = isinstance(output, tuple)
-    if multiple_output_args:
+) -> Quantity | tuple[Quantity | None, ...] | None:
+    if isinstance(output, tuple):
         return tuple([_get_ret_units(oo, ureg, names) for oo in output])
     else:
         return _get_ret_units(output, ureg, names)
@@ -262,7 +261,7 @@ def _is_dimensionless(output: Quantity | tuple[Quantity, ...] | None) -> bool:
     return False
 
 
-def units(func: Callable | None = None) -> Callable:
+def units(func: Callable) -> Callable:
     """
     Decorator to convert the output of a function to a Quantity object with
     the specified units.

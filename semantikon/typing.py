@@ -111,7 +111,7 @@ def u(
     shape: tuple[int] | None = None,
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
-) -> Annotated | Callable
+) -> Annotated | Callable:
     is_type_hint = (
         isinstance(type_or_func, type) or get_origin(type_or_func) is not None
     )
