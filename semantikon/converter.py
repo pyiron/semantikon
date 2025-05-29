@@ -30,7 +30,7 @@ __status__ = "development"
 __date__ = "Aug 21, 2021"
 
 
-def _get_ureg(args, kwargs):
+def _get_ureg(args: Any, kwargs: dict[str, Any]) -> UnitRegistry | None:
     for arg in args + tuple(kwargs.values()):
         if isinstance(arg, Quantity):
             return arg._REGISTRY
@@ -71,7 +71,7 @@ def meta_to_dict(value: Any, default=inspect.Parameter.empty) -> dict[str, Any]:
     return result
 
 
-def extract_undefined_name(error_message):
+def extract_undefined_name(error_message: str) -> str:
     match = re.search(r"name '(.+?)' is not defined", error_message)
     if match:
         return match.group(1)
