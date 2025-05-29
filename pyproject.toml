@@ -29,7 +29,7 @@ dependencies = [
     "owlrl==7.1.2",
     "networkx==3.4.2",
     "pyshacl==0.30.0",
-    "python-graphviz==0.20.3",
+    "graphviz==0.20.3",
 ]
 dynamic = [ "version",]
 authors = [
