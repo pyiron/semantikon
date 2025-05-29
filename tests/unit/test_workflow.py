@@ -2,7 +2,10 @@ import ast
 import unittest
 
 import networkx as nx
+from semantikon.converter import parse_input_args
 
+import semantikon.dataclasses as sdc
+import semantikon.workflow as swf
 from semantikon.typing import u
 from semantikon.workflow import (
     _extract_variables_from_ast_body,
@@ -446,6 +449,13 @@ class TestWorkflow(unittest.TestCase):
             ("add_0.outputs.output", "check_positive_0.inputs.x"), data["data_edges"]
         )
         self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
+
+    def test_inputs(self):
+        self.assertDictEqual(
+            parse_input_args(add),
+            swf.parse_input_args_to_inputs(add).to_dictionary(),
+            msg="Just an interim cyclicity test"
+        )
 
 
 if __name__ == "__main__":
