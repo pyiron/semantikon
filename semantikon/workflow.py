@@ -5,7 +5,8 @@ import inspect
 from collections import deque
 from functools import cached_property, update_wrapper
 from hashlib import sha256
-from typing import Callable, Generic, TypeVar
+from typing import Any, Callable, Generic, TypeAlias, TypeVar
+from webbrowser import Edge
 
 import networkx as nx
 from networkx.algorithms.dag import topological_sort
@@ -17,10 +18,11 @@ from semantikon.converter import (
 )
 
 F = TypeVar("F", bound=Callable[..., object])
+EdgeType: TypeAlias = tuple[str, str]
 
 
 class FunctionWithWorkflow(Generic[F]):
-    def __init__(self, func: F, workflow, run) -> None:
+    def __init__(self, func: F, workflow: dict[str, object], run) -> None:
         self.func = func
         self._semantikon_workflow: dict[str, object] = workflow
         self.run = run
@@ -117,7 +119,7 @@ class FunctionDictFlowAnalyzer:
         self.ast_dict = ast_dict
         self._call_counter = {}
 
-    def analyze(self):
+    def analyze(self) -> tuple[nx.DiGraph, dict[str, Any]]:
         for arg in self.ast_dict.get("args", {}).get("args", []):
             if arg["_type"] == "arg":
                 self._var_index[arg["arg"]] = 0
@@ -288,7 +290,7 @@ def _get_node_outputs(func, counts):
     return {key: value for key, value in zip(output_vars, output_hints)}
 
 
-def _get_output_counts(graph: nx.DiGraph) -> dict:
+def _get_output_counts(graph: nx.DiGraph) -> dict[str, int]:
     """
     Get the number of outputs for each node in the graph.
 
@@ -298,7 +300,7 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
     Returns:
         dict: A dictionary mapping node names to the number of outputs.
     """
-    f_dict: dict = {}
+    f_dict: dict[str, int] = {}
     for edge in graph.edges.data():
         if edge[2]["type"] != "output":
             continue
