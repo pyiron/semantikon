@@ -18,6 +18,8 @@ from pint.registry_helpers import (
     _to_units_container,
 )
 
+from semantikon.typing import FunctionWithMetadata
+
 __author__ = "Sam Waseda"
 __copyright__ = (
     "Copyright 2021, Max-Planck-Institut für Eisenforschung GmbH "
@@ -309,12 +311,11 @@ def units(func: Callable) -> Callable:
     return wrapper
 
 
-def get_function_dict(function: Callable | None = None) -> dict[str, Any]:
+def get_function_dict(function: Callable | FunctionWithMetadata) -> dict[str, Any]:
     result = {
         "label": function.__name__,
     }
-    function_has_metadata = hasattr(function, "_semantikon_metadata")
-    if function_has_metadata:
+    if hasattr(function, "_semantikon_metadata"):
         result.update(function._semantikon_metadata)
     return result
 

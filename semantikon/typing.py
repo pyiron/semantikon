@@ -1,6 +1,6 @@
 from copy import deepcopy
 from functools import update_wrapper
-from typing import Annotated, Callable, Generic, TypeVar, get_origin
+from typing import Annotated, Callable, Generic, Type, TypeVar, get_origin
 
 from semantikon.converter import parse_metadata
 
@@ -49,7 +49,7 @@ def _type_metadata(
     shape: tuple[int] | None = None,
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
-):
+) -> Type:
     if _is_annotated(type_):
         kwargs.update(parse_metadata(type_))
         type_ = type_.__origin__
@@ -111,11 +111,7 @@ def u(
     shape: tuple[int] | None = None,
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
-) -> Annotated | Callable:
-    is_type_hint = (
-        isinstance(type_or_func, type) or get_origin(type_or_func) is not None
-    )
-    is_decorator = type_or_func is None
+) -> Type | Callable:
     kwargs.update(
         _kwargs_to_dict(
             units=units,
@@ -126,9 +122,9 @@ def u(
             restrictions=restrictions,
         )
     )
-    if is_type_hint:
+    if isinstance(type_or_func, type) or get_origin(type_or_func) is not None:
         return _type_metadata(type_or_func, **kwargs)
-    elif is_decorator:
+    elif type_or_func is None:
         return _function_metadata(**kwargs)
     else:
         raise TypeError(f"Unsupported type: {type(type_or_func)}")
