@@ -24,7 +24,13 @@ classifiers = [
 ]
 dependencies = [
     "numpy==2.2.3",
-    "pint==0.24.4"
+    "pint==0.24.4",
+    "rdflib==7.1.1",
+    "owlrl==7.1.2",
+    "networkx==3.4.2",
+    "pyshacl==0.30.0",
+    "graphviz==12.2.1",
+    "python-graphviz==0.20.3",
 ]
 dynamic = [ "version",]
 authors = [
