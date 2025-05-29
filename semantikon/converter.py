@@ -8,9 +8,9 @@ import re
 import sys
 import textwrap
 from functools import wraps
-from typing import Annotated, Callable, get_args, get_origin, get_type_hints
+from typing import Annotated, Callable, get_args, get_origin, get_type_hints, Any
 
-from pint import Quantity
+from pint import Quantity, UnitRegistry
 from pint.registry_helpers import (
     _apply_defaults,
     _parse_wrap_args,
@@ -37,7 +37,7 @@ def _get_ureg(args, kwargs):
     return None
 
 
-def parse_metadata(value):
+def parse_metadata(value: Any) -> dict[str, Any]:
     """
     Parse the metadata of a Quantity object.
 
@@ -52,7 +52,7 @@ def parse_metadata(value):
     return {k: v for k, v in zip(metadata[::2], metadata[1::2])}
 
 
-def meta_to_dict(value, default=inspect.Parameter.empty):
+def meta_to_dict(value: Any, default=inspect.Parameter.empty) -> dict[str, Any]:
     semantikon_was_used = hasattr(value, "__metadata__")
     type_hint_was_present = value is not inspect.Parameter.empty
     default_is_defined = default is not inspect.Parameter.empty
@@ -108,7 +108,7 @@ def _to_tag(item, count=None):
         return f"output_{count}"
 
 
-def get_return_expressions(func):
+def get_return_expressions(func: Callable) -> str | tuple | None:
     source = inspect.getsource(func)
     source = textwrap.dedent(source)
     parsed = ast.parse(source)
@@ -142,7 +142,7 @@ def get_return_expressions(func):
         return "output"
 
 
-def get_annotated_type_hints(func):
+def get_annotated_type_hints(func: Callable) -> dict[str, Any]:
     """
     Get the type hints of a function, including lazy annotations. The function
     practically does the same as `get_type_hints` for Python 3.11 and later,
@@ -232,7 +232,9 @@ def _get_converter(func: Callable) -> Callable | None:
         return None
 
 
-def _get_ret_units(output, ureg, names):
+def _get_ret_units(
+    output: dict, ureg: UnitRegistry, names: dict[str, Any]
+) -> Quantity | None:
     if output == {}:
         return None
     ret = _to_units_container(output.get("units", None), ureg)
@@ -240,7 +242,9 @@ def _get_ret_units(output, ureg, names):
     return ureg.Quantity(1, _replace_units(ret[0], names) if ret[1] else ret[0])
 
 
-def _get_output_units(output, ureg, names):
+def _get_output_units(
+    output: dict | tuple, ureg: UnitRegistry, names: dict[str, Any]
+) -> Quantity | tuple[Quantity, ...] | None:
     multiple_output_args = isinstance(output, tuple)
     if multiple_output_args:
         return tuple([_get_ret_units(oo, ureg, names) for oo in output])
@@ -248,7 +252,7 @@ def _get_output_units(output, ureg, names):
         return _get_ret_units(output, ureg, names)
 
 
-def _is_dimensionless(output):
+def _is_dimensionless(output: Quantity | tuple[Quantity, ...] | None) -> bool:
     if output is None:
         return True
     if isinstance(output, tuple):
@@ -258,7 +262,7 @@ def _is_dimensionless(output):
     return False
 
 
-def units(func):
+def units(func: Callable | None = None) -> Callable:
     """
     Decorator to convert the output of a function to a Quantity object with
     the specified units.
@@ -306,7 +310,7 @@ def units(func):
     return wrapper
 
 
-def get_function_dict(function):
+def get_function_dict(function: Callable | None = None) -> dict[str, Any]:
     result = {
         "label": function.__name__,
     }
@@ -316,7 +320,7 @@ def get_function_dict(function):
     return result
 
 
-def semantikon_class(cls: type):
+def semantikon_class(cls: type) -> type:
     """
     A class decorator to append type hints to class attributes.
 

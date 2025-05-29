@@ -5,7 +5,7 @@ import inspect
 from collections import deque
 from functools import cached_property, update_wrapper
 from hashlib import sha256
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Generic, TypeVar, cast
 
 import networkx as nx
 from networkx.algorithms.dag import topological_sort
