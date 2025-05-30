@@ -697,3 +697,14 @@ def parse_function_outputs(func: Callable) -> sdc.Outputs:
     return sdc.Outputs(
         **{k: sdc.Output(**v) for k, v in _get_workflow_outputs(func).items()}
     )
+
+
+def parse_function(func: Callable) -> sdc.Function:
+    metadata = func._semantikon_metadata if hasattr(func, "_semantikon_metadata") else {}
+    return sdc.Function(
+        label=func.__name__,
+        inputs=parse_function_inputs(func),
+        outputs=parse_function_outputs(func),
+        # function=func,  # Disabled for backwards compatibility
+        **metadata,  # TODO: Identify possible metadata fields and
+    )

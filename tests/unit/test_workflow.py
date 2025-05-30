@@ -467,6 +467,14 @@ class TestWorkflow(unittest.TestCase):
                     msg="Just an interim cyclicity test",
                 )
 
+    def test_function(self):
+        for fnc in (operation, add, multiply, my_while_condition):
+            with self.subTest(fnc=fnc):
+                self.assertDictEqual(
+                    swf.get_node_dict(fnc),
+                    swf.parse_function(fnc).to_dictionary(),
+                    msg="Just an interim cyclicity test",
+                )
 
 if __name__ == "__main__":
     unittest.main()

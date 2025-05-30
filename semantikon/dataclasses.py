@@ -87,13 +87,13 @@ class _Node(_VariadicDataclass):
     outputs: Outputs
 
     def __iter__(self) -> Iterator[tuple[str, Any]]:
-        yield "type", self.__class__.__name__
+        # yield "type", self.__class__.__name__  # Disabled for backwards compatibility
         yield from super(_Node, self).__iter__()
 
 
 @dataclasses.dataclass(slots=True)
 class Function(_Node):
-    function: FunctionType
+    ...  # function: FunctionType  # Disabled for backwards compatibility
 
 
 @dataclasses.dataclass(slots=True)
