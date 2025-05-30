@@ -40,3 +40,7 @@ class TestDataclasses(unittest.TestCase):
                 "this is why we call it a variadic dataclass, because some of its "
                 "fields are optional!"
         )
+
+
+if __name__ == "__main__":
+    unittest.main()
