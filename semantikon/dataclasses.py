@@ -88,7 +88,7 @@ class _Node(_VariadicDataclass):
 
     def __iter__(self) -> Iterator[tuple[str, Any]]:
         yield "type", self.__class__.__name__
-        yield from super().__iter__()
+        yield from super(_Node, self).__iter__()
 
 
 @dataclasses.dataclass(slots=True)
