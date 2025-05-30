@@ -2,8 +2,7 @@ import abc
 import dataclasses
 import functools
 from collections.abc import Iterable, MutableMapping
-from types import FunctionType
-from typing import Any, Generic, Iterator, TypeVar
+from typing import Any, Generic, Iterator, TypeAlias, TypeVar
 
 
 class Missing:
@@ -34,6 +33,36 @@ class _VariadicDataclass(_HasToDictionary):
 
     def __iter__(self) -> Iterator[tuple[str, Any]]:
         yield from ((f.name, getattr(self, f.name)) for f in dataclasses.fields(self))
+
+
+TripleType: TypeAlias = tuple[str, str, str]
+TriplesLike: TypeAlias = tuple[TripleType, ...] | TripleType
+RestrictionType: TypeAlias = tuple[str, str]
+RestrictionLike: TypeAlias = tuple[RestrictionType, ...] | RestrictionType
+ShapeType: TypeAlias = tuple[int, ...]
+
+
+@dataclasses.dataclass(slots=True)
+class CoreMetadata(_VariadicDataclass):
+    # Drawn from signature of semantikon.typing._function_metadata
+    uri: str | Missing = missing()
+    triples: TriplesLike | Missing = missing()
+    restrictions: RestrictionLike | Missing = missing()
+
+
+@dataclasses.dataclass(slots=True)
+class TypeMetadata(CoreMetadata):
+    # Drawn from signature of semantikon.typing._type_metadata
+    label: str | Missing = missing()
+    units: str | Missing = missing()
+    shape: ShapeType | Missing = missing()
+
+    # Stuff that gets passed to _type_metadata during the tests
+    associate_to_sample: bool | Missing = missing()
+    cancel: tuple[Any, Any] | Missing = missing()
+    my_arg: str | Missing = missing()
+    use_list: bool | Missing = missing()
+    # How should we handle this?
 
 
 @dataclasses.dataclass(slots=True)
@@ -92,8 +121,9 @@ class _Node(_VariadicDataclass):
 
 
 @dataclasses.dataclass(slots=True)
-class Function(_Node):
-    ...  # function: FunctionType  # Disabled for backwards compatibility
+class Function(
+    _Node
+): ...  # function: FunctionType  # Disabled for backwards compatibility
 
 
 @dataclasses.dataclass(slots=True)
