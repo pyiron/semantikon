@@ -1,6 +1,6 @@
-from typing import Annotated, get_origin
+from typing import Annotated, Any, Callable, get_origin
 
-from semantikon.converter import parse_metadata
+from semantikon.converter import FunctionWithMetadata, parse_metadata
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -28,7 +28,7 @@ def _type_metadata(
     shape: tuple[int] | None = None,
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
-):
+) -> Any:
     if _is_annotated(type_):
         kwargs.update(parse_metadata(type_))
         type_ = type_.__origin__
@@ -54,7 +54,7 @@ def _function_metadata(
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
 ):
-    data = {
+    data: dict[str, object] = {
         k: v
         for k, v in {
             "triples": triples,
@@ -68,9 +68,10 @@ def _function_metadata(
         if value is None:
             data.pop(key)
 
-    def decorator(func: callable):
-        func._semantikon_metadata = data
-        return func
+    def decorator(func: Callable):
+        if not callable(func):
+            raise TypeError(f"Expected a callable, got {type(func)}")
+        return FunctionWithMetadata(func, data)
 
     return decorator
 
@@ -89,11 +90,7 @@ def u(
     shape: tuple[int] | None = None,
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
-):
-    is_type_hint = (
-        isinstance(type_or_func, type) or get_origin(type_or_func) is not None
-    )
-    is_decorator = type_or_func is None
+) -> Any:
     kwargs.update(
         _kwargs_to_dict(
             units=units,
@@ -104,9 +101,9 @@ def u(
             restrictions=restrictions,
         )
     )
-    if is_type_hint:
+    if isinstance(type_or_func, type) or get_origin(type_or_func) is not None:
         return _type_metadata(type_or_func, **kwargs)
-    elif is_decorator:
+    elif type_or_func is None:
         return _function_metadata(**kwargs)
     else:
         raise TypeError(f"Unsupported type: {type(type_or_func)}")

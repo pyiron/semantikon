@@ -2,7 +2,7 @@ import os
 
 import requests
 from pint import UnitRegistry
-from rdflib import RDFS, Graph, URIRef
+from rdflib import RDFS, Graph, URIRef, term
 
 
 def _is_english_label(pred, obj):
@@ -96,7 +96,7 @@ class UnitsDict:
         key = key.lower()
         if key in self._units_dict:
             return self._units_dict[key]
-        key = str(self._ureg[str(key)].units)
+        key = str(self._ureg[str(key)])
         if key in self._units_dict:
             return self._units_dict[key]
 
@@ -110,7 +110,7 @@ def get_graph(location: str | None = None) -> Graph:
     return graph
 
 
-def get_units_dict(graph: Graph) -> dict[str, URIRef]:
+def get_units_dict(graph: Graph) -> dict[str, term.Node]:
     """
     Create a dictionary of units from the QUDT data.
 
@@ -130,8 +130,10 @@ def get_units_dict(graph: Graph) -> dict[str, URIRef]:
         key = str(tag).lower()
         units_dict[key] = uri
         try:
-            key = str(ureg[str(tag).lower()].units)
-            if key not in units_dict or len(uri) < len(units_dict[key]):
+            key = str(
+                ureg[str(tag).lower()]
+            )  # this is safe and works for both Quantity and Unit
+            if key not in units_dict or len(str(uri)) < len(str(units_dict[key])):
                 units_dict[key] = uri
         except Exception:
             pass

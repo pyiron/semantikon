@@ -1,23 +1,24 @@
 import warnings
 from dataclasses import is_dataclass
-from typing import Any, TypeAlias
+from typing import Any, Callable, TypeAlias, cast
 
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
+from rdflib.term import IdentifiedNode
 
 from semantikon.converter import get_function_dict, meta_to_dict
 from semantikon.qudt import UnitsDict
 
 
 class SNS:
-    BASE = Namespace("http://pyiron.org/ontology/")
-    hasNode = BASE["hasNode"]
-    hasSourceFunction = BASE["hasSourceFunction"]
-    hasUnits = BASE["hasUnits"]
-    inheritsPropertiesFrom = BASE["inheritsPropertiesFrom"]
-    inputOf = BASE["inputOf"]
-    outputOf = BASE["outputOf"]
-    hasValue = BASE["hasValue"]
+    BASE: Namespace = Namespace("http://pyiron.org/ontology/")
+    hasNode: URIRef = BASE["hasNode"]
+    hasSourceFunction: URIRef = BASE["hasSourceFunction"]
+    hasUnits: URIRef = BASE["hasUnits"]
+    inheritsPropertiesFrom: URIRef = BASE["inheritsPropertiesFrom"]
+    inputOf: URIRef = BASE["inputOf"]
+    outputOf: URIRef = BASE["outputOf"]
+    hasValue: URIRef = BASE["hasValue"]
 
 
 class NS:
@@ -27,18 +28,22 @@ class NS:
 
 ud = UnitsDict()
 
+_triple_type: TypeAlias = list[
+    tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str | None]
+]
+
 
 def _translate_has_value(
-    label: URIRef,
+    label: URIRef | str | BNode,
     tag: str,
     value: Any = None,
     dtype: type | None = None,
     units: URIRef | None = None,
     parent: URIRef | None = None,
     ontology=SNS,
-) -> Graph:
+) -> _triple_type:
     tag_uri = URIRef(tag + ".value")
-    triples = [(label, ontology.hasValue, tag_uri)]
+    triples: _triple_type = [(label, ontology.hasValue, tag_uri)]
     if is_dataclass(dtype):
         warnings.warn(
             "semantikon_class is experimental - triples may change in the future",
@@ -108,36 +113,35 @@ _rest_type: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
 
 
 def _validate_restriction_format(
-    restrictions: _rest_type | tuple[_rest_type] | list[_rest_type],
+    restrictions: _rest_type | tuple[_rest_type],
 ) -> tuple[_rest_type]:
-    if not all(isinstance(r, tuple) for r in restrictions):
-        raise ValueError("Restrictions must be tuples of URIRefs")
-    elif all(isinstance(rr, URIRef) for r in restrictions for rr in r):
-        return (restrictions,)
-    elif all(isinstance(rrr, URIRef) for r in restrictions for rr in r for rrr in rr):
-        return restrictions
-    else:
-        raise ValueError("Restrictions must be tuples of URIRefs")
+    if isinstance(restrictions[0][0], URIRef):
+        return (cast(_rest_type, restrictions),)
+    return cast(tuple[_rest_type], restrictions)
 
 
-def _get_restriction_type(restriction: tuple[_rest_type]) -> URIRef:
-    if restriction[0][0].startswith(OWL):
+def _get_restriction_type(restriction: tuple[tuple[URIRef, URIRef], ...]) -> str:
+    if restriction[0][0].startswith(str(OWL)):
         return "OWL"
-    elif restriction[0][0].startswith(SH):
+    elif restriction[0][0].startswith(str(SH)):
         return "SH"
     raise ValueError(f"Unknown restriction type {restriction}")
 
 
-def _owl_restriction_to_triple(restriction: tuple[_rest_type]) -> list:
+def _owl_restriction_to_triple(
+    restriction: _rest_type,
+) -> list[tuple[BNode | None, URIRef, IdentifiedNode]]:
     label = BNode()
     triples = [(None, RDF.type, label), (label, RDF.type, OWL.Restriction)]
     triples.extend([(label, r[0], r[1]) for r in restriction])
     return triples
 
 
-def _sh_restriction_to_triple(restrictions: tuple[_rest_type]) -> list:
+def _sh_restriction_to_triple(
+    restrictions: _rest_type,
+) -> list[tuple[str | None, URIRef, URIRef | str]]:
     label = BNode()
-    node = restrictions[0][0] + "Node"
+    node = str(restrictions[0][0]) + "Node"
     triples = [
         (None, RDF.type, node),
         (node, RDF.type, SH.NodeShape),
@@ -149,8 +153,8 @@ def _sh_restriction_to_triple(restrictions: tuple[_rest_type]) -> list:
 
 
 def _restriction_to_triple(
-    restrictions: _rest_type | tuple[_rest_type] | list[_rest_type],
-) -> list[tuple[URIRef | None, URIRef, URIRef]]:
+    restrictions: _rest_type | tuple[_rest_type],
+) -> list[tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str]]:
     """
     Convert restrictions to triples
 
@@ -177,10 +181,9 @@ def _restriction_to_triple(
     >>> )
     """
     restrictions_collection = _validate_restriction_format(restrictions)
-    triples = []
+    triples: list[tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str]] = []
     for r in restrictions_collection:
-        restriction_type = _get_restriction_type(r)
-        if restriction_type == "OWL":
+        if _get_restriction_type(r) == "OWL":
             triples.extend(_owl_restriction_to_triple(r))
         else:
             triples.extend(_sh_restriction_to_triple(r))
@@ -329,7 +332,7 @@ def _append_missing_items(graph: Graph) -> Graph:
     return graph
 
 
-def _convert_to_uriref(value):
+def _convert_to_uriref(value: URIRef | Literal | str | None) -> URIRef | Literal:
     if isinstance(value, URIRef) or isinstance(value, Literal):
         return value  # Already a URIRef
     elif isinstance(value, str):
@@ -338,7 +341,7 @@ def _convert_to_uriref(value):
         raise TypeError(f"Unsupported type: {type(value)}")
 
 
-def _function_to_triples(function: callable, node_label: str, ontology=SNS) -> list:
+def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> list:
     f_dict = get_function_dict(function)
     triples = []
     if f_dict.get("uri", None) is not None:
@@ -351,19 +354,18 @@ def _function_to_triples(function: callable, node_label: str, ontology=SNS) -> l
 
 
 def _parse_channel(
-    channel_dict: dict, channel_label: str, edge_dict: str, ontology=SNS
+    channel_dict: dict, channel_label: str, edge_dict: dict, ontology=SNS
 ):
-    triples = []
+    triples: _triple_type = []
     if "type_hint" in channel_dict:
         channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
     triples.append((channel_label, RDF.type, PROV.Entity))
     if channel_dict.get("uri", None) is not None:
         triples.append((channel_label, RDF.type, channel_dict["uri"]))
-    tag = edge_dict.get(*2 * [channel_label])
     triples.extend(
         _translate_has_value(
             label=channel_label,
-            tag=tag,
+            tag=str(edge_dict.get(*2 * [channel_label])),
             value=channel_dict.get("value", None),
             dtype=channel_dict.get("dtype", None),
             units=channel_dict.get("units", None),
@@ -419,7 +421,7 @@ def _get_edge_dict(edges: list) -> dict:
     return d
 
 
-def _dot(*args):
+def _dot(*args) -> str:
     return ".".join([a for a in args if a is not None])
 
 
@@ -429,7 +431,7 @@ def _convert_edge_triples(inp: str, out: str, ontology=SNS) -> tuple:
     return (inp, ontology.inheritsPropertiesFrom, out)
 
 
-def _edges_to_triples(edges: list, ontology=SNS) -> list:
+def _edges_to_triples(edges: dict, ontology=SNS) -> list:
     return [_convert_edge_triples(inp, out, ontology) for inp, out in edges.items()]
 
 
@@ -497,8 +499,8 @@ def get_knowledge_graph(
     for triple in triples:
         if any(t is None for t in triple):
             continue
-        converted_triples = (_convert_to_uriref(t) for t in triple)
-        graph.add(converted_triples)
+        s, p, o = tuple([_convert_to_uriref(t) for t in triple])
+        graph.add((s, p, o))
     if inherit_properties:
         _inherit_properties(graph, triples_to_cancel, ontology=ontology)
     if append_missing_items:
