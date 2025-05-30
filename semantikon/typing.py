@@ -11,7 +11,6 @@ from semantikon.dataclasses import (
     TypeMetadata,
 )
 
-
 __author__ = "Sam Waseda"
 __copyright__ = (
     "Copyright 2021, Max-Planck-Institut für Eisenforschung GmbH "
