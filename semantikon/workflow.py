@@ -523,7 +523,7 @@ def get_workflow_dict(func):
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),
-        nodes=_get_nodes(f_dict, output_counts),
+        nodes=nodes,
         edges=_get_edges(graph, f_dict, output_labels, nodes),
         label=func.__name__,
     )
