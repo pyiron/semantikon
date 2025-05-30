@@ -4,11 +4,13 @@ import unittest
 import semantikon.dataclasses as sdc
 
 
+@dataclasses.dataclass
+class ConcreteDC(sdc._VariadicDataclass):
+    complex_field: set[str]
+
+
 class TestDataclasses(unittest.TestCase):
     def test_item_identity(self):
-        @dataclasses.dataclass
-        class ConcreteDC(sdc._VariadicDataclass):
-            complex_field: set[str]
 
         complex_object = {"Here is some non-trivial, mutable object"}
         dc = ConcreteDC(complex_field=complex_object)
