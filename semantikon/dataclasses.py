@@ -123,7 +123,9 @@ class _Node(_VariadicDataclass):
 @dataclasses.dataclass(slots=True)
 class Function(
     _Node
-): ...  # function: FunctionType  # Disabled for backwards compatibility
+):
+    # function: FunctionType  # Disabled for backwards compatibility
+    uri: str | Missing = missing()  # Ad-hoc addition to satisfy the `add` test
 
 
 @dataclasses.dataclass(slots=True)
