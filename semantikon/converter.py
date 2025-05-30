@@ -7,10 +7,20 @@ import inspect
 import re
 import sys
 import textwrap
-from functools import wraps
-from typing import Annotated, Callable, get_args, get_origin, get_type_hints
+from copy import deepcopy
+from functools import update_wrapper, wraps
+from typing import (
+    Annotated,
+    Any,
+    Callable,
+    Generic,
+    TypeVar,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
-from pint import Quantity
+from pint import Quantity, UnitRegistry
 from pint.registry_helpers import (
     _apply_defaults,
     _parse_wrap_args,
@@ -29,15 +39,34 @@ __email__ = "waseda@mpie.de"
 __status__ = "development"
 __date__ = "Aug 21, 2021"
 
+F = TypeVar("F", bound=Callable[..., object])
 
-def _get_ureg(args, kwargs):
+
+class FunctionWithMetadata(Generic[F]):
+    def __init__(self, func: F, metadata: dict[str, object]) -> None:
+        self.func = func
+        self._semantikon_metadata: dict[str, object] = metadata
+        update_wrapper(self, func)  # Copies __name__, __doc__, etc.
+
+    def __call__(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+
+    def __getattr__(self, item):
+        return getattr(self.func, item)
+
+    def __deepcopy__(self, memo=None):
+        new_func = deepcopy(self.func, memo)
+        return FunctionWithMetadata(new_func, self._semantikon_metadata)
+
+
+def _get_ureg(args: Any, kwargs: dict[str, Any]) -> UnitRegistry | None:
     for arg in args + tuple(kwargs.values()):
         if isinstance(arg, Quantity):
             return arg._REGISTRY
     return None
 
 
-def parse_metadata(value):
+def parse_metadata(value: Any) -> dict[str, Any]:
     """
     Parse the metadata of a Quantity object.
 
@@ -52,7 +81,7 @@ def parse_metadata(value):
     return {k: v for k, v in zip(metadata[::2], metadata[1::2])}
 
 
-def meta_to_dict(value, default=inspect.Parameter.empty):
+def meta_to_dict(value: Any, default=inspect.Parameter.empty) -> dict[str, Any]:
     semantikon_was_used = hasattr(value, "__metadata__")
     type_hint_was_present = value is not inspect.Parameter.empty
     default_is_defined = default is not inspect.Parameter.empty
@@ -71,7 +100,7 @@ def meta_to_dict(value, default=inspect.Parameter.empty):
     return result
 
 
-def extract_undefined_name(error_message):
+def extract_undefined_name(error_message: str) -> str:
     match = re.search(r"name '(.+?)' is not defined", error_message)
     if match:
         return match.group(1)
@@ -99,7 +128,7 @@ def _resolve_annotation(annotation, func_globals=None):
         return Annotated[undefined_name, args[1]]
 
 
-def _to_tag(item, count=None):
+def _to_tag(item: Any, count=None) -> str:
     if isinstance(item, ast.Name):
         return item.id
     elif count is None:
@@ -108,14 +137,14 @@ def _to_tag(item, count=None):
         return f"output_{count}"
 
 
-def get_return_expressions(func):
+def get_return_expressions(func: Callable) -> str | tuple | None:
     source = inspect.getsource(func)
     source = textwrap.dedent(source)
     parsed = ast.parse(source)
 
     func_node = next(n for n in parsed.body if isinstance(n, ast.FunctionDef))
 
-    ret_list = []
+    ret_list: list[str | tuple[str, ...]] = []
 
     for node in ast.walk(func_node):
         if isinstance(node, ast.Return):
@@ -142,7 +171,7 @@ def get_return_expressions(func):
         return "output"
 
 
-def get_annotated_type_hints(func):
+def get_annotated_type_hints(func: Callable) -> dict[str, Any]:
     """
     Get the type hints of a function, including lazy annotations. The function
     practically does the same as `get_type_hints` for Python 3.11 and later,
@@ -181,7 +210,7 @@ def get_annotated_type_hints(func):
         return hints
 
 
-def parse_input_args(func: Callable):
+def parse_input_args(func: Callable) -> dict[str, dict]:
     """
     Parse the input arguments of a function.
 
@@ -199,7 +228,7 @@ def parse_input_args(func: Callable):
     }
 
 
-def parse_output_args(func: Callable, separate_tuple: bool = True):
+def parse_output_args(func: Callable, separate_tuple: bool = True) -> dict | tuple:
     """
     Parse the output arguments of a function.
 
@@ -219,7 +248,7 @@ def parse_output_args(func: Callable, separate_tuple: bool = True):
         return meta_to_dict(ret)
 
 
-def _get_converter(func):
+def _get_converter(func: Callable) -> Callable | None:
     args = []
     for value in parse_input_args(func).values():
         if value is not None:
@@ -232,7 +261,9 @@ def _get_converter(func):
         return None
 
 
-def _get_ret_units(output, ureg, names):
+def _get_ret_units(
+    output: dict, ureg: UnitRegistry, names: dict[str, Any]
+) -> Quantity | None:
     if output == {}:
         return None
     ret = _to_units_container(output.get("units", None), ureg)
@@ -240,15 +271,16 @@ def _get_ret_units(output, ureg, names):
     return ureg.Quantity(1, _replace_units(ret[0], names) if ret[1] else ret[0])
 
 
-def _get_output_units(output, ureg, names):
-    multiple_output_args = isinstance(output, tuple)
-    if multiple_output_args:
+def _get_output_units(
+    output: dict | tuple, ureg: UnitRegistry, names: dict[str, Any]
+) -> Quantity | tuple[Quantity | None, ...] | None:
+    if isinstance(output, tuple):
         return tuple([_get_ret_units(oo, ureg, names) for oo in output])
     else:
         return _get_ret_units(output, ureg, names)
 
 
-def _is_dimensionless(output):
+def _is_dimensionless(output: Quantity | tuple[Quantity, ...] | None) -> bool:
     if output is None:
         return True
     if isinstance(output, tuple):
@@ -258,7 +290,7 @@ def _is_dimensionless(output):
     return False
 
 
-def units(func):
+def units(func: Callable) -> Callable:
     """
     Decorator to convert the output of a function to a Quantity object with
     the specified units.
@@ -306,17 +338,16 @@ def units(func):
     return wrapper
 
 
-def get_function_dict(function):
+def get_function_dict(function: Callable | FunctionWithMetadata) -> dict[str, Any]:
     result = {
         "label": function.__name__,
     }
-    function_has_metadata = hasattr(function, "_semantikon_metadata")
-    if function_has_metadata:
+    if hasattr(function, "_semantikon_metadata"):
         result.update(function._semantikon_metadata)
     return result
 
 
-def semantikon_class(cls: type):
+def semantikon_class(cls: type) -> type:
     """
     A class decorator to append type hints to class attributes.
 
