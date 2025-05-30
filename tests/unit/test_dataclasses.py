@@ -10,17 +10,18 @@ class ConcreteDC(sdc._VariadicDataclass):
 
 
 class TestDataclasses(unittest.TestCase):
-    def test_item_identity(self):
+    def setUp(self):
+        self.complex_object = {"Here is some non-trivial, mutable object"}
+        self.dc = ConcreteDC(complex_field=self.complex_object)
 
-        complex_object = {"Here is some non-trivial, mutable object"}
-        dc = ConcreteDC(complex_field=complex_object)
+    def test_item_identity(self):
         self.assertIs(
-            dc.complex_field,
-            complex_object,
+            self.dc.complex_field,
+            self.complex_object,
             msg="Sanity check that we get instance we pass in",
         )
         self.assertIs(
-            dc.complex_field,
-            dc.to_dictionary()["complex_field"],
+            self.dc.complex_field,
+            self.dc.to_dictionary()["complex_field"],
             msg="The dictionary representation should return the same underlying data",
         )
