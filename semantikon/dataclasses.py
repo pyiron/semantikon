@@ -1,8 +1,9 @@
 import abc
 import dataclasses
 import functools
+from collections.abc import Iterable, MutableMapping
 from types import FunctionType
-from typing import Any, ItemsView
+from typing import Any, Generic, Iterator, TypeVar
 
 
 class Missing:
@@ -14,13 +15,13 @@ MISSING = Missing()
 missing = functools.partial(dataclasses.field, default=MISSING)
 
 
-class _HasToDictionary(abc.ABC):
+class _HasToDictionary(Iterable[tuple[str, Any]], abc.ABC):
     @abc.abstractmethod
-    def items(self) -> ItemsView[str, Any]: ...
+    def __iter__(self) -> Iterator[tuple[str, Any]]: ...
 
     def to_dictionary(self) -> dict[str, Any]:
         d = {}
-        for k, v in self.items():
+        for k, v in self:
             if isinstance(v, _HasToDictionary):
                 d[k] = v.to_dictionary()
             elif v is not MISSING:
@@ -31,8 +32,8 @@ class _HasToDictionary(abc.ABC):
 @dataclasses.dataclass(slots=True)
 class _VariadicDataclass(_HasToDictionary):
 
-    def items(self) -> ItemsView[str, Any]:
-        return {f.name: getattr(self, f.name) for f in dataclasses.fields(self)}.items()
+    def __iter__(self) -> Iterator[tuple[str, Any]]:
+        yield from ((f.name, getattr(self, f.name)) for f in dataclasses.fields(self))
 
 
 @dataclasses.dataclass(slots=True)
@@ -50,10 +51,33 @@ class Input(_Port):
     default: Any | Missing = missing()
 
 
-class Inputs(dict[str, Input], _HasToDictionary): ...
+_PortType = TypeVar("_PortType", bound=_Port)
 
 
-class Outputs(dict[str, Output], _HasToDictionary): ...
+class _IO(_HasToDictionary, MutableMapping[str, _PortType], Generic[_PortType]):
+    def __init__(self, **kwargs: _PortType) -> None:
+        self._data: dict[str, _PortType] = kwargs
+
+    def __getitem__(self, key: str) -> _PortType:
+        return self._data[key]
+
+    def __setitem__(self, key: str, value: _PortType) -> None:
+        self._data[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        del self._data[key]
+
+    def __iter__(self) -> Iterator[tuple[str, _PortType]]:
+        yield from self._data.items()
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+
+class Inputs(_IO[Input]): ...
+
+
+class Outputs(_IO[Output]): ...
 
 
 @dataclasses.dataclass(slots=True)
@@ -62,13 +86,9 @@ class _Node(_VariadicDataclass):
     inputs: Inputs
     outputs: Outputs
 
-    @property
-    def type(self) -> str:
-        return self.__class__.__name__
-
-    def items(self) -> ItemsView[str, Any]:
+    def __iter__(self) -> Iterator[tuple[str, Any]]:
         yield "type", self.__class__.__name__
-        yield from super().items()
+        yield from super().__iter__()
 
 
 @dataclasses.dataclass(slots=True)
