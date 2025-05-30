@@ -3,7 +3,6 @@ import unittest
 
 import networkx as nx
 
-import semantikon.dataclasses as sdc
 import semantikon.workflow as swf
 from semantikon.converter import parse_input_args
 from semantikon.typing import u
