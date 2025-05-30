@@ -213,7 +213,7 @@ class TestWorkflow(unittest.TestCase):
                     "function": "multiply",
                 },
             },
-            "data_edges": [
+            "edges": [
                 ("inputs.a", "operation_0.inputs.x"),
                 ("inputs.b", "operation_0.inputs.y"),
                 ("operation_0.outputs.output_0", "add_0.inputs.x"),
@@ -263,7 +263,7 @@ class TestWorkflow(unittest.TestCase):
                             "outputs": {"output": {"dtype": float}},
                         },
                     },
-                    "data_edges": [
+                    "edges": [
                         ("inputs.a", "operation_0.inputs.x"),
                         ("inputs.b", "operation_0.inputs.y"),
                         ("operation_0.outputs.output_0", "add_0.inputs.x"),
@@ -283,7 +283,7 @@ class TestWorkflow(unittest.TestCase):
                     "uri": "add",
                 },
             },
-            "data_edges": [
+            "edges": [
                 ("inputs.a", "example_macro_0.inputs.a"),
                 ("inputs.b", "example_macro_0.inputs.b"),
                 ("inputs.b", "add_0.inputs.y"),
@@ -395,7 +395,7 @@ class TestWorkflow(unittest.TestCase):
             ["x", "z"],
         )
         self.assertEqual(
-            sorted(wf["nodes"]["injected_while_loop_0"]["data_edges"]),
+            sorted(wf["nodes"]["injected_while_loop_0"]["edges"]),
             sorted(
                 [
                     ("inputs.x", "test.inputs.a"),
@@ -415,8 +415,8 @@ class TestWorkflow(unittest.TestCase):
     def test_reused_args(self):
         data = get_workflow_dict(reused_args)
         self.assertEqual(
-            sorted(data["data_edges"]),
-            sorted(example_macro._semantikon_workflow["data_edges"]),
+            sorted(data["edges"]),
+            sorted(example_macro._semantikon_workflow["edges"]),
         )
 
     def test_get_node_outputs(self):
@@ -443,7 +443,7 @@ class TestWorkflow(unittest.TestCase):
         self.assertIn("add_0", data["nodes"])
         self.assertIn("y", data["outputs"])
         self.assertIn(
-            ("add_0.outputs.output", "check_positive_0.inputs.x"), data["data_edges"]
+            ("add_0.outputs.output", "check_positive_0.inputs.x"), data["edges"]
         )
         self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
 
