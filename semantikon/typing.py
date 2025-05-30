@@ -87,7 +87,7 @@ def u(
     units: str | Missing = MISSING,
     shape: ShapeType | Missing = MISSING,
     **kwargs,
-) -> Callable[[Callable], FunctionWithMetadata] | Annotated:
+) -> Callable[[Callable], FunctionWithMetadata] | Annotated[Any, object]:
     if isinstance(type_or_func, type) or get_origin(type_or_func) is not None:
         return _type_metadata(
             type_or_func,
