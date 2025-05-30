@@ -80,27 +80,35 @@ class Input(_Port):
     default: Any | Missing = missing()
 
 
-_PortType = TypeVar("_PortType", bound=_Port)
+_ItemType = TypeVar("_ItemType")
 
 
-class _IO(_HasToDictionary, MutableMapping[str, _PortType], Generic[_PortType]):
-    def __init__(self, **kwargs: _PortType) -> None:
-        self._data: dict[str, _PortType] = kwargs
+class _HasToDictionarMapping(
+    _HasToDictionary, MutableMapping[str, _ItemType], Generic[_ItemType]
+):
+    def __init__(self, **kwargs: _ItemType) -> None:
+        self._data: dict[str, _ItemType] = kwargs
 
-    def __getitem__(self, key: str) -> _PortType:
+    def __getitem__(self, key: str) -> _ItemType:
         return self._data[key]
 
-    def __setitem__(self, key: str, value: _PortType) -> None:
+    def __setitem__(self, key: str, value: _ItemType) -> None:
         self._data[key] = value
 
     def __delitem__(self, key: str) -> None:
         del self._data[key]
 
-    def __iter__(self) -> Iterator[tuple[str, _PortType]]:
+    def __iter__(self) -> Iterator[tuple[str, _ItemType]]:
         yield from self._data.items()
 
     def __len__(self) -> int:
         return len(self._data)
+
+
+_PortType = TypeVar("_PortType", bound=_Port)
+
+
+class _IO(_HasToDictionarMapping[_PortType], Generic[_PortType]): ...
 
 
 class Inputs(_IO[Input]): ...
@@ -121,17 +129,24 @@ class _Node(_VariadicDataclass):
 
 
 @dataclasses.dataclass(slots=True)
-class Function(
-    _Node
-):
+class Function(_Node):
     # function: FunctionType  # Disabled for backwards compatibility
     uri: str | Missing = missing()  # Ad-hoc addition to satisfy the `add` test
 
 
+class Nodes(_HasToDictionarMapping[_Node]): ...
+
+
+EdgeType: TypeAlias = tuple[str, str]
+
+
+class Edges(_HasToDictionarMapping[EdgeType]): ...
+
+
 @dataclasses.dataclass(slots=True)
 class Workflow(_Node):
-    nodes: dict[str, _Node]
-    edges: dict[str, tuple[str, str]]
+    nodes: Nodes
+    edges: Edges
 
 
 @dataclasses.dataclass(slots=True)
