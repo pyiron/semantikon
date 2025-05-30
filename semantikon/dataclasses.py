@@ -5,6 +5,15 @@ from types import FunctionType
 from typing import Any, ItemsView
 
 
+class Missing:
+    def __repr__(self):
+        return "<MISSING>"
+
+
+MISSING = Missing()
+missing = functools.partial(dataclasses.field, default=MISSING)
+
+
 class _HasToDictionary(abc.ABC):
     @abc.abstractmethod
     def items(self) -> ItemsView[str, Any]: ...
@@ -17,15 +26,6 @@ class _HasToDictionary(abc.ABC):
             else:
                 d[k] = v
         return d
-
-
-class Missing:
-    def __repr__(self):
-        return "<MISSING>"
-
-
-MISSING = Missing()
-missing = functools.partial(dataclasses.field, default=MISSING)
 
 
 @dataclasses.dataclass(slots=True)
