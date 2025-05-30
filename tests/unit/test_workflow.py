@@ -471,9 +471,9 @@ class TestWorkflow(unittest.TestCase):
         for fnc in (operation, add, multiply, my_while_condition):
             with self.subTest(fnc=fnc):
                 entry = swf._to_node_dict_entry(
-                        fnc,
-                        parse_input_args(fnc),
-                        swf._get_workflow_outputs(fnc),
+                    fnc,
+                    parse_input_args(fnc),
+                    swf._get_workflow_outputs(fnc),
                 )
                 # Cheat and modify to match dataclass
                 if hasattr(fnc, "_semantikon_metadata"):
