@@ -9,7 +9,16 @@ import sys
 import textwrap
 from copy import deepcopy
 from functools import wraps, update_wrapper
-from typing import Annotated, Any, Callable, Generic, TypeVar, get_args, get_origin, get_type_hints
+from typing import (
+    Annotated,
+    Any,
+    Callable,
+    Generic,
+    TypeVar,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 from pint import Quantity, UnitRegistry
 from pint.registry_helpers import (
