@@ -5,7 +5,7 @@ import inspect
 from collections import deque
 from functools import cached_property, update_wrapper
 from hashlib import sha256
-from typing import Callable, Generic, TypeVar, cast
+from typing import Callable, Generic, TypeVar
 
 import networkx as nx
 from networkx.algorithms.dag import topological_sort
@@ -497,7 +497,7 @@ def _to_workflow_dict_entry(
     nodes: dict[str, dict],
     data_edges: list[tuple[str, str]],
     label: str,
-    **kwargs
+    **kwargs,
 ) -> dict[str, object]:
     assert all("inputs" in v for v in nodes.values())
     assert all("outputs" in v for v in nodes.values())

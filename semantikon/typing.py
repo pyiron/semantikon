@@ -1,8 +1,6 @@
-from copy import deepcopy
-from functools import update_wrapper
-from typing import Annotated, Callable, Generic, Type, TypeVar, get_origin
+from typing import Annotated, Callable, Type, get_origin
 
-from semantikon.converter import parse_metadata
+from semantikon.converter import parse_metadata, FunctionWithMetadata
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -14,25 +12,6 @@ __maintainer__ = "Sam Waseda"
 __email__ = "waseda@mpie.de"
 __status__ = "development"
 __date__ = "Aug 21, 2021"
-
-F = TypeVar("F", bound=Callable[..., object])
-
-
-class FunctionWithMetadata(Generic[F]):
-    def __init__(self, func: F, metadata: dict[str, object]) -> None:
-        self.func = func
-        self._semantikon_metadata: dict[str, object] = metadata
-        update_wrapper(self, func)  # Copies __name__, __doc__, etc.
-
-    def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
-
-    def __getattr__(self, item):
-        return getattr(self.func, item)
-
-    def __deepcopy__(self, memo=None):
-        new_func = deepcopy(self.func, memo)
-        return FunctionWithMetadata(new_func, self._semantikon_metadata)
 
 
 def _is_annotated(type_):

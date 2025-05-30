@@ -7,8 +7,9 @@ import inspect
 import re
 import sys
 import textwrap
-from functools import wraps
-from typing import Annotated, Callable, get_args, get_origin, get_type_hints, Any
+from copy import deepcopy
+from functools import wraps, update_wrapper
+from typing import Annotated, Any, Callable, Generic, TypeVar, get_args, get_origin, get_type_hints
 
 from pint import Quantity, UnitRegistry
 from pint.registry_helpers import (
@@ -17,8 +18,6 @@ from pint.registry_helpers import (
     _replace_units,
     _to_units_container,
 )
-
-from semantikon.typing import FunctionWithMetadata
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -30,6 +29,25 @@ __maintainer__ = "Sam Waseda"
 __email__ = "waseda@mpie.de"
 __status__ = "development"
 __date__ = "Aug 21, 2021"
+
+F = TypeVar("F", bound=Callable[..., object])
+
+
+class FunctionWithMetadata(Generic[F]):
+    def __init__(self, func: F, metadata: dict[str, object]) -> None:
+        self.func = func
+        self._semantikon_metadata: dict[str, object] = metadata
+        update_wrapper(self, func)  # Copies __name__, __doc__, etc.
+
+    def __call__(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+
+    def __getattr__(self, item):
+        return getattr(self.func, item)
+
+    def __deepcopy__(self, memo=None):
+        new_func = deepcopy(self.func, memo)
+        return FunctionWithMetadata(new_func, self._semantikon_metadata)
 
 
 def _get_ureg(args: Any, kwargs: dict[str, Any]) -> UnitRegistry | None:
