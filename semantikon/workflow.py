@@ -700,7 +700,9 @@ def parse_function_outputs(func: Callable) -> sdc.Outputs:
 
 
 def parse_function(func: Callable) -> sdc.Function:
-    metadata = func._semantikon_metadata if hasattr(func, "_semantikon_metadata") else {}
+    metadata = (
+        func._semantikon_metadata if hasattr(func, "_semantikon_metadata") else {}
+    )
     return sdc.Function(
         label=func.__name__,
         inputs=parse_function_inputs(func),

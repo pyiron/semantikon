@@ -31,14 +31,14 @@ class TestDataclasses(unittest.TestCase):
         self.assertIs(
             self.dc.optional_field,
             sdc.MISSING,
-            msg="Dataclass field should hold full data object, even missing objects"
+            msg="Dataclass field should hold full data object, even missing objects",
         )
         self.assertNotIn(
             "optional_field",
             self.dc.to_dictionary(),
             msg="Sending the dataclass to a dictionary should purge missing entries --"
-                "this is why we call it a variadic dataclass, because some of its "
-                "fields are optional!"
+            "this is why we call it a variadic dataclass, because some of its "
+            "fields are optional!",
         )
 
 

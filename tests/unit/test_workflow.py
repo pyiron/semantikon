@@ -476,5 +476,6 @@ class TestWorkflow(unittest.TestCase):
                     msg="Just an interim cyclicity test",
                 )
 
+
 if __name__ == "__main__":
     unittest.main()
