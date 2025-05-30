@@ -1,6 +1,6 @@
 from typing import Annotated, Any, Callable, get_origin
 
-from semantikon.converter import parse_metadata, FunctionWithMetadata
+from semantikon.converter import FunctionWithMetadata, parse_metadata
 
 __author__ = "Sam Waseda"
 __copyright__ = (
