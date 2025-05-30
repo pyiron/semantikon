@@ -454,7 +454,7 @@ class TestWorkflow(unittest.TestCase):
             with self.subTest(fnc=fnc):
                 self.assertDictEqual(
                     parse_input_args(fnc),
-                    swf.parse_input_args_to_inputs(fnc).to_dictionary(),
+                    swf.parse_function_inputs(fnc).to_dictionary(),
                     msg="Just an interim cyclicity test",
                 )
 
