@@ -318,14 +318,14 @@ def _get_nodes(data: dict[str, dict], output_counts: dict[str, int]) -> dict[str
             data_dict = func._semantikon_workflow.copy()
             result[node] = data_dict
             result[node]["label"] = node
+            if hasattr(func, "_semantikon_metadata"):
+                result[node].update(func._semantikon_metadata)
         else:
             result[node] = _to_node_dict_entry(
                 func,
                 parse_input_args(func),
                 _get_node_outputs(func, output_counts.get(node, 0)),
             )
-        if hasattr(func, "_semantikon_metadata"):
-            result[node].update(func._semantikon_metadata)
     return result
 
 
@@ -490,7 +490,10 @@ def separate_functions(data, function_dict=None):
 def _to_node_dict_entry(
     function: Callable, inputs: dict[str, dict], outputs: dict[str, dict]
 ) -> dict:
-    return {"function": function, "inputs": inputs, "outputs": outputs}
+    entry = {"function": function, "inputs": inputs, "outputs": outputs}
+    if hasattr(function, "_semantikon_metadata"):
+        entry.update(function._semantikon_metadata)
+    return entry
 
 
 def _to_workflow_dict_entry(
