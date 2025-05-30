@@ -691,3 +691,9 @@ def workflow(func):
 
 def parse_input_args_to_inputs(func: Callable) -> sdc.Inputs:
     return sdc.Inputs(**{k: sdc.Input(**v) for k, v in parse_input_args(func).items()})
+
+
+def parse_function_outputs(func: Callable) -> sdc.Outputs:
+    return sdc.Outputs(
+        **{k: sdc.Input(**v) for k, v in _get_workflow_outputs(func).items()}
+    )
