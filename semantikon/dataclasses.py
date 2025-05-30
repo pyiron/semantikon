@@ -23,7 +23,7 @@ class _HasToDictionary(abc.ABC):
         for k, v in self.items():
             if isinstance(v, _HasToDictionary):
                 d[k] = v.to_dictionary()
-            else:
+            elif v is not MISSING:
                 d[k] = v
         return d
 
@@ -66,21 +66,9 @@ class _Node(_VariadicDataclass):
     def type(self) -> str:
         return self.__class__.__name__
 
-    def asdict(self) -> dict[str, Any]:
-        d = super().asdict()
-        d["type"] = self.type
-        return d
-
-    def to_dictionary(self) -> dict[str, Any]:
-        d = {}
-        for k, v in self.asdict().items():
-            if isinstance(v, _Node):
-                d[k] = v.to_dictionary()
-            elif isinstance(v, _VariadicDataclass):
-                d[k] = v.asdict()
-            else:
-                d[k] = v
-        return d
+    def items(self) -> ItemsView[str, Any]:
+        yield "type", self.__class__.__name__
+        yield from super().items()
 
 
 @dataclasses.dataclass(slots=True)

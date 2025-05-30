@@ -450,12 +450,16 @@ class TestWorkflow(unittest.TestCase):
         )
         self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
 
-    def test_inputs(self):
-        self.assertDictEqual(
-            parse_input_args(add),
-            swf.parse_input_args_to_inputs(add).to_dictionary(),
-            msg="Just an interim cyclicity test",
-        )
+    def test_function_inputs(self):
+        for fnc in (
+            operation, add, multiply, my_while_condition
+        ):
+            with self.subTest(fnc=fnc):
+                self.assertDictEqual(
+                    parse_input_args(fnc),
+                    swf.parse_input_args_to_inputs(fnc).to_dictionary(),
+                    msg="Just an interim cyclicity test",
+                )
 
 
 if __name__ == "__main__":
