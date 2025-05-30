@@ -1,8 +1,6 @@
-from copy import deepcopy
-from functools import update_wrapper
-from typing import Annotated, Callable, Generic, TypeVar, get_origin
+from typing import Annotated, Any, Callable, get_origin
 
-from semantikon.converter import parse_metadata
+from semantikon.converter import FunctionWithMetadata, parse_metadata
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -14,25 +12,6 @@ __maintainer__ = "Sam Waseda"
 __email__ = "waseda@mpie.de"
 __status__ = "development"
 __date__ = "Aug 21, 2021"
-
-F = TypeVar("F", bound=Callable[..., object])
-
-
-class FunctionWithMetadata(Generic[F]):
-    def __init__(self, func: F, metadata: dict[str, object]) -> None:
-        self.func = func
-        self._semantikon_metadata: dict[str, object] = metadata
-        update_wrapper(self, func)  # Copies __name__, __doc__, etc.
-
-    def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
-
-    def __getattr__(self, item):
-        return getattr(self.func, item)
-
-    def __deepcopy__(self, memo=None):
-        new_func = deepcopy(self.func, memo)
-        return FunctionWithMetadata(new_func, self._semantikon_metadata)
 
 
 def _is_annotated(type_):
@@ -49,7 +28,7 @@ def _type_metadata(
     shape: tuple[int] | None = None,
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
-):
+) -> Any:
     if _is_annotated(type_):
         kwargs.update(parse_metadata(type_))
         type_ = type_.__origin__
@@ -111,11 +90,7 @@ def u(
     shape: tuple[int] | None = None,
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
-):
-    is_type_hint = (
-        isinstance(type_or_func, type) or get_origin(type_or_func) is not None
-    )
-    is_decorator = type_or_func is None
+) -> Any:
     kwargs.update(
         _kwargs_to_dict(
             units=units,
@@ -126,9 +101,9 @@ def u(
             restrictions=restrictions,
         )
     )
-    if is_type_hint:
+    if isinstance(type_or_func, type) or get_origin(type_or_func) is not None:
         return _type_metadata(type_or_func, **kwargs)
-    elif is_decorator:
+    elif type_or_func is None:
         return _function_metadata(**kwargs)
     else:
         raise TypeError(f"Unsupported type: {type(type_or_func)}")
