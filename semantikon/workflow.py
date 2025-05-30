@@ -695,5 +695,5 @@ def parse_function_inputs(func: Callable) -> sdc.Inputs:
 
 def parse_function_outputs(func: Callable) -> sdc.Outputs:
     return sdc.Outputs(
-        **{k: sdc.Input(**v) for k, v in _get_workflow_outputs(func).items()}
+        **{k: sdc.Output(**v) for k, v in _get_workflow_outputs(func).items()}
     )
