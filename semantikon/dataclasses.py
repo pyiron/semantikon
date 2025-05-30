@@ -30,11 +30,9 @@ class _HasToDictionary(abc.ABC):
 
 @dataclasses.dataclass(slots=True)
 class _VariadicDataclass(_HasToDictionary):
-    def asdict(self) -> dict[str, Any]:
-        return {k: v for (k, v) in dataclasses.asdict(self).items() if v is not MISSING}
 
     def items(self) -> ItemsView[str, Any]:
-        return self.asdict().items()
+        return {f.name: getattr(self, f.name) for f in dataclasses.fields(self)}.items()
 
 
 @dataclasses.dataclass(slots=True)
