@@ -1,4 +1,4 @@
-from typing import Annotated, Callable, Type, get_origin
+from typing import Annotated, Any, Callable, get_origin
 
 from semantikon.converter import parse_metadata, FunctionWithMetadata
 
@@ -28,7 +28,7 @@ def _type_metadata(
     shape: tuple[int] | None = None,
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
-) -> Type:
+) -> Any:
     if _is_annotated(type_):
         kwargs.update(parse_metadata(type_))
         type_ = type_.__origin__
@@ -90,7 +90,7 @@ def u(
     shape: tuple[int] | None = None,
     restrictions: tuple[tuple[str, str]] | None = None,
     **kwargs,
-) -> Type | Callable:
+) -> Any:
     kwargs.update(
         _kwargs_to_dict(
             units=units,
