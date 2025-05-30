@@ -3,6 +3,8 @@ import unittest
 
 import networkx as nx
 
+import semantikon.workflow as swf
+from semantikon.converter import parse_input_args
 from semantikon.typing import u
 from semantikon.workflow import (
     _extract_variables_from_ast_body,
@@ -446,6 +448,43 @@ class TestWorkflow(unittest.TestCase):
             ("add_0.outputs.output", "check_positive_0.inputs.x"), data["edges"]
         )
         self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
+
+    def test_function_inputs(self):
+        for fnc in (operation, add, multiply, my_while_condition):
+            with self.subTest(fnc=fnc):
+                self.assertDictEqual(
+                    parse_input_args(fnc),
+                    swf.parse_function_inputs(fnc).to_dictionary(),
+                    msg="Just an interim cyclicity test",
+                )
+
+    def test_function_outputs(self):
+        for fnc in (operation, add, multiply, my_while_condition):
+            with self.subTest(fnc=fnc):
+                self.assertDictEqual(
+                    swf._get_node_outputs(fnc, 2 if fnc == operation else 1),
+                    swf.parse_function_outputs(fnc).to_dictionary(),
+                    msg="Just an interim cyclicity test",
+                )
+
+    def test_function(self):
+        for fnc in (operation, add, multiply, my_while_condition):
+            with self.subTest(fnc=fnc):
+                entry = swf._to_node_dict_entry(
+                    fnc,
+                    parse_input_args(fnc),
+                    swf._get_workflow_outputs(fnc),
+                )
+                # Cheat and modify to match dataclass
+                if hasattr(fnc, "_semantikon_metadata"):
+                    entry.update(fnc._semantikon_metadata)
+                entry["label"] = fnc.__name__
+                entry.pop("function")
+                self.assertDictEqual(
+                    entry,
+                    swf.parse_function(fnc).to_dictionary(),
+                    msg="Just an interim cyclicity test",
+                )
 
 
 if __name__ == "__main__":
