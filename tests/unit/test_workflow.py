@@ -462,7 +462,7 @@ class TestWorkflow(unittest.TestCase):
         for fnc in (operation, add, multiply, my_while_condition):
             with self.subTest(fnc=fnc):
                 self.assertDictEqual(
-                    swf._get_workflow_outputs(fnc),
+                    swf._get_node_outputs(fnc, 2 if fnc == operation else 1),
                     swf.parse_function_outputs(fnc).to_dictionary(),
                     msg="Just an interim cyclicity test",
                 )
