@@ -157,14 +157,14 @@ class FunctionDictFlowAnalyzer:
         ).analyze()
         output_counts = _get_output_counts(graph)
         nodes = _get_nodes(f_dict, output_counts)
-        data_edges = _get_data_edges(graph, f_dict, output_vars, nodes)
+        edges = _get_edges(graph, f_dict, output_vars, nodes)
         unique_func_name = self._get_unique_func_name("injected_while_loop")
         while_dict.update(
             _to_workflow_dict_entry(
                 inputs={key: {} for key in input_vars},
                 outputs={key: {} for key in output_vars},
                 nodes=nodes,
-                data_edges=data_edges,
+                edges=edges,
                 label=unique_func_name,
             )
         )
@@ -386,7 +386,7 @@ def _get_sorted_edges(graph: nx.DiGraph) -> list:
     return sorted(graph.edges.data(), key=lambda edge: node_order[edge[0]])
 
 
-def _get_data_edges(graph, functions, output_labels, nodes):
+def _get_edges(graph, functions, output_labels, nodes):
     input_dict = {}
     for name, func in functions.items():
         f = func["function"]
@@ -394,7 +394,7 @@ def _get_data_edges(graph, functions, output_labels, nodes):
             input_dict[name] = list(f._semantikon_workflow["inputs"].keys())
         else:
             input_dict[name] = list(parse_input_args(f).keys())
-    data_edges = []
+    edges = []
     output_dict = {}
     output_candidate = {}
     for edge in _get_sorted_edges(graph):
@@ -432,10 +432,10 @@ def _get_data_edges(graph, functions, output_labels, nodes):
                 target = (
                     f"{edge[1]}.inputs.{input_dict[edge[1]][edge[2]['input_index']]}"
                 )
-            data_edges.append((source, target))
-    for edges in output_candidate.values():
-        data_edges.append(edges)
-    return data_edges
+            edges.append((source, target))
+    for edge in output_candidate.values():
+        edges.append(edge)
+    return edges
 
 
 def _dtype_to_str(dtype):
@@ -525,20 +525,20 @@ def _to_workflow_dict_entry(
     inputs: dict[str, dict],
     outputs: dict[str, dict],
     nodes: dict[str, dict],
-    data_edges: list[tuple[str, str]],
+    edges: list[tuple[str, str]],
     label: str,
     **kwargs,
 ) -> dict[str, object]:
     assert all("inputs" in v for v in nodes.values())
     assert all("outputs" in v for v in nodes.values())
     assert all(
-        "function" in v or ("nodes" in v and "data_edges" in v) for v in nodes.values()
+        "function" in v or ("nodes" in v and "edges" in v) for v in nodes.values()
     )
     return {
         "inputs": inputs,
         "outputs": outputs,
         "nodes": nodes,
-        "data_edges": data_edges,
+        "edges": edges,
         "label": label,
     } | kwargs
 
@@ -552,14 +552,14 @@ def get_workflow_dict(func):
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),
         nodes=_get_nodes(f_dict, output_counts),
-        data_edges=_get_data_edges(graph, f_dict, output_labels, nodes),
+        edges=_get_edges(graph, f_dict, output_labels, nodes),
         label=func.__name__,
     )
 
 
-def _get_missing_edges(edges):
+def _get_missing_edges(edge_list):
     extra_edges = []
-    for edge in edges:
+    for edge in edge_list:
         for tag in edge:
             if len(tag.split(".")) < 3:
                 continue
@@ -578,8 +578,8 @@ class _Workflow:
 
     @cached_property
     def _all_edges(self):
-        extra_edges = _get_missing_edges(self._workflow["data_edges"])
-        return self._workflow["data_edges"] + extra_edges
+        extra_edges = _get_missing_edges(self._workflow["edges"])
+        return self._workflow["edges"] + extra_edges
 
     @cached_property
     def _graph(self):

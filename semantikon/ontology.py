@@ -567,7 +567,7 @@ def serialize_data(wf_dict: dict, prefix: str | None = None) -> tuple[dict, dict
         prefix: {
             key: value
             for key, value in wf_dict.items()
-            if key not in ["inputs", "outputs", "nodes", "data_edges", "label"]
+            if key not in ["inputs", "outputs", "nodes", "edges", "label"]
         }
     }
     for io_ in ["inputs", "outputs"]:
@@ -586,6 +586,6 @@ def serialize_data(wf_dict: dict, prefix: str | None = None) -> tuple[dict, dict
         node_dict.update(child_node)
         edge_list.extend(child_edges)
         channel_dict.update(child_channel)
-    for args in wf_dict.get("data_edges", []):
+    for args in wf_dict.get("edges", []):
         edge_list.append([_remove_us(prefix, a) for a in args])
     return node_dict, channel_dict, edge_list
