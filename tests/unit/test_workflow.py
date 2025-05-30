@@ -2,10 +2,10 @@ import ast
 import unittest
 
 import networkx as nx
-from semantikon.converter import parse_input_args
 
 import semantikon.dataclasses as sdc
 import semantikon.workflow as swf
+from semantikon.converter import parse_input_args
 from semantikon.typing import u
 from semantikon.workflow import (
     _extract_variables_from_ast_body,
@@ -454,7 +454,7 @@ class TestWorkflow(unittest.TestCase):
         self.assertDictEqual(
             parse_input_args(add),
             swf.parse_input_args_to_inputs(add).to_dictionary(),
-            msg="Just an interim cyclicity test"
+            msg="Just an interim cyclicity test",
         )
 
 
