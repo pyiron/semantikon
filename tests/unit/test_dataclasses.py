@@ -15,10 +15,10 @@ class TestDataclasses(unittest.TestCase):
         self.assertIs(
             dc.complex_field,
             complex_object,
-            msg="Sanity check that we get instance we pass in"
+            msg="Sanity check that we get instance we pass in",
         )
         self.assertIs(
             dc.complex_field,
             dc.to_dictionary()["complex_field"],
-            msg="The dictionary representation should return the same underlying data"
+            msg="The dictionary representation should return the same underlying data",
         )
