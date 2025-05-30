@@ -8,7 +8,7 @@ import re
 import sys
 import textwrap
 from copy import deepcopy
-from functools import wraps, update_wrapper
+from functools import update_wrapper, wraps
 from typing import (
     Annotated,
     Any,
