@@ -319,6 +319,7 @@ def _get_nodes(data: dict[str, dict], output_counts: dict[str, int]) -> dict[str
             result[label] = data_dict
             result[label]["label"] = label
             if hasattr(func, "_semantikon_metadata"):
+                raise NotImplementedError("This literally never happens")
                 result[label].update(func._semantikon_metadata)
         else:
             result[label] = _to_node_dict_entry(
