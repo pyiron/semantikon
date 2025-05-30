@@ -2,13 +2,13 @@ from typing import Annotated, Any, Callable, get_origin
 
 from semantikon.converter import FunctionWithMetadata, parse_metadata
 from semantikon.dataclasses import (
+    MISSING,
+    CoreMetadata,
+    Missing,
     RestrictionLike,
     ShapeType,
     TriplesLike,
-    CoreMetadata,
     TypeMetadata,
-    Missing,
-    MISSING,
 )
 
 
