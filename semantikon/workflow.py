@@ -5,7 +5,7 @@ import inspect
 from collections import deque
 from functools import cached_property, update_wrapper
 from hashlib import sha256
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Generic, TypeVar, cast
 
 import networkx as nx
 from networkx.algorithms.dag import topological_sort
@@ -272,7 +272,7 @@ def _get_workflow_outputs(func):
 
 
 def _get_node_outputs(func: Callable, counts: int) -> dict[str, dict]:
-    output_hints = parse_output_args(func, separate_tuple=counts > 1)
+    output_hints = cast(dict, parse_output_args(func, separate_tuple=counts > 1))
     output_vars = get_return_expressions(func)
     if output_vars is None or len(output_vars) == 0:
         return {}
@@ -282,10 +282,8 @@ def _get_node_outputs(func: Callable, counts: int) -> dict[str, dict]:
         else:
             return {"output": output_hints}
     assert isinstance(output_vars, tuple) and len(output_vars) == counts
-    if output_hints == {}:
-        output_hints = counts * [{}]
-    assert len(output_vars) == len(output_hints)
-    return {key: value for key, value in zip(output_vars, output_hints)}
+    assert len(output_vars) == counts
+    return {key: {} for key in output_vars}
 
 
 def _get_output_counts(graph: nx.DiGraph) -> dict:
