@@ -60,6 +60,7 @@ class FunctionWithMetadata(Generic[F]):
     This information is automatically parsed when knowledge graph is generated.
     For more info, take a look at semantikon.ontology.get_knowledge_graph.
     """
+
     def __init__(self, func: F, metadata: dict[str, object]) -> None:
         self.func = func
         self._semantikon_metadata: dict[str, object] = metadata
