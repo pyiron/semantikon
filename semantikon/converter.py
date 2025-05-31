@@ -43,6 +43,23 @@ F = TypeVar("F", bound=Callable[..., object])
 
 
 class FunctionWithMetadata(Generic[F]):
+    """
+    A wrapper class for functions that allows attaching metadata to the function.
+
+    Example:
+    >>> from semantikon.typing import u
+    >>>
+    >>> @u(uri="http://example.com/my_function")
+    >>> def my_function(x):
+    >>>     return x * 2
+    >>>
+    >>> print(my_function._semantikon_metadata)
+
+    Output: {'uri': 'http://example.com/my_function'}
+
+    This information is automatically parsed when knowledge graph is generated.
+    For more info, take a look at semantikon.ontology.get_knowledge_graph.
+    """
     def __init__(self, func: F, metadata: dict[str, object]) -> None:
         self.func = func
         self._semantikon_metadata: dict[str, object] = metadata
