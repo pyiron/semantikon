@@ -50,7 +50,7 @@ def _type_metadata(
     kwargs = {"extra": extra} if len(extra) > 0 else {}
     if _is_annotated(type_):
         existing = parse_metadata(type_)
-        if existing.extra is not MISSING:
+        if isinstance(existing.extra, dict):  # I.e., Not MISSING
             extra.update(existing.extra)
         kwargs.update(existing.to_dictionary())
         type_ = type_.__origin__
@@ -58,7 +58,7 @@ def _type_metadata(
     if len(kwargs) == 0:
         raise TypeError("No metadata provided.")
 
-    metadata = TypeMetadata(**kwargs)
+    metadata = TypeMetadata.from_dict(**kwargs)
     items = tuple([x for k, v in metadata for x in [k, v]])
     return Annotated[type_, items]
 
