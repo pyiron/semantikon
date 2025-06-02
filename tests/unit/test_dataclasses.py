@@ -1,6 +1,8 @@
 import dataclasses
 import unittest
 
+import typeguard
+
 import semantikon.dataclasses as sdc
 
 
@@ -52,6 +54,18 @@ class TestDataclasses(unittest.TestCase):
             [v for v in self.dc],
             msg="Iterating should exclude missing values",
         )
+
+    def test_from_dict(self):
+        ok = ConcreteDC.from_dict({"complex_field": self.dc.complex_field})
+        self.assertSetEqual(ok.complex_field, self.dc.complex_field)
+
+        with self.assertRaises(
+            typeguard.TypeCheckError,
+            msg="If we don't care about type compliance, we can already use __init__ "
+            "to initialize from a dictionary; this method is explicitly to enforce "
+            "type compliance!",
+        ):
+            ConcreteDC.from_dict({"complex_field": "This is not type-compliant"})
 
 
 if __name__ == "__main__":

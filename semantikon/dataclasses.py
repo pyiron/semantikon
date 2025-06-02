@@ -2,8 +2,9 @@ import abc
 import dataclasses
 import functools
 from collections.abc import Iterable
-from typing import Any, Iterator, TypeAlias
+from typing import Any, Iterator, Self, TypeAlias
 
+import typeguard
 
 class Missing:
     def __repr__(self):
@@ -37,6 +38,15 @@ class _VariadicDataclass(_HasToDictionary):
             for f in dataclasses.fields(self)
             if (val := getattr(self, f.name)) is not MISSING
         )
+
+    @classmethod
+    def from_dict(cls, kwargs: dict[str, Any]) -> Self:
+        """Type-guarded instantiation from a dictionary"""
+
+        for field in dataclasses.fields(cls):
+            if field.name in kwargs:
+                typeguard.check_type(kwargs[field.name], field.type)
+        return cls(**kwargs)
 
 
 TripleType: TypeAlias = tuple[str, str, str]
