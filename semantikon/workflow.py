@@ -676,7 +676,7 @@ def find_parallel_execution_levels(G: nx.DiGraph) -> list[list[str]]:
         parallel, but does not tell you which processes can be executed in
         case there is a process that takes longer at a higher level.
     """
-    in_degree = dict(cast(Iterable[tuple[Any, int]], G.in_degree()))  # Track incoming edges
+    in_degree = dict(cast(Iterable[tuple[Any, int]], G.in_degree()))
     queue = deque([node for node in G.nodes if in_degree[node] == 0])
     levels = []
 
