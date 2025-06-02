@@ -3,7 +3,7 @@ import unittest
 
 import networkx as nx
 
-from semantikon.typing import u
+from semantikon.metadata import u
 from semantikon.workflow import (
     _extract_variables_from_ast_body,
     _function_to_ast_dict,

@@ -15,7 +15,7 @@ from semantikon.ontology import (
     serialize_data,
     validate_values,
 )
-from semantikon.typing import u
+from semantikon.metadata import u
 from semantikon.visualize import visualize
 from semantikon.workflow import workflow
 
