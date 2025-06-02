@@ -58,7 +58,7 @@ def _type_metadata(
     if len(kwargs) == 0:
         raise TypeError("No metadata provided.")
 
-    metadata = TypeMetadata.from_dict(**kwargs)
+    metadata = TypeMetadata.from_dict(kwargs)
     items = tuple([x for k, v in metadata for x in [k, v]])
     return Annotated[type_, items]
 
