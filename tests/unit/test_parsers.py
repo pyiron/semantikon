@@ -47,6 +47,16 @@ class TestParser(unittest.TestCase):
         self.assertEqual(f_dict["uri"], "abc")
         self.assertEqual(f_dict["label"], "get_speed")
 
+    def test_extra_function_metadata(self):
+        def f(x):
+            return x
+
+        with self.assertRaises(
+            NotImplementedError,
+            msg="Arbitrary metadata is not currently supported for function decoration",
+        ):
+            u(uri="abc", unexpected_data=123)(f)
+
     def test_canonical_types(self):
         def f(x: float) -> float:
             return x

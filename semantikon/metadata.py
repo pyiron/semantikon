@@ -67,7 +67,6 @@ def _function_metadata(
     uri: str | Missing = MISSING,
     triples: TriplesLike | Missing = MISSING,
     restrictions: RestrictionLike | Missing = MISSING,
-    **kwargs,
 ):
     def decorator(func: Callable):
         if not callable(func):
@@ -105,6 +104,10 @@ def u(
             **kwargs,
         )
     elif type_or_func is None:
+        if len(kwargs) > 0:
+            raise NotImplementedError(
+                "Function decoration does not currently support arbitrary keyword data."
+            )
         return _function_metadata(uri=uri, triples=triples, restrictions=restrictions)
     else:
         raise TypeError(f"Unsupported type: {type(type_or_func)}")

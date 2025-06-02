@@ -51,7 +51,6 @@ class CoreMetadata(_VariadicDataclass):
     uri: str | Missing = missing()
     triples: TriplesLike | Missing = missing()
     restrictions: RestrictionLike | Missing = missing()
-    extra: dict[str, Any] | Missing = missing()
 
 
 @dataclasses.dataclass(slots=True)
@@ -59,3 +58,4 @@ class TypeMetadata(CoreMetadata):
     label: str | Missing = missing()
     units: str | Missing = missing()
     shape: ShapeType | Missing = missing()
+    extra: dict[str, Any] | Missing = missing()
