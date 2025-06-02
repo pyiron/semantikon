@@ -515,7 +515,17 @@ def _to_workflow_dict_entry(
     } | kwargs
 
 
-def get_workflow_dict(func):
+def get_workflow_dict(func: Callable) -> dict[str, object]:
+    """
+    Get a dictionary representation of the workflow for a given function.
+
+    Args:
+        func (Callable): The function to be analyzed.
+
+    Returns:
+        dict: A dictionary representation of the workflow, including inputs,
+            outputs, nodes, edges, and label.
+    """
     graph, f_dict = analyze_function(func)
     output_counts = _get_output_counts(graph)
     output_labels = list(_get_workflow_outputs(func).keys())
@@ -565,13 +575,13 @@ def _get_missing_edges(edge_list: list[tuple[str, str]]) -> list[tuple[str, str]
 
 
 class _Workflow:
-    def __init__(self, workflow_dict: dict[str, dict[str, Any]]):
+    def __init__(self, workflow_dict: dict[str, Any]):
         self._workflow = workflow_dict
 
     @cached_property
     def _all_edges(self) -> list[tuple[str, str]]:
-        extra_edges = _get_missing_edges(cast(list, self._workflow["edges"]))
-        return cast(list, self._workflow["edges"]) + extra_edges
+        edges = cast(dict[str, list], self._workflow)["edges"]
+        return edges + _get_missing_edges(edges)
 
     @cached_property
     def _graph(self) -> nx.DiGraph:
