@@ -47,6 +47,7 @@ class CoreMetadata(_VariadicDataclass):
     uri: str | Missing = missing()
     triples: TriplesLike | Missing = missing()
     restrictions: RestrictionLike | Missing = missing()
+    extra: dict[str, Any] | Missing = missing()
 
 
 @dataclasses.dataclass(slots=True)
