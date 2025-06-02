@@ -32,7 +32,11 @@ class _HasToDictionary(Iterable[tuple[str, Any]], abc.ABC):
 class _VariadicDataclass(_HasToDictionary):
 
     def __iter__(self) -> Iterator[tuple[str, Any]]:
-        yield from ((f.name, getattr(self, f.name)) for f in dataclasses.fields(self))
+        yield from (
+            (f.name, val)
+            for f in dataclasses.fields(self)
+            if (val := getattr(self, f.name)) is not MISSING
+        )
 
 
 TripleType: TypeAlias = tuple[str, str, str]

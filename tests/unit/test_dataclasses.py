@@ -41,6 +41,16 @@ class TestDataclasses(unittest.TestCase):
             "fields are optional!",
         )
 
+    def test_iter(self):
+        self.assertIsNot(self.dc.complex_field, sdc.MISSING, msg="Sanity check")
+        self.assertIs(self.dc.optional_field, sdc.MISSING, msg="Sanity check")
+        self.assertEqual(2, len(dataclasses.fields(self.dc)), msg="Make sure we tested them all")
+        self.assertListEqual(
+            [("complex_field", self.dc.complex_field)],
+            [v for v in self.dc],
+            msg="Iterating should exclude missing values",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
