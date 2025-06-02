@@ -77,10 +77,6 @@ def _function_metadata(
     return decorator
 
 
-def _kwargs_to_dict(**kwargs):
-    return {k: v for k, v in kwargs.items() if v is not None}
-
-
 def u(
     type_or_func=None,
     /,
