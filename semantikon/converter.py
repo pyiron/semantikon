@@ -28,6 +28,8 @@ from pint.registry_helpers import (
     _to_units_container,
 )
 
+from semantikon.dataclasses import TypeMetadata
+
 __author__ = "Sam Waseda"
 __copyright__ = (
     "Copyright 2021, Max-Planck-Institut für Eisenforschung GmbH "
@@ -93,10 +95,12 @@ def parse_metadata(value: Any) -> dict[str, Any]:
 
     Returns:
         dictionary of the metadata. Available keys are `units`, `label`,
-        `triples`, `uri` and `shape`. See `semantikon.typing.u` for more details.
+        `triples`, `uri` and `shape`. See `semantikon.dataclasses.TypeMetadata` for more details.
     """
     metadata = value.__metadata__[0]
-    return {k: v for k, v in zip(metadata[::2], metadata[1::2])}
+    return TypeMetadata(
+        **{k: v for k, v in zip(metadata[::2], metadata[1::2])}
+    ).to_dictionary()
 
 
 def meta_to_dict(value: Any, default=inspect.Parameter.empty) -> dict[str, Any]:
