@@ -6,6 +6,7 @@ from graphviz import Digraph
 from pyshacl import validate
 from rdflib import OWL, PROV, RDF, RDFS, SH, Literal, Namespace, URIRef
 
+from semantikon.metadata import u
 from semantikon.ontology import (
     NS,
     SNS,
@@ -15,7 +16,6 @@ from semantikon.ontology import (
     serialize_data,
     validate_values,
 )
-from semantikon.metadata import u
 from semantikon.visualize import visualize
 from semantikon.workflow import workflow
 
