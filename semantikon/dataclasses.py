@@ -6,6 +6,7 @@ from typing import Any, Iterator, Self, TypeAlias
 
 import typeguard
 
+
 class Missing:
     def __repr__(self):
         return "<MISSING>"
