@@ -7,7 +7,6 @@ from semantikon.typing import u
 from semantikon.workflow import (
     _extract_variables_from_ast_body,
     _function_to_ast_dict,
-    _get_missing_edges,
     _get_node_outputs,
     _get_output_counts,
     _get_sorted_edges,
