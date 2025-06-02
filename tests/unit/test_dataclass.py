@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Annotated
 
 from semantikon.converter import parse_metadata, semantikon_class
-from semantikon.typing import u
+from semantikon.metadata import u
 
 
 @semantikon_class
