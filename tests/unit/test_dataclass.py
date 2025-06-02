@@ -57,7 +57,7 @@ class TestDataclass(unittest.TestCase):
         self.assertEqual(
             metadata.to_dictionary(),
             {
-                "associate_to_sample": True,
+                "extra": {"associate_to_sample": True},
                 "units": "eV",
                 "label": "TotalEnergy",
             },

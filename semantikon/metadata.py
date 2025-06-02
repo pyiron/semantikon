@@ -36,7 +36,7 @@ def _type_metadata(
     label: str | Missing = MISSING,
     units: str | Missing = MISSING,
     shape: ShapeType | Missing = MISSING,
-    **kwargs,
+    **extra,
 ) -> Any:
     presently_requested_metadata = TypeMetadata(
         uri=uri,
@@ -46,10 +46,15 @@ def _type_metadata(
         units=units,
         shape=shape,
     )
+
+    kwargs = {"extra": extra} if len(extra) > 0 else {}
     if _is_annotated(type_):
-        kwargs.update(parse_metadata(type_).to_dictionary())
+        existing = parse_metadata(type_)
+        if existing.extra is not MISSING:
+            extra.update(existing.extra)
+        kwargs.update(existing.to_dictionary())
         type_ = type_.__origin__
-    kwargs.update(**presently_requested_metadata.to_dictionary())
+    kwargs.update(presently_requested_metadata.to_dictionary())
     if len(kwargs) == 0:
         raise TypeError("No metadata provided.")
 

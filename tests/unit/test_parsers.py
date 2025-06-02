@@ -81,7 +81,7 @@ class TestParser(unittest.TestCase):
             return distance / time
 
         input_args = parse_input_args(get_speed)
-        self.assertEqual(input_args["distance"]["my_arg"], "some_info")
+        self.assertEqual(input_args["distance"]["extra"]["my_arg"], "some_info")
 
     def test_return_class(self):
         class Output:

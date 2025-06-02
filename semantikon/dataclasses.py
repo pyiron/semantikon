@@ -59,10 +59,3 @@ class TypeMetadata(CoreMetadata):
     label: str | Missing = missing()
     units: str | Missing = missing()
     shape: ShapeType | Missing = missing()
-
-    # Stuff that gets passed to _type_metadata during the tests
-    associate_to_sample: bool | Missing = missing()
-    cancel: tuple[Any, Any] | Missing = missing()
-    my_arg: str | Missing = missing()
-    use_list: bool | Missing = missing()
-    # How should we handle this?
