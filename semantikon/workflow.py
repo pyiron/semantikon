@@ -545,26 +545,23 @@ def _get_missing_edges(edge_list):
 
 
 class _Workflow:
-    def __init__(self, workflow_dict):
+    def __init__(self, workflow_dict: dict[str, dict[str, Any]]):
         self._workflow = workflow_dict
 
     @cached_property
-    def _all_edges(self):
+    def _all_edges(self) -> list[tuple[str, str]]:
         extra_edges = _get_missing_edges(self._workflow["edges"])
         return self._workflow["edges"] + extra_edges
 
     @cached_property
-    def _graph(self):
-        graph = nx.DiGraph()
-        for edge in self._all_edges:
-            graph.add_edge(*edge)
-        return graph
+    def _graph(self) -> nx.DiGraph:
+        return nx.DiGraph(self._all_edges)
 
     @cached_property
-    def _execution_list(self):
+    def _execution_list(self) -> list[list[str]]:
         return find_parallel_execution_levels(self._graph)
 
-    def _sanitize_input(self, *args, **kwargs):
+    def _sanitize_input(self, *args, **kwargs) -> dict[str, Any]:
         keys = list(self._workflow["inputs"].keys())
         for ii, arg in enumerate(args):
             if keys[ii] in kwargs:
@@ -582,16 +579,16 @@ class _Workflow:
                 raise TypeError(f"Unexpected keyword argument '{key}'")
             self._workflow["inputs"][key]["value"] = value
 
-    def _get_value_from_data(self, node):
+    def _get_value_from_data(self, node: dict[str, Any]) -> Any:
         if "value" not in node:
             node["value"] = node["default"]
         return node["value"]
 
-    def _get_value_from_global(self, path):
+    def _get_value_from_global(self, path: str) -> Any:
         io, var = path.split(".")
         return self._get_value_from_data(self._workflow[io][var])
 
-    def _get_value_from_node(self, path):
+    def _get_value_from_node(self, path: str) -> Any:
         node, io, var = path.split(".")
         return self._get_value_from_data(self._workflow["nodes"][node][io][var])
 
@@ -606,7 +603,7 @@ class _Workflow:
         except KeyError:
             raise KeyError(f"{path} not found in {node}")
 
-    def _execute_node(self, function):
+    def _execute_node(self, function: str) -> Any:
         node = self._workflow["nodes"][function]
         input_data = {}
         try:
@@ -635,7 +632,7 @@ class _Workflow:
         elif "." in tag:
             raise ValueError(f"{tag} not recognized")
 
-    def _get_value(self, tag):
+    def _get_value(self, tag: str):
         if len(tag.split(".")) == 2 and tag.split(".")[0] in ("inputs", "outputs"):
             return self._get_value_from_global(tag)
         elif len(tag.split(".")) == 3 and tag.split(".")[1] in ("inputs", "outputs"):
@@ -645,7 +642,7 @@ class _Workflow:
         else:
             raise ValueError(f"{tag} not recognized")
 
-    def run(self, *args, **kwargs):
+    def run(self, *args, **kwargs) -> dict[str, Any]:
         self._set_inputs(*args, **kwargs)
         for current_list in self._execution_list:
             for item in current_list:
