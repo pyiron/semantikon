@@ -86,7 +86,7 @@ def _get_ureg(args: Any, kwargs: dict[str, Any]) -> UnitRegistry | None:
     return None
 
 
-def parse_metadata(value: Any) -> dict[str, Any]:
+def parse_metadata(value: Any) -> TypeMetadata:
     """
     Parse the metadata of a Quantity object.
 
@@ -98,9 +98,7 @@ def parse_metadata(value: Any) -> dict[str, Any]:
         `triples`, `uri` and `shape`. See `semantikon.dataclasses.TypeMetadata` for more details.
     """
     metadata = value.__metadata__[0]
-    return TypeMetadata(
-        **{k: v for k, v in zip(metadata[::2], metadata[1::2])}
-    ).to_dictionary()
+    return TypeMetadata(**{k: v for k, v in zip(metadata[::2], metadata[1::2])})
 
 
 def meta_to_dict(value: Any, default=inspect.Parameter.empty) -> dict[str, Any]:
@@ -108,7 +106,7 @@ def meta_to_dict(value: Any, default=inspect.Parameter.empty) -> dict[str, Any]:
     type_hint_was_present = value is not inspect.Parameter.empty
     default_is_defined = default is not inspect.Parameter.empty
     if semantikon_was_used:
-        result = {k: v for k, v in parse_metadata(value).items() if v is not None}
+        result = parse_metadata(value).to_dictionary()
         if hasattr(value.__args__[0], "__forward_arg__"):
             result["dtype"] = value.__args__[0].__forward_arg__
         else:

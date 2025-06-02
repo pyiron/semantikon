@@ -99,11 +99,11 @@ class TestParser(unittest.TestCase):
 
     def test_multiple_u(self):
         initial_type = u(float, units="meter", label="distance")
-        result = parse_metadata(initial_type)
+        result = parse_metadata(initial_type).to_dictionary()
         self.assertEqual(result["units"], "meter")
         self.assertEqual(result["label"], "distance")
         final_type = u(initial_type, units="millimeter")
-        result = parse_metadata(final_type)
+        result = parse_metadata(final_type).to_dictionary()
         self.assertEqual(result["units"], "millimeter")
         self.assertEqual(result["label"], "distance")
 

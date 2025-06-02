@@ -47,7 +47,7 @@ def _type_metadata(
         shape=shape,
     )
     if _is_annotated(type_):
-        kwargs.update(parse_metadata(type_))
+        kwargs.update(parse_metadata(type_).to_dictionary())
         type_ = type_.__origin__
     kwargs.update(**presently_requested_metadata.to_dictionary())
     if len(kwargs) == 0:
