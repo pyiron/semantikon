@@ -8,7 +8,7 @@ from semantikon.converter import (
     parse_metadata,
     parse_output_args,
 )
-from semantikon.typing import u
+from semantikon.metadata import u
 
 if TYPE_CHECKING:
 

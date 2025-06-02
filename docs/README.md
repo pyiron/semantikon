@@ -41,11 +41,11 @@ In the realm of the workflow management systems, there are well defined inputs a
 `semantikon` provides a way to define types for any number of input parameters and any number of output values for function via type hinting, in particular: data type, unit and ontological type. Type hinting is done with the function `u`, which **requires** the type, and **optionally** you can define the units and the ontological type. The type hinting is done in the following way:
 
 ```python
->>> from semantikon.typing import u
+>>> from semantikon.metadata import u
 >>> from rdflib import Namespace
 >>>
 >>> EX = Namespace("http://example.org/")
->>> 
+>>>
 >>> def get_speed(
 ...     distance: u(float, units="meter", uri=EX.distance),
 ...     time: u(float, units="second", uri=EX.time),
@@ -58,20 +58,19 @@ In the realm of the workflow management systems, there are well defined inputs a
 
 You can also type-hint the inputs and outputs of a function using a class, i.e.:
 
-
 ```python
->>> from semantikon.typing import u
+>>> from semantikon.metadata import u
 >>> from semantikon.converter import semantikon_class
 >>> from rdflib import Namespace
 >>>
 >>> EX = Namespace("http://example.org/")
->>> 
+>>>
 >>> @semantikon_class
 ... class MyRecord:
 ...     distance: u(float, units="meter", uri=EX.distance)
 ...     time: u(float, units="second", uri=EX.time)
 ...     result: u(float, units="meter/second", label="speed", uri=EX.speed)
->>> 
+>>>
 >>> def get_speed(distance: MyRecord.distance, time: MyRecord.time) -> MyRecord.result:
 ...     return distance / time
 
@@ -90,18 +89,18 @@ In order to extract argument information, you can use the functions `parse_input
 Example:
 
 ```python
->>> from semantikon.typing import u
+>>> from semantikon.metadata import u
 >>> from semantikon.converter import parse_input_args, parse_output_args
 >>> from rdflib import Namespace
 >>>
 >>> EX = Namespace("http://example.org/")
->>> 
+>>>
 >>> def get_speed(
 ...     a: u(float, units="meter", uri=EX.distance),
 ...     b: u(float, units="second", uri=EX.time),
 ... ) -> u(float, units="meter/second", label="speed", uri=EX.speed):
 ...     return a / b
->>> 
+>>>
 >>> print(parse_input_args(get_speed))
 {'a': {'units': 'meter', 'uri': rdflib.term.URIRef('http://example.org/distance'), 'dtype': <class 'float'>}, 'b': {'units': 'second', 'uri': rdflib.term.URIRef('http://example.org/time'), 'dtype': <class 'float'>}}
 
@@ -115,19 +114,19 @@ Example:
 `semantikon` provides a way to interpret the types of inputs and outputs of a function via a decorator, in order to check consistency of the types and to convert them if necessary. Currently, `semantikon` provides an interpreter for `pint.UnitRegistry` objects. The interpreter is applied in the following way:
 
 ```python
->>> from semantikon.typing import u
+>>> from semantikon.metadata import u
 >>> from semantikon.converter import units
 >>> from pint import UnitRegistry
->>> 
+>>>
 >>> @units
 ... def get_speed(
 ...     a: u(float, units="meter"),
 ...     b: u(float, units="second")
 ... ) -> u(float, units="meter/second", label="speed"):
 ...     return a / b
->>> 
+>>>
 >>> ureg = UnitRegistry()
->>> 
+>>>
 >>> print(get_speed(1 * ureg.meter, 1 * ureg.second))
 1.0 meter / second
 
