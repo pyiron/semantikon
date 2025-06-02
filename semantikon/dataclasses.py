@@ -2,7 +2,7 @@ import abc
 import dataclasses
 import functools
 from collections.abc import Iterable
-from typing import Any, Iterator, Self, TypeAlias
+from typing import Any, Iterator, TypeAlias
 
 import typeguard
 
@@ -41,7 +41,7 @@ class _VariadicDataclass(_HasToDictionary):
         )
 
     @classmethod
-    def from_dict(cls, kwargs: dict[str, Any]) -> Self:
+    def from_dict(cls, kwargs: dict[str, Any]):  # -> typing.Self only available 3.11+
         """Type-guarded instantiation from a dictionary"""
 
         for field in dataclasses.fields(cls):
