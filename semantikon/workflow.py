@@ -695,16 +695,16 @@ def workflow(func: Callable) -> FunctionWithWorkflow:
 
     >>> def operation(x: float, y: float) -> tuple[float, float]:
     >>>     return x + y, x - y
-    >>> 
-    >>> 
+    >>>
+    >>>
     >>> def add(x: float = 2.0, y: float = 1) -> float:
     >>>     return x + y
-    >>> 
-    >>> 
+    >>>
+    >>>
     >>> def multiply(x: float, y: float = 5) -> float:
     >>>     return x * y
-    >>> 
-    >>> 
+    >>>
+    >>>
     >>> @workflow
     >>> def example_macro(a=10, b=20):
     >>>     c, d = operation(a, b)
@@ -712,7 +712,7 @@ def workflow(func: Callable) -> FunctionWithWorkflow:
     >>>     f = multiply(e)
     >>>     return f
     >>>
-    >>> 
+    >>>
     >>> @workflow
     >>> def example_workflow(a=10, b=20):
     >>>     y = example_macro(a, b)
