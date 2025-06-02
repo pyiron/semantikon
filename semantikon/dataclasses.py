@@ -50,10 +50,14 @@ class _VariadicDataclass(_HasToDictionary):
         return cls(**kwargs)
 
 
-TripleType: TypeAlias = tuple[str, str, str]
+TripleType: TypeAlias = tuple[str | None, str, str | None] | tuple[str, str]
 TriplesLike: TypeAlias = tuple[TripleType, ...] | TripleType
 RestrictionType: TypeAlias = tuple[str, str]
-RestrictionLike: TypeAlias = tuple[RestrictionType, ...] | RestrictionType
+RestrictionLike: TypeAlias = (
+    tuple[tuple[RestrictionType, ...], ...]
+    | tuple[RestrictionType, ...]
+    | RestrictionType
+)
 ShapeType: TypeAlias = tuple[int, ...]
 
 
