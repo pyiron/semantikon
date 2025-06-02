@@ -457,6 +457,8 @@ def separate_types(
 ) -> tuple[dict[str, Any], dict[str, type]]:
     """
     Separate types from the data dictionary and store them in a class dictionary.
+    The types inside the data dictionary will be replaced by their name (which
+    would for example make it easier to hash it).
 
     Args:
         data (dict[str, Any]): The data dictionary containing nodes and types.
@@ -489,7 +491,8 @@ def separate_functions(
 ) -> tuple[dict[str, Any], dict[str, Callable]]:
     """
     Separate functions from the data dictionary and store them in a function
-    dictionary.
+    dictionary. The functions inside the data dictionary will be replaced by
+    their name (which would for example make it easier to hash it)
 
     Args:
         data (dict[str, Any]): The data dictionary containing nodes and
