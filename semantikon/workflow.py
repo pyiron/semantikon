@@ -529,7 +529,27 @@ def get_workflow_dict(func):
     )
 
 
-def _get_missing_edges(edge_list):
+def _get_missing_edges(edge_list: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """
+    Insert processes into the data edges. Take the following workflow:
+
+    >>> y = f(x=x)
+    >>> z = g(y=y)
+
+    The data flow is
+
+    - f.inputs.x -> f.outputs.y
+    - f.outputs.y -> g.inputs.y
+    - g.inputs.y -> g.outputs.z
+
+    `_get_missing_edges` adds the processes:
+
+    - f.inputs.x -> f
+    - f -> f.outputs.y
+    - f.outputs.y -> g.inputs.y
+    - g.inputs.y -> g
+    - g -> g.outputs.z
+    """
     extra_edges = []
     for edge in edge_list:
         for tag in edge:
