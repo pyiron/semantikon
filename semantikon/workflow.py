@@ -570,8 +570,8 @@ class _Workflow:
 
     @cached_property
     def _all_edges(self) -> list[tuple[str, str]]:
-        extra_edges = _get_missing_edges(self._workflow["edges"])
-        return self._workflow["edges"] + extra_edges
+        extra_edges = _get_missing_edges(cast(list, self._workflow["edges"]))
+        return cast(list, self._workflow["edges"]) + extra_edges
 
     @cached_property
     def _graph(self) -> nx.DiGraph:
