@@ -452,7 +452,22 @@ def get_node_dict(func, data_format="semantikon"):
     return data
 
 
-def separate_types(data, class_dict=None):
+def separate_types(
+    data: dict[str, Any], class_dict: dict[str, type] | None = None
+) -> tuple[dict[str, Any], dict[str, type]]:
+    """
+    Separate types from the data dictionary and store them in a class dictionary.
+
+    Args:
+        data (dict[str, Any]): The data dictionary containing nodes and types.
+        class_dict (dict[str, type], optional): A dictionary to store types. It
+            is mainly used due to the recursivity of this function. Defaults to
+            None.
+
+    Returns:
+        tuple: A tuple containing the modified data dictionary and the
+            class dictionary.
+    """
     data = copy.deepcopy(data)
     if class_dict is None:
         class_dict = {}
@@ -469,7 +484,24 @@ def separate_types(data, class_dict=None):
     return data, class_dict
 
 
-def separate_functions(data, function_dict=None):
+def separate_functions(
+    data: dict[str, Any], function_dict: dict[str, Callable] | None = None
+) -> tuple[dict[str, Any], dict[str, Callable]]:
+    """
+    Separate functions from the data dictionary and store them in a function
+    dictionary.
+
+    Args:
+        data (dict[str, Any]): The data dictionary containing nodes and
+            functions.
+        function_dict (dict[str, Callable], optional): A dictionary to store
+            functions. It is mainly used due to the recursivity of this
+            function. Defaults to None.
+
+    Returns:
+        tuple: A tuple containing the modified data dictionary and the
+            function dictionary.
+    """
     data = copy.deepcopy(data)
     if function_dict is None:
         function_dict = {}
