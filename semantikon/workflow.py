@@ -5,7 +5,7 @@ import inspect
 from collections import deque
 from functools import cached_property, update_wrapper
 from hashlib import sha256
-from typing import Callable, Generic, TypeVar, cast
+from typing import Any, Callable, Generic, Iterable, TypeVar, cast
 
 import networkx as nx
 from networkx.algorithms.dag import topological_sort
@@ -660,8 +660,23 @@ class _Workflow:
         return self._workflow
 
 
-def find_parallel_execution_levels(G):
-    in_degree = dict(G.in_degree())  # Track incoming edges
+def find_parallel_execution_levels(G: nx.DiGraph) -> list[list[str]]:
+    """
+    Find levels of parallel execution in a directed acyclic graph (DAG).
+
+    Args:
+        G (nx.DiGraph): The directed graph representing the function.
+
+    Returns:
+        list[list[str]]: A list of lists, where each inner list contains nodes
+            that can be executed in parallel.
+
+    Comment:
+        This function only gives you a list of nodes that can be executed in
+        parallel, but does not tell you which processes can be executed in
+        case there is a process that takes longer at a higher level.
+    """
+    in_degree = dict(cast(Iterable[tuple[Any, int]], G.in_degree()))  # Track incoming edges
     queue = deque([node for node in G.nodes if in_degree[node] == 0])
     levels = []
 
@@ -669,7 +684,7 @@ def find_parallel_execution_levels(G):
         current_level = list(queue)
         levels.append(current_level)
 
-        next_queue = deque()
+        next_queue: deque = deque()
         for node in current_level:
             for neighbor in G.successors(node):
                 in_degree[neighbor] -= 1
