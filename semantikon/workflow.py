@@ -5,7 +5,7 @@ import inspect
 from collections import deque
 from functools import cached_property, update_wrapper
 from hashlib import sha256
-from typing import Callable, Generic, TypeVar, cast
+from typing import Any, Callable, Generic, Iterable, TypeVar, cast
 
 import networkx as nx
 from networkx.algorithms.dag import topological_sort
@@ -480,7 +480,24 @@ def get_node_dict(func, data_format="semantikon"):
     return data
 
 
-def separate_types(data, class_dict=None):
+def separate_types(
+    data: dict[str, Any], class_dict: dict[str, type] | None = None
+) -> tuple[dict[str, Any], dict[str, type]]:
+    """
+    Separate types from the data dictionary and store them in a class dictionary.
+    The types inside the data dictionary will be replaced by their name (which
+    would for example make it easier to hash it).
+
+    Args:
+        data (dict[str, Any]): The data dictionary containing nodes and types.
+        class_dict (dict[str, type], optional): A dictionary to store types. It
+            is mainly used due to the recursivity of this function. Defaults to
+            None.
+
+    Returns:
+        tuple: A tuple containing the modified data dictionary and the
+            class dictionary.
+    """
     data = copy.deepcopy(data)
     if class_dict is None:
         class_dict = {}
@@ -497,7 +514,25 @@ def separate_types(data, class_dict=None):
     return data, class_dict
 
 
-def separate_functions(data, function_dict=None):
+def separate_functions(
+    data: dict[str, Any], function_dict: dict[str, Callable] | None = None
+) -> tuple[dict[str, Any], dict[str, Callable]]:
+    """
+    Separate functions from the data dictionary and store them in a function
+    dictionary. The functions inside the data dictionary will be replaced by
+    their name (which would for example make it easier to hash it)
+
+    Args:
+        data (dict[str, Any]): The data dictionary containing nodes and
+            functions.
+        function_dict (dict[str, Callable], optional): A dictionary to store
+            functions. It is mainly used due to the recursivity of this
+            function. Defaults to None.
+
+    Returns:
+        tuple: A tuple containing the modified data dictionary and the
+            function dictionary.
+    """
     data = copy.deepcopy(data)
     if function_dict is None:
         function_dict = {}
@@ -543,7 +578,17 @@ def _to_workflow_dict_entry(
     } | kwargs
 
 
-def get_workflow_dict(func):
+def get_workflow_dict(func: Callable) -> dict[str, object]:
+    """
+    Get a dictionary representation of the workflow for a given function.
+
+    Args:
+        func (Callable): The function to be analyzed.
+
+    Returns:
+        dict: A dictionary representation of the workflow, including inputs,
+            outputs, nodes, edges, and label.
+    """
     graph, f_dict = analyze_function(func)
     output_counts = _get_output_counts(graph)
     output_labels = list(_get_workflow_outputs(func).keys())
@@ -557,7 +602,27 @@ def get_workflow_dict(func):
     )
 
 
-def _get_missing_edges(edge_list):
+def _get_missing_edges(edge_list: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """
+    Insert processes into the data edges. Take the following workflow:
+
+    >>> y = f(x=x)
+    >>> z = g(y=y)
+
+    The data flow is
+
+    - f.inputs.x -> f.outputs.y
+    - f.outputs.y -> g.inputs.y
+    - g.inputs.y -> g.outputs.z
+
+    `_get_missing_edges` adds the processes:
+
+    - f.inputs.x -> f
+    - f -> f.outputs.y
+    - f.outputs.y -> g.inputs.y
+    - g.inputs.y -> g
+    - g -> g.outputs.z
+    """
     extra_edges = []
     for edge in edge_list:
         for tag in edge:
@@ -573,26 +638,23 @@ def _get_missing_edges(edge_list):
 
 
 class _Workflow:
-    def __init__(self, workflow_dict):
+    def __init__(self, workflow_dict: dict[str, Any]):
         self._workflow = workflow_dict
 
     @cached_property
-    def _all_edges(self):
-        extra_edges = _get_missing_edges(self._workflow["edges"])
-        return self._workflow["edges"] + extra_edges
+    def _all_edges(self) -> list[tuple[str, str]]:
+        edges = cast(dict[str, list], self._workflow)["edges"]
+        return edges + _get_missing_edges(edges)
 
     @cached_property
-    def _graph(self):
-        graph = nx.DiGraph()
-        for edge in self._all_edges:
-            graph.add_edge(*edge)
-        return graph
+    def _graph(self) -> nx.DiGraph:
+        return nx.DiGraph(self._all_edges)
 
     @cached_property
-    def _execution_list(self):
+    def _execution_list(self) -> list[list[str]]:
         return find_parallel_execution_levels(self._graph)
 
-    def _sanitize_input(self, *args, **kwargs):
+    def _sanitize_input(self, *args, **kwargs) -> dict[str, Any]:
         keys = list(self._workflow["inputs"].keys())
         for ii, arg in enumerate(args):
             if keys[ii] in kwargs:
@@ -610,16 +672,16 @@ class _Workflow:
                 raise TypeError(f"Unexpected keyword argument '{key}'")
             self._workflow["inputs"][key]["value"] = value
 
-    def _get_value_from_data(self, node):
+    def _get_value_from_data(self, node: dict[str, Any]) -> Any:
         if "value" not in node:
             node["value"] = node["default"]
         return node["value"]
 
-    def _get_value_from_global(self, path):
+    def _get_value_from_global(self, path: str) -> Any:
         io, var = path.split(".")
         return self._get_value_from_data(self._workflow[io][var])
 
-    def _get_value_from_node(self, path):
+    def _get_value_from_node(self, path: str) -> Any:
         node, io, var = path.split(".")
         return self._get_value_from_data(self._workflow["nodes"][node][io][var])
 
@@ -634,7 +696,7 @@ class _Workflow:
         except KeyError:
             raise KeyError(f"{path} not found in {node}")
 
-    def _execute_node(self, function):
+    def _execute_node(self, function: str) -> Any:
         node = self._workflow["nodes"][function]
         input_data = {}
         try:
@@ -663,7 +725,7 @@ class _Workflow:
         elif "." in tag:
             raise ValueError(f"{tag} not recognized")
 
-    def _get_value(self, tag):
+    def _get_value(self, tag: str):
         if len(tag.split(".")) == 2 and tag.split(".")[0] in ("inputs", "outputs"):
             return self._get_value_from_global(tag)
         elif len(tag.split(".")) == 3 and tag.split(".")[1] in ("inputs", "outputs"):
@@ -673,7 +735,7 @@ class _Workflow:
         else:
             raise ValueError(f"{tag} not recognized")
 
-    def run(self, *args, **kwargs):
+    def run(self, *args, **kwargs) -> dict[str, Any]:
         self._set_inputs(*args, **kwargs)
         for current_list in self._execution_list:
             for item in current_list:
@@ -688,8 +750,23 @@ class _Workflow:
         return self._workflow
 
 
-def find_parallel_execution_levels(G):
-    in_degree = dict(G.in_degree())  # Track incoming edges
+def find_parallel_execution_levels(G: nx.DiGraph) -> list[list[str]]:
+    """
+    Find levels of parallel execution in a directed acyclic graph (DAG).
+
+    Args:
+        G (nx.DiGraph): The directed graph representing the function.
+
+    Returns:
+        list[list[str]]: A list of lists, where each inner list contains nodes
+            that can be executed in parallel.
+
+    Comment:
+        This function only gives you a list of nodes that can be executed in
+        parallel, but does not tell you which processes can be executed in
+        case there is a process that takes longer at a higher level.
+    """
+    in_degree = dict(cast(Iterable[tuple[Any, int]], G.in_degree()))
     queue = deque([node for node in G.nodes if in_degree[node] == 0])
     levels = []
 
@@ -697,7 +774,7 @@ def find_parallel_execution_levels(G):
         current_level = list(queue)
         levels.append(current_level)
 
-        next_queue = deque()
+        next_queue: deque = deque()
         for node in current_level:
             for neighbor in G.successors(node):
                 in_degree[neighbor] -= 1
@@ -709,7 +786,50 @@ def find_parallel_execution_levels(G):
     return levels
 
 
-def workflow(func):
+def workflow(func: Callable) -> FunctionWithWorkflow:
+    """
+    Decorator to convert a function into a workflow with metadata.
+
+    Args:
+        func (Callable): The function to be converted into a workflow.
+
+    Returns:
+        FunctionWithWorkflow: A callable object that includes the original function
+
+    Example:
+
+    >>> def operation(x: float, y: float) -> tuple[float, float]:
+    >>>     return x + y, x - y
+    >>>
+    >>>
+    >>> def add(x: float = 2.0, y: float = 1) -> float:
+    >>>     return x + y
+    >>>
+    >>>
+    >>> def multiply(x: float, y: float = 5) -> float:
+    >>>     return x * y
+    >>>
+    >>>
+    >>> @workflow
+    >>> def example_macro(a=10, b=20):
+    >>>     c, d = operation(a, b)
+    >>>     e = add(c, y=d)
+    >>>     f = multiply(e)
+    >>>     return f
+    >>>
+    >>>
+    >>> @workflow
+    >>> def example_workflow(a=10, b=20):
+    >>>     y = example_macro(a, b)
+    >>>     z = add(y, b)
+    >>>     return z
+
+    This example defines a workflow `example_macro`, that includes `operation`,
+    `add`, and `multiply`, which is nested inside another workflow
+    `example_workflow`. Both workflows can be executed using their `run` method,
+    which returns the dictionary representation of the workflow with all the
+    intermediate steps and outputs.
+    """
     workflow_dict = get_workflow_dict(func)
     w = _Workflow(workflow_dict)
     func_with_metadata = FunctionWithWorkflow(func, workflow_dict, w.run)
