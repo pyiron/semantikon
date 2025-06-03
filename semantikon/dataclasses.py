@@ -52,11 +52,12 @@ class _VariadicDataclass(_HasToDictionary):
 
 TripleType: TypeAlias = tuple[str | None, str, str | None] | tuple[str, str]
 TriplesLike: TypeAlias = tuple[TripleType, ...] | TripleType
-RestrictionType: TypeAlias = tuple[str, str]
+RestrictionClause: TypeAlias = tuple[str, str]
+RestrictionType: TypeAlias = tuple[RestrictionClause, ...]
 RestrictionLike: TypeAlias = (
-    tuple[tuple[RestrictionType, ...], ...]
-    | tuple[RestrictionType, ...]
+    tuple[RestrictionType, ...]  # Multiple restrictions
     | RestrictionType
+    | RestrictionClause  # Short-hand for a single-clause restriction
 )
 ShapeType: TypeAlias = tuple[int, ...]
 
