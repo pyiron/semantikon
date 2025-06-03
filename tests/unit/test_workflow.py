@@ -466,24 +466,6 @@ class TestWorkflow(unittest.TestCase):
                     msg="Dictionary representation must be equivalent to existing",
                 )
 
-    def test_function_inputs(self):
-        for fnc in (operation, add, multiply, my_while_condition):
-            with self.subTest(fnc=fnc):
-                self.assertDictEqual(
-                    parse_input_args(fnc),
-                    swf.parse_function_inputs(fnc).to_dictionary(),
-                    msg="Just an interim cyclicity test",
-                )
-
-    def test_function_outputs(self):
-        for fnc in (operation, add, multiply, my_while_condition):
-            with self.subTest(fnc=fnc):
-                self.assertDictEqual(
-                    swf._get_node_outputs(fnc, 2 if fnc == operation else 1),
-                    swf.parse_function_outputs(fnc).to_dictionary(),
-                    msg="Just an interim cyclicity test",
-                )
-
     def test_function(self):
         for fnc in (operation, add, multiply, my_while_condition):
             with self.subTest(fnc=fnc, msg=fnc.__name__):

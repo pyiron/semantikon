@@ -842,22 +842,15 @@ def get_ports(
     )
 
 
-def parse_function_inputs(func: Callable) -> Inputs:
-    return get_ports(func)[0]
-
-
-def parse_function_outputs(func: Callable) -> Outputs:
-    return get_ports(func)[1]
-
-
 def parse_function(func: Callable) -> Function:
     metadata = (
         func._semantikon_metadata if hasattr(func, "_semantikon_metadata") else MISSING
     )
+    inputs, outputs = get_ports(func)
     return Function(
         label=func.__name__,
-        inputs=parse_function_inputs(func),
-        outputs=parse_function_outputs(func),
+        inputs=inputs,
+        outputs=outputs,
         function=func,  # Disabled for backwards compatibility
         metadata=(
             metadata
