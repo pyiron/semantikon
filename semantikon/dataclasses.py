@@ -142,9 +142,10 @@ class _Node(_VariadicDataclass):
 
 
 @dataclasses.dataclass(slots=True)
-class Function(_Node):
-    # function: FunctionType  # Disabled for backwards compatibility
-    uri: str | Missing = missing()  # Ad-hoc addition to satisfy the `add` test
+class Function(_Node): ...
+
+
+# function: FunctionType  # Disabled for backwards compatibility
 
 
 class Nodes(_HasToDictionarMapping[_Node]): ...
