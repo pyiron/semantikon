@@ -480,7 +480,7 @@ class TestWorkflow(unittest.TestCase):
                 )
 
     def test_complex_function_node(self):
-        node = swf.parse_function(complex_function)
+        node = swf.get_node(complex_function)
 
         with self.subTest("Node parsing"):
             self.assertIsInstance(node, swf.Function)
@@ -537,7 +537,7 @@ class TestWorkflow(unittest.TestCase):
 
                 self.assertDictEqual(
                     entry,
-                    swf.parse_function(fnc).to_dictionary(),
+                    swf.get_node(fnc).to_dictionary(),
                     msg="Just an interim cyclicity test",
                 )
 

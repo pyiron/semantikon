@@ -215,8 +215,12 @@ def get_return_expressions(
         return "output"
 
 
-def get_return_labels(func: Callable, separate_tuple: bool = True) -> tuple[str, ...]:
-    return_vars = get_return_expressions(func, separate_tuple=separate_tuple)
+def get_return_labels(
+    func: Callable, separate_tuple: bool = True, strict: bool = False
+) -> tuple[str, ...]:
+    return_vars = get_return_expressions(
+        func, separate_tuple=separate_tuple, strict=strict
+    )
     if return_vars is None:
         return ("None",)
     elif isinstance(return_vars, str):

@@ -27,6 +27,7 @@ from semantikon.dataclasses import (
     Missing,
     Output,
     Outputs,
+    Workflow,
 )
 
 F = TypeVar("F", bound=Callable[..., object])
@@ -822,11 +823,13 @@ def workflow(func: Callable) -> FunctionWithWorkflow:
 
 
 def get_ports(
-    func: Callable, separate_return_tuple: bool = True
+    func: Callable, separate_return_tuple: bool = True, strict: bool = False
 ) -> tuple[Inputs, Outputs]:
     type_hints = get_annotated_type_hints(func)
     return_hint = type_hints.pop("return", inspect.Parameter.empty)
-    return_labels = get_return_labels(func, separate_tuple=separate_return_tuple)
+    return_labels = get_return_labels(
+        func, separate_tuple=separate_return_tuple, strict=strict
+    )
     if get_origin(return_hint) is tuple and separate_return_tuple:
         output_annotations = {
             label: meta_to_dict(ann)
@@ -844,19 +847,45 @@ def get_ports(
     )
 
 
-def parse_function(func: Callable) -> Function:
-    metadata = (
+def get_node(func: Callable) -> Function | Workflow:
+    metadata_dict = (
         func._semantikon_metadata if hasattr(func, "_semantikon_metadata") else MISSING
     )
+    metadata = (
+        metadata_dict
+        if isinstance(metadata_dict, Missing)
+        else CoreMetadata.from_dict(metadata_dict)
+    )
+
+    if hasattr(func, "_semantikon_workflow"):
+        return parse_workflow(func, metadata)
+    else:
+        return parse_function(func, metadata)
+
+
+def parse_function(func: Callable, metadata: CoreMetadata | Missing) -> Function:
     inputs, outputs = get_ports(func)
     return Function(
         label=func.__name__,
         inputs=inputs,
         outputs=outputs,
         function=func,
-        metadata=(
-            metadata
-            if isinstance(metadata, Missing)
-            else CoreMetadata.from_dict(metadata)
-        ),
+        metadata=metadata,
     )
+
+
+def parse_workflow(func: Callable, metadata: CoreMetadata | Missing) -> Workflow:
+    raise NotImplementedError("WIP")
+    # inputs, outputs = get_ports(func, strict=True)
+    # graph, f_dict = analyze_function(func)
+    #
+    # # nodes = _get_nodes(f_dict, output_counts)
+    # # edges = _get_edges(graph, f_dict, output_labels, nodes),
+    # return Workflow(
+    #     label=func.__name__,
+    #     inputs=inputs,
+    #     outputs=outputs,
+    #     nodes=...,
+    #     edges=...,
+    #
+    # )
