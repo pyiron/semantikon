@@ -853,7 +853,7 @@ def parse_function(func: Callable) -> Function:
         label=func.__name__,
         inputs=inputs,
         outputs=outputs,
-        function=func,  # Disabled for backwards compatibility
+        function=func,
         metadata=(
             metadata
             if isinstance(metadata, Missing)
