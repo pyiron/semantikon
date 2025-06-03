@@ -19,6 +19,7 @@ from semantikon.converter import (
     parse_output_args,
 )
 from semantikon.dataclasses import (
+    MISSING,
     CoreMetadata,
     Function,
     Input,
@@ -26,7 +27,6 @@ from semantikon.dataclasses import (
     Missing,
     Output,
     Outputs,
-    MISSING,
 )
 
 F = TypeVar("F", bound=Callable[..., object])
