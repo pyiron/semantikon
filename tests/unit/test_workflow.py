@@ -477,18 +477,21 @@ class TestWorkflow(unittest.TestCase):
                     parse_input_args(fnc),
                     swf._get_workflow_outputs(fnc),
                 )
-                # Cheat and modify to match dataclass
+
+                # Cheat and modify to the _to_node_dict_entry result match dataclass
                 if hasattr(fnc, "_semantikon_metadata"):
                     entry.update(fnc._semantikon_metadata)
                 entry["label"] = fnc.__name__
                 entry.pop("function")
                 metadata = {}
                 for k, v in entry.items():
-                    if k in dataclasses.fields(sdc.CoreMetadata):
+                    if k in {f.name for f in dataclasses.fields(sdc.CoreMetadata)}:
                         metadata[k] = v
+                for meta_key in metadata:
+                    entry.pop(meta_key)
                 if len(metadata) > 0:
                     entry["metadata"] = metadata
-                # KNOWN TO BE FAILING
+
                 self.assertDictEqual(
                     entry,
                     swf.parse_function(fnc).to_dictionary(),
