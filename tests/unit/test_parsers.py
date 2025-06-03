@@ -158,12 +158,6 @@ class TestParser(unittest.TestCase):
         self.assertEqual(input_args["x"]["uri"], "metadata")
         self.assertEqual(input_args["x"]["dtype"], "Atoms")
 
-    def test_foo(self):
-        def f(x, y):
-            return x, -y
-
-        print(get_return_expressions(f, strict=True))
-
     def test_get_return_expressions(self):
         def f(x):
             return x
