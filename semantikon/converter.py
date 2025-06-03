@@ -157,7 +157,9 @@ def _to_tag(item: Any, count=None) -> str:
         return f"output_{count}"
 
 
-def get_return_expressions(func: Callable) -> str | tuple | None:
+def get_return_expressions(
+    func: Callable, separate_tuple: bool = True
+) -> str | tuple | None:
     source = inspect.getsource(func)
     source = textwrap.dedent(source)
     parsed = ast.parse(source)
@@ -180,11 +182,14 @@ def get_return_expressions(func: Callable) -> str | tuple | None:
 
     if len(ret_list) == 0:
         return None
-    elif len(set(ret_list)) == 1:
+    elif len(set(ret_list)) == 1 and (
+        separate_tuple or not isinstance(ret_list[0], tuple)
+    ):
         return ret_list[0]
     elif (
         all(isinstance(exp, tuple) for exp in ret_list)
         and len(set(len(r) for r in ret_list)) == 1
+        and separate_tuple
     ):
         return tuple([f"output_{i}" for i in range(len(ret_list[0]))])
     else:

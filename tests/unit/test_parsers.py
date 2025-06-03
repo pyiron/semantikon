@@ -162,16 +162,19 @@ class TestParser(unittest.TestCase):
             return x
 
         self.assertEqual(get_return_expressions(f), "x")
+        self.assertEqual(get_return_expressions(f, separate_tuple=False), "x")
 
         def f(x, y):
             return x, y
 
         self.assertEqual(get_return_expressions(f), ("x", "y"))
+        self.assertEqual(get_return_expressions(f, separate_tuple=False), "output")
 
         def f(x, y):
             return x, -y
 
         self.assertEqual(get_return_expressions(f), ("x", "output_1"))
+        self.assertEqual(get_return_expressions(f, separate_tuple=False), "output")
 
         def f(x, y):
             if x < 0:
@@ -180,6 +183,7 @@ class TestParser(unittest.TestCase):
                 return x, y
 
         self.assertEqual(get_return_expressions(f), ("x", "y"))
+        self.assertEqual(get_return_expressions(f, separate_tuple=False), "output")
 
         def f(x, y):
             if x < 0:
@@ -188,6 +192,7 @@ class TestParser(unittest.TestCase):
                 return y, x
 
         self.assertEqual(get_return_expressions(f), ("output_0", "output_1"))
+        self.assertEqual(get_return_expressions(f, separate_tuple=False), "output")
 
         def f(x, y):
             if x < 0:
@@ -196,16 +201,19 @@ class TestParser(unittest.TestCase):
                 return y, x
 
         self.assertEqual(get_return_expressions(f), "output")
+        self.assertEqual(get_return_expressions(f, separate_tuple=False), "output")
 
         def f(x):
             print("hello")
 
         self.assertIsNone(get_return_expressions(f))
+        self.assertIsNone(get_return_expressions(f, separate_tuple=False))
 
         def f(x):
             return
 
         self.assertEqual(get_return_expressions(f), "None")
+        self.assertEqual(get_return_expressions(f, separate_tuple=False), "None")
 
 
 if __name__ == "__main__":
