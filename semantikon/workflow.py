@@ -13,6 +13,7 @@ from networkx.algorithms.dag import topological_sort
 from semantikon.converter import (
     get_annotated_type_hints,
     get_return_expressions,
+    get_return_labels,
     meta_to_dict,
     parse_input_args,
     parse_output_args,
@@ -825,13 +826,14 @@ def get_ports(
 ) -> tuple[Inputs, Outputs]:
     type_hints = get_annotated_type_hints(func)
     return_hint = type_hints.pop("return", inspect.Parameter.empty)
+    return_labels = get_return_labels(func, separate_tuple=separate_return_tuple)
     if get_origin(return_hint) is tuple and separate_return_tuple:
         output_annotations = {
-            f"output_{n}": meta_to_dict(ann)
-            for n, ann in enumerate(get_args(return_hint))
+            label: meta_to_dict(ann)
+            for label, ann in zip(return_labels, get_args(return_hint))
         }
     else:
-        output_annotations = {"output": meta_to_dict(return_hint)}
+        output_annotations = {return_labels[0]: meta_to_dict(return_hint)}
     input_annotations = {
         key: meta_to_dict(type_hints.get(key, value.annotation), value.default)
         for key, value in inspect.signature(func).parameters.items()
