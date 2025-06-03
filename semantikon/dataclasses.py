@@ -78,7 +78,7 @@ class TypeMetadata(CoreMetadata):
 
 
 @dataclasses.dataclass(slots=True)
-class _Port(_VariadicDataclass):
+class _Port(TypeMetadata):
     dtype: type | Missing = missing()
 
 
