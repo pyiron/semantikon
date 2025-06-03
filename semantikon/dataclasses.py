@@ -137,7 +137,7 @@ class _Node(_VariadicDataclass):
     metadata: CoreMetadata | Missing
 
     def __iter__(self) -> Iterator[tuple[str, Any]]:
-        # yield "type", self.__class__.__name__  # Disabled for backwards compatibility
+        yield "type", self.__class__.__name__  # Disabled for backwards compatibility
         yield from super(_Node, self).__iter__()
 
 

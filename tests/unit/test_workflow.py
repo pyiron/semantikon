@@ -492,6 +492,7 @@ class TestWorkflow(unittest.TestCase):
                 if len(metadata) > 0:
                     entry["metadata"] = metadata
                 entry["function"] = fnc
+                entry["type"] = swf.Function.__name__
 
                 self.assertDictEqual(
                     entry,
