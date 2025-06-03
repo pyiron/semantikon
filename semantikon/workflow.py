@@ -20,6 +20,7 @@ from semantikon.dataclasses import (
     Function,
     Input,
     Inputs,
+    Missing,
     Output,
     Outputs,
     MISSING,
@@ -834,5 +835,9 @@ def parse_function(func: Callable) -> Function:
         inputs=parse_function_inputs(func),
         outputs=parse_function_outputs(func),
         # function=func,  # Disabled for backwards compatibility
-        metadata=metadata if metadata is MISSING else CoreMetadata.from_dict(metadata),
+        metadata=(
+            metadata
+            if isinstance(metadata, Missing)
+            else CoreMetadata.from_dict(metadata)
+        ),
     )
