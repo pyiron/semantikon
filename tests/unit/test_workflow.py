@@ -510,6 +510,10 @@ class TestWorkflow(unittest.TestCase):
             self.assertEqual(node.outputs["speed"].uri, "VELOCITY")
             self.assertIs(node.outputs["output_2"].dtype, float)
 
+    def test_workflow_node(self):
+        node = swf.get_node(example_workflow)
+        print(node.to_dictionary())
+
     def test_function(self):
         for fnc in (operation, add, multiply, my_while_condition):
             with self.subTest(fnc=fnc, msg=fnc.__name__):

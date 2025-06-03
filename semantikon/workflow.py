@@ -21,10 +21,12 @@ from semantikon.converter import (
 from semantikon.dataclasses import (
     MISSING,
     CoreMetadata,
+    Edges,
     Function,
     Input,
     Inputs,
     Missing,
+    Nodes,
     Output,
     Outputs,
     Workflow,
@@ -858,7 +860,7 @@ def get_node(func: Callable) -> Function | Workflow:
     )
 
     if hasattr(func, "_semantikon_workflow"):
-        return parse_workflow(func, metadata)
+        return parse_workflow(func._semantikon_workflow, metadata)
     else:
         return parse_function(func, metadata)
 
@@ -874,18 +876,26 @@ def parse_function(func: Callable, metadata: CoreMetadata | Missing) -> Function
     )
 
 
-def parse_workflow(func: Callable, metadata: CoreMetadata | Missing) -> Workflow:
-    raise NotImplementedError("WIP")
-    # inputs, outputs = get_ports(func, strict=True)
-    # graph, f_dict = analyze_function(func)
-    #
-    # # nodes = _get_nodes(f_dict, output_counts)
-    # # edges = _get_edges(graph, f_dict, output_labels, nodes),
-    # return Workflow(
-    #     label=func.__name__,
-    #     inputs=inputs,
-    #     outputs=outputs,
-    #     nodes=...,
-    #     edges=...,
-    #
-    # )
+def parse_workflow(
+    semantikon_workflow, metadata: CoreMetadata | Missing = MISSING
+) -> Workflow:
+    label = semantikon_workflow["label"]
+    inputs = Inputs(**{k: Input(**v) for k, v in semantikon_workflow["inputs"].items()})
+    outputs = Outputs(
+        **{k: Output(**v) for k, v in semantikon_workflow["outputs"].items()}
+    )
+    nodes = Nodes(
+        **{
+            k: get_node(v["function"]) if "function" in v else parse_workflow(v)
+            for k, v in semantikon_workflow["nodes"].items()
+        }
+    )
+    edges = Edges(**{v: k for k, v in semantikon_workflow["edges"]})
+    return Workflow(
+        label=label,
+        inputs=inputs,
+        outputs=outputs,
+        nodes=nodes,
+        edges=edges,
+        metadata=metadata,
+    )

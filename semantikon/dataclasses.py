@@ -156,7 +156,17 @@ class Nodes(_HasToDictionarMapping[_Node]): ...
 EdgeType: TypeAlias = tuple[str, str]
 
 
-class Edges(_HasToDictionarMapping[EdgeType]): ...
+class Edges(_HasToDictionarMapping[EdgeType]):
+    """
+    Key value pairs are stored as `{target: source}` such that each upstream source can
+    be used in multiple places, but each downstream target can have only a single
+    source.
+    The :meth:`to_tuple` routine offers this reversed so that the returned tuples read
+    intuitively as `(source, target)`.
+    """
+
+    def to_tuple(self) -> tuple[EdgeType, ...]:
+        return tuple((e[1], e[0]) for e in self)
 
 
 @dataclasses.dataclass(slots=True)
