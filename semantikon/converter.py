@@ -159,7 +159,7 @@ def _to_tag(item: Any, count=None) -> str:
 
 def get_return_expressions(
     func: Callable, separate_tuple: bool = True
-) -> str | tuple | None:
+) -> str | tuple[str, ...] | None:
     source = inspect.getsource(func)
     source = textwrap.dedent(source)
     parsed = ast.parse(source)
@@ -194,6 +194,22 @@ def get_return_expressions(
         return tuple([f"output_{i}" for i in range(len(ret_list[0]))])
     else:
         return "output"
+
+
+def get_return_labels(func: Callable, separate_tuple: bool = True) -> tuple[str, ...]:
+    return_vars = get_return_expressions(func, separate_tuple=separate_tuple)
+    if return_vars is None:
+        return ("None",)
+    elif isinstance(return_vars, str):
+        return (return_vars,)
+    elif isinstance(return_vars, tuple) and all(
+        isinstance(v, str) for v in return_vars
+    ):
+        return return_vars
+    raise TypeError(
+        f"{get_return_labels.__module__}.{get_return_labels.__qualname__} expected "
+        f"None, a string, or a tuple of strings, but got {return_vars}"
+    )
 
 
 def get_annotated_type_hints(func: Callable) -> dict[str, Any]:
