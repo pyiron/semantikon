@@ -451,6 +451,21 @@ class TestWorkflow(unittest.TestCase):
         )
         self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
 
+    def test_ports(self):
+        for fnc in (operation, add, multiply, my_while_condition):
+            with self.subTest(fnc=fnc, msg=fnc.__name__):
+                inputs, outputs = swf.get_ports(fnc)
+                self.assertDictEqual(
+                    parse_input_args(fnc),
+                    inputs.to_dictionary(),
+                    msg="Dictionary representation must be equivalent to existing",
+                )
+                self.assertDictEqual(
+                    swf._get_node_outputs(fnc, 2 if fnc == operation else 1),
+                    outputs.to_dictionary(),
+                    msg="Dictionary representation must be equivalent to existing",
+                )
+
     def test_function_inputs(self):
         for fnc in (operation, add, multiply, my_while_condition):
             with self.subTest(fnc=fnc):

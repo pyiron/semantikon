@@ -5,13 +5,15 @@ import inspect
 from collections import deque
 from functools import cached_property, update_wrapper
 from hashlib import sha256
-from typing import Any, Callable, Generic, Iterable, TypeVar, cast
+from typing import Any, Callable, Generic, Iterable, TypeVar, cast, get_args, get_origin
 
 import networkx as nx
 from networkx.algorithms.dag import topological_sort
 
 from semantikon.converter import (
+    get_annotated_type_hints,
     get_return_expressions,
+    meta_to_dict,
     parse_input_args,
     parse_output_args,
 )
@@ -818,12 +820,34 @@ def workflow(func: Callable) -> FunctionWithWorkflow:
     return func_with_metadata
 
 
+def get_ports(
+    func: Callable, separate_return_tuple: bool = True
+) -> tuple[Inputs, Outputs]:
+    type_hints = get_annotated_type_hints(func)
+    return_hint = type_hints.pop("return", inspect.Parameter.empty)
+    if get_origin(return_hint) is tuple and separate_return_tuple:
+        output_annotations = {
+            f"output_{n}": meta_to_dict(ann)
+            for n, ann in enumerate(get_args(return_hint))
+        }
+    else:
+        output_annotations = {"output": meta_to_dict(return_hint)}
+    input_annotations = {
+        key: meta_to_dict(type_hints.get(key, value.annotation), value.default)
+        for key, value in inspect.signature(func).parameters.items()
+    }
+    return (
+        Inputs(**{k: Input(**v) for k, v in input_annotations.items()}),
+        Outputs(**{k: Output(**v) for k, v in output_annotations.items()}),
+    )
+
+
 def parse_function_inputs(func: Callable) -> Inputs:
-    return Inputs(**{k: Input(**v) for k, v in parse_input_args(func).items()})
+    return get_ports(func)[0]
 
 
 def parse_function_outputs(func: Callable) -> Outputs:
-    return Outputs(**{k: Output(**v) for k, v in _get_workflow_outputs(func).items()})
+    return get_ports(func)[1]
 
 
 def parse_function(func: Callable) -> Function:
