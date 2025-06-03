@@ -2,7 +2,7 @@ import abc
 import dataclasses
 import functools
 from collections.abc import Iterable, MutableMapping
-from typing import Any, Generic, Iterator, TypeAlias, TypeVar
+from typing import Any, Callable, Generic, Iterator, TypeAlias, TypeVar
 
 import typeguard
 
@@ -142,10 +142,8 @@ class _Node(_VariadicDataclass):
 
 
 @dataclasses.dataclass(slots=True)
-class Function(_Node): ...
-
-
-# function: FunctionType  # Disabled for backwards compatibility
+class Function(_Node):
+    function: Callable
 
 
 class Nodes(_HasToDictionarMapping[_Node]): ...

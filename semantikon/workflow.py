@@ -834,7 +834,7 @@ def parse_function(func: Callable) -> Function:
         label=func.__name__,
         inputs=parse_function_inputs(func),
         outputs=parse_function_outputs(func),
-        # function=func,  # Disabled for backwards compatibility
+        function=func,  # Disabled for backwards compatibility
         metadata=(
             metadata
             if isinstance(metadata, Missing)

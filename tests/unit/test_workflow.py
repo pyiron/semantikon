@@ -491,6 +491,7 @@ class TestWorkflow(unittest.TestCase):
                     entry.pop(meta_key)
                 if len(metadata) > 0:
                     entry["metadata"] = metadata
+                entry["function"] = fnc
 
                 self.assertDictEqual(
                     entry,
