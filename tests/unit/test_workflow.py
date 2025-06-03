@@ -93,11 +93,11 @@ def workflow_with_while(a=10, b=20):
 
 @u(uri="some URI")
 def complex_function(
-    x: u(float, units="meters") = 2.0,
-    y: u(float, units="seconds", something_extra=42) = 1,
+    x: u(float, units="meter") = 2.0,
+    y: u(float, units="second", something_extra=42) = 1,
 ) -> tuple[
-    u(float, units="meters"),
-    u(float, units="meters/seconds", uri="VELOCITY"),
+    u(float, units="meter"),
+    u(float, units="meter/second", uri="VELOCITY"),
     float,
 ]:
     speed = x / y
@@ -495,18 +495,18 @@ class TestWorkflow(unittest.TestCase):
             self.assertIsInstance(node.inputs["x"], swf.Input)
             self.assertIs(node.inputs["x"].dtype, float)
             self.assertAlmostEqual(node.inputs["x"].default, 2.0)
-            self.assertEqual(node.inputs["x"].units, "meters")
+            self.assertEqual(node.inputs["x"].units, "meter")
             self.assertIs(node.inputs["y"].dtype, float)
             self.assertAlmostEqual(node.inputs["y"].default, 1.0)
-            self.assertEqual(node.inputs["y"].units, "seconds")
+            self.assertEqual(node.inputs["y"].units, "second")
             self.assertEqual(node.inputs["y"].extra["something_extra"], 42)
 
         with self.subTest("Output parsing"):
             self.assertIsInstance(node.outputs["x"], swf.Output)
             self.assertIs(node.outputs["x"].dtype, float)
-            self.assertEqual(node.outputs["x"].units, "meters")
+            self.assertEqual(node.outputs["x"].units, "meter")
             self.assertIs(node.outputs["speed"].dtype, float)
-            self.assertEqual(node.outputs["speed"].units, "meters/seconds")
+            self.assertEqual(node.outputs["speed"].units, "meter/second")
             self.assertEqual(node.outputs["speed"].uri, "VELOCITY")
             self.assertIs(node.outputs["output_2"].dtype, float)
 
