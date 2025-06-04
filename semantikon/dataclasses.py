@@ -158,7 +158,7 @@ class Nodes(_HasToDictionarMapping[_Node]): ...
 EdgeType: TypeAlias = tuple[str, str]
 
 
-class Edges(_HasToDictionarMapping[EdgeType]):
+class Edges(_HasToDictionarMapping[str]):
     """
     Key value pairs are stored as `{target: source}` such that each upstream source can
     be used in multiple places, but each downstream target can have only a single
