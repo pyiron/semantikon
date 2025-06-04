@@ -81,6 +81,7 @@ class TypeMetadata(CoreMetadata):
 @dataclasses.dataclass(slots=True)
 class _Port(TypeMetadata):
     dtype: type | Missing = missing()
+    value: object | Missing = missing()
 
 
 @dataclasses.dataclass(slots=True)
