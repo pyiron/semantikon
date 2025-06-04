@@ -18,7 +18,8 @@ missing = functools.partial(dataclasses.field, default=MISSING)
 
 class _HasToDictionary(Iterable[tuple[str, Any]], abc.ABC):
     @abc.abstractmethod
-    def __iter__(self) -> Iterator[tuple[str, Any]]: ...
+    def __iter__(self) -> Iterator[tuple[str, Any]]:
+        ...
 
     def to_dictionary(self) -> dict[str, Any]:
         d = {}
