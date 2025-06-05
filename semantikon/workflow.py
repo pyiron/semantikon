@@ -369,7 +369,7 @@ def _get_edges(graph, functions, nodes):
     output_candidate = {}
     for edge in _get_sorted_edges(graph):
         if edge[2]["type"] == "output":
-            if hasattr(functions[edge[0]]["function"], "_semantikon_workflow"):
+            if edge[0] in functions and hasattr(functions[edge[0]]["function"], "_semantikon_workflow"):
                 keys = list(
                     functions[edge[0]]["function"]
                     ._semantikon_workflow["outputs"]
