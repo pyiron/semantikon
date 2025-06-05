@@ -121,13 +121,6 @@ class FunctionDictFlowAnalyzer:
         for arg in self.ast_dict.get("args", {}).get("args", []):
             if arg["_type"] == "arg":
                 self._var_index[arg["arg"]] = 0
-        if "test" in self.ast_dict:
-            self._parse_function_call(
-                self.ast_dict["test"],
-                func_name=self.ast_dict["test"]["func"]["id"],
-                unique_func_name="test",
-                f_type="While",
-            )
         for node in self.ast_dict.get("body", []):
             self._visit_node(node)
         return self.graph, self.function_defs
@@ -145,33 +138,9 @@ class FunctionDictFlowAnalyzer:
     def _handle_while(self, node):
         if node["test"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
-        func = self.scope[node["test"]["func"]["id"]]
-        while_dict = {
-            "test": _to_node_dict_entry(
-                func, parse_input_args(func), _get_node_outputs(func, 1)
-            )
-        }
-        output_vars, input_vars = _extract_variables_from_ast_body(node)
-        graph, f_dict = FunctionDictFlowAnalyzer(
-            node, self.scope, input_vars=input_vars
-        ).analyze()
-        output_counts = _get_output_counts(graph)
-        nodes = _get_nodes(f_dict, output_counts)
-        edges = _get_edges(graph, f_dict, output_vars, nodes)
-        unique_func_name = self._get_unique_func_name("injected_while_loop")
-        while_dict.update(
-            _to_workflow_dict_entry(
-                inputs={key: {} for key in input_vars},
-                outputs={key: {} for key in output_vars},
-                nodes=nodes,
-                edges=edges,
-                label=unique_func_name,
-            )
-        )
-        self.function_defs[unique_func_name] = {
-            "function": InjectedLoop(while_dict),
-            "type": "Assign",
-        }
+        self._parse_function_call(node["test"], f_type="Test")
+        for node in self.ast_dict.get("body", []):
+            self._visit_node(node)
 
     def _handle_for(self, node):
         if node["iter"]["_type"] != "Call":
