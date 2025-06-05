@@ -153,8 +153,6 @@ class FunctionDictFlowAnalyzer:
     def _parse_function_call(
         self,
         value,
-        func_name=None,
-        unique_func_name=None,
         f_type="Assign",
         control_flow: str | None = None
     ):
@@ -165,10 +163,8 @@ class FunctionDictFlowAnalyzer:
         if func_node["_type"] != "Name":
             raise NotImplementedError("Only simple functions allowed")
 
-        if func_name is None:
-            func_name = func_node["id"]
-        if unique_func_name is None:
-            unique_func_name = self._get_unique_func_name(func_name)
+        func_name = func_node["id"]
+        unique_func_name = self._get_unique_func_name(func_name)
 
         if func_name not in self.scope:
             raise ValueError(f"Function {func_name} not found in scope")
