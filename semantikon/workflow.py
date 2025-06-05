@@ -148,7 +148,7 @@ class FunctionDictFlowAnalyzer:
 
     def _handle_expr(self, node, control_flow: str | None = None):
         value = node["value"]
-        return self._parse_function_call(value)
+        return self._parse_function_call(value, control_flow=control_flow)
 
     def _parse_function_call(
         self,
@@ -198,15 +198,19 @@ class FunctionDictFlowAnalyzer:
     def _handle_assign(self, node, control_flow: str | None = None):
         unique_func_name = self._handle_expr(node)
         # Parse outputs
-        self._parse_outputs(node["targets"], unique_func_name)
+        self._parse_outputs(node["targets"], unique_func_name, control_flow=control_flow)
 
     def _parse_outputs(self, targets, unique_func_name, control_flow: str | None = None):
         if len(targets) == 1 and targets[0]["_type"] == "Tuple":
             for idx, elt in enumerate(targets[0]["elts"]):
-                self._add_output_edge(unique_func_name, elt, output_index=idx)
+                self._add_output_edge(
+                    unique_func_name, elt, output_index=idx, control_flow=control_flow
+                )
         else:
             for target in targets:
-                self._add_output_edge(unique_func_name, target)
+                self._add_output_edge(
+                    unique_func_name, target, control_flow=control_flow
+                )
 
     def _add_output_edge(self, source, target, control_flow: str | None = None, **kwargs):
         var_name = target["id"]
