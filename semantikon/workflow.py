@@ -356,7 +356,7 @@ def _get_sorted_edges(graph: nx.DiGraph) -> list:
     return sorted(graph.edges.data(), key=lambda edge: node_order[edge[0]])
 
 
-def _get_edges(graph, functions, output_labels, nodes):
+def _get_edges(graph, functions, nodes):
     input_dict = {}
     for name, func in functions.items():
         f = func["function"]
@@ -384,27 +384,21 @@ def _get_edges(graph, functions, output_labels, nodes):
                 ]
             else:
                 output_key = list(nodes[edge[0]]["outputs"].keys())[0]
-            tag = f"{edge[0]}.outputs.{output_key}"
-            if _remove_index(edge[1]) in output_labels:
-                output_candidate[_remove_index(edge[1])] = (
-                    tag,
-                    f"outputs.{_remove_index(edge[1])}",
-                )
-            output_dict[edge[1]] = tag
+            output_dict[edge[1]] = f"{edge[0]}.outputs.{output_key}"
         else:
             if edge[0] not in output_dict:
                 source = f"inputs.{_remove_index(edge[0])}"
             else:
                 source = output_dict[edge[0]]
-            if "input_name" in edge[2]:
+            if edge[1] == "output":
+                target = f"outputs.{_remove_index(edge[0])}"
+            elif "input_name" in edge[2]:
                 target = f"{edge[1]}.inputs.{edge[2]['input_name']}"
             elif "input_index" in edge[2]:
                 target = (
                     f"{edge[1]}.inputs.{input_dict[edge[1]][edge[2]['input_index']]}"
                 )
             edges.append((source, target))
-    for edge in output_candidate.values():
-        edges.append(edge)
     return edges
 
 
@@ -561,13 +555,12 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
     """
     graph, f_dict = analyze_function(func)
     output_counts = _get_output_counts(graph)
-    output_labels = list(_get_workflow_outputs(func).keys())
     nodes = _get_nodes(f_dict, output_counts)
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),
         nodes=_get_nodes(f_dict, output_counts),
-        edges=_get_edges(graph, f_dict, output_labels, nodes),
+        edges=_get_edges(graph, f_dict, nodes),
         label=func.__name__,
     )
 
