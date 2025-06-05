@@ -118,7 +118,7 @@ class FunctionDictFlowAnalyzer:
     def analyze(self):
         for arg in self.ast_dict.get("args", {}).get("args", []):
             if arg["_type"] == "arg":
-                self._add_output_edge("input", arg["arg"], control_flow="Input")
+                self._add_output_edge("input", arg["arg"])
         for node in self.ast_dict.get("body", []):
             self._visit_node(node)
         return self.graph, self.function_defs
