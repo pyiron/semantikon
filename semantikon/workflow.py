@@ -190,7 +190,7 @@ class FunctionDictFlowAnalyzer:
         return unique_func_name
 
     def _handle_assign(self, node, control_flow: str | None = None):
-        unique_func_name = self._handle_expr(node)
+        unique_func_name = self._handle_expr(node, control_flow=control_flow)
         # Parse outputs
         self._parse_outputs(node["targets"], unique_func_name, control_flow=control_flow)
 
