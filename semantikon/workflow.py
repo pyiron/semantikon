@@ -142,13 +142,9 @@ class FunctionDictFlowAnalyzer:
             for idx, elt in enumerate(node["value"]["elts"]):
                 if elt["_type"] != "Name":
                     raise NotImplementedError("Only variable returns supported")
-                self._add_input_edge(
-                    elt, "output", input_index=idx, control_flow=control_flow
-                )
+                self._add_input_edge(elt, "output", input_index=idx)
         elif node["value"]["_type"] == "Name":
-            self._add_input_edge(
-                node["value"], "output", control_flow=control_flow
-            )
+            self._add_input_edge(node["value"], "output")
 
     def _handle_while(self, node, control_flow: str | None = None):
         if node["test"]["_type"] != "Call":
