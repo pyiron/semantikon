@@ -107,13 +107,11 @@ class InjectedLoop:
 
 
 class FunctionDictFlowAnalyzer:
-    def __init__(self, ast_dict, scope, input_vars=None):
-        if input_vars is None:
-            input_vars = []
+    def __init__(self, ast_dict, scope):
         self.graph = nx.DiGraph()
         self.scope = scope  # mapping from function names to objects
         self.function_defs = {}
-        self._var_index = {input_var: 0 for input_var in input_vars}
+        self._var_index = {}
         self.ast_dict = ast_dict
         self._call_counter = {}
 
