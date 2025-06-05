@@ -139,7 +139,7 @@ class FunctionDictFlowAnalyzer:
         if node["test"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
         self._parse_function_call(node["test"], f_type="Test")
-        for node in self.ast_dict.get("body", []):
+        for node in node["body"]:
             self._visit_node(node)
 
     def _handle_for(self, node):
