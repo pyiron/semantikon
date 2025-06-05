@@ -118,7 +118,7 @@ class FunctionDictFlowAnalyzer:
     def analyze(self):
         for arg in self.ast_dict.get("args", {}).get("args", []):
             if arg["_type"] == "arg":
-                self._var_index[arg["arg"]] = 0
+                self._add_output_edge("input", arg["arg"], control_flow="Input")
         for node in self.ast_dict.get("body", []):
             self._visit_node(node)
         return self.graph, self.function_defs
@@ -132,6 +132,23 @@ class FunctionDictFlowAnalyzer:
             self._handle_while(node, control_flow=control_flow)
         elif node["_type"] == "For":
             self._handle_for(node, control_flow=control_flow)
+        elif node["_type"] == "Return":
+            self._handle_return(node, control_flow=control_flow)
+
+    def _handle_return(self, node, control_flow: str | None = None):
+        if not node["value"]:
+            return
+        if node["value"]["_type"] == "Tuple":
+            for idx, elt in enumerate(node["value"]["elts"]):
+                if elt["_type"] != "Name":
+                    raise NotImplementedError("Only variable returns supported")
+                self._add_input_edge(
+                    elt, "output", input_index=idx, control_flow=control_flow
+                )
+        elif node["value"]["_type"] == "Name":
+            self._add_input_edge(
+                node["value"], "output", control_flow=control_flow
+            )
 
     def _handle_while(self, node, control_flow: str | None = None):
         if node["test"]["_type"] != "Call":
@@ -198,18 +215,17 @@ class FunctionDictFlowAnalyzer:
         if len(targets) == 1 and targets[0]["_type"] == "Tuple":
             for idx, elt in enumerate(targets[0]["elts"]):
                 self._add_output_edge(
-                    unique_func_name, elt, output_index=idx, control_flow=control_flow
+                    unique_func_name, elt["id"], output_index=idx, control_flow=control_flow
                 )
         else:
             for target in targets:
                 self._add_output_edge(
-                    unique_func_name, target, control_flow=control_flow
+                    unique_func_name, target["id"], control_flow=control_flow
                 )
 
     def _add_output_edge(self, source, target, control_flow: str | None = None, **kwargs):
-        var_name = target["id"]
-        self._var_index[var_name] = self._var_index.get(var_name, -1) + 1
-        versioned = f"{var_name}_{self._var_index[var_name]}"
+        self._var_index[target] = self._var_index.get(target, -1) + 1
+        versioned = f"{target}_{self._var_index[target]}"
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
         self.graph.add_edge(source, versioned, type="output", **kwargs)
