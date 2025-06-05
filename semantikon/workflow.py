@@ -138,7 +138,7 @@ class FunctionDictFlowAnalyzer:
     def _handle_while(self, node, control_flow: str | None = None):
         if node["test"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
-        self._parse_function_call(node["test"], f_type="Test")
+        self._parse_function_call(node["test"], f_type="Test", control_flow="Test")
         for node in node["body"]:
             self._visit_node(node, control_flow="While")
 
