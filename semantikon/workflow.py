@@ -125,33 +125,38 @@ class FunctionDictFlowAnalyzer:
             self._visit_node(node)
         return self.graph, self.function_defs
 
-    def _visit_node(self, node):
+    def _visit_node(self, node, control_flow: str | None = None):
         if node["_type"] == "Assign":
-            self._handle_assign(node)
+            self._handle_assign(node, control_flow=control_flow)
         elif node["_type"] == "Expr":
-            self._handle_expr(node)
+            self._handle_expr(node, control_flow=control_flow)
         elif node["_type"] == "While":
-            self._handle_while(node)
+            self._handle_while(node, control_flow=control_flow)
         elif node["_type"] == "For":
-            self._handle_for(node)
+            self._handle_for(node, control_flow=control_flow)
 
-    def _handle_while(self, node):
+    def _handle_while(self, node, control_flow: str | None = None):
         if node["test"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
         self._parse_function_call(node["test"], f_type="Test")
         for node in node["body"]:
-            self._visit_node(node)
+            self._visit_node(node, control_flow="While")
 
-    def _handle_for(self, node):
+    def _handle_for(self, node, control_flow: str | None = None):
         if node["iter"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
 
-    def _handle_expr(self, node):
+    def _handle_expr(self, node, control_flow: str | None = None):
         value = node["value"]
         return self._parse_function_call(value)
 
     def _parse_function_call(
-        self, value, func_name=None, unique_func_name=None, f_type="Assign"
+        self,
+        value,
+        func_name=None,
+        unique_func_name=None,
+        f_type="Assign",
+        control_flow: str | None = None
     ):
         if value["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed on RHS")
@@ -175,17 +180,27 @@ class FunctionDictFlowAnalyzer:
 
         # Parse inputs (positional + keyword)
         for i, arg in enumerate(value.get("args", [])):
-            self._add_input_edge(arg, unique_func_name, input_index=i)
+            self._add_input_edge(
+                arg,
+                unique_func_name,
+                input_index=i,
+                control_flow=control_flow
+            )
         for kw in value.get("keywords", []):
-            self._add_input_edge(kw["value"], unique_func_name, input_name=kw["arg"])
+            self._add_input_edge(
+                kw["value"],
+                unique_func_name,
+                input_name=kw["arg"],
+                control_flow=control_flow
+            )
         return unique_func_name
 
-    def _handle_assign(self, node):
+    def _handle_assign(self, node, control_flow: str | None = None):
         unique_func_name = self._handle_expr(node)
         # Parse outputs
         self._parse_outputs(node["targets"], unique_func_name)
 
-    def _parse_outputs(self, targets, unique_func_name):
+    def _parse_outputs(self, targets, unique_func_name, control_flow: str | None = None):
         if len(targets) == 1 and targets[0]["_type"] == "Tuple":
             for idx, elt in enumerate(targets[0]["elts"]):
                 self._add_output_edge(unique_func_name, elt, output_index=idx)
@@ -193,16 +208,20 @@ class FunctionDictFlowAnalyzer:
             for target in targets:
                 self._add_output_edge(unique_func_name, target)
 
-    def _add_output_edge(self, source, target, **kwargs):
+    def _add_output_edge(self, source, target, control_flow: str | None = None, **kwargs):
         var_name = target["id"]
         self._var_index[var_name] = self._var_index.get(var_name, -1) + 1
         versioned = f"{var_name}_{self._var_index[var_name]}"
+        if control_flow is not None:
+            kwargs["control_flow"] = control_flow
         self.graph.add_edge(source, versioned, type="output", **kwargs)
 
-    def _add_input_edge(self, source, target, **kwargs):
+    def _add_input_edge(self, source, target, control_flow: str | None = None, **kwargs):
         if source["_type"] != "Name":
             raise NotImplementedError(f"Only variable inputs supported, got: {source}")
         var_name = source["id"]
+        if control_flow is not None:
+            kwargs["control_flow"] = control_flow
         if var_name not in self._var_index:
             raise ValueError(f"Variable {var_name} not found in scope")
         idx = self._var_index[var_name]
