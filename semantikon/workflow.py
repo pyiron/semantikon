@@ -266,6 +266,9 @@ def _get_workflow_outputs(func):
     data_output = parse_output_args(func)
     if isinstance(data_output, dict):
         data_output = [data_output]
+    if len(var_output) > 1 and len(data_output) == 1:
+        assert len(data_output[0]) == 0
+        return {var: {} for var in var_output}
     return dict(zip(var_output, data_output))
 
 
