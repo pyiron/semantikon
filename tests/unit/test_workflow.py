@@ -10,6 +10,7 @@ from semantikon.workflow import (
     _get_node_outputs,
     _get_output_counts,
     _get_sorted_edges,
+    _get_workflow_outputs,
     analyze_function,
     ast_from_dict,
     find_parallel_execution_levels,
@@ -448,6 +449,49 @@ class TestWorkflow(unittest.TestCase):
             ("add_0.outputs.output", "check_positive_0.inputs.x"), data["edges"]
         )
         self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
+
+    def test_get_workflow_output(self):
+
+        def test_function(a, b):
+            return a + b
+
+        self.assertEqual(
+            _get_workflow_outputs(test_function), {"output": {}},
+        )
+
+        def test_function(a, b):
+            return a
+
+        self.assertEqual(
+            _get_workflow_outputs(test_function), {"a": {}},
+        )
+
+        def test_function(a, b):
+            return a, b
+
+        self.assertEqual(
+            _get_workflow_outputs(test_function), {"a": {}, "b":{}},
+        )
+
+        def test_function(a, b):
+            return a + b, b
+
+        self.assertEqual(
+            _get_workflow_outputs(test_function), {"output_0": {}, "b":{}},
+        )
+        data = _get_workflow_outputs(test_function)
+        data["output_0"]["value"] = 0
+        self.assertEqual(
+            data, {"output_0": {"value": 0}, "b":{}},
+        )
+
+        def test_function(a: int, b: int) -> tuple[int, int]:
+            return a, b
+
+        self.assertEqual(
+            _get_workflow_outputs(test_function),
+            {"a": {"dtype": int}, "b":{"dtype": int}},
+        )
 
 
 if __name__ == "__main__":
