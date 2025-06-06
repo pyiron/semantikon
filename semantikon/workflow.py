@@ -369,7 +369,9 @@ def _get_edges(graph, functions, nodes):
     output_candidate = {}
     for edge in _get_sorted_edges(graph):
         if edge[2]["type"] == "output":
-            if edge[0] in functions and hasattr(functions[edge[0]]["function"], "_semantikon_workflow"):
+            if edge[0] == "input":
+                continue
+            elif edge[0] in functions and hasattr(functions[edge[0]]["function"], "_semantikon_workflow"):
                 keys = list(
                     functions[edge[0]]["function"]
                     ._semantikon_workflow["outputs"]
@@ -554,12 +556,11 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
             outputs, nodes, edges, and label.
     """
     graph, f_dict = analyze_function(func)
-    output_counts = _get_output_counts(graph)
-    nodes = _get_nodes(f_dict, output_counts)
+    nodes = _get_nodes(f_dict, _get_output_counts(graph))
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),
-        nodes=_get_nodes(f_dict, output_counts),
+        nodes=nodes,
         edges=_get_edges(graph, f_dict, nodes),
         label=func.__name__,
     )
