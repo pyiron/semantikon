@@ -1,8 +1,12 @@
 import ast
+import dataclasses
 import unittest
 
 import networkx as nx
 
+import semantikon.dataclasses as sdc
+import semantikon.workflow as swf
+from semantikon.converter import parse_input_args
 from semantikon.metadata import u
 from semantikon.workflow import (
     _extract_variables_from_ast_body,
@@ -85,6 +89,19 @@ def workflow_with_while(a=10, b=20):
         # Poor implementation to define variable inside the loop, but allowed
         z = multiply(a, x)
     return z
+
+
+@u(uri="some URI")
+def complex_function(
+    x: u(float, units="meter") = 2.0,
+    y: u(float, units="second", something_extra=42) = 1,
+) -> tuple[
+    u(float, units="meter"),
+    u(float, units="meter/second", uri="VELOCITY"),
+    float,
+]:
+    speed = x / y
+    return x, speed, speed / y
 
 
 class ApeClass:
@@ -448,6 +465,87 @@ class TestWorkflow(unittest.TestCase):
             ("add_0.outputs.output", "check_positive_0.inputs.x"), data["edges"]
         )
         self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
+
+    def test_ports(self):
+        for fnc in (operation, add, multiply, my_while_condition):
+            with self.subTest(fnc=fnc, msg=fnc.__name__):
+                inputs, outputs = swf.get_ports(fnc)
+                self.assertDictEqual(
+                    parse_input_args(fnc),
+                    inputs.to_dictionary(),
+                    msg="Dictionary representation must be equivalent to existing",
+                )
+                self.assertDictEqual(
+                    swf._get_node_outputs(fnc, 2 if fnc == operation else 1),
+                    outputs.to_dictionary(),
+                    msg="Dictionary representation must be equivalent to existing",
+                )
+
+    def test_complex_function_node(self):
+        node = swf.get_node(complex_function)
+
+        with self.subTest("Node parsing"):
+            self.assertIsInstance(node, swf.Function)
+            self.assertIsInstance(node.inputs, swf.Inputs)
+            self.assertIsInstance(node.outputs, swf.Outputs)
+            self.assertIsInstance(node.metadata, swf.CoreMetadata)
+            self.assertEqual(node.type, sdc.Function.__name__)
+            self.assertEqual(node.label, complex_function.__name__)
+            self.assertEqual(node.metadata.uri, "some URI")
+
+        with self.subTest("Input parsing"):
+            self.assertIsInstance(node.inputs["x"], swf.Input)
+            self.assertIs(node.inputs["x"].dtype, float)
+            self.assertAlmostEqual(node.inputs["x"].default, 2.0)
+            self.assertEqual(node.inputs["x"].units, "meter")
+            self.assertIs(node.inputs["y"].dtype, float)
+            self.assertAlmostEqual(node.inputs["y"].default, 1.0)
+            self.assertEqual(node.inputs["y"].units, "second")
+            self.assertEqual(node.inputs["y"].extra["something_extra"], 42)
+
+        with self.subTest("Output parsing"):
+            self.assertIsInstance(node.outputs["x"], swf.Output)
+            self.assertIs(node.outputs["x"].dtype, float)
+            self.assertEqual(node.outputs["x"].units, "meter")
+            self.assertIs(node.outputs["speed"].dtype, float)
+            self.assertEqual(node.outputs["speed"].units, "meter/second")
+            self.assertEqual(node.outputs["speed"].uri, "VELOCITY")
+            self.assertIs(node.outputs["output_2"].dtype, float)
+
+    def test_workflow_node(self):
+        node = swf.get_node(example_workflow)
+        print(node.to_dictionary())
+
+    def test_function(self):
+        for fnc in (operation, add, multiply, my_while_condition):
+            with self.subTest(fnc=fnc, msg=fnc.__name__):
+                entry = swf._to_node_dict_entry(
+                    fnc,
+                    parse_input_args(fnc),
+                    swf._get_workflow_outputs(fnc),
+                )
+
+                # Cheat and modify to the _to_node_dict_entry result match dataclass
+                if hasattr(fnc, "_semantikon_metadata"):
+                    entry.update(fnc._semantikon_metadata)
+                entry["label"] = fnc.__name__
+                entry.pop("function")
+                metadata = {}
+                for k, v in entry.items():
+                    if k in {f.name for f in dataclasses.fields(sdc.CoreMetadata)}:
+                        metadata[k] = v
+                for meta_key in metadata:
+                    entry.pop(meta_key)
+                if len(metadata) > 0:
+                    entry["metadata"] = metadata
+                entry["function"] = fnc
+                entry["type"] = swf.Function.__name__
+
+                self.assertDictEqual(
+                    entry,
+                    swf.get_node(fnc).to_dictionary(),
+                    msg="Just an interim cyclicity test",
+                )
 
 
 if __name__ == "__main__":
