@@ -313,7 +313,7 @@ class TestWorkflow(unittest.TestCase):
 
     def test_run_parallel_execution(self):
         data = parallel_execution.run()
-        self.assertEqual(parallel_execution(), data["outputs"]["e"]["value"])
+        self.assertEqual(parallel_execution()[0], data["outputs"]["e"]["value"])
 
     def test_run_nested(self):
         data = example_workflow.run()
