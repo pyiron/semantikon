@@ -303,6 +303,8 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
         if edge[2]["type"] != "output":
             continue
         f_dict[edge[0]] = f_dict.get(edge[0], 0) + 1
+    if "input" in f_dict:
+        del f_dict["input"]
     return f_dict
 
 
@@ -736,7 +738,8 @@ def find_parallel_execution_levels(G: nx.DiGraph) -> list[list[str]]:
 
     while queue:
         current_level = list(queue)
-        levels.append(current_level)
+        if "input" not in current_level and "output" not in current_level:
+            levels.append(current_level)
 
         next_queue: deque = deque()
         for node in current_level:

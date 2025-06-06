@@ -141,6 +141,10 @@ class TestWorkflow(unittest.TestCase):
             ("add_0", "e_0", {"type": "output"}),
             ("e_0", "multiply_0", {"type": "input", "input_index": 0}),
             ("multiply_0", "f_0", {"type": "output"}),
+            ('f_0', 'output', {'type': 'input'}),
+            ('input', 'a_0', {'type': 'output'}),
+            ('input', 'b_0', {'type': 'output'}),
+
         ]
         self.maxDiff = None
         self.assertEqual(
