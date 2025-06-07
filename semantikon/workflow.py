@@ -278,7 +278,7 @@ def _get_variables_from_subgraph(
 
 def _detect_io_variables_from_control_flow(
     graph: nx.DiGraph, control_flow: str | list
-) -> dict[str, set]:
+) -> dict[str, list]:
     """
     Detect input and output variables from a graph based on control flow.
 
@@ -305,8 +305,8 @@ def _detect_io_variables_from_control_flow(
         graph=graph, io_="output", control_flow=control_flow
     )
     return {
-        "inputs": var_inp_1.intersection(var_inp_2),
-        "outputs": var_out_1.intersection(var_out_2)
+        "inputs": list(var_inp_1.intersection(var_inp_2)),
+        "outputs": list(var_out_1.intersection(var_out_2)),
     }
 
 
