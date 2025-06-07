@@ -377,10 +377,12 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
     return f_dict
 
 
-def _get_nodes(data: dict[str, dict], output_counts: dict[str, int]) -> dict[str, dict]:
+def _get_nodes(
+    data: dict[str, dict], output_counts: dict[str, int], type_: str = "Assign"
+) -> dict[str, dict]:
     result = {}
     for node, function in data.items():
-        if function["type"] != "Assign":
+        if function["type"] != type_:
             continue
         func = function["function"]
         if hasattr(func, "_semantikon_workflow"):
@@ -391,7 +393,7 @@ def _get_nodes(data: dict[str, dict], output_counts: dict[str, int]) -> dict[str
             result[node] = _to_node_dict_entry(
                 func,
                 parse_input_args(func),
-                _get_node_outputs(func, output_counts.get(node, 0)),
+                _get_node_outputs(func, output_counts.get(node, 1)),
             )
         if hasattr(func, "_semantikon_metadata"):
             result[node].update(func._semantikon_metadata)
