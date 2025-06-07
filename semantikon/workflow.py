@@ -378,12 +378,10 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
 
 
 def _get_nodes(
-    data: dict[str, dict], output_counts: dict[str, int], type_: str = "Assign"
+    data: dict[str, dict], output_counts: dict[str, int]
 ) -> dict[str, dict]:
     result = {}
     for node, function in data.items():
-        if function["type"] != type_:
-            continue
         func = function["function"]
         if hasattr(func, "_semantikon_workflow"):
             data_dict = func._semantikon_workflow.copy()
