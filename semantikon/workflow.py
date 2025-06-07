@@ -149,7 +149,7 @@ class FunctionDictFlowAnalyzer:
     def _handle_while(self, node, control_flow: str | None = None):
         if node["test"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
-        self._parse_function_call(node["test"], f_type="Test", control_flow="Test")
+        self._parse_function_call(node["test"], control_flow="Test")
         for node in node["body"]:
             self._visit_node(node, control_flow="While")
 
@@ -164,7 +164,6 @@ class FunctionDictFlowAnalyzer:
     def _parse_function_call(
         self,
         value,
-        f_type="Assign",
         control_flow: str | None = None
     ):
         if value["_type"] != "Call":
@@ -180,10 +179,9 @@ class FunctionDictFlowAnalyzer:
         if func_name not in self.scope:
             raise ValueError(f"Function {func_name} not found in scope")
 
-        self.function_defs[unique_func_name] = {
-            "function": self.scope[func_name],
-            "type": f_type,
-        }
+        self.function_defs[unique_func_name] = {"function": self.scope[func_name]}
+        if control_flow is not None:
+            self.function_defs[unique_func_name]["control_flow"] = control_flow
 
         # Parse inputs (positional + keyword)
         for i, arg in enumerate(value.get("args", [])):
