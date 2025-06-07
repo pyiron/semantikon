@@ -245,7 +245,7 @@ class FunctionDictFlowAnalyzer:
 
 
 def _get_variables_from_subgraph(
-    graph: nx.DiGraph, io_: str, control_flow: str
+    graph: nx.DiGraph, io_: str, control_flow: str | list
 ) -> set[str]:
     """
     Get variables from a subgraph based on the type of I/O and control flow.
@@ -253,14 +253,14 @@ def _get_variables_from_subgraph(
     Args:
         graph (nx.DiGraph): The directed graph representing the function.
         io_ (str): The type of I/O to filter by ("input" or "output").
-        control_flow (list, optional): A list of control flow types to filter by.
+        control_flow (list, st4): A list of control flow types to filter by.
 
     Returns:
         set[str]: A set of variable names that match the specified I/O type and
             control flow.
     """
-    if control_flow is None:
-        control_flow = []
+    if isinstance(control_flow, str):
+        control_flow = [control_flow]
     variables = []
     if io_ == "input":
         edge_ind = 0
@@ -271,20 +271,20 @@ def _get_variables_from_subgraph(
             f"Invalid I/O type: {io_}. Expected 'input' or 'output'."
         )
     for edge in graph.edges.data():
-        if edge[2]["type"] == io_ and edge[2].get("control_flow", "") == control_flow:
+        if edge[2]["type"] == io_ and edge[2].get("control_flow", "") in control_flow:
             variables.append(edge[edge_ind])
     return set(variables)
 
 
 def _detect_io_variables_from_control_flow(
-    graph: nx.DiGraph, control_flow: str
+    graph: nx.DiGraph, control_flow: str | list
 ) -> dict[str, set]:
     """
     Detect input and output variables from a graph based on control flow.
 
     Args:
         graph (nx.DiGraph): The directed graph representing the function.
-        control_flow (str): The type of control flow to filter by.
+        control_flow (str | list): The type of control flow to filter by.
 
     Returns:
         dict[str, set]: A dictionary with keys "input" and "output", each
