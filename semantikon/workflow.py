@@ -244,6 +244,71 @@ class FunctionDictFlowAnalyzer:
         return f"{base_name}_{i}"
 
 
+def _get_variables_from_subgraph(
+    graph: nx.DiGraph, io_: str, control_flow: list | None = None
+) -> set[str]:
+    """
+    Get variables from a subgraph based on the type of I/O and control flow.
+
+    Args:
+        graph (nx.DiGraph): The directed graph representing the function.
+        io_ (str): The type of I/O to filter by ("input" or "output").
+        control_flow (list, optional): A list of control flow types to filter by.
+
+    Returns:
+        set[str]: A set of variable names that match the specified I/O type and
+            control flow.
+    """
+    if control_flow is None:
+        control_flow = []
+    variables = []
+    if io_ == "input":
+        edge_ind = 0
+    elif io_ == "output":
+        edge_ind = 1
+    else:
+        raise ValueError(
+            f"Invalid I/O type: {io_}. Expected 'input' or 'output'."
+        )
+    for edge in graph.edges.data():
+        if edge[2]["type"] == io_ and edge[2].get("control_flow", "") in control_flow:
+            variables.append(edge[edge_ind])
+    return set(variables)
+
+
+def _detect_io_variables_from_control_flow(
+    graph: nx.DiGraph, control_flow: str = "While"
+) -> dict[str, set]:
+    """
+    Detect input and output variables from a graph based on control flow.
+
+    Args:
+        graph (nx.DiGraph): The directed graph representing the function.
+        control_flow (str): The type of control flow to filter by (default is
+            "While").
+
+    Returns:
+        dict[str, set]: A dictionary with keys "input" and "output", each
+            containing a set
+    """
+    var_inp_1 = _get_variables_from_subgraph(
+        graph=graph, io_="input", control_flow=["While", "Test"]
+    )
+    var_inp_2 = _get_variables_from_subgraph(
+        graph=graph, io_="output", control_flow=[""]
+    )
+    var_out_1 = _get_variables_from_subgraph(
+        graph=graph, io_="input", control_flow=[""]
+    )
+    var_out_2 = _get_variables_from_subgraph(
+        graph=graph, io_="output", control_flow=["While"]
+    )
+    return {
+        "inputs": var_inp_1.intersection(var_inp_2),
+        "outputs": var_out_1.intersection(var_out_2)
+    }
+
+
 def get_ast_dict(func: Callable) -> dict:
     """Get the AST dictionary representation of a function."""
     source_code = inspect.getsource(func)

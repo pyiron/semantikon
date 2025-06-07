@@ -5,6 +5,7 @@ import networkx as nx
 
 from semantikon.metadata import u
 from semantikon.workflow import (
+    _detect_io_variables_from_control_flow,
     _extract_variables_from_ast_body,
     _function_to_ast_dict,
     _get_node_outputs,
@@ -497,6 +498,17 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(
             _get_workflow_outputs(test_function_5),
             {"a": {"dtype": int}, "b": {"dtype": int}},
+        )
+
+    def test_detect_io_variables_from_control_flow(self):
+        graph, f_dict = analyze_function(workflow_with_while)
+        io_vars = _detect_io_variables_from_control_flow(graph)
+        self.assertEqual(
+            io_vars,
+            {
+                "inputs": {'x_0', 'a_0', 'b_0'},
+                "outputs": {"z_0"},
+            },
         )
 
 
