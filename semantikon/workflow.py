@@ -289,6 +289,8 @@ def _detect_io_variables_from_control_flow(
     Returns:
         dict[str, set]: A dictionary with keys "input" and "output", each
             containing a set
+
+    Take a look at the unit tests for examples of how to use this function.
     """
     var_inp_1 = _get_variables_from_subgraph(
         graph=graph, io_="input", control_flow=control_flow
