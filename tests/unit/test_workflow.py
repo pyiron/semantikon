@@ -452,44 +452,42 @@ class TestWorkflow(unittest.TestCase):
 
     def test_get_workflow_output(self):
 
-        def test_function(a, b):
+        def test_function_1(a, b):
             return a + b
 
         self.assertEqual(
-            _get_workflow_outputs(test_function), {"output": {}},
+            _get_workflow_outputs(test_function_1), {"output": {}},
         )
 
-        def test_function(a, b):
+        def test_function_2(a, b):
             return a
 
         self.assertEqual(
-            _get_workflow_outputs(test_function), {"a": {}},
+            _get_workflow_outputs(test_function_2), {"a": {}},
         )
 
-        def test_function(a, b):
+        def test_function_3(a, b):
             return a, b
 
         self.assertEqual(
-            _get_workflow_outputs(test_function), {"a": {}, "b":{}},
+            _get_workflow_outputs(test_function_3), {"a": {}, "b":{}},
         )
 
-        def test_function(a, b):
+        def test_function_4(a, b):
             return a + b, b
 
-        self.assertEqual(
-            _get_workflow_outputs(test_function), {"output_0": {}, "b":{}},
-        )
-        data = _get_workflow_outputs(test_function)
+        data = _get_workflow_outputs(test_function_4)
+        self.assertEqual(data, {"output_0": {}, "b":{}})
         data["output_0"]["value"] = 0
         self.assertEqual(
             data, {"output_0": {"value": 0}, "b":{}},
         )
 
-        def test_function(a: int, b: int) -> tuple[int, int]:
+        def test_function_5(a: int, b: int) -> tuple[int, int]:
             return a, b
 
         self.assertEqual(
-            _get_workflow_outputs(test_function),
+            _get_workflow_outputs(test_function_5),
             {"a": {"dtype": int}, "b":{"dtype": int}},
         )
 
