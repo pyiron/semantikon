@@ -143,10 +143,9 @@ class TestWorkflow(unittest.TestCase):
             ("add_0", "e_0", {"type": "output"}),
             ("e_0", "multiply_0", {"type": "input", "input_index": 0}),
             ("multiply_0", "f_0", {"type": "output"}),
-            ('f_0', 'output', {'type': 'input'}),
-            ('input', 'a_0', {'type': 'output'}),
-            ('input', 'b_0', {'type': 'output'}),
-
+            ("f_0", "output", {"type": "input"}),
+            ("input", "a_0", {"type": "output"}),
+            ("input", "b_0", {"type": "output"}),
         ]
         self.maxDiff = None
         self.assertEqual(
@@ -502,12 +501,20 @@ class TestWorkflow(unittest.TestCase):
 
     def test_detect_io_variables_from_control_flow(self):
         graph, f_dict = analyze_function(workflow_with_while)
-        io_vars = _detect_io_variables_from_control_flow(graph)
+        io_vars = _detect_io_variables_from_control_flow(graph, control_flow="While")
         self.assertEqual(
             io_vars,
             {
-                "inputs": {'x_0', 'a_0', 'b_0'},
+                "inputs": {"a_0", "b_0"},
                 "outputs": {"z_0"},
+            },
+        )
+        io_vars = _detect_io_variables_from_control_flow(graph, control_flow="Test")
+        self.assertEqual(
+            io_vars,
+            {
+                "inputs": {"x_0", "b_0"},
+                "outputs": set(),
             },
         )
 

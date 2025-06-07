@@ -245,7 +245,7 @@ class FunctionDictFlowAnalyzer:
 
 
 def _get_variables_from_subgraph(
-    graph: nx.DiGraph, io_: str, control_flow: list | None = None
+    graph: nx.DiGraph, io_: str, control_flow: str
 ) -> set[str]:
     """
     Get variables from a subgraph based on the type of I/O and control flow.
@@ -271,37 +271,36 @@ def _get_variables_from_subgraph(
             f"Invalid I/O type: {io_}. Expected 'input' or 'output'."
         )
     for edge in graph.edges.data():
-        if edge[2]["type"] == io_ and edge[2].get("control_flow", "") in control_flow:
+        if edge[2]["type"] == io_ and edge[2].get("control_flow", "") == control_flow:
             variables.append(edge[edge_ind])
     return set(variables)
 
 
 def _detect_io_variables_from_control_flow(
-    graph: nx.DiGraph, control_flow: str = "While"
+    graph: nx.DiGraph, control_flow: str
 ) -> dict[str, set]:
     """
     Detect input and output variables from a graph based on control flow.
 
     Args:
         graph (nx.DiGraph): The directed graph representing the function.
-        control_flow (str): The type of control flow to filter by (default is
-            "While").
+        control_flow (str): The type of control flow to filter by.
 
     Returns:
         dict[str, set]: A dictionary with keys "input" and "output", each
             containing a set
     """
     var_inp_1 = _get_variables_from_subgraph(
-        graph=graph, io_="input", control_flow=["While", "Test"]
+        graph=graph, io_="input", control_flow=control_flow
     )
     var_inp_2 = _get_variables_from_subgraph(
-        graph=graph, io_="output", control_flow=[""]
+        graph=graph, io_="output", control_flow=""
     )
     var_out_1 = _get_variables_from_subgraph(
-        graph=graph, io_="input", control_flow=[""]
+        graph=graph, io_="input", control_flow=""
     )
     var_out_2 = _get_variables_from_subgraph(
-        graph=graph, io_="output", control_flow=["While"]
+        graph=graph, io_="output", control_flow=control_flow
     )
     return {
         "inputs": var_inp_1.intersection(var_inp_2),
