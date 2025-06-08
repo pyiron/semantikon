@@ -161,11 +161,7 @@ class FunctionDictFlowAnalyzer:
         value = node["value"]
         return self._parse_function_call(value, control_flow=control_flow)
 
-    def _parse_function_call(
-        self,
-        value,
-        control_flow: str | None = None
-    ):
+    def _parse_function_call(self, value, control_flow: str | None = None):
         if value["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed on RHS")
 
@@ -186,30 +182,34 @@ class FunctionDictFlowAnalyzer:
         # Parse inputs (positional + keyword)
         for i, arg in enumerate(value.get("args", [])):
             self._add_input_edge(
-                arg,
-                unique_func_name,
-                input_index=i,
-                control_flow=control_flow
+                arg, unique_func_name, input_index=i, control_flow=control_flow
             )
         for kw in value.get("keywords", []):
             self._add_input_edge(
                 kw["value"],
                 unique_func_name,
                 input_name=kw["arg"],
-                control_flow=control_flow
+                control_flow=control_flow,
             )
         return unique_func_name
 
     def _handle_assign(self, node, control_flow: str | None = None):
         unique_func_name = self._handle_expr(node, control_flow=control_flow)
         # Parse outputs
-        self._parse_outputs(node["targets"], unique_func_name, control_flow=control_flow)
+        self._parse_outputs(
+            node["targets"], unique_func_name, control_flow=control_flow
+        )
 
-    def _parse_outputs(self, targets, unique_func_name, control_flow: str | None = None):
+    def _parse_outputs(
+        self, targets, unique_func_name, control_flow: str | None = None
+    ):
         if len(targets) == 1 and targets[0]["_type"] == "Tuple":
             for idx, elt in enumerate(targets[0]["elts"]):
                 self._add_output_edge(
-                    unique_func_name, elt["id"], output_index=idx, control_flow=control_flow
+                    unique_func_name,
+                    elt["id"],
+                    output_index=idx,
+                    control_flow=control_flow,
                 )
         else:
             for target in targets:
@@ -217,14 +217,18 @@ class FunctionDictFlowAnalyzer:
                     unique_func_name, target["id"], control_flow=control_flow
                 )
 
-    def _add_output_edge(self, source, target, control_flow: str | None = None, **kwargs):
+    def _add_output_edge(
+        self, source, target, control_flow: str | None = None, **kwargs
+    ):
         self._var_index[target] = self._var_index.get(target, -1) + 1
         versioned = f"{target}_{self._var_index[target]}"
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
         self.graph.add_edge(source, versioned, type="output", **kwargs)
 
-    def _add_input_edge(self, source, target, control_flow: str | None = None, **kwargs):
+    def _add_input_edge(
+        self, source, target, control_flow: str | None = None, **kwargs
+    ):
         if source["_type"] != "Name":
             raise NotImplementedError(f"Only variable inputs supported, got: {source}")
         var_name = source["id"]
@@ -265,9 +269,7 @@ def _get_variables_from_subgraph(
     elif io_ == "output":
         edge_ind = 1
     else:
-        raise ValueError(
-            f"Invalid I/O type: {io_}. Expected 'input' or 'output'."
-        )
+        raise ValueError(f"Invalid I/O type: {io_}. Expected 'input' or 'output'.")
     for edge in graph.edges.data():
         if edge[2]["type"] == io_ and edge[2].get("control_flow", "") in control_flow:
             variables.append(edge[edge_ind])
@@ -293,12 +295,8 @@ def _detect_io_variables_from_control_flow(
     var_inp_1 = _get_variables_from_subgraph(
         graph=graph, io_="input", control_flow=control_flow
     )
-    var_inp_2 = _get_variables_from_subgraph(
-        graph=graph, io_="output", control_flow=""
-    )
-    var_out_1 = _get_variables_from_subgraph(
-        graph=graph, io_="input", control_flow=""
-    )
+    var_inp_2 = _get_variables_from_subgraph(graph=graph, io_="output", control_flow="")
+    var_out_1 = _get_variables_from_subgraph(graph=graph, io_="input", control_flow="")
     var_out_2 = _get_variables_from_subgraph(
         graph=graph, io_="output", control_flow=control_flow
     )
@@ -375,9 +373,7 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
     return f_dict
 
 
-def _get_nodes(
-    data: dict[str, dict], output_counts: dict[str, int]
-) -> dict[str, dict]:
+def _get_nodes(data: dict[str, dict], output_counts: dict[str, int]) -> dict[str, dict]:
     result = {}
     for node, function in data.items():
         func = function["function"]
@@ -440,7 +436,9 @@ def _get_edges(graph, functions, nodes):
         if edge[2]["type"] == "output":
             if edge[0] == "input":
                 continue
-            elif edge[0] in functions and hasattr(functions[edge[0]]["function"], "_semantikon_workflow"):
+            elif edge[0] in functions and hasattr(
+                functions[edge[0]]["function"], "_semantikon_workflow"
+            ):
                 keys = list(
                     functions[edge[0]]["function"]
                     ._semantikon_workflow["outputs"]
