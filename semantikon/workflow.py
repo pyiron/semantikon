@@ -153,7 +153,7 @@ class FunctionDictFlowAnalyzer:
         if control_flow is None:
             control_flow = ""
         else:
-            control_flow = f"{control_flow}/"
+            control_flow = f"{control_flow.split('-')[0]}/"
         counter = 0
         while True:
             if f"{control_flow}While_{counter}" not in self._control_flow_list:
