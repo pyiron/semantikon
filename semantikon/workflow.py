@@ -114,6 +114,7 @@ class FunctionDictFlowAnalyzer:
         self._var_index = {}
         self.ast_dict = ast_dict
         self._call_counter = {}
+        self._control_flow_list = []
 
     def analyze(self):
         for arg in self.ast_dict.get("args", {}).get("args", []):
@@ -149,9 +150,19 @@ class FunctionDictFlowAnalyzer:
     def _handle_while(self, node, control_flow: str | None = None):
         if node["test"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
-        self._parse_function_call(node["test"], control_flow="Test")
+        if control_flow is None:
+            control_flow = ""
+        else:
+            control_flow = f"{control_flow}/"
+        counter = 0
+        while True:
+            if f"{control_flow}While_{counter}" not in self._control_flow_list:
+                self._control_flow_list.append(f"{control_flow}While_{counter}")
+                break
+            counter += 1
+        self._parse_function_call(node["test"], control_flow=f"{control_flow}Test_{counter}")
         for node in node["body"]:
-            self._visit_node(node, control_flow="While")
+            self._visit_node(node, control_flow=f"{control_flow}While_{counter}")
 
     def _handle_for(self, node, control_flow: str | None = None):
         if node["iter"]["_type"] != "Call":

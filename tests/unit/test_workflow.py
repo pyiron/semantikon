@@ -501,7 +501,7 @@ class TestWorkflow(unittest.TestCase):
 
     def test_detect_io_variables_from_control_flow(self):
         graph, f_dict = analyze_function(workflow_with_while)
-        io_vars = _detect_io_variables_from_control_flow(graph, control_flow="While")
+        io_vars = _detect_io_variables_from_control_flow(graph, control_flow="While_0")
         self.assertEqual(
             {key: sorted(value) for key, value in io_vars.items()},
             {
@@ -509,7 +509,7 @@ class TestWorkflow(unittest.TestCase):
                 "outputs": ["z_0"],
             },
         )
-        io_vars = _detect_io_variables_from_control_flow(graph, control_flow="Test")
+        io_vars = _detect_io_variables_from_control_flow(graph, control_flow="Test_0")
         self.assertEqual(
             {key: sorted(value) for key, value in io_vars.items()},
             {
