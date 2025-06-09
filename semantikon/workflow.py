@@ -160,9 +160,10 @@ class FunctionDictFlowAnalyzer:
                 self._control_flow_list.append(f"{control_flow}While_{counter}")
                 break
             counter += 1
-        self._parse_function_call(node["test"], control_flow=f"{control_flow}Test_{counter}")
+        control_flow = f"{control_flow}While_{counter}"
+        self._parse_function_call(node["test"], control_flow=f"{control_flow}-test")
         for node in node["body"]:
-            self._visit_node(node, control_flow=f"{control_flow}While_{counter}")
+            self._visit_node(node, control_flow=f"{control_flow}-body")
 
     def _handle_for(self, node, control_flow: str | None = None):
         if node["iter"]["_type"] != "Call":
