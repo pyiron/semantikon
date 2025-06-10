@@ -6,6 +6,7 @@ from graphviz import Digraph
 from pyshacl import validate
 from rdflib import OWL, PROV, RDF, RDFS, SH, Literal, Namespace, URIRef
 
+from semantikon.metadata import u
 from semantikon.ontology import (
     NS,
     SNS,
@@ -15,7 +16,6 @@ from semantikon.ontology import (
     serialize_data,
     validate_values,
 )
-from semantikon.typing import u
 from semantikon.visualize import visualize
 from semantikon.workflow import workflow
 
@@ -413,7 +413,13 @@ class TestOntology(unittest.TestCase):
 
     def test_parse_cancel(self):
         channels, edges = serialize_data(get_wrong_order._semantikon_workflow)[1:]
-        self.assertTrue(any(["cancel" in channel for channel in channels.values()]))
+        self.assertTrue(
+            any(
+                "cancel" in channel["extra"]
+                for channel in channels.values()
+                if "extra" in channel
+            )
+        )
         to_cancel = _parse_cancel(channels)
         self.assertEqual(len(to_cancel), 1)
         self.assertEqual(

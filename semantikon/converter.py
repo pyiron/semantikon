@@ -28,6 +28,8 @@ from pint.registry_helpers import (
     _to_units_container,
 )
 
+from semantikon.dataclasses import TypeMetadata
+
 __author__ = "Sam Waseda"
 __copyright__ = (
     "Copyright 2021, Max-Planck-Institut für Eisenforschung GmbH "
@@ -43,6 +45,24 @@ F = TypeVar("F", bound=Callable[..., object])
 
 
 class FunctionWithMetadata(Generic[F]):
+    """
+    A wrapper class for functions that allows attaching metadata to the function.
+
+    Example:
+    >>> from semantikon.typing import u
+    >>>
+    >>> @u(uri="http://example.com/my_function")
+    >>> def my_function(x):
+    >>>     return x * 2
+    >>>
+    >>> print(my_function._semantikon_metadata)
+
+    Output: {'uri': 'http://example.com/my_function'}
+
+    This information is automatically parsed when knowledge graph is generated.
+    For more info, take a look at semantikon.ontology.get_knowledge_graph.
+    """
+
     def __init__(self, func: F, metadata: dict[str, object]) -> None:
         self.func = func
         self._semantikon_metadata: dict[str, object] = metadata
@@ -66,7 +86,7 @@ def _get_ureg(args: Any, kwargs: dict[str, Any]) -> UnitRegistry | None:
     return None
 
 
-def parse_metadata(value: Any) -> dict[str, Any]:
+def parse_metadata(value: Any) -> TypeMetadata:
     """
     Parse the metadata of a Quantity object.
 
@@ -75,10 +95,10 @@ def parse_metadata(value: Any) -> dict[str, Any]:
 
     Returns:
         dictionary of the metadata. Available keys are `units`, `label`,
-        `triples`, `uri` and `shape`. See `semantikon.typing.u` for more details.
+        `triples`, `uri` and `shape`. See `semantikon.dataclasses.TypeMetadata` for more details.
     """
     metadata = value.__metadata__[0]
-    return {k: v for k, v in zip(metadata[::2], metadata[1::2])}
+    return TypeMetadata(**{k: v for k, v in zip(metadata[::2], metadata[1::2])})
 
 
 def meta_to_dict(value: Any, default=inspect.Parameter.empty) -> dict[str, Any]:
@@ -86,7 +106,7 @@ def meta_to_dict(value: Any, default=inspect.Parameter.empty) -> dict[str, Any]:
     type_hint_was_present = value is not inspect.Parameter.empty
     default_is_defined = default is not inspect.Parameter.empty
     if semantikon_was_used:
-        result = {k: v for k, v in parse_metadata(value).items() if v is not None}
+        result = parse_metadata(value).to_dictionary()
         if hasattr(value.__args__[0], "__forward_arg__"):
             result["dtype"] = value.__args__[0].__forward_arg__
         else:

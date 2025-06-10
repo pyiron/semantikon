@@ -3,13 +3,14 @@ import unittest
 
 import networkx as nx
 
-from semantikon.typing import u
+from semantikon.metadata import u
 from semantikon.workflow import (
     _extract_variables_from_ast_body,
     _function_to_ast_dict,
     _get_node_outputs,
     _get_output_counts,
     _get_sorted_edges,
+    _get_workflow_outputs,
     analyze_function,
     ast_from_dict,
     find_parallel_execution_levels,
@@ -160,6 +161,7 @@ class TestWorkflow(unittest.TestCase):
                 "outputs": {"output": {"dtype": float}},
                 "label": "add",
                 "uri": "add",
+                "type": "Function",
             },
         )
         node_dict = get_node_dict(multiple_types_for_ape, data_format="ape")
@@ -174,6 +176,7 @@ class TestWorkflow(unittest.TestCase):
                 "outputs": [{"Type": "ApeClass"}],
                 "label": "multiple_types_for_ape",
                 "taxonomyOperations": ["my_function"],
+                "type": "Function",
             },
         )
 
@@ -193,7 +196,8 @@ class TestWorkflow(unittest.TestCase):
                         "output_0": {"dtype": float},
                         "output_1": {"dtype": float},
                     },
-                    "function": "operation",
+                    "function": f"{operation.__module__}.operation",
+                    "type": "Function",
                 },
                 "add_0": {
                     "inputs": {
@@ -201,8 +205,9 @@ class TestWorkflow(unittest.TestCase):
                         "y": {"dtype": float, "default": 1},
                     },
                     "outputs": {"output": {"dtype": float}},
-                    "function": "add",
+                    "function": f"{add.__module__}.add",
                     "uri": "add",
+                    "type": "Function",
                 },
                 "multiply_0": {
                     "inputs": {
@@ -210,7 +215,8 @@ class TestWorkflow(unittest.TestCase):
                         "y": {"dtype": float, "default": 5},
                     },
                     "outputs": {"output": {"dtype": float}},
-                    "function": "multiply",
+                    "function": f"{multiply.__module__}.multiply",
+                    "type": "Function",
                 },
             },
             "edges": [
@@ -222,6 +228,7 @@ class TestWorkflow(unittest.TestCase):
                 ("multiply_0.outputs.output", "outputs.f"),
             ],
             "label": "example_macro",
+            "type": "Workflow",
         }
         self.assertEqual(
             separate_functions(example_macro._semantikon_workflow)[0], ref_data
@@ -238,29 +245,32 @@ class TestWorkflow(unittest.TestCase):
                     "outputs": {"f": {}},
                     "nodes": {
                         "operation_0": {
-                            "function": "operation",
+                            "function": f"{operation.__module__}.operation",
                             "inputs": {"x": {"dtype": float}, "y": {"dtype": float}},
                             "outputs": {
                                 "output_0": {"dtype": float},
                                 "output_1": {"dtype": float},
                             },
+                            "type": "Function",
                         },
                         "add_0": {
-                            "function": "add",
+                            "function": f"{add.__module__}.add",
                             "inputs": {
                                 "x": {"dtype": float, "default": 2.0},
                                 "y": {"dtype": float, "default": 1},
                             },
                             "outputs": {"output": {"dtype": float}},
                             "uri": "add",
+                            "type": "Function",
                         },
                         "multiply_0": {
-                            "function": "multiply",
+                            "function": f"{multiply.__module__}.multiply",
                             "inputs": {
                                 "x": {"dtype": float},
                                 "y": {"dtype": float, "default": 5},
                             },
                             "outputs": {"output": {"dtype": float}},
+                            "type": "Function",
                         },
                     },
                     "edges": [
@@ -272,15 +282,17 @@ class TestWorkflow(unittest.TestCase):
                         ("multiply_0.outputs.output", "outputs.f"),
                     ],
                     "label": "example_macro_0",
+                    "type": "Workflow",
                 },
                 "add_0": {
-                    "function": "add",
+                    "function": f"{add.__module__}.add",
                     "inputs": {
                         "x": {"dtype": float, "default": 2.0},
                         "y": {"dtype": float, "default": 1},
                     },
                     "outputs": {"output": {"dtype": float}},
                     "uri": "add",
+                    "type": "Function",
                 },
             },
             "edges": [
@@ -291,6 +303,7 @@ class TestWorkflow(unittest.TestCase):
                 ("add_0.outputs.output", "outputs.z"),
             ],
             "label": "example_workflow",
+            "type": "Workflow",
         }
         self.assertEqual(separate_functions(result)[0], ref_data, msg=result)
 
@@ -313,7 +326,9 @@ class TestWorkflow(unittest.TestCase):
 
     def test_run_parallel_execution(self):
         data = parallel_execution.run()
-        self.assertEqual(parallel_execution(), data["outputs"]["e"]["value"])
+        results = parallel_execution()
+        self.assertEqual(results[0], data["outputs"]["e"]["value"])
+        self.assertEqual(results[1], data["outputs"]["f"]["value"])
 
     def test_run_nested(self):
         data = example_workflow.run()
@@ -331,14 +346,17 @@ class TestWorkflow(unittest.TestCase):
         old_data = example_workflow._semantikon_workflow
         data, function_dict = separate_functions(old_data)
         # add is deep copied due to the decorator
-        del function_dict["add"]
+        del function_dict[f"{add.__module__}.add"]
         self.assertEqual(
             function_dict,
-            {"operation": operation, "multiply": multiply},
+            {
+                f"{operation.__module__}.operation": operation,
+                f"{multiply.__module__}.multiply": multiply,
+            },
         )
         self.assertEqual(
             data["nodes"]["example_macro_0"]["nodes"]["operation_0"]["function"],
-            "operation",
+            f"{operation.__module__}.operation",
         )
         self.assertEqual(
             old_data["nodes"]["example_macro_0"]["nodes"]["operation_0"]["function"],
@@ -446,6 +464,51 @@ class TestWorkflow(unittest.TestCase):
             ("add_0.outputs.output", "check_positive_0.inputs.x"), data["edges"]
         )
         self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
+
+    def test_get_workflow_output(self):
+
+        def test_function_1(a, b):
+            return a + b
+
+        self.assertEqual(
+            _get_workflow_outputs(test_function_1),
+            {"output": {}},
+        )
+
+        def test_function_2(a, b):
+            return a
+
+        self.assertEqual(
+            _get_workflow_outputs(test_function_2),
+            {"a": {}},
+        )
+
+        def test_function_3(a, b):
+            return a, b
+
+        self.assertEqual(
+            _get_workflow_outputs(test_function_3),
+            {"a": {}, "b": {}},
+        )
+
+        def test_function_4(a, b):
+            return a + b, b
+
+        data = _get_workflow_outputs(test_function_4)
+        self.assertEqual(data, {"output_0": {}, "b": {}})
+        data["output_0"]["value"] = 0
+        self.assertEqual(
+            data,
+            {"output_0": {"value": 0}, "b": {}},
+        )
+
+        def test_function_5(a: int, b: int) -> tuple[int, int]:
+            return a, b
+
+        self.assertEqual(
+            _get_workflow_outputs(test_function_5),
+            {"a": {"dtype": int}, "b": {"dtype": int}},
+        )
 
 
 if __name__ == "__main__":

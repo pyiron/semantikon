@@ -461,9 +461,9 @@ def _parse_workflow(
 def _parse_cancel(wf_channels: dict) -> list:
     triples = []
     for n_label, channel_dict in wf_channels.items():
-        if "cancel" not in channel_dict:
+        if "extra" not in channel_dict or "cancel" not in channel_dict["extra"]:
             continue
-        cancel = channel_dict["cancel"]
+        cancel = channel_dict["extra"]["cancel"]
         assert isinstance(cancel, list | tuple)
         assert len(cancel) > 0
         if not isinstance(cancel[0], list | tuple):

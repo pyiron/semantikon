@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Annotated
 
 from semantikon.converter import parse_metadata, semantikon_class
-from semantikon.typing import u
+from semantikon.metadata import u
 
 
 @semantikon_class
@@ -55,9 +55,9 @@ class TestDataclass(unittest.TestCase):
     def test_parse_metadata(self):
         metadata = parse_metadata(Output.total_energy)
         self.assertEqual(
-            metadata,
+            metadata.to_dictionary(),
             {
-                "associate_to_sample": True,
+                "extra": {"associate_to_sample": True},
                 "units": "eV",
                 "label": "TotalEnergy",
             },
