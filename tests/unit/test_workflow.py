@@ -36,6 +36,7 @@ def multiply(x: float, y: float = 5) -> float:
 
 
 @workflow
+@u(uri="this macro has metadata")
 def example_macro(a=10, b=20):
     c, d = operation(a, b)
     e = add(c, y=d)
@@ -283,6 +284,7 @@ class TestWorkflow(unittest.TestCase):
                     ],
                     "label": "example_macro_0",
                     "type": "Workflow",
+                    "uri": "this macro has metadata",
                 },
                 "add_0": {
                     "function": f"{add.__module__}.add",
