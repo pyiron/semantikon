@@ -447,6 +447,7 @@ def get_node_dict(func, data_format="semantikon"):
         "inputs": parse_input_args(func),
         "outputs": _get_workflow_outputs(func),
         "label": func.__name__,
+        "type": "Function",
     }
     if hasattr(func, "_semantikon_metadata"):
         data.update(func._semantikon_metadata)
@@ -532,7 +533,12 @@ def separate_functions(
 def _to_node_dict_entry(
     function: Callable, inputs: dict[str, dict], outputs: dict[str, dict]
 ) -> dict:
-    return {"function": function, "inputs": inputs, "outputs": outputs}
+    return {
+        "function": function,
+        "inputs": inputs,
+        "outputs": outputs,
+        "type": "Function",
+    }
 
 
 def _to_workflow_dict_entry(
@@ -554,6 +560,7 @@ def _to_workflow_dict_entry(
         "nodes": nodes,
         "edges": edges,
         "label": label,
+        "type": "Workflow",
     } | kwargs
 
 
