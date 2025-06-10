@@ -65,5 +65,5 @@ exclude = [
 ]
 ignore_missing_imports = true
 strict_equality = true
-non-interactive = true
-install-types = true
+non_interactive = true
+install_types = true
