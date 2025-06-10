@@ -194,7 +194,7 @@ class TestWorkflow(unittest.TestCase):
                         "output_0": {"dtype": float},
                         "output_1": {"dtype": float},
                     },
-                    "function": "operation",
+                    "function": "unit.test_workflow.operation",
                 },
                 "add_0": {
                     "inputs": {
@@ -202,7 +202,7 @@ class TestWorkflow(unittest.TestCase):
                         "y": {"dtype": float, "default": 1},
                     },
                     "outputs": {"output": {"dtype": float}},
-                    "function": "add",
+                    "function": "unit.test_workflow.add",
                     "uri": "add",
                 },
                 "multiply_0": {
@@ -211,7 +211,7 @@ class TestWorkflow(unittest.TestCase):
                         "y": {"dtype": float, "default": 5},
                     },
                     "outputs": {"output": {"dtype": float}},
-                    "function": "multiply",
+                    "function": "unit.test_workflow.multiply",
                 },
             },
             "edges": [
@@ -239,7 +239,7 @@ class TestWorkflow(unittest.TestCase):
                     "outputs": {"f": {}},
                     "nodes": {
                         "operation_0": {
-                            "function": "operation",
+                            "function": "unit.test_workflow.operation",
                             "inputs": {"x": {"dtype": float}, "y": {"dtype": float}},
                             "outputs": {
                                 "output_0": {"dtype": float},
@@ -247,7 +247,7 @@ class TestWorkflow(unittest.TestCase):
                             },
                         },
                         "add_0": {
-                            "function": "add",
+                            "function": "unit.test_workflow.add",
                             "inputs": {
                                 "x": {"dtype": float, "default": 2.0},
                                 "y": {"dtype": float, "default": 1},
@@ -256,7 +256,7 @@ class TestWorkflow(unittest.TestCase):
                             "uri": "add",
                         },
                         "multiply_0": {
-                            "function": "multiply",
+                            "function": "unit.test_workflow.multiply",
                             "inputs": {
                                 "x": {"dtype": float},
                                 "y": {"dtype": float, "default": 5},
@@ -275,7 +275,7 @@ class TestWorkflow(unittest.TestCase):
                     "label": "example_macro_0",
                 },
                 "add_0": {
-                    "function": "add",
+                    "function": "unit.test_workflow.add",
                     "inputs": {
                         "x": {"dtype": float, "default": 2.0},
                         "y": {"dtype": float, "default": 1},
@@ -334,14 +334,17 @@ class TestWorkflow(unittest.TestCase):
         old_data = example_workflow._semantikon_workflow
         data, function_dict = separate_functions(old_data)
         # add is deep copied due to the decorator
-        del function_dict["add"]
+        del function_dict["unit.test_workflow.add"]
         self.assertEqual(
             function_dict,
-            {"operation": operation, "multiply": multiply},
+            {
+                "unit.test_workflow.operation": operation,
+                "unit.test_workflow.multiply": multiply,
+            },
         )
         self.assertEqual(
             data["nodes"]["example_macro_0"]["nodes"]["operation_0"]["function"],
-            "operation",
+            "unit.test_workflow.operation",
         )
         self.assertEqual(
             old_data["nodes"]["example_macro_0"]["nodes"]["operation_0"]["function"],
