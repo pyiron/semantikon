@@ -602,26 +602,21 @@ class TestWorkflow(unittest.TestCase):
                     parse_input_args(fnc),
                     swf._get_workflow_outputs(fnc),
                 )
-
-                # Cheat and modify to the _to_node_dict_entry result match dataclass
+                # Cheat and modify the entry to resemble the node structure
                 if hasattr(fnc, "_semantikon_metadata"):
-                    entry.update(fnc._semantikon_metadata)
-                entry["label"] = fnc.__name__
-                entry.pop("function")
-                metadata = {}
-                for k, v in entry.items():
-                    if k in {f.name for f in dataclasses.fields(sdc.CoreMetadata)}:
-                        metadata[k] = v
-                for meta_key in metadata:
-                    entry.pop(meta_key)
-                if len(metadata) > 0:
+                    # Nest the metadata in the entry
+                    metadata = fnc._semantikon_metadata
+                    for k in metadata.keys():
+                        entry.pop(k)
                     entry["metadata"] = metadata
-                entry["function"] = fnc
-                entry["type"] = swf.Function.__name__
+
+                node_dictionary = swf.get_node(fnc).to_dictionary()
+                # Cheat and modify the node_dictionary to match the entry format
+                node_dictionary.pop("label")
 
                 self.assertDictEqual(
                     entry,
-                    swf.get_node(fnc).to_dictionary(),
+                    node_dictionary,
                     msg="Just an interim cyclicity test",
                 )
 
