@@ -467,6 +467,21 @@ class TestWorkflow(unittest.TestCase):
         )
         self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
 
+        with self.subTest("As dataclass"):
+            wf = swf.get_node(workflow(workflow_with_leaf))
+            self.assertIn("check_positive_0", wf.nodes.keys())
+            self.assertIn("add_0", wf.nodes.keys())
+            self.assertIn("y", wf.outputs.keys())
+            self.assertIn(
+                ("add_0.outputs.output", "check_positive_0.inputs.x"),
+                wf.edges.to_tuple(),
+            )
+            self.assertIn("check_positive_0.inputs.x", wf.edges)
+            self.assertEqual(
+                wf.edges["check_positive_0.inputs.x"],
+                "add_0.outputs.output",
+            )
+
     def test_get_workflow_output(self):
 
         def test_function_1(a, b):
