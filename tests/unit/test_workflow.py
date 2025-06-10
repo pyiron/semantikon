@@ -1,5 +1,4 @@
 import ast
-import dataclasses
 import unittest
 
 import networkx as nx
