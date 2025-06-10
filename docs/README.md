@@ -1,7 +1,7 @@
 # semantikon
 
 [![Push-Pull](https://github.com/pyiron/semantikon/actions/workflows/push-pull.yml/badge.svg)](https://github.com/pyiron/semantikon/actions/workflows/push-pull.yml)
-[![Coverage Status](https://coveralls.io/repos/github/pyiron/semantikon/badge.svg?branch=main)](https://coveralls.io/github/pyiron/semantikon?branch=main)
+[![Coverage](https://codecov.io/gh/pyiron/semantikon/graph/badge.svg)](https://codecov.io/gh/pyiron/semantikon)
 
 <img src="../images/logo.jpeg" alt="Logo" width="300"/>
 
