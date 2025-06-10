@@ -106,6 +106,15 @@ def complex_function(
     return x, speed, speed / y
 
 
+@workflow
+@u(uri="some other URI")
+def complex_macro(
+    x: u(float, units="meter") = 2.0,
+):
+    a = complex_function(x)
+    return a
+
+
 class ApeClass:
     pass
 
@@ -589,6 +598,10 @@ class TestWorkflow(unittest.TestCase):
             self.assertEqual(node.outputs["speed"].units, "meter/second")
             self.assertEqual(node.outputs["speed"].uri, "VELOCITY")
             self.assertIs(node.outputs["output_2"].dtype, float)
+
+    def test_complex_macro(self):
+        node = swf.get_node(complex_macro)
+        print(node.to_dictionary())
 
     def test_workflow_node(self):
         node = swf.get_node(example_workflow)
