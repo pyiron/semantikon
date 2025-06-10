@@ -92,9 +92,10 @@ class _Lexical(_VariadicDataclass):
 
 
 @dataclasses.dataclass(slots=True)
-class _Port(TypeMetadata):
+class _Port(_Lexical):
     dtype: type | Missing = missing()
     value: object | Missing = missing()
+    metadata: TypeMetadata | Missing = missing()
 
 
 @dataclasses.dataclass(slots=True)

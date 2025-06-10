@@ -105,12 +105,17 @@ def parse_metadata(value: Any) -> TypeMetadata:
     return TypeMetadata(**{k: v for k, v in zip(metadata[::2], metadata[1::2])})
 
 
-def meta_to_dict(value: Any, default=inspect.Parameter.empty) -> dict[str, Any]:
+def meta_to_dict(
+    value: Any, default=inspect.Parameter.empty, flatten_metadata: bool = True
+) -> dict[str, Any]:
     semantikon_was_used = hasattr(value, "__metadata__")
     type_hint_was_present = value is not inspect.Parameter.empty
     default_is_defined = default is not inspect.Parameter.empty
     if semantikon_was_used:
-        result = parse_metadata(value).to_dictionary()
+        if flatten_metadata:
+            result = parse_metadata(value).to_dictionary()
+        else:
+            result = {"metadata": parse_metadata(value)}
         if hasattr(value.__args__[0], "__forward_arg__"):
             result["dtype"] = value.__args__[0].__forward_arg__
         else:

@@ -553,19 +553,30 @@ class TestWorkflow(unittest.TestCase):
         )
 
     def test_ports(self):
-        for fnc in (operation, add, multiply, my_while_condition):
+        for fnc in (operation, add, multiply, my_while_condition, complex_function):
             with self.subTest(fnc=fnc, msg=fnc.__name__):
                 inputs, outputs = swf.get_ports(fnc)
-                self.assertDictEqual(
-                    parse_input_args(fnc),
-                    inputs.to_dictionary(),
-                    msg="Dictionary representation must be equivalent to existing",
-                )
-                self.assertDictEqual(
-                    swf._get_node_outputs(fnc, 2 if fnc == operation else 1),
-                    outputs.to_dictionary(),
-                    msg="Dictionary representation must be equivalent to existing",
-                )
+                full_entry = get_node_dict(fnc)
+                for entry, node in (
+                    (full_entry["inputs"], inputs),
+                    (full_entry["outputs"], outputs),
+                ):
+                    with self.subTest(node.__class__.__name__):
+                        node_dictionary = node.to_dictionary()
+
+                        # Transform the node to match the existing style
+                        for arg_dictionary in node_dictionary.values():
+                            arg_dictionary.pop("label")
+                            arg_dictionary.pop("type")
+                            metadata = arg_dictionary.pop("metadata", {})
+                            arg_dictionary.update(metadata)  # Flatten the metadata
+
+                        self.assertDictEqual(
+                            entry,
+                            node_dictionary,
+                            msg="Dictionary representation must be equivalent to "
+                            "existing dictionaries",
+                        )
 
     def test_complex_function_node(self):
         node = swf.get_node(complex_function)
@@ -583,19 +594,23 @@ class TestWorkflow(unittest.TestCase):
             self.assertIsInstance(node.inputs["x"], swf.Input)
             self.assertIs(node.inputs["x"].dtype, float)
             self.assertAlmostEqual(node.inputs["x"].default, 2.0)
-            self.assertEqual(node.inputs["x"].units, "meter")
+            self.assertIsInstance(node.inputs["x"].metadata, sdc.TypeMetadata)
+            self.assertEqual(node.inputs["x"].metadata.units, "meter")
             self.assertIs(node.inputs["y"].dtype, float)
             self.assertAlmostEqual(node.inputs["y"].default, 1.0)
-            self.assertEqual(node.inputs["y"].units, "second")
-            self.assertEqual(node.inputs["y"].extra["something_extra"], 42)
+            self.assertIsInstance(node.inputs["y"].metadata, sdc.TypeMetadata)
+            self.assertEqual(node.inputs["y"].metadata.units, "second")
+            self.assertEqual(node.inputs["y"].metadata.extra["something_extra"], 42)
 
         with self.subTest("Output parsing"):
             self.assertIsInstance(node.outputs["x"], swf.Output)
             self.assertIs(node.outputs["x"].dtype, float)
-            self.assertEqual(node.outputs["x"].units, "meter")
+            self.assertIsInstance(node.outputs["x"].metadata, sdc.TypeMetadata)
+            self.assertEqual(node.outputs["x"].metadata.units, "meter")
             self.assertIs(node.outputs["speed"].dtype, float)
-            self.assertEqual(node.outputs["speed"].units, "meter/second")
-            self.assertEqual(node.outputs["speed"].uri, "VELOCITY")
+            self.assertIsInstance(node.outputs["speed"].metadata, sdc.TypeMetadata)
+            self.assertEqual(node.outputs["speed"].metadata.units, "meter/second")
+            self.assertEqual(node.outputs["speed"].metadata.uri, "VELOCITY")
             self.assertIs(node.outputs["output_2"].dtype, float)
 
     def test_complex_macro(self):
@@ -625,6 +640,10 @@ class TestWorkflow(unittest.TestCase):
                 node_dictionary = swf.get_node(fnc).to_dictionary()
                 # Cheat and modify the node_dictionary to match the entry format
                 node_dictionary.pop("label")
+                for io in (node_dictionary["inputs"], node_dictionary["outputs"]):
+                    for port_dictionary in io.values():
+                        port_dictionary.pop("type")
+                        port_dictionary.pop("label")
 
                 self.assertDictEqual(
                     entry,
