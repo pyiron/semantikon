@@ -534,8 +534,12 @@ def separate_functions(
 def _to_node_dict_entry(
     function: Callable, inputs: dict[str, dict], outputs: dict[str, dict]
 ) -> dict:
-    entry = {"function": function, "inputs": inputs, "outputs": outputs,
-        "type": "Function",}
+    entry = {
+        "function": function,
+        "inputs": inputs,
+        "outputs": outputs,
+        "type": "Function",
+    }
     if hasattr(function, "_semantikon_metadata"):
         entry.update(function._semantikon_metadata)
     return entry
