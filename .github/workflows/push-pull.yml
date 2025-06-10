@@ -13,8 +13,8 @@ jobs:
     with:
       runner: 'ubuntu-22.04' # with ubuntu > 22.04, pip is broken
       python-version-alt3: 'exclude'  # No python 3.9
-      do-codecov: 'true'
-      do-coveralls: 'false'
+      do-codecov: true
+      do-coveralls: false
     secrets: inherit
 
   mypy:
