@@ -258,9 +258,7 @@ class FunctionDictFlowAnalyzer:
         return f"{base_name}_{i}"
 
 
-def _get_variables_from_subgraph(
-    graph: nx.DiGraph, io_: str, control_flow: str | list
-) -> set[str]:
+def _get_variables_from_subgraph(graph: nx.DiGraph, io_: str) -> set[str]:
     """
     Get variables from a subgraph based on the type of I/O and control flow.
 
@@ -273,23 +271,33 @@ def _get_variables_from_subgraph(
         set[str]: A set of variable names that match the specified I/O type and
             control flow.
     """
-    if isinstance(control_flow, str):
-        control_flow = [control_flow]
-    variables = []
     if io_ == "input":
         edge_ind = 0
     elif io_ == "output":
         edge_ind = 1
     else:
         raise ValueError(f"Invalid I/O type: {io_}. Expected 'input' or 'output'.")
-    for edge in graph.edges.data():
-        if edge[2]["type"] == io_ and edge[2].get("control_flow", "") in control_flow:
-            variables.append(edge[edge_ind])
-    return set(variables)
+    return set(
+        [edge[edge_ind] for edge in graph.edges.data() if edge[2]["type"] == io_]
+    )
+
+
+def _get_parent_graph(graph: nx.DiGraph, control_flow: str) -> nx.DiGraph:
+    cf_list = [""]
+    for cf in control_flow.split("/")[:-1]:
+        cf_list.append("/".join([cf_list[-1], cf]))
+    return nx.DiGraph(
+        [
+            edge
+            for cf in cf_list
+            for edge in graph.edges.data()
+            if edge[2].get("control_flow", "").split("-")[0] == cf
+        ]
+    )
 
 
 def _detect_io_variables_from_control_flow(
-    graph: nx.DiGraph, control_flow: str | list
+    graph: nx.DiGraph, subgraph: nx.DiGraph, control_flow
 ) -> dict[str, list]:
     """
     Detect input and output variables from a graph based on control flow.
@@ -304,14 +312,11 @@ def _detect_io_variables_from_control_flow(
 
     Take a look at the unit tests for examples of how to use this function.
     """
-    var_inp_1 = _get_variables_from_subgraph(
-        graph=graph, io_="input", control_flow=control_flow
-    )
-    var_inp_2 = _get_variables_from_subgraph(graph=graph, io_="output", control_flow="")
-    var_out_1 = _get_variables_from_subgraph(graph=graph, io_="input", control_flow="")
-    var_out_2 = _get_variables_from_subgraph(
-        graph=graph, io_="output", control_flow=control_flow
-    )
+    parent_graph = _get_parent_graph(graph, control_flow)
+    var_inp_1 = _get_variables_from_subgraph(graph=subgraph, io_="input")
+    var_inp_2 = _get_variables_from_subgraph(graph=parent_graph, io_="output")
+    var_out_1 = _get_variables_from_subgraph(graph=parent_graph, io_="input")
+    var_out_2 = _get_variables_from_subgraph(graph=subgraph, io_="output")
     return {
         "inputs": list(var_inp_1.intersection(var_inp_2)),
         "outputs": list(var_out_1.intersection(var_out_2)),
@@ -385,7 +390,7 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
     return f_dict
 
 
-def _get_nodes(data: dict[str, dict], output_counts: dict[str, int]) -> dict[str, dict]:
+def _get_nodes(data: dict[str, dict], output_counts: dict[str, int], control_flow: None | str=None) -> dict[str, dict]:
     result = {}
     for node, function in data.items():
         func = function["function"]
