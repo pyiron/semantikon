@@ -79,6 +79,19 @@ class TypeMetadata(CoreMetadata):
 
 
 @dataclasses.dataclass(slots=True)
+class _Lexical(_VariadicDataclass):
+    label: str
+
+    @property
+    def type(self) -> str:
+        return self.__class__.__name__
+
+    def __iter__(self) -> Iterator[tuple[str, Any]]:
+        yield "type", self.type
+        yield from super(_Lexical, self).__iter__()
+
+
+@dataclasses.dataclass(slots=True)
 class _Port(TypeMetadata):
     dtype: type | Missing = missing()
     value: object | Missing = missing()
@@ -132,19 +145,10 @@ class Outputs(_IO[Output]): ...
 
 
 @dataclasses.dataclass(slots=True)
-class _Node(_VariadicDataclass):
-    label: str
+class _Node(_Lexical):
     inputs: Inputs
     outputs: Outputs
     metadata: CoreMetadata | Missing
-
-    @property
-    def type(self) -> str:
-        return self.__class__.__name__
-
-    def __iter__(self) -> Iterator[tuple[str, Any]]:
-        yield "type", self.type
-        yield from super(_Node, self).__iter__()
 
 
 @dataclasses.dataclass(slots=True)
