@@ -329,22 +329,22 @@ def _get_output_counts(graph: nx.DiGraph) -> dict[str, int]:
 
 def _get_nodes(data: dict[str, dict], output_counts: dict[str, int]) -> dict[str, dict]:
     result = {}
-    for node, function in data.items():
+    for label, function in data.items():
         if function["type"] != "Assign":
             continue
         func = function["function"]
         if hasattr(func, "_semantikon_workflow"):
             data_dict = func._semantikon_workflow.copy()
-            result[node] = data_dict
-            result[node]["label"] = node
+            result[label] = data_dict
+            result[label]["label"] = label
+            if hasattr(func, "_semantikon_metadata"):
+                result[label].update(func._semantikon_metadata)
         else:
-            result[node] = _to_node_dict_entry(
+            result[label] = _to_node_dict_entry(
                 func,
                 parse_input_args(func),
-                _get_node_outputs(func, output_counts.get(node, 0)),
+                _get_node_outputs(func, output_counts.get(label, 0)),
             )
-        if hasattr(func, "_semantikon_metadata"):
-            result[node].update(func._semantikon_metadata)
     return result
 
 
@@ -549,12 +549,15 @@ def separate_functions(
 def _to_node_dict_entry(
     function: Callable, inputs: dict[str, dict], outputs: dict[str, dict]
 ) -> dict:
-    return {
+    entry = {
         "function": function,
         "inputs": inputs,
         "outputs": outputs,
         "type": "Function",
     }
+    if hasattr(function, "_semantikon_metadata"):
+        entry.update(function._semantikon_metadata)
+    return entry
 
 
 def _to_workflow_dict_entry(
@@ -598,7 +601,7 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),
-        nodes=_get_nodes(f_dict, output_counts),
+        nodes=nodes,
         edges=_get_edges(graph, f_dict, output_labels, nodes),
         label=func.__name__,
     )
