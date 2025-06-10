@@ -265,7 +265,7 @@ def _get_variables_from_subgraph(graph: nx.DiGraph, io_: str) -> set[str]:
     Args:
         graph (nx.DiGraph): The directed graph representing the function.
         io_ (str): The type of I/O to filter by ("input" or "output").
-        control_flow (list, st4): A list of control flow types to filter by.
+        control_flow (list, str): A list of control flow types to filter by.
 
     Returns:
         set[str]: A set of variable names that match the specified I/O type and
