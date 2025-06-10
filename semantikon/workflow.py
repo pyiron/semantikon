@@ -533,11 +533,15 @@ def separate_functions(
             function_dict.update(child_function_dict)
             data["nodes"][key] = child_node
     elif "function" in data and not isinstance(data["function"], str):
-        function_dict[data["function"].__name__] = data["function"]
-        data["function"] = data["function"].__name__
+        fnc_object = data["function"]
+        as_string = fnc_object.__module__ + "." + fnc_object.__qualname__
+        function_dict[as_string] = fnc_object
+        data["function"] = as_string
     if "test" in data and not isinstance(data["test"]["function"], str):
-        function_dict[data["test"]["function"].__name__] = data["test"]["function"]
-        data["test"]["function"] = data["test"]["function"].__name__
+        fnc_object = data["test"]["function"]
+        as_string = fnc_object.__module__ + fnc_object.__qualname__
+        function_dict[as_string] = fnc_object
+        data["test"]["function"] = as_string
     return data, function_dict
 
 
