@@ -153,17 +153,7 @@ class FunctionDictFlowAnalyzer:
     def _handle_while(self, node, control_flow: str | None = None):
         if node["test"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
-        if control_flow is None:
-            control_flow = ""
-        else:
-            control_flow = f"{control_flow.split('-')[0]}/"
-        counter = 0
-        while True:
-            if f"{control_flow}While_{counter}" not in self._control_flow_list:
-                self._control_flow_list.append(f"{control_flow}While_{counter}")
-                break
-            counter += 1
-        control_flow = f"{control_flow}While_{counter}"
+        control_flow = self._convert_control_flow(control_flow, tag="While")
         self._parse_function_call(node["test"], control_flow=f"{control_flow}-test")
         for node in node["body"]:
             self._visit_node(node, control_flow=f"{control_flow}-body")
@@ -260,6 +250,19 @@ class FunctionDictFlowAnalyzer:
         self._call_counter[base_name] = i + 1
         return f"{base_name}_{i}"
 
+    def _convert_control_flow(self, control_flow: str | None, tag: str) -> str:
+        if control_flow is None:
+            control_flow = ""
+        else:
+            control_flow = f"{control_flow.split('-')[0]}/"
+        counter = 0
+        while True:
+            if f"{control_flow}{tag}_{counter}" not in self._control_flow_list:
+                self._control_flow_list.append(f"{control_flow}{tag}_{counter}")
+                break
+            counter += 1
+        return f"{control_flow}{tag}_{counter}"
+
 
 def _get_variables_from_subgraph(graph: nx.DiGraph, io_: str) -> set[str]:
     """
@@ -286,15 +289,11 @@ def _get_variables_from_subgraph(graph: nx.DiGraph, io_: str) -> set[str]:
 
 
 def _get_parent_graph(graph: nx.DiGraph, control_flow: str) -> nx.DiGraph:
-    cf_list = [""]
-    for cf in control_flow.split("/")[:-1]:
-        cf_list.append("/".join([cf_list[-1], cf]))
     return nx.DiGraph(
         [
             edge
-            for cf in cf_list
             for edge in graph.edges.data()
-            if edge[2].get("control_flow", "").split("-")[0] == cf
+            if not edge[2].get("control_flow", "").split("-")[0].startswith(control_flow)
         ]
     )
 

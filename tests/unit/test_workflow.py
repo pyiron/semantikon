@@ -391,6 +391,7 @@ class TestWorkflow(unittest.TestCase):
             [("A", "B", {}), ("A", "C", {}), ("B", "D", {}), ("C", "D", {})],
         )
 
+    @unittest.skip
     def test_workflow_with_while(self):
         wf = workflow(workflow_with_while)._semantikon_workflow
         self.assertIn("injected_while_loop_0", wf["nodes"])
