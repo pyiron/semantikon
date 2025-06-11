@@ -293,7 +293,10 @@ def _get_parent_graph(graph: nx.DiGraph, control_flow: str) -> nx.DiGraph:
         [
             edge
             for edge in graph.edges.data()
-            if not edge[2].get("control_flow", "").split("-")[0].startswith(control_flow)
+            if not edge[2]
+            .get("control_flow", "")
+            .split("-")[0]
+            .startswith(control_flow)
         ]
     )
 
@@ -426,7 +429,11 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
     return f_dict
 
 
-def _get_nodes(data: dict[str, dict], output_counts: dict[str, int], control_flow: None | str=None) -> dict[str, dict]:
+def _get_nodes(
+    data: dict[str, dict],
+    output_counts: dict[str, int],
+    control_flow: None | str = None,
+) -> dict[str, dict]:
     result = {}
     for label, function in data.items():
         func = function["function"]
@@ -487,9 +494,7 @@ def _remove_and_reconnect_nodes(
     return G
 
 
-def _get_edges(
-    graph: nx.DiGraph, nodes: dict[str, dict]
-) -> list[tuple[str, str]]:
+def _get_edges(graph: nx.DiGraph, nodes: dict[str, dict]) -> list[tuple[str, str]]:
     io_dict = {
         key: {
             "input": list(data["inputs"].keys()),
