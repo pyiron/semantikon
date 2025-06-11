@@ -115,6 +115,7 @@ class FunctionDictFlowAnalyzer:
         self.ast_dict = ast_dict
         self._call_counter = {}
         self._control_flow_list = []
+        self._return_was_called = False
 
     def analyze(self):
         for arg in self.ast_dict.get("args", {}).get("args", []):
@@ -125,6 +126,7 @@ class FunctionDictFlowAnalyzer:
         return self.graph, self.function_defs
 
     def _visit_node(self, node, control_flow: str | None = None):
+        assert not self._return_was_called
         if node["_type"] == "Assign":
             self._handle_assign(node, control_flow=control_flow)
         elif node["_type"] == "Expr":
@@ -146,6 +148,7 @@ class FunctionDictFlowAnalyzer:
                 self._add_input_edge(elt, "output", input_index=idx)
         elif node["value"]["_type"] == "Name":
             self._add_input_edge(node["value"], "output")
+        self._return_was_called = True
 
     def _handle_while(self, node, control_flow: str | None = None):
         if node["test"]["_type"] != "Call":
