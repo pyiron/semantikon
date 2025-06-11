@@ -78,9 +78,13 @@ class TypeMetadata(CoreMetadata):
     extra: dict[str, Any] | Missing = missing()
 
 
+_MetadataType = TypeVar("_MetadataType", bound=CoreMetadata)
+
+
 @dataclasses.dataclass(slots=True)
-class _Lexical(_VariadicDataclass):
+class _Lexical(_VariadicDataclass, Generic[_MetadataType]):
     label: str
+    metadata: _MetadataType | Missing
 
     @property
     def type(self) -> str:
@@ -92,10 +96,10 @@ class _Lexical(_VariadicDataclass):
 
 
 @dataclasses.dataclass(slots=True)
-class _Port(_Lexical):
+class _Port(_Lexical[TypeMetadata]):
+    metadata: TypeMetadata | Missing = missing()
     dtype: type | Missing = missing()
     value: object | Missing = missing()
-    metadata: TypeMetadata | Missing = missing()
 
 
 @dataclasses.dataclass(slots=True)
@@ -149,10 +153,10 @@ class Outputs(_IO[Output]): ...
 
 
 @dataclasses.dataclass(slots=True)
-class _Node(_Lexical):
+class _Node(_Lexical[CoreMetadata]):
+    metadata: CoreMetadata | Missing
     inputs: Inputs
     outputs: Outputs
-    metadata: CoreMetadata | Missing
 
 
 @dataclasses.dataclass(slots=True)
