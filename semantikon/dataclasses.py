@@ -132,6 +132,9 @@ class _HasToDictionarMapping(
     def __len__(self) -> int:
         return len(self._data)
 
+    def __getattr__(self, key: str) -> _ItemType:
+        return self.__getitem__(key)
+
 
 PortType = TypeVar("PortType", bound=_Port)
 
