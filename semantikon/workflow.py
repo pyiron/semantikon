@@ -873,7 +873,7 @@ def get_ports(
     )
 
 
-def get_node(func: Callable) -> Function | Workflow:
+def get_node(func: Callable, label: str | None = None) -> Function | Workflow:
     metadata_dict = (
         func._semantikon_metadata if hasattr(func, "_semantikon_metadata") else MISSING
     )
@@ -886,13 +886,13 @@ def get_node(func: Callable) -> Function | Workflow:
     if hasattr(func, "_semantikon_workflow"):
         return parse_workflow(func._semantikon_workflow, metadata)
     else:
-        return parse_function(func, metadata)
+        return parse_function(func, metadata, label=label)
 
 
-def parse_function(func: Callable, metadata: CoreMetadata | Missing) -> Function:
+def parse_function(func: Callable, metadata: CoreMetadata | Missing, label: str | None = None) -> Function:
     inputs, outputs = get_ports(func)
     return Function(
-        label=func.__name__,
+        label=func.__name__ if label is None else label,
         inputs=inputs,
         outputs=outputs,
         function=func,
@@ -943,7 +943,7 @@ def parse_workflow(
     )
     nodes = Nodes(
         **{
-            k: get_node(v["function"]) if "function" in v else parse_workflow(v)
+            k: get_node(v["function"], label=k) if "function" in v else parse_workflow(v)
             for k, v in semantikon_workflow["nodes"].items()
         }
     )
