@@ -12,7 +12,7 @@ class ConcreteDC(sdc._VariadicDataclass):
     optional_field: int | sdc.Missing = sdc.missing()
 
 
-class ConcereteHtDM(sdc._HasToDictionarMapping[int]): ...
+class ConcreteHtDM(sdc._HasToDictionarMapping[int]): ...
 
 
 class TestDataclasses(unittest.TestCase):
@@ -75,7 +75,7 @@ class TestHasToDictionaryMapping(unittest.TestCase):
     def test_mapping(self):
         t = (1, 2, 3)
         a, b, c = t
-        mapping = ConcereteHtDM(a=a, b=b)
+        mapping = ConcreteHtDM(a=a, b=b)
         self.assertEqual(mapping["a"], a)
         self.assertEqual(mapping["b"], b)
 
