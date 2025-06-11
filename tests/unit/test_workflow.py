@@ -521,9 +521,7 @@ class TestWorkflow(unittest.TestCase):
     def test_detect_io_variables_from_control_flow(self):
         graph, f_dict = analyze_function(workflow_with_while)
         subgraphs = _get_subgraphs(graph)
-        io_vars = _detect_io_variables_from_control_flow(
-            graph, subgraphs["While_0"], control_flow="While_0"
-        )
+        io_vars = _detect_io_variables_from_control_flow(graph, subgraphs["While_0"])
         self.assertEqual(
             {key: sorted(value) for key, value in io_vars.items()},
             {

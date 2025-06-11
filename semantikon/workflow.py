@@ -302,14 +302,13 @@ def _get_parent_graph(graph: nx.DiGraph, control_flow: str) -> nx.DiGraph:
 
 
 def _detect_io_variables_from_control_flow(
-    graph: nx.DiGraph, subgraph: nx.DiGraph, control_flow
+    graph: nx.DiGraph, subgraph: nx.DiGraph
 ) -> dict[str, list]:
     """
     Detect input and output variables from a graph based on control flow.
 
     Args:
         graph (nx.DiGraph): The directed graph representing the function.
-        control_flow (str | list): The type of control flow to filter by.
 
     Returns:
         dict[str, set]: A dictionary with keys "input" and "output", each
@@ -317,7 +316,12 @@ def _detect_io_variables_from_control_flow(
 
     Take a look at the unit tests for examples of how to use this function.
     """
-    parent_graph = _get_parent_graph(graph, control_flow)
+    control_flows = [
+        edge[2].get("control_flow", "").split("-")[0]
+        for edge in subgraph.edges.data()
+    ]
+    assert len(set(control_flows)) == 1
+    parent_graph = _get_parent_graph(graph, control_flows[0])
     var_inp_1 = _get_variables_from_subgraph(graph=subgraph, io_="input")
     var_inp_2 = _get_variables_from_subgraph(graph=parent_graph, io_="output")
     var_out_1 = _get_variables_from_subgraph(graph=parent_graph, io_="input")
