@@ -30,6 +30,7 @@ from semantikon.dataclasses import (
     Nodes,
     Output,
     Outputs,
+    PortType,
     TypeMetadata,
     Workflow,
 )
@@ -900,8 +901,8 @@ def parse_function(func: Callable, metadata: CoreMetadata | Missing) -> Function
 
 
 def _port_from_dictionary(
-    io_dictionary: dict[str, object], label: str, port_class: type[Input] | type[Output]
-):
+    io_dictionary: dict[str, object], label: str, port_class: type[PortType]
+) -> PortType:
     """
     Take a traditional _semantikon_workflow dictionary's input or output subdictionary
     and nest the metadata (if any) as a dataclass.

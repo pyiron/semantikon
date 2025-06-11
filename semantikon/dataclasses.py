@@ -133,10 +133,10 @@ class _HasToDictionarMapping(
         return len(self._data)
 
 
-_PortType = TypeVar("_PortType", bound=_Port)
+PortType = TypeVar("PortType", bound=_Port)
 
 
-class _IO(_HasToDictionarMapping[_PortType], Generic[_PortType]): ...
+class _IO(_HasToDictionarMapping[PortType], Generic[PortType]): ...
 
 
 class Inputs(_IO[Input]): ...
