@@ -11,6 +11,7 @@ from semantikon.workflow import (
     _get_node_outputs,
     _get_output_counts,
     _get_sorted_edges,
+    _get_subgraphs,
     _get_workflow_outputs,
     analyze_function,
     ast_from_dict,
@@ -501,20 +502,15 @@ class TestWorkflow(unittest.TestCase):
 
     def test_detect_io_variables_from_control_flow(self):
         graph, f_dict = analyze_function(workflow_with_while)
-        io_vars = _detect_io_variables_from_control_flow(graph, control_flow="While_0-body")
-        self.assertEqual(
-            {key: sorted(value) for key, value in io_vars.items()},
-            {
-                "inputs": ["a_0", "b_0"],
-                "outputs": ["z_0"],
-            },
+        subgraphs = _get_subgraphs(graph)
+        io_vars = _detect_io_variables_from_control_flow(
+            graph, subgraphs["While_0"], control_flow="While_0"
         )
-        io_vars = _detect_io_variables_from_control_flow(graph, control_flow="While_0-test")
         self.assertEqual(
             {key: sorted(value) for key, value in io_vars.items()},
             {
-                "inputs": ["b_0", "x_0"],
-                "outputs": [],
+                "inputs": ["a_0", "b_0", "x_0"],
+                "outputs": ["z_0"],
             },
         )
 
