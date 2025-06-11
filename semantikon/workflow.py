@@ -316,12 +316,14 @@ def _detect_io_variables_from_control_flow(
 
     Take a look at the unit tests for examples of how to use this function.
     """
-    control_flows = [
-        edge[2].get("control_flow", "").split("-")[0]
-        for edge in subgraph.edges.data()
-    ]
-    assert len(set(control_flows)) == 1
-    parent_graph = _get_parent_graph(graph, control_flows[0])
+    cf = sorted(
+        [
+            edge[2].get("control_flow", "").split("-")[0]
+            for edge in subgraph.edges.data()
+        ]
+    )
+    assert all([cf[ii + 1].startswith(cf[ii]) for ii in range(len(cf) - 1)])
+    parent_graph = _get_parent_graph(graph, cf[0])
     var_inp_1 = _get_variables_from_subgraph(graph=subgraph, io_="input")
     var_inp_2 = _get_variables_from_subgraph(graph=parent_graph, io_="output")
     var_out_1 = _get_variables_from_subgraph(graph=parent_graph, io_="input")
