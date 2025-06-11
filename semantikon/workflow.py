@@ -323,6 +323,40 @@ def _detect_io_variables_from_control_flow(
     }
 
 
+def _extract_control_flows(graph: nx.DiGraph) -> list[str]:
+    return list(
+        set(
+            [
+                edge[2].get("control_flow", "").split("-")[0]
+                for edge in graph.edges.data()
+            ]
+        )
+    )
+
+
+def _get_subgraphs(graph: nx.DiGraph) -> dict[str, nx.DiGraph]:
+    return {
+        control_flow: nx.DiGraph(
+            [
+                edge
+                for edge in graph.edges.data()
+                if edge[2].get("control_flow", "").split("-")[0] == control_flow
+            ]
+        )
+        for control_flow in _extract_control_flows(graph)
+    }
+
+
+def _extract_functions_from_graph(graph: nx.DiGraph) -> set:
+    function_names = []
+    for edge in graph.edges.data():
+        if edge[2]["type"] == "output" and edge[0] != "input":
+            function_names.append(edge[0])
+        elif edge[2]["type"] == "input" and edge[1] != "output":
+            function_names.append(edge[1])
+    return set(function_names)
+
+
 def get_ast_dict(func: Callable) -> dict:
     """Get the AST dictionary representation of a function."""
     source_code = inspect.getsource(func)
