@@ -1,10 +1,12 @@
 import unittest
 from typing import TYPE_CHECKING
+from unittest import mock
 
 from semantikon.converter import (
     NotAstNameError,
     get_function_dict,
     get_return_expressions,
+    get_return_labels,
     parse_input_args,
     parse_metadata,
     parse_output_args,
@@ -235,6 +237,18 @@ class TestParser(unittest.TestCase):
         self.assertEqual(get_return_expressions(f), "None")
         self.assertEqual(get_return_expressions(f, separate_tuple=False), "None")
         self.assertEqual(get_return_expressions(f, strict=True), "None")
+
+    def test_get_return_labels(self):
+
+        def f(x):
+            return x
+
+        with mock.patch("semantikon.converter.get_return_expressions", return_value=123
+        ):
+            with self.assertRaises(
+                TypeError, msg="expected None, a string, or a tuple of strings"
+            ):
+                get_return_labels(f)
 
 
 if __name__ == "__main__":
