@@ -110,8 +110,17 @@ def complex_function(
 def complex_macro(
     x: u(float, units="meter") = 2.0,
 ):
-    a = complex_function(x)
-    return a
+    a, b, c = complex_function(x)
+    return b, c
+
+
+@workflow
+@u(triples=("a", "b", "c"))
+def complex_workflow(
+    x: u(float, units="meter") = 2.0,
+):
+    b, c = complex_macro(x)
+    return c
 
 
 class ApeClass:
@@ -615,11 +624,58 @@ class TestWorkflow(unittest.TestCase):
 
     def test_complex_macro(self):
         node = swf.get_node(complex_macro)
-        print(node.to_dictionary())
+        with self.subTest("Node parsing"):
+            self.assertIsInstance(node, swf.Workflow)
+            self.assertIsInstance(node.inputs, swf.Inputs)
+            self.assertAlmostEqual(node.inputs.x.default, 2.0)
+            self.assertIsInstance(node.inputs.x.metadata, sdc.TypeMetadata)
+            self.assertEqual(node.inputs.x.metadata.units, "meter")
+            self.assertIsInstance(node.outputs, swf.Outputs)
+            self.assertIsInstance(node.metadata, swf.CoreMetadata)
+            self.assertEqual(node.type, sdc.Workflow.__name__)
+            self.assertEqual(node.label, complex_macro.__name__)
+            self.assertEqual(node.metadata.uri, "some other URI")
 
-    def test_workflow_node(self):
-        node = swf.get_node(example_workflow)
-        print(node.to_dictionary())
+        with self.subTest("Graph-node parsing"):
+            self.assertIsInstance(node.nodes, swf.Nodes)
+            self.assertIsInstance(node.nodes.complex_function_0, swf.Function)
+            self.assertEqual("complex_function_0", node.nodes.complex_function_0.label)
+            self.assertIsInstance(node.edges, swf.Edges)
+            self.assertDictEqual(
+                {
+                    f"{node.nodes.complex_function_0.label}.inputs.{node.nodes.complex_function_0.inputs.x.label}": f"inputs.{node.inputs.x.label}",
+                    f"outputs.{node.outputs.b.label}": f"{node.nodes.complex_function_0.label}.outputs.{node.nodes.complex_function_0.outputs.speed.label}",
+                    f"outputs.{node.outputs.c.label}": f"{node.nodes.complex_function_0.label}.outputs.{node.nodes.complex_function_0.outputs.output_2.label}",
+                },
+                node.edges.to_dictionary(),
+            )
+
+
+    def test_complex_workflow(self):
+        node = swf.get_node(complex_workflow)
+        with self.subTest("Node parsing"):
+            self.assertIsInstance(node, swf.Workflow)
+            self.assertIsInstance(node.inputs, swf.Inputs)
+            self.assertAlmostEqual(node.inputs.x.default, 2.0)
+            self.assertIsInstance(node.inputs.x.metadata, sdc.TypeMetadata)
+            self.assertEqual(node.inputs.x.metadata.units, "meter")
+            self.assertIsInstance(node.outputs, swf.Outputs)
+            self.assertIsInstance(node.metadata, swf.CoreMetadata)
+            self.assertEqual(node.type, sdc.Workflow.__name__)
+            self.assertEqual(node.label, complex_workflow.__name__)
+            self.assertTupleEqual(node.metadata.triples, ("a", "b", "c"))
+
+        with self.subTest("Graph-node parsing"):
+            self.assertIsInstance(node.nodes, swf.Nodes)
+            self.assertIsInstance(node.nodes.complex_macro_0, swf.Workflow)
+            self.assertIsInstance(node.edges, swf.Edges)
+            self.assertDictEqual(
+                {
+                    f"{node.nodes.complex_macro_0.label}.inputs.{node.nodes.complex_macro_0.inputs.x.label}": f"inputs.{node.inputs.x.label}",
+                    f"outputs.{node.outputs.c.label}": f"{node.nodes.complex_macro_0.label}.outputs.{node.nodes.complex_macro_0.outputs.c.label}",
+                },
+                node.edges.to_dictionary(),
+            )
 
     def test_function(self):
         for fnc in (operation, add, multiply, my_while_condition):
