@@ -91,7 +91,5 @@ class TestHasToDictionaryMapping(unittest.TestCase):
         self.assertEqual(mapping.c, c)
 
 
-
-
 if __name__ == "__main__":
     unittest.main()

@@ -243,7 +243,8 @@ class TestParser(unittest.TestCase):
         def f(x):
             return x
 
-        with mock.patch("semantikon.converter.get_return_expressions", return_value=123
+        with mock.patch(
+            "semantikon.converter.get_return_expressions", return_value=123
         ):
             with self.assertRaises(
                 TypeError, msg="expected None, a string, or a tuple of strings"
