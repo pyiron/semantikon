@@ -472,54 +472,56 @@ def _get_sorted_edges(graph: nx.DiGraph) -> list:
     return sorted(graph.edges.data(), key=lambda edge: node_order[edge[0]])
 
 
-def _get_edges(graph, functions, nodes):
-    input_dict = {}
-    for name, func in functions.items():
-        f = func["function"]
-        if hasattr(f, "_semantikon_workflow"):
-            input_dict[name] = list(f._semantikon_workflow["inputs"].keys())
-        else:
-            input_dict[name] = list(parse_input_args(f).keys())
+def _remove_and_reconnect_nodes(
+    G: nx.DiGraph, nodes_to_remove: list[str]
+) -> nx.DiGraph:
+    for node in set(nodes_to_remove):
+        preds = list(G.predecessors(node))
+        succs = list(G.successors(node))
+        for u in preds:
+            for v in succs:
+                G.add_edge(u, v)
+        G.remove_node(node)
+    return G
+
+
+def _get_edges(
+    graph: nx.DiGraph, nodes: dict[str, dict]
+) -> list[tuple[str, str]]:
+    io_dict = {
+        key: {
+            "input": list(data["inputs"].keys()),
+            "output": list(data["outputs"].keys()),
+        }
+        for key, data in nodes.items()
+    }
     edges = []
-    output_dict = {}
-    output_candidate = {}
-    for edge in _get_sorted_edges(graph):
-        if edge[2]["type"] == "output":
-            if edge[0] == "input":
-                continue
-            elif edge[0] in functions and hasattr(
-                functions[edge[0]]["function"], "_semantikon_workflow"
-            ):
-                keys = list(
-                    functions[edge[0]]["function"]
-                    ._semantikon_workflow["outputs"]
-                    .keys()
-                )
-                output_key = keys[0]
-                if "output_index" in edge[2]:
-                    output_key = keys[edge[2]["output_index"]]
-            elif "output_index" in edge[2]:
-                output_key = list(nodes[edge[0]]["outputs"].keys())[
-                    edge[2]["output_index"]
-                ]
-            else:
-                output_key = list(nodes[edge[0]]["outputs"].keys())[0]
-            output_dict[edge[1]] = f"{edge[0]}.outputs.{output_key}"
-        else:
-            if edge[0] not in output_dict:
-                source = f"inputs.{_remove_index(edge[0])}"
-            else:
-                source = output_dict[edge[0]]
-            if edge[1] == "output":
-                target = f"outputs.{_remove_index(edge[0])}"
-            elif "input_name" in edge[2]:
-                target = f"{edge[1]}.inputs.{edge[2]['input_name']}"
+    nodes_to_remove = []
+    for edge in graph.edges.data():
+        if edge[0] == "input":
+            edges.append([edge[0] + "s." + edge[1].split("_")[0], edge[1]])
+            nodes_to_remove.append(edge[1])
+        elif edge[1] == "output":
+            edges.append([edge[0], edge[1] + "s." + edge[0].split("_")[0]])
+            nodes_to_remove.append(edge[0])
+        elif edge[2]["type"] == "input":
+            if "input_name" in edge[2]:
+                tag = edge[2]["input_name"]
             elif "input_index" in edge[2]:
-                target = (
-                    f"{edge[1]}.inputs.{input_dict[edge[1]][edge[2]['input_index']]}"
-                )
-            edges.append((source, target))
-    return edges
+                tag = io_dict[edge[1]]["input"][edge[2]["input_index"]]
+            else:
+                raise ValueError
+            edges.append([edge[0], edge[1] + ".inputs." + tag])
+            nodes_to_remove.append(edge[0])
+        elif edge[2]["type"] == "output":
+            if "output_index" in edge[2]:
+                tag = io_dict[edge[0]]["output"][edge[2]["output_index"]]
+            else:
+                tag = io_dict[edge[0]]["output"][0]
+            edges.append([edge[0] + ".outputs." + tag, edge[1]])
+            nodes_to_remove.append(edge[1])
+    new_graph = _remove_and_reconnect_nodes(nx.DiGraph(edges), nodes_to_remove)
+    return list(new_graph.edges)
 
 
 def _dtype_to_str(dtype):
@@ -679,7 +681,7 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),
         nodes=nodes,
-        edges=_get_edges(graph, f_dict, nodes),
+        edges=_get_edges(graph, nodes),
         label=func.__name__,
     )
 
