@@ -889,7 +889,9 @@ def get_node(func: Callable, label: str | None = None) -> Function | Workflow:
         return parse_function(func, metadata, label=label)
 
 
-def parse_function(func: Callable, metadata: CoreMetadata | Missing, label: str | None = None) -> Function:
+def parse_function(
+    func: Callable, metadata: CoreMetadata | Missing, label: str | None = None
+) -> Function:
     inputs, outputs = get_ports(func)
     return Function(
         label=func.__name__ if label is None else label,
@@ -943,7 +945,11 @@ def parse_workflow(
     )
     nodes = Nodes(
         **{
-            k: get_node(v["function"], label=k) if "function" in v else parse_workflow(v)
+            k: (
+                get_node(v["function"], label=k)
+                if "function" in v
+                else parse_workflow(v)
+            )
             for k, v in semantikon_workflow["nodes"].items()
         }
     )

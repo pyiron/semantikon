@@ -650,7 +650,6 @@ class TestWorkflow(unittest.TestCase):
                 node.edges.to_dictionary(),
             )
 
-
     def test_complex_workflow(self):
         node = swf.get_node(complex_workflow)
         with self.subTest("Node parsing"):
