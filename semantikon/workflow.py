@@ -428,20 +428,20 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
 
 def _get_nodes(data: dict[str, dict], output_counts: dict[str, int], control_flow: None | str=None) -> dict[str, dict]:
     result = {}
-    for node, function in data.items():
+    for label, function in data.items():
         func = function["function"]
         if hasattr(func, "_semantikon_workflow"):
             data_dict = func._semantikon_workflow.copy()
-            result[node] = data_dict
-            result[node]["label"] = node
+            result[label] = data_dict
+            result[label]["label"] = label
+            if hasattr(func, "_semantikon_metadata"):
+                result[label].update(func._semantikon_metadata)
         else:
-            result[node] = _to_node_dict_entry(
+            result[label] = _to_node_dict_entry(
                 func,
                 parse_input_args(func),
-                _get_node_outputs(func, output_counts.get(node, 1)),
+                _get_node_outputs(func, output_counts.get(label, 1)),
             )
-        if hasattr(func, "_semantikon_metadata"):
-            result[node].update(func._semantikon_metadata)
     return result
 
 
@@ -560,6 +560,7 @@ def get_node_dict(func, data_format="semantikon"):
         "inputs": parse_input_args(func),
         "outputs": _get_workflow_outputs(func),
         "label": func.__name__,
+        "type": "Function",
     }
     if hasattr(func, "_semantikon_metadata"):
         data.update(func._semantikon_metadata)
@@ -630,18 +631,30 @@ def separate_functions(
             function_dict.update(child_function_dict)
             data["nodes"][key] = child_node
     elif "function" in data and not isinstance(data["function"], str):
-        function_dict[data["function"].__name__] = data["function"]
-        data["function"] = data["function"].__name__
+        fnc_object = data["function"]
+        as_string = fnc_object.__module__ + "." + fnc_object.__qualname__
+        function_dict[as_string] = fnc_object
+        data["function"] = as_string
     if "test" in data and not isinstance(data["test"]["function"], str):
-        function_dict[data["test"]["function"].__name__] = data["test"]["function"]
-        data["test"]["function"] = data["test"]["function"].__name__
+        fnc_object = data["test"]["function"]
+        as_string = fnc_object.__module__ + fnc_object.__qualname__
+        function_dict[as_string] = fnc_object
+        data["test"]["function"] = as_string
     return data, function_dict
 
 
 def _to_node_dict_entry(
     function: Callable, inputs: dict[str, dict], outputs: dict[str, dict]
 ) -> dict:
-    return {"function": function, "inputs": inputs, "outputs": outputs}
+    entry = {
+        "function": function,
+        "inputs": inputs,
+        "outputs": outputs,
+        "type": "Function",
+    }
+    if hasattr(function, "_semantikon_metadata"):
+        entry.update(function._semantikon_metadata)
+    return entry
 
 
 def _to_workflow_dict_entry(
@@ -663,6 +676,7 @@ def _to_workflow_dict_entry(
         "nodes": nodes,
         "edges": edges,
         "label": label,
+        "type": "Workflow",
     } | kwargs
 
 
