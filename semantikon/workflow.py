@@ -371,6 +371,18 @@ def _extract_functions_from_graph(graph: nx.DiGraph) -> set:
     return set(function_names)
 
 
+def _get_control_flow_graph(control_flows: list[str]) -> nx.DiGraph:
+    cf_list = []
+    for cf in control_flows:
+        if cf == "":
+            continue
+        if "/" in cf:
+            cf_list.append(["/".join(cf.split("/")[:-1]), cf])
+        else:
+            cf_list.append(["", cf])
+    return nx.DiGraph(cf_list)
+
+
 def get_ast_dict(func: Callable) -> dict:
     """Get the AST dictionary representation of a function."""
     source_code = inspect.getsource(func)

@@ -8,6 +8,7 @@ from semantikon.workflow import (
     _detect_io_variables_from_control_flow,
     _extract_variables_from_ast_body,
     _function_to_ast_dict,
+    _get_control_flow_graph,
     _get_node_outputs,
     _get_output_counts,
     _get_sorted_edges,
@@ -529,6 +530,20 @@ class TestWorkflow(unittest.TestCase):
                 "outputs": ["z_0"],
             },
         )
+
+    def test_get_control_flow_graph(self):
+        control_flows = [
+            "",
+            "While_1/While_0",
+            "While_2",
+            "While_0",
+            "While_1",
+            "While_0/While_0/While_0",
+            "While_1/While_1",
+            "While_0/While_1",
+            "While_0/While_0",
+            "While_0/While_2",
+        ]
 
 
 if __name__ == "__main__":
