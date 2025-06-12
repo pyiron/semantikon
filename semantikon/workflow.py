@@ -544,7 +544,7 @@ def _get_edges(graph: nx.DiGraph, nodes: dict[str, dict]) -> list[tuple[str, str
         elif edge[2]["type"] == "output":
             if "output_index" in edge[2]:
                 tag = io_dict[edge[0]]["output"][edge[2]["output_index"]]
-            if "output_name" in edge[2]:
+            elif "output_name" in edge[2]:
                 tag = edge[2]["output_name"]
             else:
                 tag = io_dict[edge[0]]["output"][0]
