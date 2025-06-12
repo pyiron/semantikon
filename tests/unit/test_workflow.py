@@ -544,6 +544,15 @@ class TestWorkflow(unittest.TestCase):
             "While_0/While_0",
             "While_0/While_2",
         ]
+        graph = _get_control_flow_graph(control_flows)
+        self.assertEqual(
+            sorted(list(graph.successors("While_0"))),
+            ["While_0/While_0", "While_0/While_1", "While_0/While_2"],
+        )
+        self.assertEqual(
+            sorted(list(graph.successors("While_1"))),
+            ["While_1/While_0", "While_1/While_1"],
+        )
 
 
 if __name__ == "__main__":
