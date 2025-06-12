@@ -318,10 +318,13 @@ def _detect_io_variables_from_control_flow(
     """
     cf = sorted(
         [
-            edge[2].get("control_flow", "").split("-")[0]
+            edge[2]["control_flow"].split("-")[0]
             for edge in subgraph.edges.data()
+            if "control_flow" in edge[2]
         ]
     )
+    if len(cf) == 0:
+        return {"inputs": [], "outputs": []}
     assert all([cf[ii + 1].startswith(cf[ii]) for ii in range(len(cf) - 1)])
     parent_graph = _get_parent_graph(graph, cf[0])
     var_inp_1 = _get_variables_from_subgraph(graph=subgraph, io_="input")
