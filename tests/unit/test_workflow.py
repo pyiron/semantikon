@@ -12,7 +12,7 @@ from semantikon.workflow import (
     _get_node_outputs,
     _get_output_counts,
     _get_sorted_edges,
-    _get_subgraphs,
+    _split_graphs_into_subgraphs,
     _get_workflow_outputs,
     analyze_function,
     ast_from_dict,
@@ -521,7 +521,7 @@ class TestWorkflow(unittest.TestCase):
 
     def test_detect_io_variables_from_control_flow(self):
         graph = analyze_function(workflow_with_while)[0]
-        subgraphs = _get_subgraphs(graph)
+        subgraphs = _split_graphs_into_subgraphs(graph)
         io_vars = _detect_io_variables_from_control_flow(graph, subgraphs["While_0"])
         self.assertEqual(
             {key: sorted(value) for key, value in io_vars.items()},

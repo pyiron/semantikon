@@ -348,7 +348,7 @@ def _extract_control_flows(graph: nx.DiGraph) -> list[str]:
     )
 
 
-def _get_subgraphs(graph: nx.DiGraph) -> dict[str, nx.DiGraph]:
+def _split_graphs_into_subgraphs(graph: nx.DiGraph) -> dict[str, nx.DiGraph]:
     return {
         control_flow: nx.DiGraph(
             [
@@ -359,6 +359,25 @@ def _get_subgraphs(graph: nx.DiGraph) -> dict[str, nx.DiGraph]:
         )
         for control_flow in _extract_control_flows(graph)
     }
+
+
+def _get_subgraphs(graph: nx.DiGraph, cf_graph: nx.DiGraph) -> dict[str, nx.DiGraph]:
+    subgraphs = _split_graphs_into_subgraphs(graph)
+    for key in list(topological_sort(cf_graph))[::-1]:
+        subgraph = subgraphs[key]
+        node_name = "injected_" + key.replace("/", "_")
+        io_ = _detect_io_variables_from_control_flow(graph, subgraph)
+        for parent_graph_name in cf_graph.predecessors(key):
+            parent_graph = subgraphs[parent_graph_name]
+            for inp in io_["inputs"]:
+                parent_graph.add_edge(inp, node_name, type="input", input_name=inp.split("_")[0])
+            for out in io_["outputs"]:
+                parent_graph.add_edge(node_name, out, type="output", output_name=out.split("_")[0])
+        for inp in io_["inputs"]:
+            subgraph.add_edge("input", inp, type="output")
+        for out in io_["outputs"]:
+            subgraph.add_edge(out, "output", type="input")
+    return subgraphs
 
 
 def _extract_functions_from_graph(graph: nx.DiGraph) -> set:
