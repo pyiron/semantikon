@@ -316,10 +316,17 @@ def _detect_io_variables_from_control_flow(
 
     Take a look at the unit tests for examples of how to use this function.
     """
+    sg_body = nx.DiGraph(
+        [
+            edge
+            for edge in subgraph.edges.data()
+            if edge[0] != "input" and edge[1] != "output"
+        ]
+    )
     cf = sorted(
         [
             edge[2]["control_flow"].split("-")[0]
-            for edge in subgraph.edges.data()
+            for edge in sg_body.edges.data()
             if "control_flow" in edge[2]
         ]
     )
@@ -327,10 +334,10 @@ def _detect_io_variables_from_control_flow(
         return {"inputs": [], "outputs": []}
     assert all([cf[ii + 1].startswith(cf[ii]) for ii in range(len(cf) - 1)])
     parent_graph = _get_parent_graph(graph, cf[0])
-    var_inp_1 = _get_variables_from_subgraph(graph=subgraph, io_="input")
+    var_inp_1 = _get_variables_from_subgraph(graph=sg_body, io_="input")
     var_inp_2 = _get_variables_from_subgraph(graph=parent_graph, io_="output")
     var_out_1 = _get_variables_from_subgraph(graph=parent_graph, io_="input")
-    var_out_2 = _get_variables_from_subgraph(graph=subgraph, io_="output")
+    var_out_2 = _get_variables_from_subgraph(graph=sg_body, io_="output")
     return {
         "inputs": list(var_inp_1.intersection(var_inp_2)),
         "outputs": list(var_out_1.intersection(var_out_2)),
