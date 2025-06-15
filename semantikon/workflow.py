@@ -762,7 +762,7 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
     control_flows = _extract_control_flows(graph)
     cf_graph = _get_control_flow_graph(control_flows)
     subgraphs = _get_subgraphs(graph, cf_graph)
-    injected_nodes = {}
+    injected_nodes: dict[str, Any]= {}
     for cf_key in list(topological_sort(cf_graph))[::-1]:
         subgraph = nx.relabel_nodes(subgraphs[cf_key], test_dict)
         if len(cf_key) > 0:
