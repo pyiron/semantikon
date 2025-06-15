@@ -501,7 +501,7 @@ def _get_nodes(
     return result
 
 
-def _remove_index(s):
+def _remove_index(s: str) -> str:
     return "_".join(s.split("_")[:-1])
 
 
@@ -776,8 +776,8 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
             "nodes": current_nodes,
             "edges": _get_edges(subgraph, current_nodes),
             "label": new_key,
-            "inputs": {"_".join(key.split("_")[:-1]): {} for key in io_["inputs"]},
-            "outputs": {"_".join(key.split("_")[:-1]): {} for key in io_["outputs"]},
+            "inputs": {_remove_index(key): {} for key in io_["inputs"]},
+            "outputs": {_remove_index(key): {} for key in io_["outputs"]},
         }
         if "test" in injected_nodes[new_key]["nodes"]:
             injected_nodes[new_key]["test"] = injected_nodes[new_key]["nodes"].pop(
