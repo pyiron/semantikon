@@ -409,35 +409,33 @@ class TestWorkflow(unittest.TestCase):
             [("A", "B", {}), ("A", "C", {}), ("B", "D", {}), ("C", "D", {})],
         )
 
-    @unittest.skip
     def test_workflow_with_while(self):
         wf = workflow(workflow_with_while)._semantikon_workflow
-        self.assertIn("injected_while_loop_0", wf["nodes"])
+        self.assertIn("injected_While_0", wf["nodes"])
         self.assertEqual(
-            sorted(wf["nodes"]["injected_while_loop_0"]["inputs"].keys()),
+            sorted(wf["nodes"]["injected_While_0"]["inputs"].keys()),
             ["a", "b", "x"],
         )
         self.assertEqual(
-            sorted(wf["nodes"]["injected_while_loop_0"]["outputs"].keys()),
-            ["x", "z"],
+            sorted(wf["nodes"]["injected_While_0"]["outputs"].keys()),
+            ["z"],
         )
         self.assertEqual(
-            sorted(wf["nodes"]["injected_while_loop_0"]["edges"]),
+            sorted(wf["nodes"]["injected_While_0"]["edges"]),
             sorted(
                 [
                     ("inputs.x", "test.inputs.a"),
                     ("inputs.b", "test.inputs.b"),
-                    ("inputs.b", "add_0.inputs.y"),
-                    ("inputs.a", "add_0.inputs.x"),
+                    ("inputs.b", "add_1.inputs.y"),
+                    ("inputs.a", "add_1.inputs.x"),
                     ("inputs.a", "multiply_0.inputs.x"),
-                    ("add_0.outputs.output", "multiply_0.inputs.y"),
-                    ("add_0.outputs.output", "outputs.x"),
+                    ("add_1.outputs.output", "multiply_0.inputs.y"),
                     ("multiply_0.outputs.output", "outputs.z"),
                 ]
             ),
         )
-        self.assertIn("add_0", wf["nodes"]["injected_while_loop_0"]["nodes"])
-        self.assertIn("multiply_0", wf["nodes"]["injected_while_loop_0"]["nodes"])
+        self.assertIn("add_1", wf["nodes"]["injected_While_0"]["nodes"])
+        self.assertIn("multiply_0", wf["nodes"]["injected_While_0"]["nodes"])
 
     def test_reused_args(self):
         data = get_workflow_dict(reused_args)

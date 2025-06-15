@@ -406,7 +406,10 @@ def _get_control_flow_graph(control_flows: list[str]) -> nx.DiGraph:
             cf_list.append(["/".join(cf.split("/")[:-1]), cf])
         else:
             cf_list.append(["", cf])
-    return nx.DiGraph(cf_list)
+    graph = nx.DiGraph(cf_list)
+    if len(graph) == 0:
+        graph.add_node("")
+    return graph
 
 
 def get_ast_dict(func: Callable) -> dict:
@@ -747,11 +750,40 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
     """
     graph, f_dict = analyze_function(func)
     nodes = _get_nodes(f_dict, _get_output_counts(graph))
+    test_dict = {key: "test" for key, value in f_dict.items() if value.get("control_flow", "").endswith("test")}
+    control_flows = _extract_control_flows(graph)
+    cf_graph = _get_control_flow_graph(control_flows)
+    subgraphs = _get_subgraphs(graph, cf_graph)
+    injected_nodes = {}
+    for cf_key in list(topological_sort(cf_graph))[::-1]:
+        subgraph = nx.relabel_nodes(subgraphs[cf_key], test_dict)
+        if len(cf_key) > 0:
+            new_key = "injected_" + cf_key.replace("/", "_")
+        else:
+            new_key = cf_key
+        current_nodes = {}
+        for key in _extract_functions_from_graph(subgraphs[cf_key]):
+            if key in test_dict:
+                current_nodes["test"] = nodes[key]
+            elif key in nodes:
+                current_nodes[key] = nodes[key]
+            else:
+                current_nodes[key] = injected_nodes.pop(key)
+        io_ = _detect_io_variables_from_control_flow(graph, subgraph)
+        injected_nodes[new_key] = {
+            "nodes": current_nodes,
+            "edges": _get_edges(subgraph, current_nodes),
+            "label": new_key,
+            "inputs": {"_".join(key.split("_")[:-1]): {} for key in io_["inputs"]},
+            "outputs": {"_".join(key.split("_")[:-1]): {} for key in io_["outputs"]},
+        }
+        if "test" in injected_nodes[new_key]["nodes"]:
+            injected_nodes[new_key]["test"] = injected_nodes[new_key]["nodes"].pop("test")
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),
-        nodes=nodes,
-        edges=_get_edges(graph, nodes),
+        nodes=injected_nodes[""]["nodes"],
+        edges=injected_nodes[""]["edges"],
         label=func.__name__,
     )
 
