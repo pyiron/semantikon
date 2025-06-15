@@ -129,6 +129,54 @@ def workflow_with_leaf(x):
     return y
 
 
+def my_condition(X, Y):
+    return X + Y < 100
+
+
+def multiple_nested_workflow(a=1, b=2, c=3):
+    d = add(a, b)
+    e = multiply(b, c)
+    f = add(c, d)
+
+    while my_condition(d, e):
+        d = add(d, b)
+        e = multiply(e, c)
+
+        while my_condition(a, d):
+            a = add(a, c)
+            d = multiply(b, e)
+
+            while my_condition(c, f):
+                c = add(c, a)
+                f = multiply(f, b)
+
+        while my_condition(b, f):
+            b = add(b, b)
+            f = multiply(a, b)
+
+        while my_condition(c, e):
+            c = add(c, d)
+            e = multiply(e, c)
+
+    while my_condition(a, b):
+        a = add(a, c)
+        b = multiply(b, d)
+
+        while my_condition(d, f):
+            d = add(d, b)
+            f = multiply(f, a)
+
+        while my_condition(e, f):
+            e = add(e, a)
+            f = multiply(f, c)
+
+    while my_condition(f, f):
+        f = add(f, f)
+        f = multiply(f, f)
+
+    return f
+
+
 class TestWorkflow(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -550,6 +598,15 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(
             sorted(list(graph.successors("While_1"))),
             ["While_1/While_0", "While_1/While_1"],
+        )
+
+    def test_multiple_nested_workflow(self):
+        data = get_workflow_dict(multiple_nested_workflow)
+        self.assertIn("a", data["inputs"])
+        self.assertIn("f", data["outputs"])
+        self.assertIn("injected_While_0", data["nodes"])
+        self.assertIn(
+            "injected_While_0_While_0", data["nodes"]["injected_While_0"]["nodes"]
         )
 
 
