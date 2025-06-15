@@ -101,7 +101,6 @@ def _hash_function(func):
     return f"{func.__name__}_{sha256(inspect.getsource(func).encode()).hexdigest()}"
 
 
-
 class FunctionDictFlowAnalyzer:
     def __init__(self, ast_dict, scope):
         self.graph = nx.DiGraph()
