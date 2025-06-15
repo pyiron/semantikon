@@ -377,9 +377,13 @@ def _get_subgraphs(graph: nx.DiGraph, cf_graph: nx.DiGraph) -> dict[str, nx.DiGr
         for parent_graph_name in cf_graph.predecessors(key):
             parent_graph = subgraphs[parent_graph_name]
             for inp in io_["inputs"]:
-                parent_graph.add_edge(inp, node_name, type="input", input_name=inp.split("_")[0])
+                parent_graph.add_edge(
+                    inp, node_name, type="input", input_name=inp.split("_")[0]
+                )
             for out in io_["outputs"]:
-                parent_graph.add_edge(node_name, out, type="output", output_name=out.split("_")[0])
+                parent_graph.add_edge(
+                    node_name, out, type="output", output_name=out.split("_")[0]
+                )
         for inp in io_["inputs"]:
             subgraph.add_edge("input", inp, type="output")
         for out in io_["outputs"]:
@@ -750,7 +754,11 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
     """
     graph, f_dict = analyze_function(func)
     nodes = _get_nodes(f_dict, _get_output_counts(graph))
-    test_dict = {key: "test" for key, value in f_dict.items() if value.get("control_flow", "").endswith("test")}
+    test_dict = {
+        key: "test"
+        for key, value in f_dict.items()
+        if value.get("control_flow", "").endswith("test")
+    }
     control_flows = _extract_control_flows(graph)
     cf_graph = _get_control_flow_graph(control_flows)
     subgraphs = _get_subgraphs(graph, cf_graph)
@@ -778,7 +786,9 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
             "outputs": {"_".join(key.split("_")[:-1]): {} for key in io_["outputs"]},
         }
         if "test" in injected_nodes[new_key]["nodes"]:
-            injected_nodes[new_key]["test"] = injected_nodes[new_key]["nodes"].pop("test")
+            injected_nodes[new_key]["test"] = injected_nodes[new_key]["nodes"].pop(
+                "test"
+            )
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),
