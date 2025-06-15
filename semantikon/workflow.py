@@ -101,10 +101,6 @@ def _hash_function(func):
     return f"{func.__name__}_{sha256(inspect.getsource(func).encode()).hexdigest()}"
 
 
-class InjectedLoop:
-    def __init__(self, semantikon_workflow):
-        self._semantikon_workflow = semantikon_workflow
-
 
 class FunctionDictFlowAnalyzer:
     def __init__(self, ast_dict, scope):
@@ -759,8 +755,7 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
         for key, value in f_dict.items()
         if value.get("control_flow", "").endswith("test")
     }
-    control_flows = _extract_control_flows(graph)
-    cf_graph = _get_control_flow_graph(control_flows)
+    cf_graph = _get_control_flow_graph(_extract_control_flows(graph))
     subgraphs = _get_subgraphs(graph, cf_graph)
     injected_nodes: dict[str, Any] = {}
     for cf_key in list(topological_sort(cf_graph))[::-1]:
