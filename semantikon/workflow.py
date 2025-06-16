@@ -158,7 +158,9 @@ class FunctionDictFlowAnalyzer:
             raise NotImplementedError("Only function calls allowed in For loop")
         control_flow = self._convert_control_flow(control_flow, tag="For")
 
-        unique_func_name = self._parse_function_call(node["iter"], control_flow=f"{control_flow}-iter")
+        unique_func_name = self._parse_function_call(
+            node["iter"], control_flow=f"{control_flow}-iter"
+        )
         # Parse outputs
         self._add_output_edge(
             unique_func_name, node["target"]["id"], control_flow=control_flow
@@ -172,7 +174,9 @@ class FunctionDictFlowAnalyzer:
 
     def _parse_function_call(self, value, control_flow: str | None = None) -> str:
         if value["_type"] != "Call":
-            raise NotImplementedError(f"Only function calls allowed on RHS: {value['_type']}")
+            raise NotImplementedError(
+                f"Only function calls allowed on RHS: {value['_type']}"
+            )
 
         func_node = value["func"]
         if func_node["_type"] != "Name":
@@ -784,9 +788,7 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
         }
         for tag in ["test", "iter"]:
             if tag in injected_nodes[new_key]["nodes"]:
-                injected_nodes[new_key][tag] = injected_nodes[new_key]["nodes"].pop(
-                    tag
-            )
+                injected_nodes[new_key][tag] = injected_nodes[new_key]["nodes"].pop(tag)
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),
