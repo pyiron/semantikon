@@ -373,11 +373,11 @@ def _get_subgraphs(graph: nx.DiGraph, cf_graph: nx.DiGraph) -> dict[str, nx.DiGr
             parent_graph = subgraphs[parent_graph_name]
             for inp in io_["inputs"]:
                 parent_graph.add_edge(
-                    inp, node_name, type="input", input_name=inp.split("_")[0]
+                    inp, node_name, type="input", input_name=_remove_index(inp)
                 )
             for out in io_["outputs"]:
                 parent_graph.add_edge(
-                    node_name, out, type="output", output_name=out.split("_")[0]
+                    node_name, out, type="output", output_name=_remove_index(out)
                 )
         for inp in io_["inputs"]:
             subgraph.add_edge("input", inp, type="output")
