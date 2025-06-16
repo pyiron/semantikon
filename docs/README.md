@@ -1,7 +1,7 @@
 # semantikon
 
 [![Push-Pull](https://github.com/pyiron/semantikon/actions/workflows/push-pull.yml/badge.svg)](https://github.com/pyiron/semantikon/actions/workflows/push-pull.yml)
-[![Coverage Status](https://coveralls.io/repos/github/pyiron/semantikon/badge.svg?branch=main)](https://coveralls.io/github/pyiron/semantikon?branch=main)
+[![Coverage](https://codecov.io/gh/pyiron/semantikon/graph/badge.svg)](https://codecov.io/gh/pyiron/semantikon)
 
 <img src="../images/logo.jpeg" alt="Logo" width="300"/>
 
@@ -101,11 +101,11 @@ Example:
 ... ) -> u(float, units="meter/second", label="speed", uri=EX.speed):
 ...     return a / b
 >>>
->>> print(parse_input_args(get_speed))
-{'a': {'units': 'meter', 'uri': rdflib.term.URIRef('http://example.org/distance'), 'dtype': <class 'float'>}, 'b': {'units': 'second', 'uri': rdflib.term.URIRef('http://example.org/time'), 'dtype': <class 'float'>}}
+>>> print(dict(sorted({k: dict(sorted(v.items())) for k, v in parse_input_args(get_speed).items()}.items())))
+{'a': {'dtype': <class 'float'>, 'units': 'meter', 'uri': rdflib.term.URIRef('http://example.org/distance')}, 'b': {'dtype': <class 'float'>, 'units': 'second', 'uri': rdflib.term.URIRef('http://example.org/time')}}
 
->>> print(parse_output_args(get_speed))
-{'units': 'meter/second', 'label': 'speed', 'uri': rdflib.term.URIRef('http://example.org/speed'), 'dtype': <class 'float'>}
+>>> print(dict(sorted(parse_output_args(get_speed).items())))
+{'dtype': <class 'float'>, 'label': 'speed', 'units': 'meter/second', 'uri': rdflib.term.URIRef('http://example.org/speed')}
 
 ```
 

@@ -47,6 +47,16 @@ class TestParser(unittest.TestCase):
         self.assertEqual(f_dict["uri"], "abc")
         self.assertEqual(f_dict["label"], "get_speed")
 
+    def test_extra_function_metadata(self):
+        def f(x):
+            return x
+
+        with self.assertRaises(
+            NotImplementedError,
+            msg="Arbitrary metadata is not currently supported for function decoration",
+        ):
+            u(uri="abc", unexpected_data=123)(f)
+
     def test_canonical_types(self):
         def f(x: float) -> float:
             return x
@@ -81,7 +91,7 @@ class TestParser(unittest.TestCase):
             return distance / time
 
         input_args = parse_input_args(get_speed)
-        self.assertEqual(input_args["distance"]["my_arg"], "some_info")
+        self.assertEqual(input_args["distance"]["extra"]["my_arg"], "some_info")
 
     def test_return_class(self):
         class Output:
@@ -99,11 +109,11 @@ class TestParser(unittest.TestCase):
 
     def test_multiple_u(self):
         initial_type = u(float, units="meter", label="distance")
-        result = parse_metadata(initial_type)
+        result = parse_metadata(initial_type).to_dictionary()
         self.assertEqual(result["units"], "meter")
         self.assertEqual(result["label"], "distance")
         final_type = u(initial_type, units="millimeter")
-        result = parse_metadata(final_type)
+        result = parse_metadata(final_type).to_dictionary()
         self.assertEqual(result["units"], "millimeter")
         self.assertEqual(result["label"], "distance")
 
