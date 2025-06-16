@@ -337,14 +337,7 @@ def _detect_io_variables_from_control_flow(
 
 
 def _extract_control_flows(graph: nx.DiGraph) -> list[str]:
-    return list(
-        set(
-            [
-                _get_control_flow(edge[2])
-                for edge in graph.edges.data()
-            ]
-        )
-    )
+    return list(set([_get_control_flow(edge[2]) for edge in graph.edges.data()]))
 
 
 def _split_graphs_into_subgraphs(graph: nx.DiGraph) -> dict[str, nx.DiGraph]:
