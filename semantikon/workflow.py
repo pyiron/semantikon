@@ -19,7 +19,7 @@ from semantikon.converter import (
     parse_input_args,
     parse_output_args,
 )
-from semantikon.dataclasses import (
+from semantikon.datastructure import (
     MISSING,
     CoreMetadata,
     Edges,

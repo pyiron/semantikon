@@ -3,8 +3,8 @@ import unittest
 
 import networkx as nx
 
-import semantikon.dataclasses as sdc
 import semantikon.workflow as swf
+from semantikon import datastructure
 from semantikon.converter import parse_input_args
 from semantikon.metadata import u
 from semantikon.workflow import (
@@ -648,7 +648,7 @@ class TestWorkflow(unittest.TestCase):
             self.assertIsInstance(node.inputs, swf.Inputs)
             self.assertIsInstance(node.outputs, swf.Outputs)
             self.assertIsInstance(node.metadata, swf.CoreMetadata)
-            self.assertEqual(node.type, sdc.Function.__name__)
+            self.assertEqual(node.type, datastructure.Function.__name__)
             self.assertEqual(node.label, complex_function.__name__)
             self.assertEqual(node.metadata.uri, "some URI")
 
@@ -656,21 +656,23 @@ class TestWorkflow(unittest.TestCase):
             self.assertIsInstance(node.inputs.x, swf.Input)
             self.assertIs(node.inputs.x.dtype, float)
             self.assertAlmostEqual(node.inputs.x.default, 2.0)
-            self.assertIsInstance(node.inputs.x.metadata, sdc.TypeMetadata)
+            self.assertIsInstance(node.inputs.x.metadata, datastructure.TypeMetadata)
             self.assertEqual(node.inputs.x.metadata.units, "meter")
             self.assertIs(node.inputs.y.dtype, float)
             self.assertAlmostEqual(node.inputs.y.default, 1.0)
-            self.assertIsInstance(node.inputs.y.metadata, sdc.TypeMetadata)
+            self.assertIsInstance(node.inputs.y.metadata, datastructure.TypeMetadata)
             self.assertEqual(node.inputs.y.metadata.units, "second")
             self.assertEqual(node.inputs.y.metadata.extra["something_extra"], 42)
 
         with self.subTest("Output parsing"):
             self.assertIsInstance(node.outputs.x, swf.Output)
             self.assertIs(node.outputs.x.dtype, float)
-            self.assertIsInstance(node.outputs.x.metadata, sdc.TypeMetadata)
+            self.assertIsInstance(node.outputs.x.metadata, datastructure.TypeMetadata)
             self.assertEqual(node.outputs.x.metadata.units, "meter")
             self.assertIs(node.outputs.speed.dtype, float)
-            self.assertIsInstance(node.outputs.speed.metadata, sdc.TypeMetadata)
+            self.assertIsInstance(
+                node.outputs.speed.metadata, datastructure.TypeMetadata
+            )
             self.assertEqual(node.outputs.speed.metadata.units, "meter/second")
             self.assertEqual(node.outputs.speed.metadata.uri, "VELOCITY")
             self.assertIs(node.outputs.output_2.dtype, float)
@@ -681,11 +683,11 @@ class TestWorkflow(unittest.TestCase):
             self.assertIsInstance(node, swf.Workflow)
             self.assertIsInstance(node.inputs, swf.Inputs)
             self.assertAlmostEqual(node.inputs.x.default, 2.0)
-            self.assertIsInstance(node.inputs.x.metadata, sdc.TypeMetadata)
+            self.assertIsInstance(node.inputs.x.metadata, datastructure.TypeMetadata)
             self.assertEqual(node.inputs.x.metadata.units, "meter")
             self.assertIsInstance(node.outputs, swf.Outputs)
             self.assertIsInstance(node.metadata, swf.CoreMetadata)
-            self.assertEqual(node.type, sdc.Workflow.__name__)
+            self.assertEqual(node.type, datastructure.Workflow.__name__)
             self.assertEqual(node.label, complex_macro.__name__)
             self.assertEqual(node.metadata.uri, "some other URI")
 
@@ -709,11 +711,11 @@ class TestWorkflow(unittest.TestCase):
             self.assertIsInstance(node, swf.Workflow)
             self.assertIsInstance(node.inputs, swf.Inputs)
             self.assertAlmostEqual(node.inputs.x.default, 2.0)
-            self.assertIsInstance(node.inputs.x.metadata, sdc.TypeMetadata)
+            self.assertIsInstance(node.inputs.x.metadata, datastructure.TypeMetadata)
             self.assertEqual(node.inputs.x.metadata.units, "meter")
             self.assertIsInstance(node.outputs, swf.Outputs)
             self.assertIsInstance(node.metadata, swf.CoreMetadata)
-            self.assertEqual(node.type, sdc.Workflow.__name__)
+            self.assertEqual(node.type, datastructure.Workflow.__name__)
             self.assertEqual(node.label, complex_workflow.__name__)
             self.assertTupleEqual(node.metadata.triples, ("a", "b", "c"))
 

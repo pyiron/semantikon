@@ -3,16 +3,16 @@ import unittest
 
 import typeguard
 
-import semantikon.dataclasses as sdc
+from semantikon import datastructure
 
 
 @dataclasses.dataclass
-class ConcreteDC(sdc._VariadicDataclass):
+class ConcreteDC(datastructure._VariadicDataclass):
     complex_field: set[str]
-    optional_field: int | sdc.Missing = sdc.missing()
+    optional_field: int | datastructure.Missing = datastructure.missing()
 
 
-class ConcreteHtDM(sdc._HasToDictionarMapping[int]): ...
+class ConcreteHtDM(datastructure._HasToDictionarMapping[int]): ...
 
 
 class TestDataclasses(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestDataclasses(unittest.TestCase):
     def test_missing(self):
         self.assertIs(
             self.dc.optional_field,
-            sdc.MISSING,
+            datastructure.MISSING,
             msg="Dataclass field should hold full data object, even missing objects",
         )
         self.assertNotIn(
@@ -47,8 +47,10 @@ class TestDataclasses(unittest.TestCase):
         )
 
     def test_iter(self):
-        self.assertIsNot(self.dc.complex_field, sdc.MISSING, msg="Sanity check")
-        self.assertIs(self.dc.optional_field, sdc.MISSING, msg="Sanity check")
+        self.assertIsNot(
+            self.dc.complex_field, datastructure.MISSING, msg="Sanity check"
+        )
+        self.assertIs(self.dc.optional_field, datastructure.MISSING, msg="Sanity check")
         self.assertEqual(
             2, len(dataclasses.fields(self.dc)), msg="Make sure we tested them all"
         )
