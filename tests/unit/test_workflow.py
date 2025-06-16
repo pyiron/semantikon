@@ -624,6 +624,7 @@ class TestWorkflow(unittest.TestCase):
     def test_for_loop(self):
         data = get_workflow_dict(workflow_with_for)
         self.assertIn("injected_For_0", data["nodes"])
+        self.assertIn("iter", data["nodes"]["injected_For_0"])
 
 
 if __name__ == "__main__":
