@@ -625,6 +625,33 @@ class TestWorkflow(unittest.TestCase):
         data = get_workflow_dict(workflow_with_for)
         self.assertIn("injected_For_0", data["nodes"])
         self.assertIn("iter", data["nodes"]["injected_For_0"])
+        self.assertEqual(
+            sorted(data["edges"]),
+            sorted(
+                [
+                    ("inputs.a", "injected_For_0.inputs.a"),
+                    ("inputs.b", "injected_For_0.inputs.b"),
+                    ("inputs.a", "add_0.inputs.x"),
+                    ("inputs.b", "add_0.inputs.y"),
+                    ("add_0.outputs.output", "injected_For_0.inputs.x"),
+                    ("injected_For_0.outputs.z", "outputs.z"),
+                ]
+            ),
+        )
+        self.assertEqual(
+            sorted(data["nodes"]["injected_For_0"]["edges"]),
+            sorted(
+                [
+                    ("inputs.x", "iter.inputs.a"),
+                    ("inputs.b", "iter.inputs.b"),
+                    ("iter.outputs.output", "add_1.inputs.y"),
+                    ("inputs.a", "add_1.inputs.x"),
+                    ("inputs.a", "multiply_0.inputs.x"),
+                    ("add_1.outputs.output", "multiply_0.inputs.y"),
+                    ("multiply_0.outputs.output", "outputs.z"),
+                ]
+            ),
+        )
 
 
 if __name__ == "__main__":
