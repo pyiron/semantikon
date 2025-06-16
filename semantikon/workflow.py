@@ -272,12 +272,11 @@ def _get_variables_from_subgraph(graph: nx.DiGraph, io_: str) -> set[str]:
         set[str]: A set of variable names that match the specified I/O type and
             control flow.
     """
+    assert io_ in ["input", "output"], "io_ must be 'input' or 'output'"
     if io_ == "input":
         edge_ind = 0
     elif io_ == "output":
         edge_ind = 1
-    else:
-        raise ValueError(f"Invalid I/O type: {io_}. Expected 'input' or 'output'.")
     return set(
         [edge[edge_ind] for edge in graph.edges.data() if edge[2]["type"] == io_]
     )
