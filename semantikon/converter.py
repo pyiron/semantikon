@@ -162,7 +162,9 @@ def _to_tag(item: Any, count=None, must_be_named: bool = False) -> str:
         return item.id
     elif must_be_named:
         raise NotAstNameError(
-            "With `must_be_named=True`, item must be captured in an `ast.Name` variables."
+            "With `must_be_named=True`, item must be captured in an `ast.Name` "
+            "variables, i.e only simple variable(-s) not containing any operation or "
+            "other protected character can be returned."
         )
     elif count is None:
         return "output"
