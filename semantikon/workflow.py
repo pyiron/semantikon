@@ -146,16 +146,14 @@ class FunctionDictFlowAnalyzer:
         self._return_was_called = True
 
     def _handle_while(self, node, control_flow: str | None = None):
-        if node["test"]["_type"] != "Call":
-            raise NotImplementedError("Only function calls allowed in while test")
+        assert node["test"]["_type"] == "Call"
         control_flow = self._convert_control_flow(control_flow, tag="While")
         self._parse_function_call(node["test"], control_flow=f"{control_flow}-test")
         for node in node["body"]:
             self._visit_node(node, control_flow=f"{control_flow}-body")
 
     def _handle_for(self, node, control_flow: str | None = None):
-        if node["iter"]["_type"] != "Call":
-            raise NotImplementedError("Only function calls allowed in For loop")
+        assert node["iter"]["_type"] == "Call"
         control_flow = self._convert_control_flow(control_flow, tag="For")
 
         unique_func_name = self._parse_function_call(
