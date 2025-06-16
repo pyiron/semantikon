@@ -177,6 +177,18 @@ def multiple_nested_workflow(a=1, b=2, c=3):
     return f
 
 
+def my_for_loop(a=10, b=20):
+    return range(int(a), int(b))
+
+
+def workflow_with_for(a=10, b=20):
+    x = add(a, b)
+    for ii in my_for_loop(x, b):
+        x = add(a, ii)
+        z = multiply(a, x)
+    return z
+
+
 class TestWorkflow(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -608,6 +620,10 @@ class TestWorkflow(unittest.TestCase):
         self.assertIn(
             "injected_While_0_While_0", data["nodes"]["injected_While_0"]["nodes"]
         )
+
+    def test_for_loop(self):
+        data = get_workflow_dict(workflow_with_for)
+        # Test for loop
 
 
 if __name__ == "__main__":
