@@ -211,13 +211,12 @@ def get_return_expressions(
         and not strict
     ):
         return tuple([f"output_{i}" for i in range(len(ret_list[0]))])
-    else:
-        if strict:
-            raise NotAstNameError(
-                "With `strict=True`, all returns must be captured in independent "
-                "variables."
-            )
-        return "output"
+    elif strict:
+        raise NotAstNameError(
+            "With `strict=True`, all returns must be captured in independent "
+            "variables."
+        )
+    return "output"
 
 
 def get_return_labels(
