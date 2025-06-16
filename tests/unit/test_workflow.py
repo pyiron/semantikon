@@ -8,12 +8,15 @@ import semantikon.workflow as swf
 from semantikon.converter import parse_input_args
 from semantikon.metadata import u
 from semantikon.workflow import (
+    _detect_io_variables_from_control_flow,
     _extract_variables_from_ast_body,
     _function_to_ast_dict,
+    _get_control_flow_graph,
     _get_node_outputs,
     _get_output_counts,
     _get_sorted_edges,
     _get_workflow_outputs,
+    _split_graphs_into_subgraphs,
     analyze_function,
     ast_from_dict,
     find_parallel_execution_levels,
@@ -160,6 +163,54 @@ def workflow_with_leaf(x):
     return y
 
 
+def my_condition(X, Y):
+    return X + Y < 100
+
+
+def multiple_nested_workflow(a=1, b=2, c=3):
+    d = add(a, b)
+    e = multiply(b, c)
+    f = add(c, d)
+
+    while my_condition(d, e):
+        d = add(d, b)
+        e = multiply(e, c)
+
+        while my_condition(a, d):
+            a = add(a, c)
+            d = multiply(b, e)
+
+            while my_condition(c, f):
+                c = add(c, a)
+                f = multiply(f, b)
+
+        while my_condition(b, f):
+            b = add(b, b)
+            f = multiply(a, b)
+
+        while my_condition(c, e):
+            c = add(c, d)
+            e = multiply(e, c)
+
+    while my_condition(a, b):
+        a = add(a, c)
+        b = multiply(b, d)
+
+        while my_condition(d, f):
+            d = add(d, b)
+            f = multiply(f, a)
+
+        while my_condition(e, f):
+            e = add(e, a)
+            f = multiply(f, c)
+
+    while my_condition(f, f):
+        f = add(f, f)
+        f = multiply(f, f)
+
+    return f
+
+
 class TestWorkflow(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -177,6 +228,9 @@ class TestWorkflow(unittest.TestCase):
             ("add_0", "e_0", {"type": "output"}),
             ("e_0", "multiply_0", {"type": "input", "input_index": 0}),
             ("multiply_0", "f_0", {"type": "output"}),
+            ("f_0", "output", {"type": "input"}),
+            ("input", "a_0", {"type": "output"}),
+            ("input", "b_0", {"type": "output"}),
         ]
         self.maxDiff = None
         self.assertEqual(
@@ -439,32 +493,31 @@ class TestWorkflow(unittest.TestCase):
 
     def test_workflow_with_while(self):
         wf = workflow(workflow_with_while)._semantikon_workflow
-        self.assertIn("injected_while_loop_0", wf["nodes"])
+        self.assertIn("injected_While_0", wf["nodes"])
         self.assertEqual(
-            sorted(wf["nodes"]["injected_while_loop_0"]["inputs"].keys()),
+            sorted(wf["nodes"]["injected_While_0"]["inputs"].keys()),
             ["a", "b", "x"],
         )
         self.assertEqual(
-            sorted(wf["nodes"]["injected_while_loop_0"]["outputs"].keys()),
-            ["x", "z"],
+            sorted(wf["nodes"]["injected_While_0"]["outputs"].keys()),
+            ["z"],
         )
         self.assertEqual(
-            sorted(wf["nodes"]["injected_while_loop_0"]["edges"]),
+            sorted(wf["nodes"]["injected_While_0"]["edges"]),
             sorted(
                 [
                     ("inputs.x", "test.inputs.a"),
                     ("inputs.b", "test.inputs.b"),
-                    ("inputs.b", "add_0.inputs.y"),
-                    ("inputs.a", "add_0.inputs.x"),
+                    ("inputs.b", "add_1.inputs.y"),
+                    ("inputs.a", "add_1.inputs.x"),
                     ("inputs.a", "multiply_0.inputs.x"),
-                    ("add_0.outputs.output", "multiply_0.inputs.y"),
-                    ("add_0.outputs.output", "outputs.x"),
+                    ("add_1.outputs.output", "multiply_0.inputs.y"),
                     ("multiply_0.outputs.output", "outputs.z"),
                 ]
             ),
         )
-        self.assertIn("add_0", wf["nodes"]["injected_while_loop_0"]["nodes"])
-        self.assertIn("multiply_0", wf["nodes"]["injected_while_loop_0"]["nodes"])
+        self.assertIn("add_1", wf["nodes"]["injected_While_0"]["nodes"])
+        self.assertIn("multiply_0", wf["nodes"]["injected_While_0"]["nodes"])
 
     def test_reused_args(self):
         data = get_workflow_dict(reused_args)
@@ -705,6 +758,50 @@ class TestWorkflow(unittest.TestCase):
                     node_dictionary,
                     msg="Just an interim cyclicity test",
                 )
+
+    def test_detect_io_variables_from_control_flow(self):
+        graph = analyze_function(workflow_with_while)[0]
+        subgraphs = _split_graphs_into_subgraphs(graph)
+        io_vars = _detect_io_variables_from_control_flow(graph, subgraphs["While_0"])
+        self.assertEqual(
+            {key: sorted(value) for key, value in io_vars.items()},
+            {
+                "inputs": ["a_0", "b_0", "x_0"],
+                "outputs": ["z_0"],
+            },
+        )
+
+    def test_get_control_flow_graph(self):
+        control_flows = [
+            "",
+            "While_1/While_0",
+            "While_2",
+            "While_0",
+            "While_1",
+            "While_0/While_0/While_0",
+            "While_1/While_1",
+            "While_0/While_1",
+            "While_0/While_0",
+            "While_0/While_2",
+        ]
+        graph = _get_control_flow_graph(control_flows)
+        self.assertEqual(
+            sorted(list(graph.successors("While_0"))),
+            ["While_0/While_0", "While_0/While_1", "While_0/While_2"],
+        )
+        self.assertEqual(
+            sorted(list(graph.successors("While_1"))),
+            ["While_1/While_0", "While_1/While_1"],
+        )
+
+    def test_multiple_nested_workflow(self):
+        data = get_workflow_dict(multiple_nested_workflow)
+        self.assertIn("a", data["inputs"])
+        self.assertIn("f", data["outputs"])
+        self.assertIn("injected_While_0", data["nodes"])
+        self.assertIn(
+            "injected_While_0_While_0", data["nodes"]["injected_While_0"]["nodes"]
+        )
 
 
 if __name__ == "__main__":

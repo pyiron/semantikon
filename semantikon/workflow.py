@@ -120,89 +120,67 @@ def _hash_function(func):
     return f"{func.__name__}_{sha256(inspect.getsource(func).encode()).hexdigest()}"
 
 
-class InjectedLoop:
-    def __init__(self, semantikon_workflow):
-        self._semantikon_workflow = semantikon_workflow
-
-
 class FunctionDictFlowAnalyzer:
-    def __init__(self, ast_dict, scope, input_vars=None):
-        if input_vars is None:
-            input_vars = []
+    def __init__(self, ast_dict, scope):
         self.graph = nx.DiGraph()
         self.scope = scope  # mapping from function names to objects
         self.function_defs = {}
-        self._var_index = {input_var: 0 for input_var in input_vars}
+        self._var_index = {}
         self.ast_dict = ast_dict
         self._call_counter = {}
+        self._control_flow_list = []
+        self._return_was_called = False
 
     def analyze(self) -> tuple[nx.DiGraph, dict[str, Any]]:
         for arg in self.ast_dict.get("args", {}).get("args", []):
             if arg["_type"] == "arg":
-                self._var_index[arg["arg"]] = 0
-        if "test" in self.ast_dict:
-            self._parse_function_call(
-                self.ast_dict["test"],
-                func_name=self.ast_dict["test"]["func"]["id"],
-                unique_func_name="test",
-                f_type="While",
-            )
+                self._add_output_edge("input", arg["arg"])
         for node in self.ast_dict.get("body", []):
             self._visit_node(node)
         return self.graph, self.function_defs
 
-    def _visit_node(self, node):
+    def _visit_node(self, node, control_flow: str | None = None):
+        assert not self._return_was_called
         if node["_type"] == "Assign":
-            self._handle_assign(node)
+            self._handle_assign(node, control_flow=control_flow)
         elif node["_type"] == "Expr":
-            self._handle_expr(node)
+            self._handle_expr(node, control_flow=control_flow)
         elif node["_type"] == "While":
-            self._handle_while(node)
+            self._handle_while(node, control_flow=control_flow)
         elif node["_type"] == "For":
-            self._handle_for(node)
+            self._handle_for(node, control_flow=control_flow)
+        elif node["_type"] == "Return":
+            self._handle_return(node, control_flow=control_flow)
 
-    def _handle_while(self, node):
+    def _handle_return(self, node, control_flow: str | None = None):
+        if not node["value"]:
+            return
+        if node["value"]["_type"] == "Tuple":
+            for idx, elt in enumerate(node["value"]["elts"]):
+                if elt["_type"] != "Name":
+                    raise NotImplementedError("Only variable returns supported")
+                self._add_input_edge(elt, "output", input_index=idx)
+        elif node["value"]["_type"] == "Name":
+            self._add_input_edge(node["value"], "output")
+        self._return_was_called = True
+
+    def _handle_while(self, node, control_flow: str | None = None):
         if node["test"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
-        func = self.scope[node["test"]["func"]["id"]]
-        while_dict = {
-            "test": _to_node_dict_entry(
-                func, parse_input_args(func), _get_node_outputs(func, 1)
-            )
-        }
-        output_vars, input_vars = _extract_variables_from_ast_body(node)
-        graph, f_dict = FunctionDictFlowAnalyzer(
-            node, self.scope, input_vars=input_vars
-        ).analyze()
-        output_counts = _get_output_counts(graph)
-        nodes = _get_nodes(f_dict, output_counts)
-        edges = _get_edges(graph, f_dict, output_vars, nodes)
-        unique_func_name = self._get_unique_func_name("injected_while_loop")
-        while_dict.update(
-            _to_workflow_dict_entry(
-                inputs={key: {} for key in input_vars},
-                outputs={key: {} for key in output_vars},
-                nodes=nodes,
-                edges=edges,
-                label=unique_func_name,
-            )
-        )
-        self.function_defs[unique_func_name] = {
-            "function": InjectedLoop(while_dict),
-            "type": "Assign",
-        }
+        control_flow = self._convert_control_flow(control_flow, tag="While")
+        self._parse_function_call(node["test"], control_flow=f"{control_flow}-test")
+        for node in node["body"]:
+            self._visit_node(node, control_flow=f"{control_flow}-body")
 
-    def _handle_for(self, node):
+    def _handle_for(self, node, control_flow: str | None = None):
         if node["iter"]["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed in while test")
 
-    def _handle_expr(self, node):
+    def _handle_expr(self, node, control_flow: str | None = None):
         value = node["value"]
-        return self._parse_function_call(value)
+        return self._parse_function_call(value, control_flow=control_flow)
 
-    def _parse_function_call(
-        self, value, func_name=None, unique_func_name=None, f_type="Assign"
-    ):
+    def _parse_function_call(self, value, control_flow: str | None = None):
         if value["_type"] != "Call":
             raise NotImplementedError("Only function calls allowed on RHS")
 
@@ -210,49 +188,71 @@ class FunctionDictFlowAnalyzer:
         if func_node["_type"] != "Name":
             raise NotImplementedError("Only simple functions allowed")
 
-        if func_name is None:
-            func_name = func_node["id"]
-        if unique_func_name is None:
-            unique_func_name = self._get_unique_func_name(func_name)
+        func_name = func_node["id"]
+        unique_func_name = self._get_unique_func_name(func_name)
 
         if func_name not in self.scope:
             raise ValueError(f"Function {func_name} not found in scope")
 
-        self.function_defs[unique_func_name] = {
-            "function": self.scope[func_name],
-            "type": f_type,
-        }
+        self.function_defs[unique_func_name] = {"function": self.scope[func_name]}
+        if control_flow is not None:
+            self.function_defs[unique_func_name]["control_flow"] = control_flow
 
         # Parse inputs (positional + keyword)
         for i, arg in enumerate(value.get("args", [])):
-            self._add_input_edge(arg, unique_func_name, input_index=i)
+            self._add_input_edge(
+                arg, unique_func_name, input_index=i, control_flow=control_flow
+            )
         for kw in value.get("keywords", []):
-            self._add_input_edge(kw["value"], unique_func_name, input_name=kw["arg"])
+            self._add_input_edge(
+                kw["value"],
+                unique_func_name,
+                input_name=kw["arg"],
+                control_flow=control_flow,
+            )
         return unique_func_name
 
-    def _handle_assign(self, node):
-        unique_func_name = self._handle_expr(node)
+    def _handle_assign(self, node, control_flow: str | None = None):
+        unique_func_name = self._handle_expr(node, control_flow=control_flow)
         # Parse outputs
-        self._parse_outputs(node["targets"], unique_func_name)
+        self._parse_outputs(
+            node["targets"], unique_func_name, control_flow=control_flow
+        )
 
-    def _parse_outputs(self, targets, unique_func_name):
+    def _parse_outputs(
+        self, targets, unique_func_name, control_flow: str | None = None
+    ):
         if len(targets) == 1 and targets[0]["_type"] == "Tuple":
             for idx, elt in enumerate(targets[0]["elts"]):
-                self._add_output_edge(unique_func_name, elt, output_index=idx)
+                self._add_output_edge(
+                    unique_func_name,
+                    elt["id"],
+                    output_index=idx,
+                    control_flow=control_flow,
+                )
         else:
             for target in targets:
-                self._add_output_edge(unique_func_name, target)
+                self._add_output_edge(
+                    unique_func_name, target["id"], control_flow=control_flow
+                )
 
-    def _add_output_edge(self, source, target, **kwargs):
-        var_name = target["id"]
-        self._var_index[var_name] = self._var_index.get(var_name, -1) + 1
-        versioned = f"{var_name}_{self._var_index[var_name]}"
+    def _add_output_edge(
+        self, source, target, control_flow: str | None = None, **kwargs
+    ):
+        self._var_index[target] = self._var_index.get(target, -1) + 1
+        versioned = f"{target}_{self._var_index[target]}"
+        if control_flow is not None:
+            kwargs["control_flow"] = control_flow
         self.graph.add_edge(source, versioned, type="output", **kwargs)
 
-    def _add_input_edge(self, source, target, **kwargs):
+    def _add_input_edge(
+        self, source, target, control_flow: str | None = None, **kwargs
+    ):
         if source["_type"] != "Name":
             raise NotImplementedError(f"Only variable inputs supported, got: {source}")
         var_name = source["id"]
+        if control_flow is not None:
+            kwargs["control_flow"] = control_flow
         if var_name not in self._var_index:
             raise ValueError(f"Variable {var_name} not found in scope")
         idx = self._var_index[var_name]
@@ -263,6 +263,160 @@ class FunctionDictFlowAnalyzer:
         i = self._call_counter.get(base_name, 0)
         self._call_counter[base_name] = i + 1
         return f"{base_name}_{i}"
+
+    def _convert_control_flow(self, control_flow: str | None, tag: str) -> str:
+        if control_flow is None:
+            control_flow = ""
+        else:
+            control_flow = f"{control_flow.split('-')[0]}/"
+        counter = 0
+        while True:
+            if f"{control_flow}{tag}_{counter}" not in self._control_flow_list:
+                self._control_flow_list.append(f"{control_flow}{tag}_{counter}")
+                break
+            counter += 1
+        return f"{control_flow}{tag}_{counter}"
+
+
+def _get_variables_from_subgraph(graph: nx.DiGraph, io_: str) -> set[str]:
+    """
+    Get variables from a subgraph based on the type of I/O and control flow.
+
+    Args:
+        graph (nx.DiGraph): The directed graph representing the function.
+        io_ (str): The type of I/O to filter by ("input" or "output").
+        control_flow (list, str): A list of control flow types to filter by.
+
+    Returns:
+        set[str]: A set of variable names that match the specified I/O type and
+            control flow.
+    """
+    assert io_ in ["input", "output"], "io_ must be 'input' or 'output'"
+    if io_ == "input":
+        edge_ind = 0
+    elif io_ == "output":
+        edge_ind = 1
+    return set(
+        [edge[edge_ind] for edge in graph.edges.data() if edge[2]["type"] == io_]
+    )
+
+
+def _get_parent_graph(graph: nx.DiGraph, control_flow: str) -> nx.DiGraph:
+    return nx.DiGraph(
+        [
+            edge
+            for edge in graph.edges.data()
+            if not _get_control_flow(edge[2]).startswith(control_flow)
+        ]
+    )
+
+
+def _detect_io_variables_from_control_flow(
+    graph: nx.DiGraph, subgraph: nx.DiGraph
+) -> dict[str, list]:
+    """
+    Detect input and output variables from a graph based on control flow.
+
+    Args:
+        graph (nx.DiGraph): The directed graph representing the function.
+
+    Returns:
+        dict[str, set]: A dictionary with keys "input" and "output", each
+            containing a set
+
+    Take a look at the unit tests for examples of how to use this function.
+    """
+    sg_body = nx.DiGraph(
+        [
+            edge
+            for edge in subgraph.edges.data()
+            if edge[0] != "input" and edge[1] != "output"
+        ]
+    )
+    cf = sorted(
+        [
+            _get_control_flow(edge[2])
+            for edge in sg_body.edges.data()
+            if "control_flow" in edge[2]
+        ]
+    )
+    if len(cf) == 0:
+        return {"inputs": [], "outputs": []}
+    assert all([cf[ii + 1].startswith(cf[ii]) for ii in range(len(cf) - 1)])
+    parent_graph = _get_parent_graph(graph, cf[0])
+    var_inp_1 = _get_variables_from_subgraph(graph=sg_body, io_="input")
+    var_inp_2 = _get_variables_from_subgraph(graph=parent_graph, io_="output")
+    var_out_1 = _get_variables_from_subgraph(graph=parent_graph, io_="input")
+    var_out_2 = _get_variables_from_subgraph(graph=sg_body, io_="output")
+    return {
+        "inputs": list(var_inp_1.intersection(var_inp_2)),
+        "outputs": list(var_out_1.intersection(var_out_2)),
+    }
+
+
+def _extract_control_flows(graph: nx.DiGraph) -> list[str]:
+    return list(set([_get_control_flow(edge[2]) for edge in graph.edges.data()]))
+
+
+def _split_graphs_into_subgraphs(graph: nx.DiGraph) -> dict[str, nx.DiGraph]:
+    return {
+        control_flow: nx.DiGraph(
+            [
+                edge
+                for edge in graph.edges.data()
+                if _get_control_flow(edge[2]) == control_flow
+            ]
+        )
+        for control_flow in _extract_control_flows(graph)
+    }
+
+
+def _get_subgraphs(graph: nx.DiGraph, cf_graph: nx.DiGraph) -> dict[str, nx.DiGraph]:
+    subgraphs = _split_graphs_into_subgraphs(graph)
+    for key in list(topological_sort(cf_graph))[::-1]:
+        subgraph = subgraphs[key]
+        node_name = "injected_" + key.replace("/", "_")
+        io_ = _detect_io_variables_from_control_flow(graph, subgraph)
+        for parent_graph_name in cf_graph.predecessors(key):
+            parent_graph = subgraphs[parent_graph_name]
+            for inp in io_["inputs"]:
+                parent_graph.add_edge(
+                    inp, node_name, type="input", input_name=_remove_index(inp)
+                )
+            for out in io_["outputs"]:
+                parent_graph.add_edge(
+                    node_name, out, type="output", output_name=_remove_index(out)
+                )
+        for inp in io_["inputs"]:
+            subgraph.add_edge("input", inp, type="output")
+        for out in io_["outputs"]:
+            subgraph.add_edge(out, "output", type="input")
+    return subgraphs
+
+
+def _extract_functions_from_graph(graph: nx.DiGraph) -> set:
+    function_names = []
+    for edge in graph.edges.data():
+        if edge[2]["type"] == "output" and edge[0] != "input":
+            function_names.append(edge[0])
+        elif edge[2]["type"] == "input" and edge[1] != "output":
+            function_names.append(edge[1])
+    return set(function_names)
+
+
+def _get_control_flow_graph(control_flows: list[str]) -> nx.DiGraph:
+    cf_list = []
+    for cf in control_flows:
+        if cf == "":
+            continue
+        if "/" in cf:
+            cf_list.append(["/".join(cf.split("/")[:-1]), cf])
+        else:
+            cf_list.append(["", cf])
+    graph = nx.DiGraph(cf_list)
+    if len(graph) == 0:
+        graph.add_node("")
+    return graph
 
 
 def get_ast_dict(func: Callable) -> dict:
@@ -327,14 +481,18 @@ def _get_output_counts(graph: nx.DiGraph) -> dict[str, int]:
         if edge[2]["type"] != "output":
             continue
         f_dict[edge[0]] = f_dict.get(edge[0], 0) + 1
+    if "input" in f_dict:
+        del f_dict["input"]
     return f_dict
 
 
-def _get_nodes(data: dict[str, dict], output_counts: dict[str, int]) -> dict[str, dict]:
+def _get_nodes(
+    data: dict[str, dict],
+    output_counts: dict[str, int],
+    control_flow: None | str = None,
+) -> dict[str, dict]:
     result = {}
     for label, function in data.items():
-        if function["type"] != "Assign":
-            continue
         func = function["function"]
         if hasattr(func, "_semantikon_workflow"):
             data_dict = func._semantikon_workflow.copy()
@@ -346,13 +504,17 @@ def _get_nodes(data: dict[str, dict], output_counts: dict[str, int]) -> dict[str
             result[label] = _to_node_dict_entry(
                 func,
                 parse_input_args(func),
-                _get_node_outputs(func, output_counts.get(label, 0)),
+                _get_node_outputs(func, output_counts.get(label, 1)),
             )
     return result
 
 
-def _remove_index(s):
+def _remove_index(s: str) -> str:
     return "_".join(s.split("_")[:-1])
+
+
+def _get_control_flow(data: dict[str, Any], remove_channel: bool = True) -> str:
+    return data.get("control_flow", "").split("-")[0]
 
 
 def _get_sorted_edges(graph: nx.DiGraph) -> list:
@@ -380,56 +542,56 @@ def _get_sorted_edges(graph: nx.DiGraph) -> list:
     return sorted(graph.edges.data(), key=lambda edge: node_order[edge[0]])
 
 
-def _get_edges(graph, functions, output_labels, nodes):
-    input_dict = {}
-    for name, func in functions.items():
-        f = func["function"]
-        if hasattr(f, "_semantikon_workflow"):
-            input_dict[name] = list(f._semantikon_workflow["inputs"].keys())
-        else:
-            input_dict[name] = list(parse_input_args(f).keys())
+def _remove_and_reconnect_nodes(
+    G: nx.DiGraph, nodes_to_remove: list[str]
+) -> nx.DiGraph:
+    for node in set(nodes_to_remove):
+        preds = list(G.predecessors(node))
+        succs = list(G.successors(node))
+        for u in preds:
+            for v in succs:
+                G.add_edge(u, v)
+        G.remove_node(node)
+    return G
+
+
+def _get_edges(graph: nx.DiGraph, nodes: dict[str, dict]) -> list[tuple[str, str]]:
+    io_dict = {
+        key: {
+            "input": list(data["inputs"].keys()),
+            "output": list(data["outputs"].keys()),
+        }
+        for key, data in nodes.items()
+    }
     edges = []
-    output_dict = {}
-    output_candidate = {}
-    for edge in _get_sorted_edges(graph):
-        if edge[2]["type"] == "output":
-            if hasattr(functions[edge[0]]["function"], "_semantikon_workflow"):
-                keys = list(
-                    functions[edge[0]]["function"]
-                    ._semantikon_workflow["outputs"]
-                    .keys()
-                )
-                output_key = keys[0]
-                if "output_index" in edge[2]:
-                    output_key = keys[edge[2]["output_index"]]
-            elif "output_index" in edge[2]:
-                output_key = list(nodes[edge[0]]["outputs"].keys())[
-                    edge[2]["output_index"]
-                ]
-            else:
-                output_key = list(nodes[edge[0]]["outputs"].keys())[0]
-            tag = f"{edge[0]}.outputs.{output_key}"
-            if _remove_index(edge[1]) in output_labels:
-                output_candidate[_remove_index(edge[1])] = (
-                    tag,
-                    f"outputs.{_remove_index(edge[1])}",
-                )
-            output_dict[edge[1]] = tag
-        else:
-            if edge[0] not in output_dict:
-                source = f"inputs.{_remove_index(edge[0])}"
-            else:
-                source = output_dict[edge[0]]
+    nodes_to_remove = []
+    for edge in graph.edges.data():
+        if edge[0] == "input":
+            edges.append([edge[0] + "s." + _remove_index(edge[1]), edge[1]])
+            nodes_to_remove.append(edge[1])
+        elif edge[1] == "output":
+            edges.append([edge[0], edge[1] + "s." + _remove_index(edge[0])])
+            nodes_to_remove.append(edge[0])
+        elif edge[2]["type"] == "input":
             if "input_name" in edge[2]:
-                target = f"{edge[1]}.inputs.{edge[2]['input_name']}"
+                tag = edge[2]["input_name"]
             elif "input_index" in edge[2]:
-                target = (
-                    f"{edge[1]}.inputs.{input_dict[edge[1]][edge[2]['input_index']]}"
-                )
-            edges.append((source, target))
-    for edge in output_candidate.values():
-        edges.append(edge)
-    return edges
+                tag = io_dict[edge[1]]["input"][edge[2]["input_index"]]
+            else:
+                raise ValueError
+            edges.append([edge[0], edge[1] + ".inputs." + tag])
+            nodes_to_remove.append(edge[0])
+        elif edge[2]["type"] == "output":
+            if "output_index" in edge[2]:
+                tag = io_dict[edge[0]]["output"][edge[2]["output_index"]]
+            elif "output_name" in edge[2]:
+                tag = edge[2]["output_name"]
+            else:
+                tag = io_dict[edge[0]]["output"][0]
+            edges.append([edge[0] + ".outputs." + tag, edge[1]])
+            nodes_to_remove.append(edge[1])
+    new_graph = _remove_and_reconnect_nodes(nx.DiGraph(edges), nodes_to_remove)
+    return list(new_graph.edges)
 
 
 def _dtype_to_str(dtype):
@@ -598,14 +760,46 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
             outputs, nodes, edges, and label.
     """
     graph, f_dict = analyze_function(func)
-    output_counts = _get_output_counts(graph)
-    output_labels = list(_get_workflow_outputs(func).keys())
-    nodes = _get_nodes(f_dict, output_counts)
+    nodes = _get_nodes(f_dict, _get_output_counts(graph))
+    test_dict = {
+        key: "test"
+        for key, value in f_dict.items()
+        if value.get("control_flow", "").endswith("test")
+    }
+    cf_graph = _get_control_flow_graph(_extract_control_flows(graph))
+    subgraphs = _get_subgraphs(graph, cf_graph)
+    injected_nodes: dict[str, Any] = {}
+    for cf_key in list(topological_sort(cf_graph))[::-1]:
+        subgraph = nx.relabel_nodes(subgraphs[cf_key], test_dict)
+        if len(cf_key) > 0:
+            new_key = "injected_" + cf_key.replace("/", "_")
+        else:
+            new_key = cf_key
+        current_nodes = {}
+        for key in _extract_functions_from_graph(subgraphs[cf_key]):
+            if key in test_dict:
+                current_nodes["test"] = nodes[key]
+            elif key in nodes:
+                current_nodes[key] = nodes[key]
+            else:
+                current_nodes[key] = injected_nodes.pop(key)
+        io_ = _detect_io_variables_from_control_flow(graph, subgraph)
+        injected_nodes[new_key] = {
+            "nodes": current_nodes,
+            "edges": _get_edges(subgraph, current_nodes),
+            "label": new_key,
+            "inputs": {_remove_index(key): {} for key in io_["inputs"]},
+            "outputs": {_remove_index(key): {} for key in io_["outputs"]},
+        }
+        if "test" in injected_nodes[new_key]["nodes"]:
+            injected_nodes[new_key]["test"] = injected_nodes[new_key]["nodes"].pop(
+                "test"
+            )
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),
-        nodes=nodes,
-        edges=_get_edges(graph, f_dict, output_labels, nodes),
+        nodes=injected_nodes[""]["nodes"],
+        edges=injected_nodes[""]["edges"],
         label=func.__name__,
     )
 
@@ -780,7 +974,8 @@ def find_parallel_execution_levels(G: nx.DiGraph) -> list[list[str]]:
 
     while queue:
         current_level = list(queue)
-        levels.append(current_level)
+        if "input" not in current_level and "output" not in current_level:
+            levels.append(current_level)
 
         next_queue: deque = deque()
         for node in current_level:

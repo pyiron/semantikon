@@ -58,6 +58,9 @@ include = [ "semantikon*",]
 [tool.setuptools.dynamic.version]
 attr = "semantikon.__version__"
 
+[tool.setuptools.package-data]
+semantikon = ["data/qudt.ttl"]
+
 [tool.mypy]
 exclude = [
     "^docs/conf\\.py$",
