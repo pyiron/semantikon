@@ -288,10 +288,7 @@ def _get_parent_graph(graph: nx.DiGraph, control_flow: str) -> nx.DiGraph:
         [
             edge
             for edge in graph.edges.data()
-            if not edge[2]
-            .get("control_flow", "")
-            .split("-")[0]
-            .startswith(control_flow)
+            if not _get_control_flow(edge[2]).startswith(control_flow)
         ]
     )
 
@@ -320,7 +317,7 @@ def _detect_io_variables_from_control_flow(
     )
     cf = sorted(
         [
-            edge[2]["control_flow"].split("-")[0]
+            _get_control_flow(edge[2])
             for edge in sg_body.edges.data()
             if "control_flow" in edge[2]
         ]
@@ -343,7 +340,7 @@ def _extract_control_flows(graph: nx.DiGraph) -> list[str]:
     return list(
         set(
             [
-                edge[2].get("control_flow", "").split("-")[0]
+                _get_control_flow(edge[2])
                 for edge in graph.edges.data()
             ]
         )
@@ -356,7 +353,7 @@ def _split_graphs_into_subgraphs(graph: nx.DiGraph) -> dict[str, nx.DiGraph]:
             [
                 edge
                 for edge in graph.edges.data()
-                if edge[2].get("control_flow", "").split("-")[0] == control_flow
+                if _get_control_flow(edge[2]) == control_flow
             ]
         )
         for control_flow in _extract_control_flows(graph)
@@ -505,6 +502,10 @@ def _remove_index(s: str) -> str:
     return "_".join(s.split("_")[:-1])
 
 
+def _get_control_flow(data: dict[str, Any], remove_channel: bool = True) -> str:
+    return data.get("control_flow", "").split("-")[0]
+
+
 def _get_sorted_edges(graph: nx.DiGraph) -> list:
     """
     Sort the edges of the graph based on the topological order of the nodes.
@@ -555,10 +556,10 @@ def _get_edges(graph: nx.DiGraph, nodes: dict[str, dict]) -> list[tuple[str, str
     nodes_to_remove = []
     for edge in graph.edges.data():
         if edge[0] == "input":
-            edges.append([edge[0] + "s." + edge[1].split("_")[0], edge[1]])
+            edges.append([edge[0] + "s." + _remove_index(edge[1]), edge[1]])
             nodes_to_remove.append(edge[1])
         elif edge[1] == "output":
-            edges.append([edge[0], edge[1] + "s." + edge[0].split("_")[0]])
+            edges.append([edge[0], edge[1] + "s." + _remove_index(edge[0])])
             nodes_to_remove.append(edge[0])
         elif edge[2]["type"] == "input":
             if "input_name" in edge[2]:
