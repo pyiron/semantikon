@@ -166,24 +166,35 @@ class FunctionDictFlowAnalyzer:
         self._return_was_called = True
 
     def _handle_while(self, node, control_flow: str | None = None):
-        if node["test"]["_type"] != "Call":
-            raise NotImplementedError("Only function calls allowed in while test")
+        assert node["test"]["_type"] == "Call"
         control_flow = self._convert_control_flow(control_flow, tag="While")
         self._parse_function_call(node["test"], control_flow=f"{control_flow}-test")
         for node in node["body"]:
             self._visit_node(node, control_flow=f"{control_flow}-body")
 
     def _handle_for(self, node, control_flow: str | None = None):
-        if node["iter"]["_type"] != "Call":
-            raise NotImplementedError("Only function calls allowed in while test")
+        assert node["iter"]["_type"] == "Call"
+        control_flow = self._convert_control_flow(control_flow, tag="For")
 
-    def _handle_expr(self, node, control_flow: str | None = None):
+        unique_func_name = self._parse_function_call(
+            node["iter"], control_flow=f"{control_flow}-iter"
+        )
+        # Parse outputs
+        self._add_output_edge(
+            unique_func_name, node["target"]["id"], control_flow=control_flow
+        )
+        for node in node["body"]:
+            self._visit_node(node, control_flow=f"{control_flow}-body")
+
+    def _handle_expr(self, node, control_flow: str | None = None) -> str:
         value = node["value"]
         return self._parse_function_call(value, control_flow=control_flow)
 
-    def _parse_function_call(self, value, control_flow: str | None = None):
+    def _parse_function_call(self, value, control_flow: str | None = None) -> str:
         if value["_type"] != "Call":
-            raise NotImplementedError("Only function calls allowed on RHS")
+            raise NotImplementedError(
+                f"Only function calls allowed on RHS: {value['_type']}"
+            )
 
         func_node = value["func"]
         if func_node["_type"] != "Name":
@@ -768,9 +779,10 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
     graph, f_dict = analyze_function(func)
     nodes = _get_nodes(f_dict, _get_output_counts(graph))
     test_dict = {
-        key: "test"
+        key: tag
         for key, value in f_dict.items()
-        if value.get("control_flow", "").endswith("test")
+        for tag in ["test", "iter"]
+        if value.get("control_flow", "").endswith(tag)
     }
     cf_graph = _get_control_flow_graph(_extract_control_flows(graph))
     subgraphs = _get_subgraphs(graph, cf_graph)
@@ -784,7 +796,7 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
         current_nodes = {}
         for key in _extract_functions_from_graph(subgraphs[cf_key]):
             if key in test_dict:
-                current_nodes["test"] = nodes[key]
+                current_nodes[test_dict[key]] = nodes[key]
             elif key in nodes:
                 current_nodes[key] = nodes[key]
             else:
@@ -797,10 +809,9 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
             "inputs": {_remove_index(key): {} for key in io_["inputs"]},
             "outputs": {_remove_index(key): {} for key in io_["outputs"]},
         }
-        if "test" in injected_nodes[new_key]["nodes"]:
-            injected_nodes[new_key]["test"] = injected_nodes[new_key]["nodes"].pop(
-                "test"
-            )
+        for tag in ["test", "iter"]:
+            if tag in injected_nodes[new_key]["nodes"]:
+                injected_nodes[new_key][tag] = injected_nodes[new_key]["nodes"].pop(tag)
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),

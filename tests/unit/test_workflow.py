@@ -150,6 +150,10 @@ def my_condition(X, Y):
     return X + Y < 100
 
 
+def my_for_loop(a=10, b=20):
+    return range(int(a), int(b))
+
+
 def multiple_nested_workflow(a=1, b=2, c=3):
     d = add(a, b)
     e = multiply(b, c)
@@ -159,8 +163,8 @@ def multiple_nested_workflow(a=1, b=2, c=3):
         d = add(d, b)
         e = multiply(e, c)
 
-        while my_condition(a, d):
-            a = add(a, c)
+        for ii in my_for_loop(a, d):
+            a = add(a, ii)
             d = multiply(b, e)
 
             while my_condition(c, f):
@@ -192,6 +196,14 @@ def multiple_nested_workflow(a=1, b=2, c=3):
         f = multiply(f, f)
 
     return f
+
+
+def workflow_with_for(a=10, b=20):
+    x = add(a, b)
+    for ii in my_for_loop(x, b):
+        x = add(a, ii)
+        z = multiply(a, x)
+    return z
 
 
 class TestWorkflow(unittest.TestCase):
@@ -800,6 +812,41 @@ class TestWorkflow(unittest.TestCase):
         self.assertIn("injected_While_0", data["nodes"])
         self.assertIn(
             "injected_While_0_While_0", data["nodes"]["injected_While_0"]["nodes"]
+        )
+        self.assertIn(
+            "injected_While_0_For_0", data["nodes"]["injected_While_0"]["nodes"]
+        )
+
+    def test_for_loop(self):
+        data = get_workflow_dict(workflow_with_for)
+        self.assertIn("injected_For_0", data["nodes"])
+        self.assertIn("iter", data["nodes"]["injected_For_0"])
+        self.assertEqual(
+            sorted(data["edges"]),
+            sorted(
+                [
+                    ("inputs.a", "injected_For_0.inputs.a"),
+                    ("inputs.b", "injected_For_0.inputs.b"),
+                    ("inputs.a", "add_0.inputs.x"),
+                    ("inputs.b", "add_0.inputs.y"),
+                    ("add_0.outputs.output", "injected_For_0.inputs.x"),
+                    ("injected_For_0.outputs.z", "outputs.z"),
+                ]
+            ),
+        )
+        self.assertEqual(
+            sorted(data["nodes"]["injected_For_0"]["edges"]),
+            sorted(
+                [
+                    ("inputs.x", "iter.inputs.a"),
+                    ("inputs.b", "iter.inputs.b"),
+                    ("iter.outputs.output", "add_1.inputs.y"),
+                    ("inputs.a", "add_1.inputs.x"),
+                    ("inputs.a", "multiply_0.inputs.x"),
+                    ("add_1.outputs.output", "multiply_0.inputs.y"),
+                    ("multiply_0.outputs.output", "outputs.z"),
+                ]
+            ),
         )
 
     def test_multiple_output_to_single_raise_error(self):
