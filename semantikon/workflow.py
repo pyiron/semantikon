@@ -150,6 +150,8 @@ class FunctionDictFlowAnalyzer:
             self._handle_while(node, control_flow=control_flow)
         elif node["_type"] == "For":
             self._handle_for(node, control_flow=control_flow)
+        elif node["_type"] == "If":
+            self._handle_if(node, control_flow=control_flow)
         elif node["_type"] == "Return":
             self._handle_return(node, control_flow=control_flow)
 
@@ -164,6 +166,15 @@ class FunctionDictFlowAnalyzer:
         elif node["value"]["_type"] == "Name":
             self._add_input_edge(node["value"], "output")
         self._return_was_called = True
+
+    def _handle_if(self, node, control_flow: str | None = None):
+        assert node["test"]["_type"] == "Call"
+        control_flow = self._convert_control_flow(control_flow, tag="If")
+        self._parse_function_call(node["test"], control_flow=f"{control_flow}-test")
+        for node in node["body"]:
+            self._visit_node(node, control_flow=f"{control_flow}-body")
+        for node in node.get("or_else", []):
+            self._visit_node(node, control_flow=f"{control_flow}-or_else")
 
     def _handle_while(self, node, control_flow: str | None = None):
         assert node["test"]["_type"] == "Call"

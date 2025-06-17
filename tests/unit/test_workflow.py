@@ -206,6 +206,17 @@ def workflow_with_for(a=10, b=20):
     return z
 
 
+def my_if_condition(a=10, b=20):
+    return a > 0
+
+
+def workflow_with_if(a=10, b=20):
+    x = add(a, b)
+    if my_if_condition(x, b):
+        x = multiply(x, b)
+    return x
+
+
 class TestWorkflow(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -857,6 +868,35 @@ class TestWorkflow(unittest.TestCase):
 
         self.assertRaises(
             ValueError, get_workflow_dict, multiple_output_to_single_variable
+        )
+
+    def test_if_statement(self):
+        data = get_workflow_dict(workflow_with_if)
+        self.assertIn("injected_If_0", data["nodes"])
+        self.assertIn("x", data["outputs"])
+        self.assertEqual(
+            sorted(data["edges"]),
+            sorted(
+                [
+                    ("inputs.b", "injected_If_0.inputs.b"),
+                    ("inputs.a", "add_0.inputs.x"),
+                    ("inputs.b", "add_0.inputs.y"),
+                    ("add_0.outputs.output", "injected_If_0.inputs.x"),
+                    ("injected_If_0.outputs.x", "outputs.x"),
+                ]
+            ),
+        )
+        self.assertEqual(
+            sorted(data["nodes"]["injected_If_0"]["edges"]),
+            sorted(
+                [
+                    ("inputs.x", "multiply_0.inputs.x"),
+                    ("inputs.b", "multiply_0.inputs.y"),
+                    ("inputs.x", "test.inputs.a"),
+                    ("inputs.b", "test.inputs.b"),
+                    ("multiply_0.outputs.output", "outputs.x"),
+                ]
+            ),
         )
 
 
