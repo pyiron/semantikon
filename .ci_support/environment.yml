@@ -10,6 +10,7 @@ dependencies:
 - networkx =3.4.2
 - pyshacl =0.30.1
 - graphviz =12.2.1
-- python >=3.10,<3.13
+- python >=3.10,<3.14
 - python-graphviz =0.20.3
+- setuptools =80.9.0
 - typeguard=4.4.3
