@@ -1,7 +1,7 @@
 from typing import Annotated, Any, Callable, get_origin
 
 from semantikon.converter import FunctionWithMetadata, parse_metadata
-from semantikon.dataclasses import (
+from semantikon.datastructure import (
     MISSING,
     CoreMetadata,
     Missing,
