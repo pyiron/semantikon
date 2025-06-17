@@ -1,7 +1,6 @@
 channels:
 - conda-forge
 dependencies:
-- coveralls
 - coverage
 - graphviz =12.2.1
 - owlrl =7.1.3
