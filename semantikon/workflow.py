@@ -477,7 +477,6 @@ def _get_nodes(
     for label, function in data.items():
         func = function["function"]
         if hasattr(func, "_semantikon_workflow"):
-            assert label in output_counts
             if output_counts[label] != len(func._semantikon_workflow["outputs"]):
                 raise ValueError(
                     f"{label} has {len(func._semantikon_workflow['outputs'])} outputs, "
