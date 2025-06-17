@@ -154,6 +154,8 @@ class FunctionDictFlowAnalyzer:
             self._handle_if(node, control_flow=control_flow)
         elif node["_type"] == "Return":
             self._handle_return(node, control_flow=control_flow)
+        else:
+            raise NotImplementedError(f"Node type {node['_type']} not implemented")
 
     def _handle_return(self, node, control_flow: str | None = None):
         if not node["value"]:
@@ -171,10 +173,10 @@ class FunctionDictFlowAnalyzer:
         assert node["test"]["_type"] == "Call"
         control_flow = self._convert_control_flow(control_flow, tag="If")
         self._parse_function_call(node["test"], control_flow=f"{control_flow}-test")
-        for node in node["body"]:
-            self._visit_node(node, control_flow=f"{control_flow}-body")
-        for node in node.get("or_else", []):
-            self._visit_node(node, control_flow=f"{control_flow}-or_else")
+        for n in node["body"]:
+            self._visit_node(n, control_flow=f"{control_flow}-body")
+        for n in node.get("orelse", []):
+            self._visit_node(n, control_flow=f"{control_flow.replace('If', 'Else')}-body")
 
     def _handle_while(self, node, control_flow: str | None = None):
         assert node["test"]["_type"] == "Call"

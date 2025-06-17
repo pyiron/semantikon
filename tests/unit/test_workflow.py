@@ -207,13 +207,22 @@ def workflow_with_for(a=10, b=20):
 
 
 def my_if_condition(a=10, b=20):
-    return a > 0
+    return a > b
 
 
 def workflow_with_if(a=10, b=20):
     x = add(a, b)
     if my_if_condition(x, b):
         x = multiply(x, b)
+    return x
+
+
+def workflow_with_if_else(a=10, b=20):
+    x = add(a, b)
+    if my_if_condition(x, b):
+        x = multiply(x, b)
+    else:
+        x = multiply(x, a)
     return x
 
 
@@ -895,6 +904,32 @@ class TestWorkflow(unittest.TestCase):
                     ("inputs.x", "test.inputs.a"),
                     ("inputs.b", "test.inputs.b"),
                     ("multiply_0.outputs.output", "outputs.x"),
+                ]
+            ),
+        )
+
+    def test_if_else_statement(self):
+        data = get_workflow_dict(workflow_with_if_else)
+        self.assertIn("injected_If_0", data["nodes"])
+        self.assertEqual(
+            sorted(data["nodes"]["injected_If_0"]["edges"]),
+            sorted(
+                [
+                    ("inputs.x", "multiply_0.inputs.x"),
+                    ("inputs.b", "multiply_0.inputs.y"),
+                    ("inputs.x", "test.inputs.a"),
+                    ("inputs.b", "test.inputs.b"),
+                    ("multiply_0.outputs.output", "outputs.x"),
+                ]
+            ),
+        )
+        self.assertEqual(
+            sorted(data["nodes"]["injected_Else_0"]["edges"]),
+            sorted(
+                [
+                    ("inputs.x", "multiply_1.inputs.x"),
+                    ("inputs.a", "multiply_1.inputs.y"),
+                    ("multiply_1.outputs.output", "outputs.x"),
                 ]
             ),
         )
