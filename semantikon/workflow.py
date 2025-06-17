@@ -496,6 +496,11 @@ def _get_nodes(
     for label, function in data.items():
         func = function["function"]
         if hasattr(func, "_semantikon_workflow"):
+            if output_counts[label] != len(func._semantikon_workflow["outputs"]):
+                raise ValueError(
+                    f"{label} has {len(func._semantikon_workflow['outputs'])} outputs, "
+                    f"but {output_counts[label]} expected"
+                )
             data_dict = func._semantikon_workflow.copy()
             result[label] = data_dict
             result[label]["label"] = label

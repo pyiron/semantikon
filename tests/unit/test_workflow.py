@@ -802,6 +802,16 @@ class TestWorkflow(unittest.TestCase):
             "injected_While_0_While_0", data["nodes"]["injected_While_0"]["nodes"]
         )
 
+    def test_multiple_output_to_single_raise_error(self):
+
+        def multiple_output_to_single_variable(a, b):
+            output = parallel_execution(a, b)
+            return output
+
+        self.assertRaises(
+            ValueError, get_workflow_dict, multiple_output_to_single_variable
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
