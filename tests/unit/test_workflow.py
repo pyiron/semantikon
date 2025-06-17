@@ -380,16 +380,13 @@ class TestWorkflow(unittest.TestCase):
             result = z + 1
             return result
 
-
         def example_invalid_multiple_operation(a=10, b=20):
             result = add(a, add(a, b))
             return result
 
-
         def example_invalid_local_var_def(a=10, b=20):
             result = add(a, 2)
             return result
-
 
         with self.assertRaises(NotImplementedError):
             workflow(example_invalid_operator)
