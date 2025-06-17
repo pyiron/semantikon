@@ -3,6 +3,7 @@ import builtins
 import copy
 import dataclasses
 import inspect
+import textwrap
 from collections import deque
 from functools import cached_property, update_wrapper
 from hashlib import sha256
@@ -421,7 +422,7 @@ def _get_control_flow_graph(control_flows: list[str]) -> nx.DiGraph:
 
 def get_ast_dict(func: Callable) -> dict:
     """Get the AST dictionary representation of a function."""
-    source_code = inspect.getsource(func)
+    source_code = textwrap.dedent(inspect.getsource(func))
     tree = ast.parse(source_code)
     return _function_to_ast_dict(tree)
 

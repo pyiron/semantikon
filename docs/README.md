@@ -147,4 +147,4 @@ Regardless of whether type hints are provided, the interpreter acts only when th
 
 This project is licensed under the BSD 3-Clause License - see the [LICENSE](../LICENSE) file for details.
 
-Copyright (c) 2024, Max-Planck-Institut für Nachhaltige Materialien GmbH - Computational Materials Design (CM) Department
+Copyright (c) 2025, Max-Planck-Institut für Nachhaltige Materialien GmbH - Computational Materials Design (CM) Department
