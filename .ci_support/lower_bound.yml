@@ -11,4 +11,5 @@ dependencies:
 - pyshacl =0.30.0
 - python =3.10
 - python-graphviz =0.20.3
+- requests =2.0.0
 - typeguard=4.0.0
