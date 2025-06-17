@@ -1,26 +1,46 @@
 import ast
 import builtins
 import copy
+import dataclasses
 import inspect
+import textwrap
 from collections import deque
 from functools import cached_property, update_wrapper
 from hashlib import sha256
-from typing import Any, Callable, Generic, Iterable, TypeVar, cast
+from typing import Any, Callable, Generic, Iterable, TypeVar, cast, get_args, get_origin
 
 import networkx as nx
 from networkx.algorithms.dag import topological_sort
 
 from semantikon.converter import (
+    get_annotated_type_hints,
     get_return_expressions,
+    get_return_labels,
+    meta_to_dict,
     parse_input_args,
     parse_output_args,
+)
+from semantikon.datastructure import (
+    MISSING,
+    CoreMetadata,
+    Edges,
+    Function,
+    Input,
+    Inputs,
+    Missing,
+    Nodes,
+    Output,
+    Outputs,
+    PortType,
+    TypeMetadata,
+    Workflow,
 )
 
 F = TypeVar("F", bound=Callable[..., object])
 
 
 class FunctionWithWorkflow(Generic[F]):
-    def __init__(self, func: F, workflow, run) -> None:
+    def __init__(self, func: F, workflow: dict[str, object], run) -> None:
         self.func = func
         self._semantikon_workflow: dict[str, object] = workflow
         self.run = run
@@ -112,7 +132,7 @@ class FunctionDictFlowAnalyzer:
         self._control_flow_list = []
         self._return_was_called = False
 
-    def analyze(self):
+    def analyze(self) -> tuple[nx.DiGraph, dict[str, Any]]:
         for arg in self.ast_dict.get("args", {}).get("args", []):
             if arg["_type"] == "arg":
                 self._add_output_edge("input", arg["arg"])
@@ -413,7 +433,7 @@ def _get_control_flow_graph(control_flows: list[str]) -> nx.DiGraph:
 
 def get_ast_dict(func: Callable) -> dict:
     """Get the AST dictionary representation of a function."""
-    source_code = inspect.getsource(func)
+    source_code = textwrap.dedent(inspect.getsource(func))
     tree = ast.parse(source_code)
     return _function_to_ast_dict(tree)
 
@@ -458,7 +478,7 @@ def _get_node_outputs(func: Callable, counts: int) -> dict[str, dict]:
         return {key: hint for key, hint in zip(output_vars, output_hints)}
 
 
-def _get_output_counts(graph: nx.DiGraph) -> dict:
+def _get_output_counts(graph: nx.DiGraph) -> dict[str, int]:
     """
     Get the number of outputs for each node in the graph.
 
@@ -468,7 +488,7 @@ def _get_output_counts(graph: nx.DiGraph) -> dict:
     Returns:
         dict: A dictionary mapping node names to the number of outputs.
     """
-    f_dict: dict = {}
+    f_dict: dict[str, int] = {}
     for edge in graph.edges.data():
         if edge[2]["type"] != "output":
             continue
@@ -487,6 +507,11 @@ def _get_nodes(
     for label, function in data.items():
         func = function["function"]
         if hasattr(func, "_semantikon_workflow"):
+            if output_counts[label] != len(func._semantikon_workflow["outputs"]):
+                raise ValueError(
+                    f"{label} has {len(func._semantikon_workflow['outputs'])} outputs, "
+                    f"but {output_counts[label]} expected"
+                )
             data_dict = func._semantikon_workflow.copy()
             result[label] = data_dict
             result[label]["label"] = label
@@ -1029,3 +1054,123 @@ def workflow(func: Callable) -> FunctionWithWorkflow:
     w = _Workflow(workflow_dict)
     func_with_metadata = FunctionWithWorkflow(func, workflow_dict, w.run)
     return func_with_metadata
+
+
+def get_ports(
+    func: Callable, separate_return_tuple: bool = True, strict: bool = False
+) -> tuple[Inputs, Outputs]:
+    type_hints = get_annotated_type_hints(func)
+    return_hint = type_hints.pop("return", inspect.Parameter.empty)
+    return_labels = get_return_labels(
+        func, separate_tuple=separate_return_tuple, strict=strict
+    )
+    if get_origin(return_hint) is tuple and separate_return_tuple:
+        output_annotations = {
+            label: meta_to_dict(ann, flatten_metadata=False)
+            for label, ann in zip(return_labels, get_args(return_hint))
+        }
+    else:
+        output_annotations = {
+            return_labels[0]: meta_to_dict(return_hint, flatten_metadata=False)
+        }
+    input_annotations = {
+        key: meta_to_dict(
+            type_hints.get(key, value.annotation), value.default, flatten_metadata=False
+        )
+        for key, value in inspect.signature(func).parameters.items()
+    }
+    return (
+        Inputs(**{k: Input(label=k, **v) for k, v in input_annotations.items()}),
+        Outputs(**{k: Output(label=k, **v) for k, v in output_annotations.items()}),
+    )
+
+
+def get_node(func: Callable, label: str | None = None) -> Function | Workflow:
+    metadata_dict = (
+        func._semantikon_metadata if hasattr(func, "_semantikon_metadata") else MISSING
+    )
+    metadata = (
+        metadata_dict
+        if isinstance(metadata_dict, Missing)
+        else CoreMetadata.from_dict(metadata_dict)
+    )
+
+    if hasattr(func, "_semantikon_workflow"):
+        return parse_workflow(func._semantikon_workflow, metadata)
+    else:
+        return parse_function(func, metadata, label=label)
+
+
+def parse_function(
+    func: Callable, metadata: CoreMetadata | Missing, label: str | None = None
+) -> Function:
+    inputs, outputs = get_ports(func)
+    return Function(
+        label=func.__name__ if label is None else label,
+        inputs=inputs,
+        outputs=outputs,
+        function=func,
+        metadata=metadata,
+    )
+
+
+def _port_from_dictionary(
+    io_dictionary: dict[str, object], label: str, port_class: type[PortType]
+) -> PortType:
+    """
+    Take a traditional _semantikon_workflow dictionary's input or output subdictionary
+    and nest the metadata (if any) as a dataclass.
+    """
+    metadata_kwargs = {}
+    for field in dataclasses.fields(TypeMetadata):
+        if field.name in io_dictionary:
+            metadata_kwargs[field.name] = io_dictionary.pop(field.name)
+    if len(metadata_kwargs) > 0:
+        io_dictionary["metadata"] = TypeMetadata.from_dict(metadata_kwargs)
+    io_dictionary["label"] = label
+    return port_class.from_dict(io_dictionary)
+
+
+def _input_from_dictionary(io_dictionary: dict[str, object], label: str) -> Input:
+    return _port_from_dictionary(io_dictionary, label, Input)
+
+
+def _output_from_dictionary(io_dictionary: dict[str, object], label: str) -> Output:
+    return _port_from_dictionary(io_dictionary, label, Output)
+
+
+def parse_workflow(
+    semantikon_workflow, metadata: CoreMetadata | Missing = MISSING
+) -> Workflow:
+    label = semantikon_workflow["label"]
+    inputs = Inputs(
+        **{
+            k: _input_from_dictionary(v, label=k)
+            for k, v in semantikon_workflow["inputs"].items()
+        }
+    )
+    outputs = Outputs(
+        **{
+            k: _output_from_dictionary(v, label=k)
+            for k, v in semantikon_workflow["outputs"].items()
+        }
+    )
+    nodes = Nodes(
+        **{
+            k: (
+                get_node(v["function"], label=k)
+                if "function" in v
+                else parse_workflow(v)
+            )
+            for k, v in semantikon_workflow["nodes"].items()
+        }
+    )
+    edges = Edges(**{v: k for k, v in semantikon_workflow["edges"]})
+    return Workflow(
+        label=label,
+        inputs=inputs,
+        outputs=outputs,
+        nodes=nodes,
+        edges=edges,
+        metadata=metadata,
+    )

@@ -3,6 +3,9 @@ import unittest
 
 import networkx as nx
 
+import semantikon.workflow as swf
+from semantikon import datastructure
+from semantikon.converter import parse_input_args
 from semantikon.metadata import u
 from semantikon.workflow import (
     _detect_io_variables_from_control_flow,
@@ -62,23 +65,6 @@ def parallel_execution(a=10, b=20):
     return e, f
 
 
-def example_invalid_operator(a=10, b=20):
-    y = example_macro(a, b)
-    z = add(y, b)
-    result = z + 1
-    return result
-
-
-def example_invalid_multiple_operation(a=10, b=20):
-    result = add(a, add(a, b))
-    return result
-
-
-def example_invalid_local_var_def(a=10, b=20):
-    result = add(a, 2)
-    return result
-
-
 def my_while_condition(a=10, b=20):
     return a < b
 
@@ -90,6 +76,37 @@ def workflow_with_while(a=10, b=20):
         # Poor implementation to define variable inside the loop, but allowed
         z = multiply(a, x)
     return z
+
+
+@u(uri="some URI")
+def complex_function(
+    x: u(float, units="meter") = 2.0,
+    y: u(float, units="second", something_extra=42) = 1,
+) -> tuple[
+    u(float, units="meter"),
+    u(float, units="meter/second", uri="VELOCITY"),
+    float,
+]:
+    speed = x / y
+    return x, speed, speed / y
+
+
+@workflow
+@u(uri="some other URI")
+def complex_macro(
+    x: u(float, units="meter") = 2.0,
+):
+    a, b, c = complex_function(x)
+    return b, c
+
+
+@workflow
+@u(triples=("a", "b", "c"))
+def complex_workflow(
+    x: u(float, units="meter") = 2.0,
+):
+    b, c = complex_macro(x)
+    return c
 
 
 class ApeClass:
@@ -403,6 +420,20 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(example_workflow(), data["outputs"]["z"]["value"])
 
     def test_not_implemented_error(self):
+        def example_invalid_operator(a=10, b=20):
+            y = example_macro(a, b)
+            z = add(y, b)
+            result = z + 1
+            return result
+
+        def example_invalid_multiple_operation(a=10, b=20):
+            result = add(a, add(a, b))
+            return result
+
+        def example_invalid_local_var_def(a=10, b=20):
+            result = add(a, 2)
+            return result
+
         with self.assertRaises(NotImplementedError):
             workflow(example_invalid_operator)
         with self.assertRaises(NotImplementedError):
@@ -532,6 +563,21 @@ class TestWorkflow(unittest.TestCase):
         )
         self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
 
+        with self.subTest("As dataclass"):
+            wf = swf.get_node(workflow(workflow_with_leaf))
+            self.assertIn("check_positive_0", wf.nodes.keys())
+            self.assertIn("add_0", wf.nodes.keys())
+            self.assertIn("y", wf.outputs.keys())
+            self.assertIn(
+                ("add_0.outputs.output", "check_positive_0.inputs.x"),
+                wf.edges.to_tuple(),
+            )
+            self.assertIn("check_positive_0.inputs.x", wf.edges)
+            self.assertEqual(
+                wf.edges["check_positive_0.inputs.x"],
+                "add_0.outputs.output",
+            )
+
     def test_get_workflow_output(self):
 
         def test_function_1(a, b):
@@ -576,6 +622,153 @@ class TestWorkflow(unittest.TestCase):
             _get_workflow_outputs(test_function_5),
             {"a": {"dtype": int}, "b": {"dtype": int}},
         )
+
+    def test_ports(self):
+        for fnc in (operation, add, multiply, my_while_condition, complex_function):
+            with self.subTest(fnc=fnc, msg=fnc.__name__):
+                inputs, outputs = swf.get_ports(fnc)
+                full_entry = get_node_dict(fnc)
+                for entry, node in (
+                    (full_entry["inputs"], inputs),
+                    (full_entry["outputs"], outputs),
+                ):
+                    with self.subTest(node.__class__.__name__):
+                        node_dictionary = node.to_dictionary()
+
+                        # Transform the node to match the existing style
+                        for arg_dictionary in node_dictionary.values():
+                            arg_dictionary.pop("label")
+                            arg_dictionary.pop("type")
+                            metadata = arg_dictionary.pop("metadata", {})
+                            arg_dictionary.update(metadata)  # Flatten the metadata
+
+                        self.assertDictEqual(
+                            entry,
+                            node_dictionary,
+                            msg="Dictionary representation must be equivalent to "
+                            "existing dictionaries",
+                        )
+
+    def test_complex_function_node(self):
+        node = swf.get_node(complex_function)
+
+        with self.subTest("Node parsing"):
+            self.assertIsInstance(node, swf.Function)
+            self.assertIsInstance(node.inputs, swf.Inputs)
+            self.assertIsInstance(node.outputs, swf.Outputs)
+            self.assertIsInstance(node.metadata, swf.CoreMetadata)
+            self.assertEqual(node.type, datastructure.Function.__name__)
+            self.assertEqual(node.label, complex_function.__name__)
+            self.assertEqual(node.metadata.uri, "some URI")
+
+        with self.subTest("Input parsing"):
+            self.assertIsInstance(node.inputs.x, swf.Input)
+            self.assertIs(node.inputs.x.dtype, float)
+            self.assertAlmostEqual(node.inputs.x.default, 2.0)
+            self.assertIsInstance(node.inputs.x.metadata, datastructure.TypeMetadata)
+            self.assertEqual(node.inputs.x.metadata.units, "meter")
+            self.assertIs(node.inputs.y.dtype, float)
+            self.assertAlmostEqual(node.inputs.y.default, 1.0)
+            self.assertIsInstance(node.inputs.y.metadata, datastructure.TypeMetadata)
+            self.assertEqual(node.inputs.y.metadata.units, "second")
+            self.assertEqual(node.inputs.y.metadata.extra["something_extra"], 42)
+
+        with self.subTest("Output parsing"):
+            self.assertIsInstance(node.outputs.x, swf.Output)
+            self.assertIs(node.outputs.x.dtype, float)
+            self.assertIsInstance(node.outputs.x.metadata, datastructure.TypeMetadata)
+            self.assertEqual(node.outputs.x.metadata.units, "meter")
+            self.assertIs(node.outputs.speed.dtype, float)
+            self.assertIsInstance(
+                node.outputs.speed.metadata, datastructure.TypeMetadata
+            )
+            self.assertEqual(node.outputs.speed.metadata.units, "meter/second")
+            self.assertEqual(node.outputs.speed.metadata.uri, "VELOCITY")
+            self.assertIs(node.outputs.output_2.dtype, float)
+
+    def test_complex_macro(self):
+        node = swf.get_node(complex_macro)
+        with self.subTest("Node parsing"):
+            self.assertIsInstance(node, swf.Workflow)
+            self.assertIsInstance(node.inputs, swf.Inputs)
+            self.assertAlmostEqual(node.inputs.x.default, 2.0)
+            self.assertIsInstance(node.inputs.x.metadata, datastructure.TypeMetadata)
+            self.assertEqual(node.inputs.x.metadata.units, "meter")
+            self.assertIsInstance(node.outputs, swf.Outputs)
+            self.assertIsInstance(node.metadata, swf.CoreMetadata)
+            self.assertEqual(node.type, datastructure.Workflow.__name__)
+            self.assertEqual(node.label, complex_macro.__name__)
+            self.assertEqual(node.metadata.uri, "some other URI")
+
+        with self.subTest("Graph-node parsing"):
+            self.assertIsInstance(node.nodes, swf.Nodes)
+            self.assertIsInstance(node.nodes.complex_function_0, swf.Function)
+            self.assertEqual("complex_function_0", node.nodes.complex_function_0.label)
+            self.assertIsInstance(node.edges, swf.Edges)
+            self.assertDictEqual(
+                {
+                    f"{node.nodes.complex_function_0.label}.inputs.{node.nodes.complex_function_0.inputs.x.label}": f"inputs.{node.inputs.x.label}",
+                    f"outputs.{node.outputs.b.label}": f"{node.nodes.complex_function_0.label}.outputs.{node.nodes.complex_function_0.outputs.speed.label}",
+                    f"outputs.{node.outputs.c.label}": f"{node.nodes.complex_function_0.label}.outputs.{node.nodes.complex_function_0.outputs.output_2.label}",
+                },
+                node.edges.to_dictionary(),
+            )
+
+    def test_complex_workflow(self):
+        node = swf.get_node(complex_workflow)
+        with self.subTest("Node parsing"):
+            self.assertIsInstance(node, swf.Workflow)
+            self.assertIsInstance(node.inputs, swf.Inputs)
+            self.assertAlmostEqual(node.inputs.x.default, 2.0)
+            self.assertIsInstance(node.inputs.x.metadata, datastructure.TypeMetadata)
+            self.assertEqual(node.inputs.x.metadata.units, "meter")
+            self.assertIsInstance(node.outputs, swf.Outputs)
+            self.assertIsInstance(node.metadata, swf.CoreMetadata)
+            self.assertEqual(node.type, datastructure.Workflow.__name__)
+            self.assertEqual(node.label, complex_workflow.__name__)
+            self.assertTupleEqual(node.metadata.triples, ("a", "b", "c"))
+
+        with self.subTest("Graph-node parsing"):
+            self.assertIsInstance(node.nodes, swf.Nodes)
+            self.assertIsInstance(node.nodes.complex_macro_0, swf.Workflow)
+            self.assertIsInstance(node.edges, swf.Edges)
+            self.assertDictEqual(
+                {
+                    f"{node.nodes.complex_macro_0.label}.inputs.{node.nodes.complex_macro_0.inputs.x.label}": f"inputs.{node.inputs.x.label}",
+                    f"outputs.{node.outputs.c.label}": f"{node.nodes.complex_macro_0.label}.outputs.{node.nodes.complex_macro_0.outputs.c.label}",
+                },
+                node.edges.to_dictionary(),
+            )
+
+    def test_function(self):
+        for fnc in (operation, add, multiply, my_while_condition):
+            with self.subTest(fnc=fnc, msg=fnc.__name__):
+                entry = swf._to_node_dict_entry(
+                    fnc,
+                    parse_input_args(fnc),
+                    swf._get_workflow_outputs(fnc),
+                )
+                # Cheat and modify the entry to resemble the node structure
+                if hasattr(fnc, "_semantikon_metadata"):
+                    # Nest the metadata in the entry
+                    metadata = fnc._semantikon_metadata
+                    for k in metadata.keys():
+                        entry.pop(k)
+                    entry["metadata"] = metadata
+
+                node_dictionary = swf.get_node(fnc).to_dictionary()
+                # Cheat and modify the node_dictionary to match the entry format
+                node_dictionary.pop("label")
+                for io in (node_dictionary["inputs"], node_dictionary["outputs"]):
+                    for port_dictionary in io.values():
+                        port_dictionary.pop("type")
+                        port_dictionary.pop("label")
+
+                self.assertDictEqual(
+                    entry,
+                    node_dictionary,
+                    msg="Just an interim cyclicity test",
+                )
 
     def test_detect_io_variables_from_control_flow(self):
         graph = analyze_function(workflow_with_while)[0]
@@ -651,6 +844,16 @@ class TestWorkflow(unittest.TestCase):
                     ("multiply_0.outputs.output", "outputs.z"),
                 ]
             ),
+        )
+
+    def test_multiple_output_to_single_raise_error(self):
+
+        def multiple_output_to_single_variable(a, b):
+            output = parallel_execution(a, b)
+            return output
+
+        self.assertRaises(
+            ValueError, get_workflow_dict, multiple_output_to_single_variable
         )
 
 

@@ -28,7 +28,7 @@ from pint.registry_helpers import (
     _to_units_container,
 )
 
-from semantikon.dataclasses import TypeMetadata
+from semantikon.datastructure import TypeMetadata
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -40,6 +40,10 @@ __maintainer__ = "Sam Waseda"
 __email__ = "waseda@mpie.de"
 __status__ = "development"
 __date__ = "Aug 21, 2021"
+
+
+class NotAstNameError(TypeError): ...
+
 
 F = TypeVar("F", bound=Callable[..., object])
 
@@ -101,12 +105,17 @@ def parse_metadata(value: Any) -> TypeMetadata:
     return TypeMetadata(**{k: v for k, v in zip(metadata[::2], metadata[1::2])})
 
 
-def meta_to_dict(value: Any, default=inspect.Parameter.empty) -> dict[str, Any]:
+def meta_to_dict(
+    value: Any, default=inspect.Parameter.empty, flatten_metadata: bool = True
+) -> dict[str, Any]:
     semantikon_was_used = hasattr(value, "__metadata__")
     type_hint_was_present = value is not inspect.Parameter.empty
     default_is_defined = default is not inspect.Parameter.empty
     if semantikon_was_used:
-        result = parse_metadata(value).to_dictionary()
+        if flatten_metadata:
+            result = parse_metadata(value).to_dictionary()
+        else:
+            result = {"metadata": parse_metadata(value)}
         if hasattr(value.__args__[0], "__forward_arg__"):
             result["dtype"] = value.__args__[0].__forward_arg__
         else:
@@ -148,16 +157,24 @@ def _resolve_annotation(annotation, func_globals=None):
         return Annotated[undefined_name, args[1]]
 
 
-def _to_tag(item: Any, count=None) -> str:
+def _to_tag(item: Any, count=None, must_be_named: bool = False) -> str:
     if isinstance(item, ast.Name):
         return item.id
+    elif must_be_named:
+        raise NotAstNameError(
+            "With `must_be_named=True`, item must be captured in an `ast.Name` "
+            "variables, i.e only simple variable(-s) not containing any operation or "
+            "other protected character can be returned."
+        )
     elif count is None:
         return "output"
     else:
         return f"output_{count}"
 
 
-def get_return_expressions(func: Callable) -> str | tuple | None:
+def get_return_expressions(
+    func: Callable, separate_tuple: bool = True, strict: bool = False
+) -> str | tuple[str, ...] | None:
     source = inspect.getsource(func)
     source = textwrap.dedent(source)
     parsed = ast.parse(source)
@@ -173,22 +190,55 @@ def get_return_expressions(func: Callable) -> str | tuple | None:
                 ret_list.append("None")
             elif isinstance(value, ast.Tuple):
                 ret_list.append(
-                    tuple([_to_tag(elt, ii) for ii, elt in enumerate(value.elts)])
+                    tuple(
+                        [
+                            _to_tag(elt, ii, must_be_named=strict)
+                            for ii, elt in enumerate(value.elts)
+                        ]
+                    )
                 )
             else:
-                ret_list.append(_to_tag(value))
+                ret_list.append(_to_tag(value, must_be_named=strict))
 
-    if len(ret_list) == 0:
+    if len(ret_list) == 0 and not strict:
         return None
-    elif len(set(ret_list)) == 1:
+    elif len(set(ret_list)) == 1 and (
+        separate_tuple or not isinstance(ret_list[0], tuple)
+    ):
         return ret_list[0]
     elif (
         all(isinstance(exp, tuple) for exp in ret_list)
         and len(set(len(r) for r in ret_list)) == 1
+        and separate_tuple
+        and not strict
     ):
         return tuple([f"output_{i}" for i in range(len(ret_list[0]))])
-    else:
-        return "output"
+    elif strict:
+        raise NotAstNameError(
+            "With `strict=True`, all returns must be captured in independent "
+            "variables."
+        )
+    return "output"
+
+
+def get_return_labels(
+    func: Callable, separate_tuple: bool = True, strict: bool = False
+) -> tuple[str, ...]:
+    return_vars = get_return_expressions(
+        func, separate_tuple=separate_tuple, strict=strict
+    )
+    if return_vars is None:
+        return ("None",)
+    elif isinstance(return_vars, str):
+        return (return_vars,)
+    elif isinstance(return_vars, tuple) and all(
+        isinstance(v, str) for v in return_vars
+    ):
+        return return_vars
+    raise TypeError(
+        f"{get_return_labels.__module__}.{get_return_labels.__qualname__} expected "
+        f"None, a string, or a tuple of strings, but got {return_vars}"
+    )
 
 
 def get_annotated_type_hints(func: Callable) -> dict[str, Any]:

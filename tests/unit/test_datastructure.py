@@ -3,13 +3,16 @@ import unittest
 
 import typeguard
 
-import semantikon.dataclasses as sdc
+from semantikon import datastructure
 
 
 @dataclasses.dataclass
-class ConcreteDC(sdc._VariadicDataclass):
+class ConcreteDC(datastructure._VariadicDataclass):
     complex_field: set[str]
-    optional_field: int | sdc.Missing = sdc.missing()
+    optional_field: int | datastructure.Missing = datastructure.missing()
+
+
+class ConcreteHtDM(datastructure._HasToDictionarMapping[int]): ...
 
 
 class TestDataclasses(unittest.TestCase):
@@ -32,7 +35,7 @@ class TestDataclasses(unittest.TestCase):
     def test_missing(self):
         self.assertIs(
             self.dc.optional_field,
-            sdc.MISSING,
+            datastructure.MISSING,
             msg="Dataclass field should hold full data object, even missing objects",
         )
         self.assertNotIn(
@@ -44,8 +47,10 @@ class TestDataclasses(unittest.TestCase):
         )
 
     def test_iter(self):
-        self.assertIsNot(self.dc.complex_field, sdc.MISSING, msg="Sanity check")
-        self.assertIs(self.dc.optional_field, sdc.MISSING, msg="Sanity check")
+        self.assertIsNot(
+            self.dc.complex_field, datastructure.MISSING, msg="Sanity check"
+        )
+        self.assertIs(self.dc.optional_field, datastructure.MISSING, msg="Sanity check")
         self.assertEqual(
             2, len(dataclasses.fields(self.dc)), msg="Make sure we tested them all"
         )
@@ -66,6 +71,26 @@ class TestDataclasses(unittest.TestCase):
             "type compliance!",
         ):
             ConcreteDC.from_dict({"complex_field": "This is not type-compliant"})
+
+
+class TestHasToDictionaryMapping(unittest.TestCase):
+    def test_mapping(self):
+        t = (1, 2, 3)
+        a, b, c = t
+        mapping = ConcreteHtDM(a=a, b=b)
+        self.assertEqual(mapping["a"], a)
+        self.assertEqual(mapping["b"], b)
+
+        mapping["c"] = c
+        self.assertEqual(mapping.c, c)
+
+        self.assertEqual(len(mapping), len(t))
+
+        del mapping["b"]
+        self.assertEqual(len(mapping), len(t) - 1)
+        self.assertIsNone(mapping.get("b", None))
+        self.assertEqual(mapping.a, a)
+        self.assertEqual(mapping.c, c)
 
 
 if __name__ == "__main__":
