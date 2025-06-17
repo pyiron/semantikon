@@ -176,7 +176,9 @@ class FunctionDictFlowAnalyzer:
         for n in node["body"]:
             self._visit_node(n, control_flow=f"{control_flow}-body")
         for n in node.get("orelse", []):
-            self._visit_node(n, control_flow=f"{control_flow.replace('If', 'Else')}-body")
+            self._visit_node(
+                n, control_flow=f"{control_flow.replace('If', 'Else')}-body"
+            )
 
     def _handle_while(self, node, control_flow: str | None = None):
         assert node["test"]["_type"] == "Call"
