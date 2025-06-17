@@ -150,6 +150,10 @@ def my_condition(X, Y):
     return X + Y < 100
 
 
+def my_for_loop(a=10, b=20):
+    return range(int(a), int(b))
+
+
 def multiple_nested_workflow(a=1, b=2, c=3):
     d = add(a, b)
     e = multiply(b, c)
@@ -159,8 +163,8 @@ def multiple_nested_workflow(a=1, b=2, c=3):
         d = add(d, b)
         e = multiply(e, c)
 
-        while my_condition(a, d):
-            a = add(a, c)
+        for ii in  my_for_loop(a, d):
+            a = add(a, ii)
             d = multiply(b, e)
 
             while my_condition(c, f):
@@ -192,10 +196,6 @@ def multiple_nested_workflow(a=1, b=2, c=3):
         f = multiply(f, f)
 
     return f
-
-
-def my_for_loop(a=10, b=20):
-    return range(int(a), int(b))
 
 
 def workflow_with_for(a=10, b=20):
@@ -812,6 +812,9 @@ class TestWorkflow(unittest.TestCase):
         self.assertIn("injected_While_0", data["nodes"])
         self.assertIn(
             "injected_While_0_While_0", data["nodes"]["injected_While_0"]["nodes"]
+        )
+        self.assertIn(
+            "injected_While_0_For_0", data["nodes"]["injected_While_0"]["nodes"]
         )
 
     def test_for_loop(self):
