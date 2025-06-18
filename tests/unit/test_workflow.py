@@ -859,6 +859,16 @@ class TestWorkflow(unittest.TestCase):
             ValueError, get_workflow_dict, multiple_output_to_single_variable
         )
 
+    def test_not_implemented_line_in_workflow(self):
+
+        def f(x):
+            def g(x):
+                return x
+
+            return g
+
+        self.assertRaises(NotImplementedError, get_workflow_dict, f)
+
 
 if __name__ == "__main__":
     unittest.main()
