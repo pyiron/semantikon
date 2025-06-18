@@ -152,6 +152,8 @@ class FunctionDictFlowAnalyzer:
             self._handle_for(node, control_flow=control_flow)
         elif node["_type"] == "Return":
             self._handle_return(node, control_flow=control_flow)
+        else:
+            raise NotImplementedError(f"Node type {node['_type']} not implemented")
 
     def _handle_return(self, node, control_flow: str | None = None):
         if not node["value"]:
