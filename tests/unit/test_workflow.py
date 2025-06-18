@@ -864,9 +864,11 @@ class TestWorkflow(unittest.TestCase):
         def f(x):
             def g(x):
                 return x
+
             return g
 
         self.assertRaises(NotImplementedError, get_workflow_dict, f)
+
 
 if __name__ == "__main__":
     unittest.main()
