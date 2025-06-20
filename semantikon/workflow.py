@@ -491,6 +491,16 @@ def _remove_index(s: str) -> str:
 
 
 def _get_control_flow(data: dict[str, Any]) -> str:
+    """
+    Get the control flow name
+
+    Args:
+        data (dict[str, Any]): metadata of the edge (which is stored in the
+            third element of each edge of nx.Digraph)
+
+    Returns:
+        (str): Control flow name (e.g. While_0, For_3 etc.)
+    """
     return data.get("control_flow", "").split("-")[0]
 
 
