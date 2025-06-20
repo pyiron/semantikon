@@ -65,46 +65,6 @@ def ast_from_dict(d):
         return d
 
 
-def _extract_variables_from_ast_body(body: dict) -> tuple[set, set]:
-    """
-    Extracts assigned and used variables from the AST body.
-
-    Args:
-        body (dict): The body of the AST function.
-
-    Returns:
-        tuple: A tuple containing two sets:
-            - assigned_vars: Set of variable names assigned in the body.
-            - used_vars: Set of variable names used in the body.
-    """
-    assigned_vars = set()
-    used_vars = set()
-
-    for node in body.get("body", []):
-        if node["_type"] == "Assign":
-            # Handle left-hand side (targets)
-            for target in node["targets"]:
-                if target["_type"] == "Name":
-                    assigned_vars.add(target["id"])
-                elif target["_type"] == "Tuple":
-                    for elt in target["elts"]:
-                        if elt["_type"] == "Name":
-                            assigned_vars.add(elt["id"])
-
-            # Handle right-hand side (value)
-            if node["value"]["_type"] == "Call":
-                for arg in node["value"]["args"]:
-                    if arg["_type"] == "Name":
-                        used_vars.add(arg["id"])
-
-    for key in ["test", "or_else", "iter"]:
-        if key in body and body[key]["_type"] == "Call":
-            for arg in body[key]["args"]:
-                if arg["_type"] == "Name":
-                    used_vars.add(arg["id"])
-    return assigned_vars, used_vars
-
-
 def _function_to_ast_dict(node):
     if isinstance(node, ast.AST):
         result = {"_type": type(node).__name__}
@@ -181,7 +141,6 @@ class FunctionDictFlowAnalyzer:
         unique_func_name = self._parse_function_call(
             node["iter"], control_flow=f"{control_flow}-iter"
         )
-        # Parse outputs
         self._add_output_edge(
             unique_func_name, node["target"]["id"], control_flow=control_flow
         )
@@ -228,7 +187,6 @@ class FunctionDictFlowAnalyzer:
 
     def _handle_assign(self, node, control_flow: str | None = None):
         unique_func_name = self._handle_expr(node, control_flow=control_flow)
-        # Parse outputs
         self._parse_outputs(
             node["targets"], unique_func_name, control_flow=control_flow
         )
