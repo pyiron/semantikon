@@ -9,8 +9,6 @@ from semantikon.converter import parse_input_args
 from semantikon.metadata import u
 from semantikon.workflow import (
     _detect_io_variables_from_control_flow,
-    _extract_variables_from_ast_body,
-    _function_to_ast_dict,
     _get_control_flow_graph,
     _get_node_outputs,
     _get_output_counts,
@@ -504,12 +502,6 @@ class TestWorkflow(unittest.TestCase):
             "comparators": [{"_type": "Constant", "value": 0, "kind": None}],
         }
         self.assertEqual(ast.unparse(ast_from_dict(d)), "x < 0")
-
-    def test_extract_variables_from_ast_body(self):
-        body = _function_to_ast_dict(ast.parse("x = g(y)\ny = h(Z)\nz = f(x, y)"))
-        variables = _extract_variables_from_ast_body(body)
-        self.assertEqual(variables[0], {"x", "y", "z"})
-        self.assertEqual(variables[1], {"y", "Z", "x"})
 
     def test_get_sorted_edges(self):
         graph = nx.DiGraph()

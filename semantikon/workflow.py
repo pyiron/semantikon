@@ -65,46 +65,6 @@ def ast_from_dict(d):
         return d
 
 
-def _extract_variables_from_ast_body(body: dict) -> tuple[set, set]:
-    """
-    Extracts assigned and used variables from the AST body.
-
-    Args:
-        body (dict): The body of the AST function.
-
-    Returns:
-        tuple: A tuple containing two sets:
-            - assigned_vars: Set of variable names assigned in the body.
-            - used_vars: Set of variable names used in the body.
-    """
-    assigned_vars = set()
-    used_vars = set()
-
-    for node in body.get("body", []):
-        if node["_type"] == "Assign":
-            # Handle left-hand side (targets)
-            for target in node["targets"]:
-                if target["_type"] == "Name":
-                    assigned_vars.add(target["id"])
-                elif target["_type"] == "Tuple":
-                    for elt in target["elts"]:
-                        if elt["_type"] == "Name":
-                            assigned_vars.add(elt["id"])
-
-            # Handle right-hand side (value)
-            if node["value"]["_type"] == "Call":
-                for arg in node["value"]["args"]:
-                    if arg["_type"] == "Name":
-                        used_vars.add(arg["id"])
-
-    for key in ["test", "or_else", "iter"]:
-        if key in body and body[key]["_type"] == "Call":
-            for arg in body[key]["args"]:
-                if arg["_type"] == "Name":
-                    used_vars.add(arg["id"])
-    return assigned_vars, used_vars
-
-
 def _function_to_ast_dict(node):
     if isinstance(node, ast.AST):
         result = {"_type": type(node).__name__}
@@ -212,7 +172,6 @@ class FunctionDictFlowAnalyzer:
         unique_func_name = self._parse_function_call(
             node["iter"], control_flow=f"{control_flow}-iter"
         )
-        # Parse outputs
         self._add_output_edge(
             unique_func_name, node["target"]["id"], control_flow=control_flow
         )
@@ -259,7 +218,6 @@ class FunctionDictFlowAnalyzer:
 
     def _handle_assign(self, node, control_flow: str | None = None):
         unique_func_name = self._handle_expr(node, control_flow=control_flow)
-        # Parse outputs
         self._parse_outputs(
             node["targets"], unique_func_name, control_flow=control_flow
         )
@@ -345,6 +303,16 @@ def _get_variables_from_subgraph(graph: nx.DiGraph, io_: str) -> set[str]:
 
 
 def _get_parent_graph(graph: nx.DiGraph, control_flow: str) -> nx.DiGraph:
+    """
+    Get parent body of the indented body
+
+    Args:
+        graph (nx.DiGraph): Full graph to look for the parent graph from
+        control_flow (str): Control flow whose parent graph is to look for
+
+    Returns:
+        (nx.DiGraph): Parent graph
+    """
     return nx.DiGraph(
         [
             edge
@@ -415,6 +383,16 @@ def _split_graphs_into_subgraphs(graph: nx.DiGraph) -> dict[str, nx.DiGraph]:
 
 
 def _get_subgraphs(graph: nx.DiGraph, cf_graph: nx.DiGraph) -> dict[str, nx.DiGraph]:
+    """
+    Separate a flat graph into subgraphs nested by control flows
+
+    Args:
+        graph (nx.DiGraph): Flat workflow graph
+        cf_graph (nx.DiGraph): Control flow graph (cf. _get_control_flow_graph)
+
+    Returns:
+        dict[str, nx.DiGraph]: Subgraphs
+    """
     subgraphs = _split_graphs_into_subgraphs(graph)
     for key in list(topological_sort(cf_graph))[::-1]:
         subgraph = subgraphs[key]
@@ -448,6 +426,18 @@ def _extract_functions_from_graph(graph: nx.DiGraph) -> set:
 
 
 def _get_control_flow_graph(control_flows: list[str]) -> nx.DiGraph:
+    """
+    Create a graph based on the control flows. The indentation level
+    corresponds to the graph level. The higher level body is the parent node
+    of the lower body.
+
+
+    Args:
+        control_flows (list[str]): All control flows present in a workflow
+
+    Returns:
+        nx.DiGraph: Control flow graph
+    """
     cf_list = []
     for cf in control_flows:
         if cf == "":
@@ -561,7 +551,17 @@ def _remove_index(s: str) -> str:
     return "_".join(s.split("_")[:-1])
 
 
-def _get_control_flow(data: dict[str, Any], remove_channel: bool = True) -> str:
+def _get_control_flow(data: dict[str, Any]) -> str:
+    """
+    Get the control flow name
+
+    Args:
+        data (dict[str, Any]): metadata of the edge (which is stored in the
+            third element of each edge of nx.Digraph)
+
+    Returns:
+        (str): Control flow name (e.g. While_0, For_3 etc.)
+    """
     return data.get("control_flow", "").split("-")[0]
 
 
@@ -796,25 +796,39 @@ def _to_workflow_dict_entry(
     } | kwargs
 
 
-def get_workflow_dict(func: Callable) -> dict[str, object]:
+def _get_test_dict(f_dict: dict[str, dict]) -> dict[str, str]:
     """
-    Get a dictionary representation of the workflow for a given function.
+    dict to translate test and iter nodes into "test" and "iter"
 
     Args:
-        func (Callable): The function to be analyzed.
+        f_dict (dict[str, dict]): Function dictionary
 
     Returns:
-        dict: A dictionary representation of the workflow, including inputs,
-            outputs, nodes, edges, and label.
+        dict[str, str]: Translation of node name to "test" or "iter"
     """
-    graph, f_dict = analyze_function(func)
-    nodes = _get_nodes(f_dict, _get_output_counts(graph))
-    test_dict = {
+    return {
         key: tag
         for key, value in f_dict.items()
         for tag in ["test", "iter"]
         if value.get("control_flow", "").endswith(tag)
     }
+
+
+def _nest_nodes(
+    graph: nx.DiGraph, nodes: dict[str, dict], f_dict: dict[str, dict]
+) -> tuple[dict[str, dict], list[tuple[str, str]]]:
+    """
+    Nest workflow nodes
+
+    Args:
+        graph (nx.DiGraph): The directed graph representing the function.
+        nodes (dict[str, dict]): The dictionary of nodes.
+        f_dict (dict[str, dict]): The dictionary of functions.
+
+    Returns:
+        dict: A dictionary containing the nested nodes, edges, and label.
+    """
+    test_dict = _get_test_dict(f_dict=f_dict)
     cf_graph = _get_control_flow_graph(_extract_control_flows(graph))
     subgraphs = _get_subgraphs(graph, cf_graph)
     injected_nodes: dict[str, Any] = {}
@@ -843,11 +857,28 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
         for tag in ["test", "iter"]:
             if tag in injected_nodes[new_key]["nodes"]:
                 injected_nodes[new_key][tag] = injected_nodes[new_key]["nodes"].pop(tag)
+    return injected_nodes[""]["nodes"], injected_nodes[""]["edges"]
+
+
+def get_workflow_dict(func: Callable) -> dict[str, object]:
+    """
+    Get a dictionary representation of the workflow for a given function.
+
+    Args:
+        func (Callable): The function to be analyzed.
+
+    Returns:
+        dict: A dictionary representation of the workflow, including inputs,
+            outputs, nodes, edges, and label.
+    """
+    graph, f_dict = analyze_function(func)
+    nodes = _get_nodes(f_dict, _get_output_counts(graph))
+    nested_nodes, edges = _nest_nodes(graph, nodes, f_dict)
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),
-        nodes=injected_nodes[""]["nodes"],
-        edges=injected_nodes[""]["edges"],
+        nodes=nested_nodes,
+        edges=edges,
         label=func.__name__,
     )
 
