@@ -141,10 +141,14 @@ class FunctionDictFlowAnalyzer:
 
     def _set_var_index(self, variable: str, idx: int, control_flow: str | None = None):
         if control_flow not in ["If", "Elif", "Else"]:
-            self._var_index["main"][target] = self._var_index["main"].get(target, -1) + 1
+            self._var_index["main"][target] = (
+                self._var_index["main"].get(target, -1) + 1
+            )
         if control_flow not in self._var_index:
             self._var_index[control_flow] = self._var_index["main"].copy()
-        self._var_index[control_flow][target] = self._var_index[control_flow].get(target, -1) + 1
+        self._var_index[control_flow][target] = (
+            self._var_index[control_flow].get(target, -1) + 1
+        )
 
     def analyze(self) -> tuple[nx.DiGraph, dict[str, Any]]:
         for arg in self.ast_dict.get("args", {}).get("args", []):
