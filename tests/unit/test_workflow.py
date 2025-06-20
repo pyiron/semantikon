@@ -912,6 +912,21 @@ class TestWorkflow(unittest.TestCase):
         data = get_workflow_dict(workflow_with_if_else)
         self.assertIn("injected_If_0", data["nodes"])
         self.assertEqual(
+            sorted(data["edges"]),
+            sorted(
+                [
+                    ("inputs.b", "injected_If_0.inputs.b"),
+                    ("inputs.a", "injected_Else_0.inputs.a"),
+                    ("inputs.a", "add_0.inputs.x"),
+                    ("inputs.b", "add_0.inputs.y"),
+                    ("add_0.outputs.output", "injected_If_0.inputs.x"),
+                    ("add_0.outputs.output", "injected_Else_0.inputs.x"),
+                    ("injected_If_0.outputs.x", "outputs.x"),
+                    ("injected_Else_0.outputs.x", "outputs.x"),
+                ]
+            ),
+        )
+        self.assertEqual(
             sorted(data["nodes"]["injected_If_0"]["edges"]),
             sorted(
                 [

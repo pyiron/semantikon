@@ -126,11 +126,25 @@ class FunctionDictFlowAnalyzer:
         self.graph = nx.DiGraph()
         self.scope = scope  # mapping from function names to objects
         self.function_defs = {}
-        self._var_index = {}
+        self._var_index = {"main": {}}
         self.ast_dict = ast_dict
         self._call_counter = {}
         self._control_flow_list = []
         self._return_was_called = False
+
+    def _get_var_index(self, variable: str, control_flow: str | None = None) -> int:
+        if control_flow not in ["If", "Elif", "Else"]:
+            return self._var_index["main"][variable]
+        if control_flow not in self._var_index:
+            self._var_index[control_flow] = self._var_index["main"].copy()
+        return self._var_index[control_flow][variable]
+
+    def _set_var_index(self, variable: str, idx: int, control_flow: str | None = None):
+        if control_flow not in ["If", "Elif", "Else"]:
+            self._var_index["main"][target] = self._var_index["main"].get(target, -1) + 1
+        if control_flow not in self._var_index:
+            self._var_index[control_flow] = self._var_index["main"].copy()
+        self._var_index[control_flow][target] = self._var_index[control_flow].get(target, -1) + 1
 
     def analyze(self) -> tuple[nx.DiGraph, dict[str, Any]]:
         for arg in self.ast_dict.get("args", {}).get("args", []):
@@ -267,7 +281,7 @@ class FunctionDictFlowAnalyzer:
         self, source, target, control_flow: str | None = None, **kwargs
     ):
         self._var_index[target] = self._var_index.get(target, -1) + 1
-        versioned = f"{target}_{self._var_index[target]}"
+        versioned = f"{target}_{self._get_var_index(target, control_flow)}"
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
         self.graph.add_edge(source, versioned, type="output", **kwargs)
@@ -280,9 +294,7 @@ class FunctionDictFlowAnalyzer:
         var_name = source["id"]
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
-        if var_name not in self._var_index:
-            raise ValueError(f"Variable {var_name} not found in scope")
-        idx = self._var_index[var_name]
+        idx = self._get_var_index(var_name, control_flow=control_flow)
         versioned = f"{var_name}_{idx}"
         self.graph.add_edge(versioned, target, type="input", **kwargs)
 
