@@ -490,7 +490,7 @@ def _remove_index(s: str) -> str:
     return "_".join(s.split("_")[:-1])
 
 
-def _get_control_flow(data: dict[str, Any], remove_channel: bool = True) -> str:
+def _get_control_flow(data: dict[str, Any]) -> str:
     return data.get("control_flow", "").split("-")[0]
 
 
