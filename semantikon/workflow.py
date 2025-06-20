@@ -354,6 +354,16 @@ def _split_graphs_into_subgraphs(graph: nx.DiGraph) -> dict[str, nx.DiGraph]:
 
 
 def _get_subgraphs(graph: nx.DiGraph, cf_graph: nx.DiGraph) -> dict[str, nx.DiGraph]:
+    """
+    Separate a flat graph into subgraphs nested by control flows
+
+    Args:
+        graph (nx.DiGraph): Flat workflow graph
+        cf_graph (nx.DiGraph): Control flow graph (cf. _get_control_flow_graph)
+
+    Returns:
+        dict[str, nx.DiGraph]: Subgraphs
+    """
     subgraphs = _split_graphs_into_subgraphs(graph)
     for key in list(topological_sort(cf_graph))[::-1]:
         subgraph = subgraphs[key]
@@ -387,6 +397,18 @@ def _extract_functions_from_graph(graph: nx.DiGraph) -> set:
 
 
 def _get_control_flow_graph(control_flows: list[str]) -> nx.DiGraph:
+    """
+    Create a graph based on the control flows. The indentation level
+    corresponds to the graph level. The higher level body is the parent node
+    of the lower body.
+
+
+    Args:
+        control_flows (list[str]): All control flows present in a workflow
+
+    Returns:
+        nx.DiGraph: Control flow graph
+    """
     cf_list = []
     for cf in control_flows:
         if cf == "":
@@ -765,7 +787,7 @@ def _get_test_dict(f_dict: dict[str, dict]) -> dict[str, str]:
 
 def _nest_nodes(graph: nx.DiGraph, nodes: dict[str, dict], f_dict: dict[str, dict]) -> dict[str, dict]:
     """
-    Nest workflow nodes (see explanation below)
+    Nest workflow nodes
 
     Args:
         graph (nx.DiGraph): The directed graph representing the function.
@@ -774,8 +796,6 @@ def _nest_nodes(graph: nx.DiGraph, nodes: dict[str, dict], f_dict: dict[str, dic
 
     Returns:
         dict: A dictionary containing the nested nodes, edges, and label.
-
-    ***Detailed explanation***
     """
     test_dict = _get_test_dict(f_dict=f_dict)
     cf_graph = _get_control_flow_graph(_extract_control_flows(graph))
