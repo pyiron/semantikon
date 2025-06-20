@@ -785,7 +785,9 @@ def _get_test_dict(f_dict: dict[str, dict]) -> dict[str, str]:
     }
 
 
-def _nest_nodes(graph: nx.DiGraph, nodes: dict[str, dict], f_dict: dict[str, dict]) -> dict[str, dict]:
+def _nest_nodes(
+    graph: nx.DiGraph, nodes: dict[str, dict], f_dict: dict[str, dict]
+) -> dict[str, dict]:
     """
     Nest workflow nodes
 
