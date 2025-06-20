@@ -745,13 +745,39 @@ def _to_workflow_dict_entry(
     } | kwargs
 
 
-def _nest_nodes(graph: nx.DiGraph, nodes: dict[str, dict], f_dict: dict[str, dict]):
-    test_dict = {
+def _get_test_dict(f_dict: dict[str, dict]) -> dict[str, str]:
+    """
+    dict to translate test and iter nodes into "test" and "iter"
+
+    Args:
+        f_dict (dict[str, dict]): Function dictionary
+
+    Returns:
+        dict[str, str]: Translation of node name to "test" or "iter"
+    """
+    return {
         key: tag
         for key, value in f_dict.items()
         for tag in ["test", "iter"]
         if value.get("control_flow", "").endswith(tag)
     }
+
+
+def _nest_nodes(graph: nx.DiGraph, nodes: dict[str, dict], f_dict: dict[str, dict]) -> dict[str, dict]:
+    """
+    Nest workflow nodes (see explanation below)
+
+    Args:
+        graph (nx.DiGraph): The directed graph representing the function.
+        nodes (dict[str, dict]): The dictionary of nodes.
+        f_dict (dict[str, dict]): The dictionary of functions.
+
+    Returns:
+        dict: A dictionary containing the nested nodes, edges, and label.
+
+    ***Detailed explanation***
+    """
+    test_dict = _get_test_dict(f_dict=f_dict)
     cf_graph = _get_control_flow_graph(_extract_control_flows(graph))
     subgraphs = _get_subgraphs(graph, cf_graph)
     injected_nodes: dict[str, Any] = {}
