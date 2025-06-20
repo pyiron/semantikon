@@ -787,7 +787,7 @@ def _get_test_dict(f_dict: dict[str, dict]) -> dict[str, str]:
 
 def _nest_nodes(
     graph: nx.DiGraph, nodes: dict[str, dict], f_dict: dict[str, dict]
-) -> dict[str, dict]:
+) -> tuple[dict[str, dict], list[tuple[str, str]]]:
     """
     Nest workflow nodes
 
@@ -828,7 +828,7 @@ def _nest_nodes(
         for tag in ["test", "iter"]:
             if tag in injected_nodes[new_key]["nodes"]:
                 injected_nodes[new_key][tag] = injected_nodes[new_key]["nodes"].pop(tag)
-    return injected_nodes[""]
+    return injected_nodes[""]["nodes"], injected_nodes[""]["edges"]
 
 
 def get_workflow_dict(func: Callable) -> dict[str, object]:
@@ -844,12 +844,12 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
     """
     graph, f_dict = analyze_function(func)
     nodes = _get_nodes(f_dict, _get_output_counts(graph))
-    nested_nodes = _nest_nodes(graph, nodes, f_dict)
+    nested_nodes, edges = _nest_nodes(graph, nodes, f_dict)
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),
-        nodes=nested_nodes["nodes"],
-        edges=nested_nodes["edges"],
+        nodes=nested_nodes,
+        edges=edges,
         label=func.__name__,
     )
 

@@ -9,7 +9,6 @@ from semantikon.converter import parse_input_args
 from semantikon.metadata import u
 from semantikon.workflow import (
     _detect_io_variables_from_control_flow,
-    _function_to_ast_dict,
     _get_control_flow_graph,
     _get_node_outputs,
     _get_output_counts,
