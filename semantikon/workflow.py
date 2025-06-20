@@ -274,6 +274,16 @@ def _get_variables_from_subgraph(graph: nx.DiGraph, io_: str) -> set[str]:
 
 
 def _get_parent_graph(graph: nx.DiGraph, control_flow: str) -> nx.DiGraph:
+    """
+    Get parent body of the indented body
+
+    Args:
+        graph (nx.DiGraph): Full graph to look for the parent graph from
+        control_flow (str): Control flow whose parent graph is to look for
+
+    Returns:
+        (nx.DiGraph): Parent graph
+    """
     return nx.DiGraph(
         [
             edge
@@ -735,19 +745,7 @@ def _to_workflow_dict_entry(
     } | kwargs
 
 
-def get_workflow_dict(func: Callable) -> dict[str, object]:
-    """
-    Get a dictionary representation of the workflow for a given function.
-
-    Args:
-        func (Callable): The function to be analyzed.
-
-    Returns:
-        dict: A dictionary representation of the workflow, including inputs,
-            outputs, nodes, edges, and label.
-    """
-    graph, f_dict = analyze_function(func)
-    nodes = _get_nodes(f_dict, _get_output_counts(graph))
+def _nest_nodes(graph: nx.DiGraph, nodes: dict[str, dict], f_dict: dict[str, dict]):
     test_dict = {
         key: tag
         for key, value in f_dict.items()
@@ -782,11 +780,28 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
         for tag in ["test", "iter"]:
             if tag in injected_nodes[new_key]["nodes"]:
                 injected_nodes[new_key][tag] = injected_nodes[new_key]["nodes"].pop(tag)
+    return injected_nodes[""]
+
+
+def get_workflow_dict(func: Callable) -> dict[str, object]:
+    """
+    Get a dictionary representation of the workflow for a given function.
+
+    Args:
+        func (Callable): The function to be analyzed.
+
+    Returns:
+        dict: A dictionary representation of the workflow, including inputs,
+            outputs, nodes, edges, and label.
+    """
+    graph, f_dict = analyze_function(func)
+    nodes = _get_nodes(f_dict, _get_output_counts(graph))
+    nested_nodes = _nest_nodes(graph, nodes, f_dict)
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
         outputs=_get_workflow_outputs(func),
-        nodes=injected_nodes[""]["nodes"],
-        edges=injected_nodes[""]["edges"],
+        nodes=nested_nodes["nodes"],
+        edges=nested_nodes["edges"],
         label=func.__name__,
     )
 
