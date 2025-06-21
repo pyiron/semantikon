@@ -109,24 +109,24 @@ class FunctionDictFlowAnalyzer:
             self._var_index[control_flow] = self._var_index["main"].copy()
         return self._var_index[control_flow][variable]
 
-    def _set_var_index(self, variable: str, idx: int, control_flow: str | None = None):
+    def _set_var_index(self, target: str, control_flow: str | None = None):
         """
         Set the index of a variable in the variable index.
 
         Args:
-            variable (str): The variable name.
-            idx (int): The index to set.
+            target (str): The variable name.
             control_flow (str | None): The control flow tag, if any.
         """
         if control_flow not in ["If", "Elif", "Else"]:
             self._var_index["main"][target] = (
                 self._var_index["main"].get(target, -1) + 1
             )
-        if control_flow not in self._var_index:
-            self._var_index[control_flow] = self._var_index["main"].copy()
-        self._var_index[control_flow][target] = (
-            self._var_index[control_flow].get(target, -1) + 1
-        )
+        else:
+            if control_flow not in self._var_index:
+                self._var_index[control_flow] = self._var_index["main"].copy()
+            self._var_index[control_flow][target] = (
+                self._var_index[control_flow].get(target, -1) + 1
+            )
 
     def analyze(self) -> tuple[nx.DiGraph, dict[str, Any]]:
         for arg in self.ast_dict.get("args", {}).get("args", []):
@@ -260,7 +260,7 @@ class FunctionDictFlowAnalyzer:
     def _add_output_edge(
         self, source, target, control_flow: str | None = None, **kwargs
     ):
-        self._var_index[target] = self._var_index.get(target, -1) + 1
+        self._set_var_index(target, control_flow=control_flow)
         versioned = f"{target}_{self._get_var_index(target, control_flow)}"
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
