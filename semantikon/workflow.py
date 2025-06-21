@@ -93,6 +93,16 @@ class FunctionDictFlowAnalyzer:
         self._return_was_called = False
 
     def _get_var_index(self, variable: str, control_flow: str | None = None) -> int:
+        """
+        Get the index of a variable in the variable index.
+
+        Args:
+            variable (str): The variable name.
+            control_flow (str | None): The control flow tag, if any.
+
+        Returns:
+            int: The index of the variable in the variable index.
+        """
         if control_flow not in ["If", "Elif", "Else"]:
             return self._var_index["main"][variable]
         if control_flow not in self._var_index:
@@ -100,6 +110,14 @@ class FunctionDictFlowAnalyzer:
         return self._var_index[control_flow][variable]
 
     def _set_var_index(self, variable: str, idx: int, control_flow: str | None = None):
+        """
+        Set the index of a variable in the variable index.
+
+        Args:
+            variable (str): The variable name.
+            idx (int): The index to set.
+            control_flow (str | None): The control flow tag, if any.
+        """
         if control_flow not in ["If", "Elif", "Else"]:
             self._var_index["main"][target] = (
                 self._var_index["main"].get(target, -1) + 1
