@@ -103,11 +103,12 @@ class FunctionDictFlowAnalyzer:
         Returns:
             int: The index of the variable in the variable index.
         """
-        if control_flow not in ["If", "Elif", "Else"]:
+        cf = control_flow.split("-")[0].split("/")[0] if control_flow else "main"
+        if cf not in ["If", "Elif", "Else"]:
             return self._var_index["main"][variable]
-        if control_flow not in self._var_index:
-            self._var_index[control_flow] = self._var_index["main"].copy()
-        return self._var_index[control_flow][variable]
+        if cf not in self._var_index:
+            self._var_index[cf] = self._var_index["main"].copy()
+        return self._var_index[cf][variable]
 
     def _set_var_index(self, target: str, control_flow: str | None = None):
         """
@@ -117,15 +118,16 @@ class FunctionDictFlowAnalyzer:
             target (str): The variable name.
             control_flow (str | None): The control flow tag, if any.
         """
-        if control_flow not in ["If", "Elif", "Else"]:
+        cf = control_flow.split("-")[0].split("/")[0] if control_flow else "main"
+        if cf not in ["If", "Elif", "Else"]:
             self._var_index["main"][target] = (
                 self._var_index["main"].get(target, -1) + 1
             )
         else:
-            if control_flow not in self._var_index:
-                self._var_index[control_flow] = self._var_index["main"].copy()
-            self._var_index[control_flow][target] = (
-                self._var_index[control_flow].get(target, -1) + 1
+            if cf not in self._var_index:
+                self._var_index[cf] = self._var_index["main"].copy()
+            self._var_index[cf][target] = (
+                self._var_index[cf].get(target, -1) + 1
             )
 
     def analyze(self) -> tuple[nx.DiGraph, dict[str, Any]]:
