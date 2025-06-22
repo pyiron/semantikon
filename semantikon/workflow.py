@@ -264,17 +264,48 @@ class FunctionDictFlowAnalyzer:
                 )
 
     def _add_output_edge(
-        self, source, target, control_flow: str | None = None, **kwargs
+        self, source: str, target:str , control_flow: str | None = None, **kwargs
     ):
+        """
+        Add an output edge from the source to the target variable.
+
+        Args:
+            source (str): The source node (function name).
+            target (str): The target variable name.
+            control_flow (str | None): The control flow tag, if any.
+            **kwargs: Additional keyword arguments to pass to the edge.
+
+        In the case of the following line:
+
+        >>> y = f(x)
+
+        This function will add an edge from the function `f` to the variable `y`.
+        """
         self._set_var_index(target, control_flow=control_flow)
-        versioned = f"{target}_{self._get_var_index(target, control_flow)}"
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
+        idx = self._get_var_index(target, control_flow)
+        versioned = f"{target}_{idx}"
         self.graph.add_edge(source, versioned, type="output", **kwargs)
 
     def _add_input_edge(
-        self, source, target, control_flow: str | None = None, **kwargs
+        self, source: dict, target: str, control_flow: str | None = None, **kwargs
     ):
+        """
+        Add an input edge from the source variable to the target node.
+
+        Args:
+            source (dict): The source variable node.
+            target (str): The target node (function name).
+            control_flow (str | None): The control flow tag, if any.
+            **kwargs: Additional keyword arguments to pass to the edge.
+
+        In the case of the following line:
+
+        >>> y = f(x)
+
+        This function will add an edge from the variable `x` to the function `f`.
+        """
         if source["_type"] != "Name":
             raise NotImplementedError(f"Only variable inputs supported, got: {source}")
         var_name = source["id"]
