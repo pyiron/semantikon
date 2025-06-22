@@ -103,7 +103,7 @@ class FunctionDictFlowAnalyzer:
         Returns:
             int: The index of the variable in the variable index.
         """
-        cf = control_flow.split("-")[0].split("/")[0] if control_flow else "main"
+        cf = control_flow.split("_")[0].split("/")[0] if control_flow else "main"
         if cf not in ["If", "Elif", "Else"]:
             return self._var_index["main"][variable]
         if cf not in self._var_index:
@@ -118,7 +118,7 @@ class FunctionDictFlowAnalyzer:
             target (str): The variable name.
             control_flow (str | None): The control flow tag, if any.
         """
-        cf = control_flow.split("-")[0].split("/")[0] if control_flow else "main"
+        cf = control_flow.split("_")[0].split("/")[0] if control_flow else "main"
         if cf not in ["If", "Elif", "Else"]:
             self._var_index["main"][target] = (
                 self._var_index["main"].get(target, -1) + 1
@@ -177,6 +177,10 @@ class FunctionDictFlowAnalyzer:
             self._visit_node(
                 n, control_flow=f"{control_flow.replace('If', 'Else')}-body"
             )
+        for tag in ["If", "Elif", "Else"]:
+            if tag in self._var_index:
+                for key, value in self._var_index[tag].items():
+                    self._var_index["main"][key] = max(value, self._var_index["main"][key])
 
     def _handle_while(self, node, control_flow: str | None = None):
         assert node["test"]["_type"] == "Call"
