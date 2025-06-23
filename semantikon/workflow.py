@@ -86,7 +86,6 @@ class FunctionDictFlowAnalyzer:
         self.graph = nx.DiGraph()
         self.scope = scope  # mapping from function names to objects
         self.function_defs = {}
-        self._var_index = {}
         self.ast_dict = ast_dict
         self._call_counter = {}
         self._control_flow_list = []
@@ -208,11 +207,25 @@ class FunctionDictFlowAnalyzer:
                     unique_func_name, target["id"], control_flow=control_flow
                 )
 
+    def _get_var_index(self, variable: str, output: bool = False) -> int:
+        index = -1
+        for edge in self.graph.edges.data():
+            var, idx = "_".join(edge[1].split("_")[:-1]), edge[1].split("_")[-1]
+            if var == variable and index < int(idx):
+                index = int(idx)
+        if output:
+            index += 1
+        elif index == -1:
+            raise ValueError(
+                f"Variable {variable} not found in graph. "
+                "This usually means that the variable was never defined."
+            )
+        return index
+
     def _add_output_edge(
         self, source, target, control_flow: str | None = None, **kwargs
     ):
-        self._var_index[target] = self._var_index.get(target, -1) + 1
-        versioned = f"{target}_{self._var_index[target]}"
+        versioned = f"{target}_{self._get_var_index(target, output=True)}"
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
         self.graph.add_edge(source, versioned, type="output", **kwargs)
@@ -225,10 +238,7 @@ class FunctionDictFlowAnalyzer:
         var_name = source["id"]
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
-        if var_name not in self._var_index:
-            raise ValueError(f"Variable {var_name} not found in scope")
-        idx = self._var_index[var_name]
-        versioned = f"{var_name}_{idx}"
+        versioned = f"{var_name}_{self._get_var_index(var_name)}"
         self.graph.add_edge(versioned, target, type="input", **kwargs)
 
     def _get_unique_func_name(self, base_name):
