@@ -13,4 +13,4 @@ dependencies:
 - python-graphviz =0.21
 - requests =2.32.4
 - setuptools =80.9.0
-- typeguard=4.4.3
+- typeguard=4.4.4
