@@ -4,7 +4,7 @@ dependencies:
 - coverage
 - graphviz =12.2.1
 - networkx =3.4.2
-- numpy =2.2.3
+- numpy =2.2.6
 - owlrl =7.1.3
 - pint =0.24.4
 - rdflib =7.1.4
