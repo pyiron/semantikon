@@ -236,7 +236,7 @@ class FunctionDictFlowAnalyzer:
         return index
 
     def _add_output_edge(
-        self, source: str, target:str , control_flow: str | None = None, **kwargs
+        self, source: str, target: str, control_flow: str | None = None, **kwargs
     ):
         """
         Add an output edge from the source to the target variable.
