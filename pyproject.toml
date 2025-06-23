@@ -31,7 +31,7 @@ dependencies = [
     "rdflib==7.1.4",
     "pyshacl==0.30.1",
     "requests===2.32.4",
-    "typeguard==4.4.3",
+    "typeguard==4.4.4",
 ]
 dynamic = [ "version",]
 authors = [
