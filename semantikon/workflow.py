@@ -86,49 +86,10 @@ class FunctionDictFlowAnalyzer:
         self.graph = nx.DiGraph()
         self.scope = scope  # mapping from function names to objects
         self.function_defs = {}
-        self._var_index = {"main": {}}
         self.ast_dict = ast_dict
         self._call_counter = {}
         self._control_flow_list = []
         self._return_was_called = False
-
-    def _get_var_index(self, variable: str, control_flow: str | None = None) -> int:
-        """
-        Get the index of a variable in the variable index.
-
-        Args:
-            variable (str): The variable name.
-            control_flow (str | None): The control flow tag, if any.
-
-        Returns:
-            int: The index of the variable in the variable index.
-        """
-        cf = control_flow.split("_")[0].split("/")[0] if control_flow else "main"
-        if cf not in ["If", "Elif", "Else"]:
-            return self._var_index["main"][variable]
-        if cf not in self._var_index:
-            self._var_index[cf] = self._var_index["main"].copy()
-        return self._var_index[cf][variable]
-
-    def _set_var_index(self, target: str, control_flow: str | None = None):
-        """
-        Set the index of a variable in the variable index.
-
-        Args:
-            target (str): The variable name.
-            control_flow (str | None): The control flow tag, if any.
-        """
-        cf = control_flow.split("_")[0].split("/")[0] if control_flow else "main"
-        if cf not in ["If", "Elif", "Else"]:
-            self._var_index["main"][target] = (
-                self._var_index["main"].get(target, -1) + 1
-            )
-        else:
-            if cf not in self._var_index:
-                self._var_index[cf] = self._var_index["main"].copy()
-            self._var_index[cf][target] = (
-                self._var_index[cf].get(target, -1) + 1
-            )
 
     def analyze(self) -> tuple[nx.DiGraph, dict[str, Any]]:
         for arg in self.ast_dict.get("args", {}).get("args", []):
@@ -177,10 +138,6 @@ class FunctionDictFlowAnalyzer:
             self._visit_node(
                 n, control_flow=f"{control_flow.replace('If', 'Else')}-body"
             )
-        for tag in ["If", "Elif", "Else"]:
-            if tag in self._var_index:
-                for key, value in self._var_index[tag].items():
-                    self._var_index["main"][key] = max(value, self._var_index["main"][key])
 
     def _handle_while(self, node, control_flow: str | None = None):
         assert node["test"]["_type"] == "Call"
@@ -263,6 +220,21 @@ class FunctionDictFlowAnalyzer:
                     unique_func_name, target["id"], control_flow=control_flow
                 )
 
+    def _get_var_index(self, variable: str, output: bool = False) -> int:
+        index = -1
+        for edge in self.graph.edges.data():
+            var, idx = "_".join(edge[1].split("_")[:-1]), edge[1].split("_")[-1]
+            if var == variable and index < int(idx):
+                index = int(idx)
+        if output:
+            index += 1
+        elif index == -1:
+            raise KeyError(
+                f"Variable {variable} not found in graph. "
+                "This usually means that the variable was never defined."
+            )
+        return index
+
     def _add_output_edge(
         self, source: str, target:str , control_flow: str | None = None, **kwargs
     ):
@@ -281,11 +253,9 @@ class FunctionDictFlowAnalyzer:
 
         This function will add an edge from the function `f` to the variable `y`.
         """
-        self._set_var_index(target, control_flow=control_flow)
+        versioned = f"{target}_{self._get_var_index(target, output=True)}"
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
-        idx = self._get_var_index(target, control_flow)
-        versioned = f"{target}_{idx}"
         self.graph.add_edge(source, versioned, type="output", **kwargs)
 
     def _add_input_edge(
@@ -311,8 +281,7 @@ class FunctionDictFlowAnalyzer:
         var_name = source["id"]
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
-        idx = self._get_var_index(var_name, control_flow=control_flow)
-        versioned = f"{var_name}_{idx}"
+        versioned = f"{var_name}_{self._get_var_index(var_name)}"
         self.graph.add_edge(versioned, target, type="input", **kwargs)
 
     def _get_unique_func_name(self, base_name):
