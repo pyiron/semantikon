@@ -221,18 +221,20 @@ class FunctionDictFlowAnalyzer:
                 )
 
     def _get_var_index(self, variable: str, output: bool = False) -> int:
-        for index in range(int(1e6)):
+        index = 0
+        while True:
             if f"{variable}_{index}" in self.graph:
+                index += 1
                 continue
-            elif output:
-                return index
-            elif index == 0:
+            elif index == 0 and not output:
                 raise KeyError(
                     f"Variable {variable} not found in graph. "
                     "This usually means that the variable was never defined."
                 )
-            else:
-                return index - 1
+            elif not output:
+                index -= 1
+            break
+        return index
 
     def _add_output_edge(
         self, source: str, target: str, control_flow: str | None = None, **kwargs
