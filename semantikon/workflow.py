@@ -81,6 +81,21 @@ def _hash_function(func):
     return f"{func.__name__}_{sha256(inspect.getsource(func).encode()).hexdigest()}"
 
 
+def _are_parallel(
+    control_flow_1: str | None = None, control_flow_2: str | None = None
+) -> bool:
+    if control_flow_1 is None or control_flow_2 is None:
+        return False
+    for cf in [control_flow_1, control_flow_2]:
+        if cf.split("/")[-1].split("_")[0] not in ["If", "Else", "Elif"]:
+            return False
+
+    def without_current_cf(cf: str) -> str:
+        return "/".join(cf.split("/")[:-1]) + cf.split("_")[-1]
+
+    return without_current_cf(control_flow_1) == without_current_cf(control_flow_2)
+
+
 class FunctionDictFlowAnalyzer:
     def __init__(self, ast_dict, scope):
         self.graph = nx.DiGraph()
@@ -220,21 +235,33 @@ class FunctionDictFlowAnalyzer:
                     unique_func_name, target["id"], control_flow=control_flow
                 )
 
-    def _get_var_index(self, variable: str, output: bool = False) -> int:
+    def _get_max_index(self, variable: str) -> int:
         index = 0
         while True:
-            if f"{variable}_{index}" in self.graph:
+            if len(self.graph.in_edges(f"{variable}_{index}")) > 0:
                 index += 1
                 continue
-            elif index == 0 and not output:
-                raise KeyError(
-                    f"Variable {variable} not found in graph. "
-                    "This usually means that the variable was never defined."
-                )
-            elif not output:
-                index -= 1
             break
         return index
+
+    def _get_var_index(
+        self, variable: str, output: bool = False, control_flow: str | None = None
+    ) -> list:
+        index = self._get_max_index(variable)
+        if index == 0 and not output:
+            raise KeyError(
+                f"Variable {variable} not found in graph. "
+                "This usually means that the variable was never defined."
+            )
+        if output:
+            return [index]
+        else:
+            return [index - 1]
+
+    def _get_out_index(self, variable: str, control_flow: str | None = None) -> int:
+        return self._get_var_index(
+            variable=variable, output=True, control_flow=control_flow
+        )[0]
 
     def _add_output_edge(
         self, source: str, target: str, control_flow: str | None = None, **kwargs
@@ -254,7 +281,7 @@ class FunctionDictFlowAnalyzer:
 
         This function will add an edge from the function `f` to the variable `y`.
         """
-        versioned = f"{target}_{self._get_var_index(target, output=True)}"
+        versioned = f"{target}_{self._get_out_index(target, control_flow=control_flow)}"
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
         self.graph.add_edge(source, versioned, type="output", **kwargs)
@@ -282,8 +309,9 @@ class FunctionDictFlowAnalyzer:
         var_name = source["id"]
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
-        versioned = f"{var_name}_{self._get_var_index(var_name)}"
-        self.graph.add_edge(versioned, target, type="input", **kwargs)
+        for ind in self._get_var_index(var_name, control_flow=control_flow):
+            versioned = f"{var_name}_{ind}"
+            self.graph.add_edge(versioned, target, type="input", **kwargs)
 
     def _get_unique_func_name(self, base_name):
         i = self._call_counter.get(base_name, 0)
