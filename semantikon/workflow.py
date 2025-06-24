@@ -245,8 +245,8 @@ class FunctionDictFlowAnalyzer:
         return index
 
     def _get_var_index(
-        self, variable: str, output: bool = False, control_flow: str | None = None
-    ) -> list:
+        self, variable: str, output: bool = False
+    ) -> int:
         index = self._get_max_index(variable)
         if index == 0 and not output:
             raise KeyError(
@@ -254,14 +254,9 @@ class FunctionDictFlowAnalyzer:
                 "This usually means that the variable was never defined."
             )
         if output:
-            return [index]
+            return index
         else:
-            return [index - 1]
-
-    def _get_out_index(self, variable: str, control_flow: str | None = None) -> int:
-        return self._get_var_index(
-            variable=variable, output=True, control_flow=control_flow
-        )[0]
+            return index - 1
 
     def _add_output_edge(
         self, source: str, target: str, control_flow: str | None = None, **kwargs
@@ -281,7 +276,7 @@ class FunctionDictFlowAnalyzer:
 
         This function will add an edge from the function `f` to the variable `y`.
         """
-        versioned = f"{target}_{self._get_out_index(target, control_flow=control_flow)}"
+        versioned = f"{target}_{self._get_var_index(target, output=True)}"
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
         self.graph.add_edge(source, versioned, type="output", **kwargs)
@@ -309,9 +304,8 @@ class FunctionDictFlowAnalyzer:
         var_name = source["id"]
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
-        for ind in self._get_var_index(var_name, control_flow=control_flow):
-            versioned = f"{var_name}_{ind}"
-            self.graph.add_edge(versioned, target, type="input", **kwargs)
+        versioned = f"{var_name}_{self._get_var_index(var_name)}"
+        self.graph.add_edge(versioned, target, type="input", **kwargs)
 
     def _get_unique_func_name(self, base_name):
         i = self._call_counter.get(base_name, 0)
