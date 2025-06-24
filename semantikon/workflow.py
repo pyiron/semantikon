@@ -244,27 +244,6 @@ class FunctionDictFlowAnalyzer:
             break
         return index
 
-    def _get_min_index(
-        self, variable: str, index: int, control_flow: str | None
-    ) -> int:
-        while True:
-            if (
-                len(
-                    [
-                        d
-                        for d in self.graph.in_edges(f"{variable}_{index}", data=True)
-                        if not _are_parallel(
-                            control_flow, d[2].get("control_flow", None)
-                        )
-                    ]
-                )
-                > 0
-                or index == 0
-            ):
-                break
-            index -= 1
-        return index
-
     def _get_var_index(
         self, variable: str, output: bool = False, control_flow: str | None = None
     ) -> list:
@@ -274,9 +253,10 @@ class FunctionDictFlowAnalyzer:
                 f"Variable {variable} not found in graph. "
                 "This usually means that the variable was never defined."
             )
-        if not output:
-            index = self._get_min_index(variable, index, control_flow)
-        return [index]
+        if output:
+            return [index]
+        else:
+            return [index - 1]
 
     def _get_out_index(self, variable: str, control_flow: str | None = None) -> int:
         return self._get_var_index(
