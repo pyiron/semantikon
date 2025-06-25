@@ -81,21 +81,6 @@ def _hash_function(func):
     return f"{func.__name__}_{sha256(inspect.getsource(func).encode()).hexdigest()}"
 
 
-def _are_parallel(
-    control_flow_1: str | None = None, control_flow_2: str | None = None
-) -> bool:
-    if control_flow_1 is None or control_flow_2 is None:
-        return False
-    for cf in [control_flow_1, control_flow_2]:
-        if cf.split("/")[-1].split("_")[0] not in ["If", "Else", "Elif"]:
-            return False
-
-    def without_current_cf(cf: str) -> str:
-        return "/".join(cf.split("/")[:-1]) + cf.split("_")[-1]
-
-    return without_current_cf(control_flow_1) == without_current_cf(control_flow_2)
-
-
 class FunctionDictFlowAnalyzer:
     def __init__(self, ast_dict, scope):
         self.graph = nx.DiGraph()
@@ -153,6 +138,29 @@ class FunctionDictFlowAnalyzer:
             self._visit_node(
                 n, control_flow=f"{control_flow.replace('If', 'Else')}-body"
             )
+            self._reconnect_parallel(
+                f"{control_flow.replace('If', 'Else')}-body", control_flow
+            )
+
+    def _reconnect_parallel(self, control_flow: str, ref_control_flow: str):
+        all_edges = list(self.graph.edges.data())
+        for edge in all_edges:
+            if (
+                "control_flow" not in edge[2]
+                or edge[2]["control_flow"] != control_flow
+                or edge[2]["type"] == "output"
+            ):
+                continue
+            var, ind = "_".join(edge[0].split("_")[:-1]), int(edge[0].split("_")[-1])
+            while True:
+                if any([e[2].get("control_flow") == ref_control_flow for e in self.graph.in_edges(f"{var}_{ind}", data=True)]):
+                    ind -= 1
+                break
+            if f"{var}_{ind}" != edge[0]:
+                print("Adding:", f"{var}_{ind} -> {edge[1]}")
+                print("Removing:", edge[0], "->", edge[1])
+                self.graph.add_edge(f"{var}_{ind}", edge[1], **edge[2])
+                self.graph.remove_edge(edge[0], edge[1])
 
     def _handle_while(self, node, control_flow: str | None = None):
         assert node["test"]["_type"] == "Call"
@@ -244,9 +252,7 @@ class FunctionDictFlowAnalyzer:
             break
         return index
 
-    def _get_var_index(
-        self, variable: str, output: bool = False
-    ) -> int:
+    def _get_var_index(self, variable: str, output: bool = False) -> int:
         index = self._get_max_index(variable)
         if index == 0 and not output:
             raise KeyError(
