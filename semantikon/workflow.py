@@ -89,18 +89,20 @@ class FunctionDictFlowAnalyzer:
         self.ast_dict = ast_dict
         self._call_counter = {}
         self._control_flow_list = []
-        self._return_was_called = False
 
     def analyze(self) -> tuple[nx.DiGraph, dict[str, Any]]:
         for arg in self.ast_dict.get("args", {}).get("args", []):
             if arg["_type"] == "arg":
                 self._add_output_edge("input", arg["arg"])
+        return_was_called = False
         for node in self.ast_dict.get("body", []):
+            assert not return_was_called
             self._visit_node(node)
+            if node["_type"] == "Return":
+                return_was_called = True
         return self.graph, self.function_defs
 
     def _visit_node(self, node, control_flow: str | None = None):
-        assert not self._return_was_called
         if node["_type"] == "Assign":
             self._handle_assign(node, control_flow=control_flow)
         elif node["_type"] == "Expr":
@@ -124,7 +126,6 @@ class FunctionDictFlowAnalyzer:
                 self._add_input_edge(elt, "output", input_index=idx)
         elif node["value"]["_type"] == "Name":
             self._add_input_edge(node["value"], "output")
-        self._return_was_called = True
 
     def _handle_while(self, node, control_flow: str | None = None):
         assert node["test"]["_type"] == "Call"
