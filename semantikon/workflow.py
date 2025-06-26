@@ -141,8 +141,8 @@ class FunctionDictFlowAnalyzer:
         unique_func_name = self._parse_function_call(
             node["iter"], control_flow=f"{control_flow}-iter"
         )
-        self._add_output_edge(
-            unique_func_name, node["target"]["id"], control_flow=control_flow
+        self._parse_outputs(
+            [node["target"]], unique_func_name, control_flow=control_flow
         )
         for node in node["body"]:
             self._visit_node(node, control_flow=f"{control_flow}-body")
