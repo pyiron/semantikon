@@ -136,7 +136,10 @@ class FunctionDictFlowAnalyzer:
         for n in node["body"]:
             self._visit_node(n, control_flow=f"{control_flow}-body")
         for n in node.get("orelse", []):
-            cf_else = "/".join(control_flow.split("/")[:-1]) + "/Else-body"
+            cf_else = "/".join(
+                control_flow.split("/")[:-1]
+                + [control_flow.split("/")[-1].replace("If", "Else")]
+            )
             self._visit_node(n, control_flow=cf_else)
             self._reconnect_parallel(cf_else, f"{control_flow}-body")
 
