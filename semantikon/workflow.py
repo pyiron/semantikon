@@ -140,7 +140,7 @@ class FunctionDictFlowAnalyzer:
                 n, control_flow=f"{control_flow.replace('If', 'Else')}-body"
             )
             self._reconnect_parallel(
-                f"{control_flow.replace('If', 'Else')}-body", control_flow
+                f"{control_flow.replace('If', 'Else')}-body", f"{control_flow}-body"
             )
 
     def _reconnect_parallel(self, control_flow: str, ref_control_flow: str):
@@ -154,12 +154,15 @@ class FunctionDictFlowAnalyzer:
                 continue
             var, ind = "_".join(edge[0].split("_")[:-1]), int(edge[0].split("_")[-1])
             while True:
-                if any([e[2].get("control_flow") == ref_control_flow for e in self.graph.in_edges(f"{var}_{ind}", data=True)]):
+                if any(
+                    [
+                        e[2].get("control_flow") == ref_control_flow
+                        for e in self.graph.in_edges(f"{var}_{ind}", data=True)
+                    ]
+                ):
                     ind -= 1
                 break
             if f"{var}_{ind}" != edge[0]:
-                print("Adding:", f"{var}_{ind} -> {edge[1]}")
-                print("Removing:", edge[0], "->", edge[1])
                 self.graph.add_edge(f"{var}_{ind}", edge[1], **edge[2])
                 self.graph.remove_edge(edge[0], edge[1])
 
