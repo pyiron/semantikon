@@ -136,12 +136,9 @@ class FunctionDictFlowAnalyzer:
         for n in node["body"]:
             self._visit_node(n, control_flow=f"{control_flow}-body")
         for n in node.get("orelse", []):
-            self._visit_node(
-                n, control_flow=f"{control_flow.replace('If', 'Else')}-body"
-            )
-            self._reconnect_parallel(
-                f"{control_flow.replace('If', 'Else')}-body", f"{control_flow}-body"
-            )
+            cf_else = "/".join(control_flow.split("/")[:-1]) + "/Else-body"
+            self._visit_node(n, control_flow=cf_else)
+            self._reconnect_parallel(cf_else, f"{control_flow}-body")
 
     def _reconnect_parallel(self, control_flow: str, ref_control_flow: str):
         all_edges = list(self.graph.edges.data())
