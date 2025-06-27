@@ -143,6 +143,39 @@ Interpreters can distinguish between annotated arguments and non-anotated argume
 Regardless of whether type hints are provided, the interpreter acts only when the input values contain units and ontological types. If the input values do not contain units and ontological types, the interpreter will pass the input values to the function as is.
 
 
+#### Knowledge graph
+
+Based on the type hints, `semantikon` can create a knowledge graph of the function. The knowledge graph is a directed acyclic graph (DAG) that contains the inputs and outputs of the function, as well as the units and ontological types.
+
+```python
+>>> from semantikon.metadata import u
+>>> from semantikon.workflow import get_workflow_dict
+>>> from semantikon.ontology import get_knowledge_graph
+>>> from semantikon.visualize import visualize
+>>>
+>>>
+>>> def get_speed(distance: u(float, units="meter"), time: u(float, units="second")) -> u(float, units="meter/second"):
+...     speed = distance / time
+...     return speed
+>>> 
+>>> def get_time(distance, speed):
+...     time = distance / speed
+...     return time
+>>> 
+>>> def my_workflow(distance, time):
+...     speed = get_speed(distance, time)
+...     time = get_time(distance, speed)
+...     return time
+>>> graph = get_knowledge_graph(get_workflow_dict(my_workflow))
+>>> visualize(graph)
+```
+
+This exports the following figure:
+
+<img src="../images/knowledge_graph.png" alt="Knowledge Graph Example" width="600"/>
+
+
+
 ## License
 
 This project is licensed under the BSD 3-Clause License - see the [LICENSE](../LICENSE) file for details.
