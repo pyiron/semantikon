@@ -89,6 +89,7 @@ class FunctionDictFlowAnalyzer:
         self.ast_dict = ast_dict
         self._call_counter = {}
         self._control_flow_list = []
+        self._parallel_var = {}
 
     def analyze(self) -> tuple[nx.DiGraph, dict[str, Any]]:
         for arg in self.ast_dict.get("args", {}).get("args", []):
@@ -111,6 +112,8 @@ class FunctionDictFlowAnalyzer:
             self._handle_while(node, control_flow=control_flow)
         elif node["_type"] == "For":
             self._handle_for(node, control_flow=control_flow)
+        elif node["_type"] == "If":
+            self._handle_if(node, control_flow=control_flow)
         elif node["_type"] == "Return":
             self._handle_return(node, control_flow=control_flow)
         else:
@@ -126,6 +129,60 @@ class FunctionDictFlowAnalyzer:
                 self._add_input_edge(elt, "output", input_index=idx)
         elif node["value"]["_type"] == "Name":
             self._add_input_edge(node["value"], "output")
+
+    def _handle_if(self, node, control_flow: str | None = None):
+        assert node["test"]["_type"] == "Call"
+        control_flow = self._convert_control_flow(control_flow, tag="If")
+        self._parse_function_call(node["test"], control_flow=f"{control_flow}-test")
+        for n in node["body"]:
+            self._visit_node(n, control_flow=f"{control_flow}-body")
+        for n in node.get("orelse", []):
+            cf_else = "/".join(
+                control_flow.split("/")[:-1]
+                + [control_flow.split("/")[-1].replace("If", "Else") + "-body"]
+            )
+            self._visit_node(n, control_flow=cf_else)
+            self._reconnect_parallel(cf_else, f"{control_flow}-body")
+            self._register_parallel_variables(cf_else, f"{control_flow}-body")
+
+    def _reconnect_parallel(self, control_flow: str, ref_control_flow: str):
+        all_edges = list(self.graph.edges.data())
+        for edge in all_edges:
+            if (
+                "control_flow" not in edge[2]
+                or edge[2]["control_flow"] != control_flow
+                or edge[2]["type"] == "output"
+            ):
+                continue
+            var, ind = "_".join(edge[0].split("_")[:-1]), int(edge[0].split("_")[-1])
+            while True:
+                if any(
+                    [
+                        e[2].get("control_flow") == ref_control_flow
+                        for e in self.graph.in_edges(f"{var}_{ind}", data=True)
+                    ]
+                ):
+                    ind -= 1
+                break
+            if f"{var}_{ind}" != edge[0]:
+                self.graph.add_edge(f"{var}_{ind}", edge[1], **edge[2])
+                self.graph.remove_edge(edge[0], edge[1])
+
+    def _register_parallel_variables(self, control_flow: str, ref_control_flow: str):
+        data: dict[str, dict] = {control_flow: {}, ref_control_flow: {}}
+        for edge in self.graph.edges.data():
+            if (
+                edge[2].get("control_flow", "") in [control_flow, ref_control_flow]
+                and edge[2]["type"] == "output"
+            ):
+                data[edge[2]["control_flow"]][edge[1].rsplit("_", 1)[0]] = edge[1]
+        for key in set(data[control_flow].keys()).intersection(
+            data[ref_control_flow].keys()
+        ):
+            values = sorted([data[control_flow][key], data[ref_control_flow][key]])
+            self._parallel_var[values[-1]] = [values[0]]
+            if values[0] in self._parallel_var:
+                self._parallel_var[values[-1]].extend(self._parallel_var.pop(values[0]))
 
     def _handle_while(self, node, control_flow: str | None = None):
         assert node["test"]["_type"] == "Call"
@@ -208,32 +265,68 @@ class FunctionDictFlowAnalyzer:
                     unique_func_name, target["id"], control_flow=control_flow
                 )
 
+    def _get_max_index(self, variable: str) -> int:
+        index = 0
+        while True:
+            if len(self.graph.in_edges(f"{variable}_{index}")) > 0:
+                index += 1
+                continue
+            break
+        return index
+
     def _get_var_index(self, variable: str, output: bool = False) -> int:
-        index = -1
-        for edge in self.graph.edges.data():
-            var, idx = "_".join(edge[1].split("_")[:-1]), edge[1].split("_")[-1]
-            if var == variable and index < int(idx):
-                index = int(idx)
-        if output:
-            index += 1
-        elif index == -1:
-            raise ValueError(
+        index = self._get_max_index(variable)
+        if index == 0 and not output:
+            raise KeyError(
                 f"Variable {variable} not found in graph. "
                 "This usually means that the variable was never defined."
             )
-        return index
+        if output:
+            return index
+        else:
+            return index - 1
 
     def _add_output_edge(
-        self, source, target, control_flow: str | None = None, **kwargs
+        self, source: str, target: str, control_flow: str | None = None, **kwargs
     ):
+        """
+        Add an output edge from the source to the target variable.
+
+        Args:
+            source (str): The source node (function name).
+            target (str): The target variable name.
+            control_flow (str | None): The control flow tag, if any.
+            **kwargs: Additional keyword arguments to pass to the edge.
+
+        In the case of the following line:
+
+        >>> y = f(x)
+
+        This function will add an edge from the function `f` to the variable `y`.
+        """
         versioned = f"{target}_{self._get_var_index(target, output=True)}"
         if control_flow is not None:
             kwargs["control_flow"] = control_flow
         self.graph.add_edge(source, versioned, type="output", **kwargs)
 
     def _add_input_edge(
-        self, source, target, control_flow: str | None = None, **kwargs
+        self, source: dict, target: str, control_flow: str | None = None, **kwargs
     ):
+        """
+        Add an input edge from the source variable to the target node.
+
+        Args:
+            source (dict): The source variable node.
+            target (str): The target node (function name).
+            control_flow (str | None): The control flow tag, if any.
+            **kwargs: Additional keyword arguments to pass to the edge.
+
+        In the case of the following line:
+
+        >>> y = f(x)
+
+        This function will add an edge from the variable `x` to the function `f`.
+        """
         if source["_type"] != "Name":
             raise NotImplementedError(f"Only variable inputs supported, got: {source}")
         var_name = source["id"]
@@ -241,6 +334,9 @@ class FunctionDictFlowAnalyzer:
             kwargs["control_flow"] = control_flow
         versioned = f"{var_name}_{self._get_var_index(var_name)}"
         self.graph.add_edge(versioned, target, type="input", **kwargs)
+        if versioned in self._parallel_var:
+            for key in self._parallel_var.pop(versioned):
+                self.graph.add_edge(key, target, type="input", **kwargs)
 
     def _get_unique_func_name(self, base_name):
         i = self._call_counter.get(base_name, 0)
