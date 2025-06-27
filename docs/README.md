@@ -151,7 +151,6 @@ Based on the type hints, `semantikon` can create a knowledge graph of the functi
 >>> from semantikon.metadata import u
 >>> from semantikon.workflow import get_workflow_dict
 >>> from semantikon.ontology import get_knowledge_graph
->>> from semantikon.visualize import visualize
 >>>
 >>>
 >>> def get_speed(distance: u(float, units="meter"), time: u(float, units="second")) -> u(float, units="meter/second"):
@@ -167,14 +166,75 @@ Based on the type hints, `semantikon` can create a knowledge graph of the functi
 ...     time = get_time(distance, speed)
 ...     return time
 >>> graph = get_knowledge_graph(get_workflow_dict(my_workflow))
->>> visualize(graph)
 ```
 
-This exports the following figure:
+This creates an `rdflib`-graph, which you can visualize with the programme of your choice. If you use `semantikon.visualize.visualize`,  you can get the following figure:
 
 <img src="../images/knowledge_graph.png" alt="Knowledge Graph Example" width="600"/>
 
 
+#### Check node compatibility
+
+There are multiple packages which are able to check class compatibility of nodes. On top of this, `semantikon` can also check the compatibility of nodes going all the way through the history of the output. Let's take the following example:
+
+```python
+>>> class Clothes:
+...     cleaned = False
+...     color = "white"
+>>>
+>>> def wash(clothes: Clothes) -> Clothes:
+...     clothes.cleaned = True
+...     return clothos
+>>>
+>>> def dye(clothes: Clothes, color="blue") -> Clothes:
+...     clothes.color = color
+...     return clothes
+>>>
+>>> def sell(clothes: Clothes) -> int:
+...     return 10
+```
+
+As a good vendor, you would like to make sure that you sell clothes only if it has been dyed and cleaned. On the other hand, each of the nodes (`wash` and `dye`) is only aware of what itself is doing, but not whether the other function has been executed beforehand. With `semantikon`, you can append the information via:
+
+```python
+>>> from rdflib import Namespace
+>>> from semantikon.metadata import u
+>>> from semantikon.workflow import get_workflow_dict
+>>> from semantikon.ontology import get_knowledge_graph, SNS, validate_values
+>>>
+>>> EX = Namespace("http://www.example.org/")
+>>>
+>>> class Clothes:
+...     cleaned = False
+...     color = "white"
+>>>
+>>> def wash(clothes: Clothes) -> u(Clothes, triples=((SNS.inheritsPropertiesFrom, "inputs.clothes"), (EX.hasProperty, EX.cleaned))):
+...     clothes.cleaned = True
+...     return clothos
+>>>
+>>> def dye(clothes: Clothes, color="blue") -> u(Clothes, triples=((SNS.inheritsPropertiesFrom, "inputs.clothes"), (EX.hasProperty, EX.color))):
+...     clothes.color = color
+...     return clothes
+>>>
+>>> def sell(
+...     clothes: u(
+...         Clothes, restrictions=(
+...             ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.cleaned)), ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.color))
+...         )
+...     )
+... ) -> int:
+...     return 10
+>>>
+>>> def my_workflow(clothes: Clothes) -> int:
+...     clothes = dye(clothes)
+...     clothes = wash(clothes)
+...     money = sell(clothes)
+...     return money
+>>>
+>>> graph = get_knowledge_graph(get_workflow_dict(my_workflow))
+>>> print(validate_values(graph))
+[]
+```
 
 ## License
 
