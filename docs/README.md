@@ -184,7 +184,7 @@ There are multiple packages which are able to check class compatibility of nodes
 >>>
 >>> def wash(clothes: Clothes) -> Clothes:
 ...     clothes.cleaned = True
-...     return clothos
+...     return clothes
 >>>
 >>> def dye(clothes: Clothes, color="blue") -> Clothes:
 ...     clothes.color = color
