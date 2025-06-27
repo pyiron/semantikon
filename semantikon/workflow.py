@@ -169,7 +169,7 @@ class FunctionDictFlowAnalyzer:
                 self.graph.remove_edge(edge[0], edge[1])
 
     def _register_parallel_variables(self, control_flow: str, ref_control_flow: str):
-        data = {control_flow: {}, ref_control_flow: {}}
+        data: dict[str, dict] = {control_flow: {}, ref_control_flow: {}}
         for edge in self.graph.edges.data():
             if (
                 edge[2].get("control_flow", "") in [control_flow, ref_control_flow]
