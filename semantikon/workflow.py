@@ -81,6 +81,21 @@ def _hash_function(func):
     return f"{func.__name__}_{sha256(inspect.getsource(func).encode()).hexdigest()}"
 
 
+def _are_parallel(
+    control_flow_1: str | None = None, control_flow_2: str | None = None
+) -> bool:
+    if control_flow_1 is None or control_flow_2 is None:
+        return False
+    for cf in [control_flow_1, control_flow_2]:
+        if cf.split("/")[-1].split("_")[0] not in ["If", "Else", "Elif"]:
+            return False
+
+    def without_current_cf(cf: str) -> str:
+        return "/".join(cf.split("/")[:-1]) + cf.split("_")[-1]
+
+    return without_current_cf(control_flow_1) == without_current_cf(control_flow_2)
+
+
 class FunctionDictFlowAnalyzer:
     def __init__(self, ast_dict, scope):
         self.graph = nx.DiGraph()
