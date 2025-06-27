@@ -270,6 +270,8 @@ On top of this, you might also want to make sure that the clothes are dyed first
 
 And you can do the validation as before.
 
+Instead of OWL restrictions, you can also use shacl constraints. In this case, instead of `OWL.onProperty`, you can use `SH.path` and instead of `OWL.someValuesFrom`, you can use `SH.hasValue`. The rest is the same.
+
 ## License
 
 This project is licensed under the BSD 3-Clause License - see the [LICENSE](../LICENSE) file for details.
