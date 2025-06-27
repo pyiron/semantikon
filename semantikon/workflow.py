@@ -143,9 +143,7 @@ class FunctionDictFlowAnalyzer:
             )
             self._visit_node(n, control_flow=cf_else)
             self._reconnect_parallel(cf_else, f"{control_flow}-body")
-            self._register_parallel_variables(
-                cf_else, f"{control_flow}-body"
-            )
+            self._register_parallel_variables(cf_else, f"{control_flow}-body")
 
     def _reconnect_parallel(self, control_flow: str, ref_control_flow: str):
         all_edges = list(self.graph.edges.data())
@@ -178,7 +176,9 @@ class FunctionDictFlowAnalyzer:
                 and edge[2]["type"] == "output"
             ):
                 data[edge[2]["control_flow"]][edge[1].rsplit("_", 1)[0]] = edge[1]
-        for key in set(data[control_flow].keys()).intersection(data[ref_control_flow].keys()):
+        for key in set(data[control_flow].keys()).intersection(
+            data[ref_control_flow].keys()
+        ):
             values = sorted([data[control_flow][key], data[ref_control_flow][key]])
             self._parallel_var[values[-1]] = [values[0]]
             if values[0] in self._parallel_var:
