@@ -900,7 +900,6 @@ class TestWorkflow(unittest.TestCase):
             ),
         )
 
-    @unittest.skip("Skipping test for now, as it is not implemented")
     def test_if_else_statement(self):
         data = get_workflow_dict(workflow_with_if_else)
         self.assertIn("injected_If_0", data["nodes"])

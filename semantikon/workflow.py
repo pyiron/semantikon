@@ -89,6 +89,7 @@ class FunctionDictFlowAnalyzer:
         self.ast_dict = ast_dict
         self._call_counter = {}
         self._control_flow_list = []
+        self._parallel_var = {}
 
     def analyze(self) -> tuple[nx.DiGraph, dict[str, Any]]:
         for arg in self.ast_dict.get("args", {}).get("args", []):
@@ -142,6 +143,9 @@ class FunctionDictFlowAnalyzer:
             )
             self._visit_node(n, control_flow=cf_else)
             self._reconnect_parallel(cf_else, f"{control_flow}-body")
+            self._register_parallel_variables(
+                cf_else, f"{control_flow}-body"
+            )
 
     def _reconnect_parallel(self, control_flow: str, ref_control_flow: str):
         all_edges = list(self.graph.edges.data())
@@ -165,6 +169,20 @@ class FunctionDictFlowAnalyzer:
             if f"{var}_{ind}" != edge[0]:
                 self.graph.add_edge(f"{var}_{ind}", edge[1], **edge[2])
                 self.graph.remove_edge(edge[0], edge[1])
+
+    def _register_parallel_variables(self, control_flow: str, ref_control_flow: str):
+        data = {control_flow: {}, ref_control_flow: {}}
+        for edge in self.graph.edges.data():
+            if (
+                edge[2].get("control_flow", "") in [control_flow, ref_control_flow]
+                and edge[2]["type"] == "output"
+            ):
+                data[edge[2]["control_flow"]][edge[1].rsplit("_", 1)[0]] = edge[1]
+        for key in set(data[control_flow].keys()).intersection(data[ref_control_flow].keys()):
+            values = sorted([data[control_flow][key], data[ref_control_flow][key]])
+            self._parallel_var[values[-1]] = [values[0]]
+            if values[0] in self._parallel_var:
+                self._parallel_var[values[-1]].extend(self._parallel_var.pop(values[0]))
 
     def _handle_while(self, node, control_flow: str | None = None):
         assert node["test"]["_type"] == "Call"
@@ -316,6 +334,9 @@ class FunctionDictFlowAnalyzer:
             kwargs["control_flow"] = control_flow
         versioned = f"{var_name}_{self._get_var_index(var_name)}"
         self.graph.add_edge(versioned, target, type="input", **kwargs)
+        if versioned in self._parallel_var:
+            for key in self._parallel_var.pop(versioned):
+                self.graph.add_edge(key, target, type="input", **kwargs)
 
     def _get_unique_func_name(self, base_name):
         i = self._call_counter.get(base_name, 0)
