@@ -208,7 +208,7 @@ As a good vendor, you would like to make sure that you sell clothes only if it h
 You can see a double, because `semantikon` automatically adds the argument itself as the subject, i.e. in this case the triple will translated to `wash.outputs.clothes` - `EX:hasProperty` - `EX:cleaned`. With this, you can give the full ontological information via:
 
 ```python
->>> from rdflib import Namespace
+>>> from rdflib import Namespace, OWL
 >>> from semantikon.metadata import u
 >>> from semantikon.workflow import get_workflow_dict
 >>> from semantikon.ontology import get_knowledge_graph, SNS, validate_values
