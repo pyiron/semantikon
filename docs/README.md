@@ -172,7 +172,7 @@ Based on the type hints, `semantikon` can create a knowledge graph of the functi
 
 This creates an `rdflib`-graph, which you can visualize with the programme of your choice. If you use `semantikon.visualize.visualize`,  you can get the following figure:
 
-<img src="../images/knowledge_graph.png" alt="Knowledge Graph Example" width="600"/>
+<img src="../images/knowledge_graph.png" alt="Knowledge Graph Example"/>
 
 
 #### Check node compatibility
