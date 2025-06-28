@@ -277,9 +277,7 @@ You can see a double, because `semantikon` automatically adds the argument itsel
 >>> graph = get_knowledge_graph(get_workflow_dict(my_wrong_workflow))
 >>>
 >>> print(validate_values(graph))
-[(rdflib.term.URIRef('my_wrong_workflow.dye_0.inputs.clothes'),
-  rdflib.term.URIRef('http://example.org/hasProperty'),
-  rdflib.term.URIRef('http://example.org/color'))]
+[(rdflib.term.URIRef('my_wrong_workflow.sell_0.inputs.clothes'), rdflib.term.URIRef('http://www.example.org/hasProperty'), rdflib.term.URIRef('http://www.example.org/color'))]
 
 ```
 
