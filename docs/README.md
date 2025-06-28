@@ -200,7 +200,7 @@ There are multiple packages which are able to check class compatibility of nodes
 As a good vendor, you would like to make sure that you sell clothes only if it has been dyed and cleaned. On the other hand, each of the nodes (`wash` and `dye`) is only aware of what itself is doing, but not whether the other function has been executed beforehand. For this, the argument `triples` comes in handy, which you can use in the form:
 
 ```python
->>> def wash(clothes: clothes) -> u(Clothes, triples=(EX.hasProperty, EX.cleaned)):
+>>> def wash(clothes: Clothes) -> u(Clothes, triples=(EX.hasProperty, EX.cleaned)):
 ...    clothes.cleaned = True
 ...    return clothes
 
