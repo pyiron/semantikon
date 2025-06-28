@@ -166,6 +166,7 @@ Based on the type hints, `semantikon` can create a knowledge graph of the functi
 ...     time = get_time(distance, speed)
 ...     return time
 >>> graph = get_knowledge_graph(get_workflow_dict(my_workflow))
+
 ```
 
 This creates an `rdflib`-graph, which you can visualize with the programme of your choice. If you use `semantikon.visualize.visualize`,  you can get the following figure:
@@ -192,6 +193,7 @@ There are multiple packages which are able to check class compatibility of nodes
 >>>
 >>> def sell(clothes: Clothes) -> int:
 ...     return 10
+
 ```
 
 As a good vendor, you would like to make sure that you sell clothes only if it has been dyed and cleaned. On the other hand, each of the nodes (`wash` and `dye`) is only aware of what itself is doing, but not whether the other function has been executed beforehand. For this, the argument `triples` comes in handy, which you can use in the form:
@@ -200,6 +202,7 @@ As a good vendor, you would like to make sure that you sell clothes only if it h
 >>> def wash(clothes: clothes) -> u(Clothes, triples=(EX.hasProperty, EX.cleaned)):
 ...    clothes.cleaned = True
 ...    return clothes
+
 ```
 
 You can see a double, because `semantikon` automatically adds the argument itself as the subject, i.e. in this case the triple will translated to `wash.outputs.clothes` - `EX:hasProperty` - `EX:cleaned`. With this, you can give the full ontological information via:
@@ -242,6 +245,7 @@ You can see a double, because `semantikon` automatically adds the argument itsel
 >>> graph = get_knowledge_graph(get_workflow_dict(my_correct_workflow))
 >>> print(validate_values(graph))
 []
+
 >>> def my_wrong_workflow(clothes: Clothes) -> int:
 ...     clothes = wash(clothes)
 ...     money = sell(clothes)
@@ -252,6 +256,7 @@ You can see a double, because `semantikon` automatically adds the argument itsel
 [(rdflib.term.URIRef('my_wrong_workflow.dye_0.inputs.clothes'),
   rdflib.term.URIRef('http://example.org/hasProperty'),
   rdflib.term.URIRef('http://example.org/color'))]
+
 ```
 
 So in the first case, `validate_values` returns an empty list, because there is nothing missing, but in the second case, `dye(clothes)` was missing, because of which `validate_values` was returning the triple which it was expecting.
@@ -266,6 +271,7 @@ On top of this, you might also want to make sure that the clothes are dyed first
 ... ):
 ...     clothes.color = color
 ...     return clothes
+
 ```
 
 And you can do the validation as before.
