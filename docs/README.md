@@ -165,6 +165,7 @@ Based on the type hints, `semantikon` can create a knowledge graph of the functi
 ...     speed = get_speed(distance, time)
 ...     time = get_time(distance, speed)
 ...     return time
+>>>
 >>> graph = get_knowledge_graph(get_workflow_dict(my_workflow))
 
 ```
@@ -243,6 +244,7 @@ You can see a double, because `semantikon` automatically adds the argument itsel
 ...     return money
 >>>
 >>> graph = get_knowledge_graph(get_workflow_dict(my_correct_workflow))
+>>>
 >>> print(validate_values(graph))
 []
 
@@ -252,6 +254,7 @@ You can see a double, because `semantikon` automatically adds the argument itsel
 ...     return money
 >>>
 >>> graph = get_knowledge_graph(get_workflow_dict(my_wrong_workflow))
+>>>
 >>> print(validate_values(graph))
 [(rdflib.term.URIRef('my_wrong_workflow.dye_0.inputs.clothes'),
   rdflib.term.URIRef('http://example.org/hasProperty'),
