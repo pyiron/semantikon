@@ -138,7 +138,7 @@ In case there are multiple outputs, the type hints are to be passed as a tuple (
 
 It is not fully guaranteed as a feature, but relative units as given [on this page](https://pint.readthedocs.io/en/0.10.1/wrapping.html#specifying-relations-between-arguments) can be also used.
 
-Interpreters can distinguish between annotated arguments and non-anotated arguments. If the argument is annotated, the interpreter will try to convert the argument to the expected type. If the argument is not annotated, the interpreter will pass the argument as is.
+Interpreters can distinguish between annotated arguments and non-annotated arguments. If the argument is annotated, the interpreter will try to convert the argument to the expected type. If the argument is not annotated, the interpreter will pass the argument as is.
 
 Regardless of whether type hints are provided, the interpreter acts only when the input values contain units and ontological types. If the input values do not contain units and ontological types, the interpreter will pass the input values to the function as is.
 
@@ -279,7 +279,7 @@ On top of this, you might also want to make sure that the clothes are dyed first
 
 And you can do the validation as before.
 
-Instead of OWL restrictions, you can also use shacl constraints from `rdflib`. In this case, instead of `OWL.onProperty`, you can use `SH.path` and instead of `OWL.someValuesFrom`, you can use `SH.hasValue`. The rest is the same.
+Instead of OWL restrictions, you can also use SHACL constraints from `rdflib`. In this case, instead of `OWL.onProperty`, you can use `SH.path` and instead of `OWL.someValuesFrom`, you can use `SH.hasValue`. The rest is the same.
 
 ## License
 
