@@ -147,21 +147,37 @@ Regardless of whether type hints are provided, the interpreter acts only when th
 
 Based on the type hints, `semantikon` can create a knowledge graph of the function. The knowledge graph is a directed acyclic graph (DAG) that contains the inputs and outputs of the function, as well as the units and ontological types.
 
+Please bear with us for a moment while we do some book-keeping to manage our automated README test
+
+```python
+>>> import types, sys
+>>> doctestmod = types.ModuleType("justfordoctests")
+>>> sys.modules["justfordoctests"] = doctestmod
+>>> def register_for_doctest(func):
+...     func.__module__ = "justfordoctests"
+...     setattr(sys.modules["justfordoctests"], func.__name__, func)
+...     return func
+
+```
+
 ```python
 >>> from semantikon.metadata import u
 >>> from semantikon.workflow import get_workflow_dict
 >>> from semantikon.ontology import get_knowledge_graph
 >>>
 >>>
->>> def get_speed(distance: u(float, units="meter"), time: u(float, units="second")) -> u(float, units="meter/second"):
+>>> @register_for_doctest
+... def get_speed(distance: u(float, units="meter"), time: u(float, units="second")) -> u(float, units="meter/second"):
 ...     speed = distance / time
 ...     return speed
 >>> 
->>> def get_time(distance, speed):
+>>> @register_for_doctest
+... def get_time(distance, speed):
 ...     time = distance / speed
 ...     return time
 >>> 
->>> def my_workflow(distance, time):
+>>> @register_for_doctest
+... def my_workflow(distance, time):
 ...     speed = get_speed(distance, time)
 ...     time = get_time(distance, speed)
 ...     return time
@@ -220,15 +236,18 @@ You can see a double, because `semantikon` automatically adds the argument itsel
 ...     cleaned = False
 ...     color = "white"
 >>>
->>> def wash(clothes: Clothes) -> u(Clothes, triples=((SNS.inheritsPropertiesFrom, "inputs.clothes"), (EX.hasProperty, EX.cleaned))):
+>>> @register_for_doctest
+... def wash(clothes: Clothes) -> u(Clothes, triples=((SNS.inheritsPropertiesFrom, "inputs.clothes"), (EX.hasProperty, EX.cleaned))):
 ...     clothes.cleaned = True
 ...     return clothos
 >>>
->>> def dye(clothes: Clothes, color="blue") -> u(Clothes, triples=((SNS.inheritsPropertiesFrom, "inputs.clothes"), (EX.hasProperty, EX.color))):
+>>> @register_for_doctest
+... def dye(clothes: Clothes, color="blue") -> u(Clothes, triples=((SNS.inheritsPropertiesFrom, "inputs.clothes"), (EX.hasProperty, EX.color))):
 ...     clothes.color = color
 ...     return clothes
 >>>
->>> def sell(
+>>> @register_for_doctest
+... def sell(
 ...     clothes: u(
 ...         Clothes, restrictions=(
 ...             ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.cleaned)), ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.color))
@@ -237,7 +256,8 @@ You can see a double, because `semantikon` automatically adds the argument itsel
 ... ) -> int:
 ...     return 10
 >>>
->>> def my_correct_workflow(clothes: Clothes) -> int:
+>>> @register_for_doctest
+... def my_correct_workflow(clothes: Clothes) -> int:
 ...     clothes = dye(clothes)
 ...     clothes = wash(clothes)
 ...     money = sell(clothes)
@@ -248,7 +268,8 @@ You can see a double, because `semantikon` automatically adds the argument itsel
 >>> print(validate_values(graph))
 []
 
->>> def my_wrong_workflow(clothes: Clothes) -> int:
+>>> @register_for_doctest
+... def my_wrong_workflow(clothes: Clothes) -> int:
 ...     clothes = wash(clothes)
 ...     money = sell(clothes)
 ...     return money
@@ -256,9 +277,7 @@ You can see a double, because `semantikon` automatically adds the argument itsel
 >>> graph = get_knowledge_graph(get_workflow_dict(my_wrong_workflow))
 >>>
 >>> print(validate_values(graph))
-[(rdflib.term.URIRef('my_wrong_workflow.dye_0.inputs.clothes'),
-  rdflib.term.URIRef('http://example.org/hasProperty'),
-  rdflib.term.URIRef('http://example.org/color'))]
+[(rdflib.term.URIRef('my_wrong_workflow.sell_0.inputs.clothes'), rdflib.term.URIRef('http://www.example.org/hasProperty'), rdflib.term.URIRef('http://www.example.org/color'))]
 
 ```
 
