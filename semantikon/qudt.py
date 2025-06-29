@@ -90,7 +90,7 @@ class UnitsDict:
         self._units_dict = get_units_dict(graph)
         self._ureg = UnitRegistry()
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> term.Node | None:
         if key.startswith("http"):
             return URIRef(key)
         key = key.lower()
