@@ -138,7 +138,7 @@ In case there are multiple outputs, the type hints are to be passed as a tuple (
 
 It is not fully guaranteed as a feature, but relative units as given [on this page](https://pint.readthedocs.io/en/0.10.1/wrapping.html#specifying-relations-between-arguments) can be also used.
 
-Interpreters can distinguish between annotated arguments and non-anotated arguments. If the argument is annotated, the interpreter will try to convert the argument to the expected type. If the argument is not annotated, the interpreter will pass the argument as is.
+Interpreters can distinguish between annotated arguments and non-annotated arguments. If the argument is annotated, the interpreter will try to convert the argument to the expected type. If the argument is not annotated, the interpreter will pass the argument as is.
 
 Regardless of whether type hints are provided, the interpreter acts only when the input values contain units and ontological types. If the input values do not contain units and ontological types, the interpreter will pass the input values to the function as is.
 
@@ -147,30 +147,49 @@ Regardless of whether type hints are provided, the interpreter acts only when th
 
 Based on the type hints, `semantikon` can create a knowledge graph of the function. The knowledge graph is a directed acyclic graph (DAG) that contains the inputs and outputs of the function, as well as the units and ontological types.
 
+Please bear with us for a moment while we do some book-keeping to manage our automated README test
+
+```python
+>>> # This snippet is only for the doctests to work. No need to use it in your code
+>>> import types, sys
+>>> doctestmod = types.ModuleType("justfordoctests")
+>>> sys.modules["justfordoctests"] = doctestmod
+>>> def register_for_doctest(func):
+...     func.__module__ = "justfordoctests"
+...     setattr(sys.modules["justfordoctests"], func.__name__, func)
+...     return func
+
+```
+
 ```python
 >>> from semantikon.metadata import u
 >>> from semantikon.workflow import get_workflow_dict
 >>> from semantikon.ontology import get_knowledge_graph
 >>>
 >>>
->>> def get_speed(distance: u(float, units="meter"), time: u(float, units="second")) -> u(float, units="meter/second"):
+>>> @register_for_doctest  # This is only for the doctests to work
+... def get_speed(distance: u(float, units="meter"), time: u(float, units="second")) -> u(float, units="meter/second"):
 ...     speed = distance / time
 ...     return speed
 >>> 
->>> def get_time(distance, speed):
+>>> @register_for_doctest  # This is only for the doctests to work
+... def get_time(distance, speed):
 ...     time = distance / speed
 ...     return time
 >>> 
->>> def my_workflow(distance, time):
+>>> @register_for_doctest  # This is only for the doctests to work
+... def my_workflow(distance, time):
 ...     speed = get_speed(distance, time)
 ...     time = get_time(distance, speed)
 ...     return time
+>>>
 >>> graph = get_knowledge_graph(get_workflow_dict(my_workflow))
+
 ```
 
 This creates an `rdflib`-graph, which you can visualize with the programme of your choice. If you use `semantikon.visualize.visualize`,  you can get the following figure:
 
-<img src="../images/knowledge_graph.png" alt="Knowledge Graph Example" width="600"/>
+<img src="../images/knowledge_graph.png" alt="Knowledge Graph Example"/>
 
 
 #### Check node compatibility
@@ -192,20 +211,22 @@ There are multiple packages which are able to check class compatibility of nodes
 >>>
 >>> def sell(clothes: Clothes) -> int:
 ...     return 10
+
 ```
 
 As a good vendor, you would like to make sure that you sell clothes only if it has been dyed and cleaned. On the other hand, each of the nodes (`wash` and `dye`) is only aware of what itself is doing, but not whether the other function has been executed beforehand. For this, the argument `triples` comes in handy, which you can use in the form:
 
 ```python
->>> def wash(clothes: clothes) -> u(Clothes, triples=(EX.hasProperty, EX.cleaned)):
+>>> def wash(clothes: Clothes) -> u(Clothes, triples=(EX.hasProperty, EX.cleaned)):
 ...    clothes.cleaned = True
 ...    return clothes
+
 ```
 
 You can see a double, because `semantikon` automatically adds the argument itself as the subject, i.e. in this case the triple will translated to `wash.outputs.clothes` - `EX:hasProperty` - `EX:cleaned`. With this, you can give the full ontological information via:
 
 ```python
->>> from rdflib import Namespace
+>>> from rdflib import Namespace, OWL
 >>> from semantikon.metadata import u
 >>> from semantikon.workflow import get_workflow_dict
 >>> from semantikon.ontology import get_knowledge_graph, SNS, validate_values
@@ -216,15 +237,18 @@ You can see a double, because `semantikon` automatically adds the argument itsel
 ...     cleaned = False
 ...     color = "white"
 >>>
->>> def wash(clothes: Clothes) -> u(Clothes, triples=((SNS.inheritsPropertiesFrom, "inputs.clothes"), (EX.hasProperty, EX.cleaned))):
+>>> @register_for_doctest  # This is only for the doctests to work
+... def wash(clothes: Clothes) -> u(Clothes, triples=((SNS.inheritsPropertiesFrom, "inputs.clothes"), (EX.hasProperty, EX.cleaned))):
 ...     clothes.cleaned = True
 ...     return clothos
 >>>
->>> def dye(clothes: Clothes, color="blue") -> u(Clothes, triples=((SNS.inheritsPropertiesFrom, "inputs.clothes"), (EX.hasProperty, EX.color))):
+>>> @register_for_doctest  # This is only for the doctests to work
+... def dye(clothes: Clothes, color="blue") -> u(Clothes, triples=((SNS.inheritsPropertiesFrom, "inputs.clothes"), (EX.hasProperty, EX.color))):
 ...     clothes.color = color
 ...     return clothes
 >>>
->>> def sell(
+>>> @register_for_doctest  # This is only for the doctests to work
+... def sell(
 ...     clothes: u(
 ...         Clothes, restrictions=(
 ...             ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.cleaned)), ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.color))
@@ -233,25 +257,29 @@ You can see a double, because `semantikon` automatically adds the argument itsel
 ... ) -> int:
 ...     return 10
 >>>
->>> def my_correct_workflow(clothes: Clothes) -> int:
+>>> @register_for_doctest  # This is only for the doctests to work
+... def my_correct_workflow(clothes: Clothes) -> int:
 ...     clothes = dye(clothes)
 ...     clothes = wash(clothes)
 ...     money = sell(clothes)
 ...     return money
 >>>
 >>> graph = get_knowledge_graph(get_workflow_dict(my_correct_workflow))
+>>>
 >>> print(validate_values(graph))
 []
->>> def my_wrong_workflow(clothes: Clothes) -> int:
+
+>>> @register_for_doctest  # This is only for the doctests to work
+... def my_wrong_workflow(clothes: Clothes) -> int:
 ...     clothes = wash(clothes)
 ...     money = sell(clothes)
 ...     return money
 >>>
 >>> graph = get_knowledge_graph(get_workflow_dict(my_wrong_workflow))
+>>>
 >>> print(validate_values(graph))
-[(rdflib.term.URIRef('my_wrong_workflow.dye_0.inputs.clothes'),
-  rdflib.term.URIRef('http://example.org/hasProperty'),
-  rdflib.term.URIRef('http://example.org/color'))]
+[(rdflib.term.URIRef('my_wrong_workflow.sell_0.inputs.clothes'), rdflib.term.URIRef('http://www.example.org/hasProperty'), rdflib.term.URIRef('http://www.example.org/color'))]
+
 ```
 
 So in the first case, `validate_values` returns an empty list, because there is nothing missing, but in the second case, `dye(clothes)` was missing, because of which `validate_values` was returning the triple which it was expecting.
@@ -266,11 +294,12 @@ On top of this, you might also want to make sure that the clothes are dyed first
 ... ):
 ...     clothes.color = color
 ...     return clothes
+
 ```
 
 And you can do the validation as before.
 
-Instead of OWL restrictions, you can also use shacl constraints from `rdflib`. In this case, instead of `OWL.onProperty`, you can use `SH.path` and instead of `OWL.someValuesFrom`, you can use `SH.hasValue`. The rest is the same.
+Instead of OWL restrictions, you can also use SHACL constraints from `rdflib`. In this case, instead of `OWL.onProperty`, you can use `SH.path` and instead of `OWL.someValuesFrom`, you can use `SH.hasValue`. The rest is the same.
 
 ## License
 
