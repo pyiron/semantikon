@@ -150,6 +150,7 @@ Based on the type hints, `semantikon` can create a knowledge graph of the functi
 Please bear with us for a moment while we do some book-keeping to manage our automated README test
 
 ```python
+>>> # This snippet is only for the doctests to work. No need to use it in your code
 >>> import types, sys
 >>> doctestmod = types.ModuleType("justfordoctests")
 >>> sys.modules["justfordoctests"] = doctestmod
@@ -166,17 +167,17 @@ Please bear with us for a moment while we do some book-keeping to manage our aut
 >>> from semantikon.ontology import get_knowledge_graph
 >>>
 >>>
->>> @register_for_doctest
+>>> @register_for_doctest  # This is only for the doctests to work
 ... def get_speed(distance: u(float, units="meter"), time: u(float, units="second")) -> u(float, units="meter/second"):
 ...     speed = distance / time
 ...     return speed
 >>> 
->>> @register_for_doctest
+>>> @register_for_doctest  # This is only for the doctests to work
 ... def get_time(distance, speed):
 ...     time = distance / speed
 ...     return time
 >>> 
->>> @register_for_doctest
+>>> @register_for_doctest  # This is only for the doctests to work
 ... def my_workflow(distance, time):
 ...     speed = get_speed(distance, time)
 ...     time = get_time(distance, speed)
@@ -236,17 +237,17 @@ You can see a double, because `semantikon` automatically adds the argument itsel
 ...     cleaned = False
 ...     color = "white"
 >>>
->>> @register_for_doctest
+>>> @register_for_doctest  # This is only for the doctests to work
 ... def wash(clothes: Clothes) -> u(Clothes, triples=((SNS.inheritsPropertiesFrom, "inputs.clothes"), (EX.hasProperty, EX.cleaned))):
 ...     clothes.cleaned = True
 ...     return clothos
 >>>
->>> @register_for_doctest
+>>> @register_for_doctest  # This is only for the doctests to work
 ... def dye(clothes: Clothes, color="blue") -> u(Clothes, triples=((SNS.inheritsPropertiesFrom, "inputs.clothes"), (EX.hasProperty, EX.color))):
 ...     clothes.color = color
 ...     return clothes
 >>>
->>> @register_for_doctest
+>>> @register_for_doctest  # This is only for the doctests to work
 ... def sell(
 ...     clothes: u(
 ...         Clothes, restrictions=(
@@ -256,7 +257,7 @@ You can see a double, because `semantikon` automatically adds the argument itsel
 ... ) -> int:
 ...     return 10
 >>>
->>> @register_for_doctest
+>>> @register_for_doctest  # This is only for the doctests to work
 ... def my_correct_workflow(clothes: Clothes) -> int:
 ...     clothes = dye(clothes)
 ...     clothes = wash(clothes)
@@ -268,7 +269,7 @@ You can see a double, because `semantikon` automatically adds the argument itsel
 >>> print(validate_values(graph))
 []
 
->>> @register_for_doctest
+>>> @register_for_doctest  # This is only for the doctests to work
 ... def my_wrong_workflow(clothes: Clothes) -> int:
 ...     clothes = wash(clothes)
 ...     money = sell(clothes)
