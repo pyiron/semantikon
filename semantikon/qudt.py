@@ -1,5 +1,4 @@
 import os
-import re
 from collections import defaultdict
 from functools import cached_property
 
@@ -158,7 +157,5 @@ def get_units_dict(graph: Graph) -> dict[str, term.Node]:
                     units_dict[tag] = uri
             except Exception:
                 pass
-            # This line replaces e.g. "electron volt" by "electron_volt"
-            tag = re.sub(r"(?<=[a-zA-Z]) (?=[a-zA-Z])", "_", tag)
-            tag.replace("_per_", " per ")
+            tag = tag.replace("electron volt", "electron_volt")
     return units_dict
