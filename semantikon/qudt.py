@@ -160,4 +160,5 @@ def get_units_dict(graph: Graph) -> dict[str, term.Node]:
                 pass
             # This line replaces e.g. "electron volt" by "electron_volt"
             tag = re.sub(r"(?<=[a-zA-Z]) (?=[a-zA-Z])", "_", tag)
+            tag.replace("_per_", " per ")
     return units_dict
