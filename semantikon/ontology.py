@@ -38,7 +38,7 @@ def _translate_has_value(
     tag: str,
     value: Any = None,
     dtype: type | None = None,
-    units: URIRef | None = None,
+    units: str | URIRef | None = None,
     parent: URIRef | None = None,
     ontology=SNS,
 ) -> _triple_type:

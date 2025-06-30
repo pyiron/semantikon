@@ -20,6 +20,8 @@ class TestQUDT(unittest.TestCase):
         self.assertEqual(
             str(self.ud["http://qudt.org/vocab/unit/M"]), "http://qudt.org/vocab/unit/M"
         )
+        self.assertRaises(KeyError, lambda: self.ud["kilogram * meter**2 / second**2"])
+        self.assertRaises(KeyError, lambda: self.ud["angstrom**10"])
 
     def test_graph_consistency(self):
         ud = UnitsDict()
