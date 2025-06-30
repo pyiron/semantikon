@@ -1,4 +1,5 @@
 import os
+import re
 from collections import defaultdict
 from functools import cached_property
 
@@ -108,15 +109,15 @@ class UnitsDict:
         key = key.lower()
         if key in self._units_dict:
             return self._units_dict[key]
-        key = str(self._ureg[str(key)])
+        key = str(self._ureg[str(key)].units)
         if key in self._units_dict:
             return self._units_dict[key]
-        key = str(self._ureg[key].to_base_units().units)
-        if key in self._base_units:
+        new_key = str(self._ureg[key].to_base_units().units)
+        if new_key in self._base_units:
             raise KeyError(
                 f"'{key}' is not available in QUDT; use a full URI. "
                 "Alternatively, you can change it to one of the following units:"
-                f"{', '.join(self._base_units[key])}"
+                f"{', '.join(self._base_units[new_key])}"
             )
         raise KeyError(f"'{key}' is not available in QUDT; use a full URI.")
 
@@ -147,14 +148,16 @@ def get_units_dict(graph: Graph) -> dict[str, term.Node]:
     ureg = UnitRegistry()
     units_dict = {}
     for uri, tag in graph.subject_objects(None):
-        key = str(tag).lower()
-        units_dict[key] = uri
-        try:
-            key = str(
-                ureg[str(tag).lower()].units
-            )  # this is safe and works for both Quantity and Unit
-            if key not in units_dict or len(str(uri)) < len(str(units_dict[key])):
-                units_dict[key] = uri
-        except Exception:
-            pass
+        tag = str(tag).lower()
+        units_dict[tag] = uri
+        for _ in range(2):
+            try:
+                # this is safe and works for both Quantity and Unit
+                tag = str(ureg[str(tag).lower()].units)
+                if tag not in units_dict or len(str(uri)) < len(str(units_dict[tag])):
+                    units_dict[tag] = uri
+            except Exception:
+                pass
+            # This line replaces e.g. "electron volt" by "electron_volt"
+            tag = re.sub(r'(?<=[a-zA-Z]) (?=[a-zA-Z])', '_', tag)
     return units_dict
