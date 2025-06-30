@@ -1,4 +1,6 @@
 import os
+from collections import defaultdict
+from functools import cached_property
 
 import requests
 from pint import UnitRegistry
@@ -90,6 +92,16 @@ class UnitsDict:
         self._units_dict = get_units_dict(graph)
         self._ureg = UnitRegistry()
 
+    @cached_property
+    def _base_units(self) -> dict[str, term.Node]:
+        data = defaultdict(list)
+        for key in self._units_dict.keys():
+            try:
+                data[str(self._ureg[key.lower()].to_base_units().units)].append(key)
+            except Exception:
+                pass
+        return data
+
     def __getitem__(self, key: str) -> term.Node | None:
         if key.startswith("http"):
             return URIRef(key)
@@ -99,6 +111,14 @@ class UnitsDict:
         key = str(self._ureg[str(key)])
         if key in self._units_dict:
             return self._units_dict[key]
+        key = str(self._ureg[key].to_base_units().units)
+        if key in self._base_units:
+            raise KeyError(
+                f"'{key}' is not available in QUDT; use a full URI. "
+                "Alternatively, you can change it to one of the following units:"
+                f"{', '.join(self._base_units[key])}"
+            )
+        raise KeyError(f"'{key}' is not available in QUDT; use a full URI.")
 
 
 def get_graph(location: str | None = None) -> Graph:
@@ -131,7 +151,7 @@ def get_units_dict(graph: Graph) -> dict[str, term.Node]:
         units_dict[key] = uri
         try:
             key = str(
-                ureg[str(tag).lower()]
+                ureg[str(tag).lower()].units
             )  # this is safe and works for both Quantity and Unit
             if key not in units_dict or len(str(uri)) < len(str(units_dict[key])):
                 units_dict[key] = uri
