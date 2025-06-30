@@ -94,7 +94,7 @@ class UnitsDict:
         self._ureg = UnitRegistry()
 
     @cached_property
-    def _base_units(self) -> dict[str, term.Node]:
+    def _base_units(self) -> dict[str, list[str]]:
         data = defaultdict(list)
         for key in self._units_dict.keys():
             try:
