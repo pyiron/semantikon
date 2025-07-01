@@ -115,7 +115,7 @@ class UnitsDict:
         if new_key in self._base_units:
             raise KeyError(
                 f"'{key}' is not available in QUDT; use a full URI. "
-                "Alternatively, you can change it to one of the following units:"
+                "Alternatively, you can change it to one of the following units: "
                 f"{', '.join(self._base_units[new_key])}"
             )
         raise KeyError(f"'{key}' is not available in QUDT; use a full URI.")
