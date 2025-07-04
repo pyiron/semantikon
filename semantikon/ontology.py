@@ -280,6 +280,16 @@ def _check_missing_triples(graph: Graph) -> list:
 
 
 def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
+    """
+    Check if the connections between inputs and outputs are compatible
+
+    Args:
+        graph (rdflib.Graph): graph to be validated
+        strict_typing (bool): if True, check for strict typing
+
+    Returns:
+        (list): list of incompatible connections
+    """
     incompatible_types = []
     for inp_out in graph.subject_objects(SNS.inheritsPropertiesFrom):
         i_type, o_type = [
