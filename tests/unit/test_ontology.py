@@ -208,6 +208,25 @@ def get_wrong_order(structure="abc"):
     return energy
 
 
+class Meal:
+    pass
+
+
+def prepare_pizza() -> u(Meal, uri=EX.Pizza):
+    return Meal()
+
+
+def eat(meal: u(Meal, uri=EX.Meal)) -> str:
+    return "I am full after eating "
+
+
+@workflow
+def eat_pizza():
+    pizza = prepare_pizza()
+    comment = eat(pizza)
+    return comment
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -278,6 +297,12 @@ class TestOntology(unittest.TestCase):
         self.assertTrue(validate(graph)[0])
         graph = get_knowledge_graph(get_wrong_analysis_sh._semantikon_workflow)
         self.assertFalse(validate(graph)[0])
+
+    def test_valid_connections(self):
+        graph = get_knowledge_graph(eat_pizza._semantikon_workflow)
+        self.assertEqual(len(validate_values(graph)["incompatible_connections"]), 1)
+        graph.add((EX.Pizza, RDFS.subClassOf, EX.Meal))
+        self.assertEqual(validate_values(graph)["incompatible_connections"], [])
 
     def test_macro(self):
         graph = get_knowledge_graph(get_macro.run())
