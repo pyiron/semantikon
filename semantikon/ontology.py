@@ -263,21 +263,6 @@ def _inherit_properties(
         n = len(graph)
 
 
-def _validate_values_by_python(graph: Graph) -> list:
-    missing_triples = []
-    for restrictions in graph.subjects(RDF.type, OWL.Restriction):
-        on_property = graph.value(restrictions, OWL.onProperty)
-        some_values_from = graph.value(restrictions, OWL.someValuesFrom)
-        if on_property and some_values_from:
-            for cls in graph.subjects(OWL.equivalentClass, restrictions):
-                for instance in graph.subjects(RDF.type, cls):
-                    if (instance, on_property, some_values_from) not in graph:
-                        missing_triples.append(
-                            (instance, on_property, some_values_from)
-                        )
-    return missing_triples
-
-
 def _validate_values_by_sparql(graph: Graph) -> list:
     query = """SELECT ?instance ?onProperty ?someValuesFrom WHERE {
         ?restriction a owl:Restriction ;
@@ -294,26 +279,20 @@ def _validate_values_by_sparql(graph: Graph) -> list:
     return list(graph.query(query))
 
 
-def validate_values(
-    graph: Graph, run_reasoner: bool = True, sparql: bool = True
-) -> list:
+def validate_values(graph: Graph, run_reasoner: bool = True) -> list:
     """
     Validate if all values required by restrictions are present in the graph
 
     Args:
         graph (rdflib.Graph): graph to be validated
         run_reasoner (bool): if True, run the reasoner
-        sparql (bool): if True, validate using SPARQL, otherwise use Python
 
     Returns:
         (list): list of missing triples
     """
     if run_reasoner:
         DeductiveClosure(OWLRL_Semantics).expand(graph)
-    if sparql:
-        return _validate_values_by_sparql(graph)
-    else:
-        return _validate_values_by_python(graph)
+    return _validate_values_by_sparql(graph)
 
 
 def _append_missing_items(graph: Graph) -> Graph:

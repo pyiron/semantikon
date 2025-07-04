@@ -264,18 +264,14 @@ class TestOntology(unittest.TestCase):
 
     def test_correct_analysis(self):
         graph = get_knowledge_graph(get_correct_analysis._semantikon_workflow)
-        missing_triples = validate_values(graph, sparql=True)
+        missing_triples = validate_values(graph)
         self.assertEqual(
             len(missing_triples),
             0,
             msg=f"{missing_triples} not found in {graph.serialize()}",
         )
         graph = get_knowledge_graph(get_wrong_analysis._semantikon_workflow)
-        self.assertEqual(len(validate_values(graph, sparql=True)), 1)
-        self.assertEqual(
-            validate_values(graph, sparql=True),
-            validate_values(graph, sparql=False),
-        )
+        self.assertEqual(len(validate_values(graph)), 1)
 
     def test_correct_analysis_sh(self):
         graph = get_knowledge_graph(get_correct_analysis_sh._semantikon_workflow)
