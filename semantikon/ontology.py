@@ -279,7 +279,7 @@ def _validate_values_by_sparql(graph: Graph) -> list:
     return list(graph.query(query))
 
 
-def validate_values(graph: Graph, run_reasoner: bool = True) -> list:
+def validate_values(graph: Graph, run_reasoner: bool = True) -> dict[str, list]:
     """
     Validate if all values required by restrictions are present in the graph
 
@@ -288,11 +288,11 @@ def validate_values(graph: Graph, run_reasoner: bool = True) -> list:
         run_reasoner (bool): if True, run the reasoner
 
     Returns:
-        (list): list of missing triples
+        (dict): list of missing triples
     """
     if run_reasoner:
         DeductiveClosure(OWLRL_Semantics).expand(graph)
-    return _validate_values_by_sparql(graph)
+    return {"missing_triples": _validate_values_by_sparql(graph)}
 
 
 def _append_missing_items(graph: Graph) -> Graph:

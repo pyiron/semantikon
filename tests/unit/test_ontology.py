@@ -264,14 +264,14 @@ class TestOntology(unittest.TestCase):
 
     def test_correct_analysis(self):
         graph = get_knowledge_graph(get_correct_analysis._semantikon_workflow)
-        missing_triples = validate_values(graph)
+        t = validate_values(graph)
         self.assertEqual(
-            len(missing_triples),
-            0,
-            msg=f"{missing_triples} not found in {graph.serialize()}",
+            t["missing_triples"],
+            [],
+            msg=f"{t} missing in {graph.serialize()}",
         )
         graph = get_knowledge_graph(get_wrong_analysis._semantikon_workflow)
-        self.assertEqual(len(validate_values(graph)), 1)
+        self.assertEqual(len(validate_values(graph)["missing_triples"]), 1)
 
     def test_correct_analysis_sh(self):
         graph = get_knowledge_graph(get_correct_analysis_sh._semantikon_workflow)
@@ -429,7 +429,9 @@ class TestOntology(unittest.TestCase):
 
     def test_wrong_order(self):
         graph = get_knowledge_graph(get_wrong_order._semantikon_workflow)
-        missing_triples = [[str(gg) for gg in g] for g in validate_values(graph)]
+        missing_triples = [
+            [str(gg) for gg in g] for g in validate_values(graph)["missing_triples"]
+        ]
         self.assertEqual(
             missing_triples,
             [
