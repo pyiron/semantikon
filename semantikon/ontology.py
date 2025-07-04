@@ -263,22 +263,7 @@ def _inherit_properties(
         n = len(graph)
 
 
-def _validate_values_by_python(graph: Graph) -> list:
-    missing_triples = []
-    for restrictions in graph.subjects(RDF.type, OWL.Restriction):
-        on_property = graph.value(restrictions, OWL.onProperty)
-        some_values_from = graph.value(restrictions, OWL.someValuesFrom)
-        if on_property and some_values_from:
-            for cls in graph.subjects(OWL.equivalentClass, restrictions):
-                for instance in graph.subjects(RDF.type, cls):
-                    if (instance, on_property, some_values_from) not in graph:
-                        missing_triples.append(
-                            (instance, on_property, some_values_from)
-                        )
-    return missing_triples
-
-
-def _validate_values_by_sparql(graph: Graph) -> list:
+def _check_missing_triples(graph: Graph) -> list:
     query = """SELECT ?instance ?onProperty ?someValuesFrom WHERE {
         ?restriction a owl:Restriction ;
                      owl:onProperty ?onProperty ;
@@ -294,26 +279,53 @@ def _validate_values_by_sparql(graph: Graph) -> list:
     return list(graph.query(query))
 
 
+def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
+    """
+    Check if the connections between inputs and outputs are compatible
+
+    Args:
+        graph (rdflib.Graph): graph to be validated
+        strict_typing (bool): if True, check for strict typing
+
+    Returns:
+        (list): list of incompatible connections
+    """
+    incompatible_types = []
+    for inp_out in graph.subject_objects(SNS.inheritsPropertiesFrom):
+        i_type, o_type = [
+            [g for g in graph.objects(tag, RDF.type) if g != PROV.Entity]
+            for tag in inp_out
+        ]
+        if not strict_typing and (i_type == [] or o_type == []):
+            continue
+        diff = set(i_type).difference(o_type)
+        if len(diff) > 0:
+            incompatible_types.append(inp_out + (i_type, o_type))
+    return incompatible_types
+
+
 def validate_values(
-    graph: Graph, run_reasoner: bool = True, sparql: bool = True
-) -> list:
+    graph: Graph, run_reasoner: bool = True, strict_typing: bool = False
+) -> dict[str, list]:
     """
     Validate if all values required by restrictions are present in the graph
 
     Args:
         graph (rdflib.Graph): graph to be validated
         run_reasoner (bool): if True, run the reasoner
-        sparql (bool): if True, validate using SPARQL, otherwise use Python
+        strict_typing (bool): if True, check for strict typing
 
     Returns:
-        (list): list of missing triples
+        (dict): list of missing triples
     """
     if run_reasoner:
         DeductiveClosure(OWLRL_Semantics).expand(graph)
-    if sparql:
-        return _validate_values_by_sparql(graph)
-    else:
-        return _validate_values_by_python(graph)
+    return {
+        "missing_triples": _check_missing_triples(graph),
+        "incompatible_connections": _check_connections(
+            graph, strict_typing=strict_typing
+        ),
+    }
 
 
 def _append_missing_items(graph: Graph) -> Graph:

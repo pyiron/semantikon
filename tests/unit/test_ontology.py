@@ -208,6 +208,25 @@ def get_wrong_order(structure="abc"):
     return energy
 
 
+class Meal:
+    pass
+
+
+def prepare_pizza() -> u(Meal, uri=EX.Pizza):
+    return Meal()
+
+
+def eat(meal: u(Meal, uri=EX.Meal)) -> str:
+    return "I am full after eating "
+
+
+@workflow
+def eat_pizza():
+    pizza = prepare_pizza()
+    comment = eat(pizza)
+    return comment
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -264,24 +283,26 @@ class TestOntology(unittest.TestCase):
 
     def test_correct_analysis(self):
         graph = get_knowledge_graph(get_correct_analysis._semantikon_workflow)
-        missing_triples = validate_values(graph, sparql=True)
+        t = validate_values(graph)
         self.assertEqual(
-            len(missing_triples),
-            0,
-            msg=f"{missing_triples} not found in {graph.serialize()}",
+            t["missing_triples"],
+            [],
+            msg=f"{t} missing in {graph.serialize()}",
         )
         graph = get_knowledge_graph(get_wrong_analysis._semantikon_workflow)
-        self.assertEqual(len(validate_values(graph, sparql=True)), 1)
-        self.assertEqual(
-            validate_values(graph, sparql=True),
-            validate_values(graph, sparql=False),
-        )
+        self.assertEqual(len(validate_values(graph)["missing_triples"]), 1)
 
     def test_correct_analysis_sh(self):
         graph = get_knowledge_graph(get_correct_analysis_sh._semantikon_workflow)
         self.assertTrue(validate(graph)[0])
         graph = get_knowledge_graph(get_wrong_analysis_sh._semantikon_workflow)
         self.assertFalse(validate(graph)[0])
+
+    def test_valid_connections(self):
+        graph = get_knowledge_graph(eat_pizza._semantikon_workflow)
+        self.assertEqual(len(validate_values(graph)["incompatible_connections"]), 1)
+        graph.add((EX.Pizza, RDFS.subClassOf, EX.Meal))
+        self.assertEqual(validate_values(graph)["incompatible_connections"], [])
 
     def test_macro(self):
         graph = get_knowledge_graph(get_macro.run())
@@ -433,7 +454,9 @@ class TestOntology(unittest.TestCase):
 
     def test_wrong_order(self):
         graph = get_knowledge_graph(get_wrong_order._semantikon_workflow)
-        missing_triples = [[str(gg) for gg in g] for g in validate_values(graph)]
+        missing_triples = [
+            [str(gg) for gg in g] for g in validate_values(graph)["missing_triples"]
+        ]
         self.assertEqual(
             missing_triples,
             [
