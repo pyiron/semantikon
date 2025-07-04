@@ -323,8 +323,8 @@ def validate_values(
     return {
         "missing_triples": _check_missing_triples(graph),
         "incompatible_connections": _check_connections(
-            graph, strict_typing= strict_typing
-        )
+            graph, strict_typing=strict_typing
+        ),
     }
 
 
