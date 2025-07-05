@@ -107,9 +107,7 @@ def _get_triples_from_restrictions(data: dict) -> list:
     if data.get("triples", None) is not None:
         triples.extend(_align_triples(data["triples"]))
     if data.get("derived_from", None) is not None:
-        triples.append(
-            (SNS.inheritsPropertiesFrom, data["derived_from"])
-        )
+        triples.append((SNS.inheritsPropertiesFrom, data["derived_from"]))
     return triples
 
 
