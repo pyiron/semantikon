@@ -75,6 +75,7 @@ class TypeMetadata(CoreMetadata):
     label: str | Missing = missing()
     units: str | Missing = missing()
     shape: ShapeType | Missing = missing()
+    derived_from: str | Missing = missing()
     extra: dict[str, Any] | Missing = missing()
 
 

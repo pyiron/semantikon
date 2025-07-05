@@ -36,6 +36,7 @@ def _type_metadata(
     label: str | Missing = MISSING,
     units: str | Missing = MISSING,
     shape: ShapeType | Missing = MISSING,
+    derived_from: str | Missing = MISSING,
     **extra,
 ) -> Any:
     presently_requested_metadata = TypeMetadata(
@@ -45,6 +46,7 @@ def _type_metadata(
         label=label,
         units=units,
         shape=shape,
+        derived_from=derived_from,
     )
 
     kwargs = {"extra": extra} if len(extra) > 0 else {}
@@ -90,6 +92,7 @@ def u(
     label: str | Missing = MISSING,
     units: str | Missing = MISSING,
     shape: ShapeType | Missing = MISSING,
+    derived_from: str | Missing = MISSING,
     **kwargs,
 ) -> Callable[[Callable], FunctionWithMetadata] | Annotated[Any, object]:
     if isinstance(type_or_func, type) or get_origin(type_or_func) is not None:
@@ -101,6 +104,7 @@ def u(
             label=label,
             units=units,
             shape=shape,
+            derived_from=derived_from,
             **kwargs,
         )
     elif type_or_func is None:
