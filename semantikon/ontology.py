@@ -106,6 +106,8 @@ def _get_triples_from_restrictions(data: dict) -> list:
         triples = _restriction_to_triple(data["restrictions"])
     if data.get("triples", None) is not None:
         triples.extend(_align_triples(data["triples"]))
+    if data.get("derived_from", None) is not None:
+        triples.append(("self", SNS.inheritsPropertiesFrom, data["derived_from"]))
     return triples
 
 
@@ -215,7 +217,7 @@ def _parse_triple(
     assert pred is not None, "Predicate must not be None"
 
     def _set_tag(tag, ns=None, label=None):
-        if tag is None:
+        if tag is None or tag == "self":
             return label
         elif tag.startswith("inputs.") or tag.startswith("outputs."):
             assert ns is not None, "Namespace must not be None"
