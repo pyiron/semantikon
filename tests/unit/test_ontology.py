@@ -51,10 +51,8 @@ def add(a: float, b: float) -> u(float, triples=(EX.HasOperation, EX.Addition)):
 
 def multiply(a: float, b: float) -> u(
     float,
-    triples=(
-        (EX.HasOperation, EX.Multiplication),
-        (SNS.inheritsPropertiesFrom, "inputs.a"),
-    ),
+    triples=(EX.HasOperation, EX.Multiplication),
+    derived_from="inputs.a",
 ):
     return a * b
 
@@ -128,10 +126,8 @@ def create_vacancy(
     structure: str,
 ) -> u(
     str,
-    triples=(
-        (SNS.inheritsPropertiesFrom, "inputs.structure"),
-        (EX.hasDefect, EX.vacancy),
-    ),
+    triples=(EX.hasDefect, EX.vacancy),
+    derived_from="inputs.structure",
     cancel=(EX.hasState, EX.relaxed),
 ):
     return structure
@@ -141,10 +137,8 @@ def relax_structure(
     structure: str,
 ) -> u(
     str,
-    triples=(
-        (SNS.inheritsPropertiesFrom, "inputs.structure"),
-        (EX.hasState, EX.relaxed),
-    ),
+    triples=(EX.hasState, EX.relaxed),
+    derived_from="inputs.structure",
 ):
     return structure
 
