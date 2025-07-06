@@ -12,6 +12,9 @@ jobs:
     uses: pyiron/actions/.github/workflows/push-pull.yml@actions-4.0.2
     with:
       runner: 'ubuntu-22.04' # with ubuntu > 22.04, pip is broken
+      python-version-alt1: 'exclude'
+      python-version-alt2: '3.11'
+      python-version: '3.12'
       python-version-alt3: '3.13'
       do-codecov: true
       do-coveralls: false
