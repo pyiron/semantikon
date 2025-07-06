@@ -9,7 +9,7 @@ dependencies:
 - pint =0.23
 - rdflib =7.1.1
 - pyshacl =0.30.0
-- python =3.10
+- python =3.11
 - python-graphviz =0.20.3
 - requests =2.0.0
 - setuptools =80.9.0
