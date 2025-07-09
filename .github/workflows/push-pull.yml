@@ -20,4 +20,7 @@ jobs:
       do-coveralls: false
       do-mypy: true
       do-ruff-check: true
+      alternate-tests-env-files: .ci_support/lower_bound.yml
+      alternate-tests-python-version: '3.11'
+      alternate-tests-dir: tests/unit
     secrets: inherit
