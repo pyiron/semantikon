@@ -18,19 +18,5 @@ jobs:
       python-version-alt3: '3.13'
       do-codecov: true
       do-coveralls: false
+      do-mypy: true
     secrets: inherit
-
-  mypy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          architecture: x64
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install mypy
-        run: pip install mypy
-      - name: Test
-        run: mypy .
