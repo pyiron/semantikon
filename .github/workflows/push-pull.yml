@@ -19,4 +19,5 @@ jobs:
       do-codecov: true
       do-coveralls: false
       do-mypy: true
+      do-ruff-check: true
     secrets: inherit
