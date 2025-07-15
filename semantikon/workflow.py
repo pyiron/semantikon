@@ -53,32 +53,78 @@ class FunctionWithWorkflow(Generic[F]):
         return getattr(self.func, item)
 
 
-def ast_from_dict(d):
-    """Recursively convert a dict to an ast.AST node"""
-    if isinstance(d, dict):
-        node_type = getattr(ast, d["_type"])
-        fields = {k: ast_from_dict(v) for k, v in d.items() if k != "_type"}
-        return node_type(**fields)
-    elif isinstance(d, list):
-        return [ast_from_dict(x) for x in d]
-    else:
-        return d
+def separate_types(
+    data: dict[str, Any], class_dict: dict[str, type] | None = None
+) -> tuple[dict[str, Any], dict[str, type]]:
+    """
+    Separate types from the data dictionary and store them in a class dictionary.
+    The types inside the data dictionary will be replaced by their name (which
+    would for example make it easier to hash it).
+
+    Args:
+        data (dict[str, Any]): The data dictionary containing nodes and types.
+        class_dict (dict[str, type], optional): A dictionary to store types. It
+            is mainly used due to the recursivity of this function. Defaults to
+            None.
+
+    Returns:
+        tuple: A tuple containing the modified data dictionary and the
+            class dictionary.
+    """
+    data = copy.deepcopy(data)
+    if class_dict is None:
+        class_dict = {}
+    if "nodes" in data:
+        for key, node in data["nodes"].items():
+            child_node, child_class_dict = separate_types(node, class_dict)
+            class_dict.update(child_class_dict)
+            data["nodes"][key] = child_node
+    for io_ in ["inputs", "outputs"]:
+        for key, content in data[io_].items():
+            if "dtype" in content and isinstance(content["dtype"], type):
+                class_dict[content["dtype"].__name__] = content["dtype"]
+                data[io_][key]["dtype"] = content["dtype"].__name__
+    return data, class_dict
 
 
-def _function_to_ast_dict(node):
-    if isinstance(node, ast.AST):
-        result = {"_type": type(node).__name__}
-        for field, value in ast.iter_fields(node):
-            result[field] = _function_to_ast_dict(value)
-        return result
-    elif isinstance(node, list):
-        return [_function_to_ast_dict(item) for item in node]
-    else:
-        return node
+def separate_functions(
+    data: dict[str, Any], function_dict: dict[str, Callable] | None = None
+) -> tuple[dict[str, Any], dict[str, Callable]]:
+    """
+    Separate functions from the data dictionary and store them in a function
+    dictionary. The functions inside the data dictionary will be replaced by
+    their name (which would for example make it easier to hash it)
 
+    Args:
+        data (dict[str, Any]): The data dictionary containing nodes and
+            functions.
+        function_dict (dict[str, Callable], optional): A dictionary to store
+            functions. It is mainly used due to the recursivity of this
+            function. Defaults to None.
 
-def _hash_function(func):
-    return f"{func.__name__}_{sha256(inspect.getsource(func).encode()).hexdigest()}"
+    Returns:
+        tuple: A tuple containing the modified data dictionary and the
+            function dictionary.
+    """
+    data = copy.deepcopy(data)
+    if function_dict is None:
+        function_dict = {}
+    if "nodes" in data:
+        for key, node in data["nodes"].items():
+            child_node, child_function_dict = separate_functions(node, function_dict)
+            function_dict.update(child_function_dict)
+            data["nodes"][key] = child_node
+    elif "function" in data and not isinstance(data["function"], str):
+        fnc_object = data["function"]
+        as_string = fnc_object.__module__ + "." + fnc_object.__qualname__
+        function_dict[as_string] = fnc_object
+        data["function"] = as_string
+    if "test" in data and not isinstance(data["test"]["function"], str):
+        fnc_object = data["test"]["function"]
+        as_string = fnc_object.__module__ + fnc_object.__qualname__
+        function_dict[as_string] = fnc_object
+        data["test"]["function"] = as_string
+    return data, function_dict
 
 
 class FunctionDictFlowAnalyzer:
@@ -530,6 +576,18 @@ def _get_control_flow_graph(control_flows: list[str]) -> nx.DiGraph:
     return graph
 
 
+def _function_to_ast_dict(node):
+    if isinstance(node, ast.AST):
+        result = {"_type": type(node).__name__}
+        for field, value in ast.iter_fields(node):
+            result[field] = _function_to_ast_dict(value)
+        return result
+    elif isinstance(node, list):
+        return [_function_to_ast_dict(item) for item in node]
+    else:
+        return node
+
+
 def get_ast_dict(func: Callable) -> dict:
     """Get the AST dictionary representation of a function."""
     source_code = textwrap.dedent(inspect.getsource(func))
@@ -537,7 +595,7 @@ def get_ast_dict(func: Callable) -> dict:
     return _function_to_ast_dict(tree)
 
 
-def analyze_function(func):
+def analyze_function(func: Callable) -> tuple[nx.DiGraph, dict[str, Any]]:
     """Extracts the variable flow graph from a function"""
     ast_dict = get_ast_dict(func)
     scope = inspect.getmodule(func).__dict__ | vars(builtins)
@@ -738,80 +796,6 @@ def get_node_dict(
     if hasattr(function, "_semantikon_metadata"):
         data.update(function._semantikon_metadata)
     return data
-
-
-def separate_types(
-    data: dict[str, Any], class_dict: dict[str, type] | None = None
-) -> tuple[dict[str, Any], dict[str, type]]:
-    """
-    Separate types from the data dictionary and store them in a class dictionary.
-    The types inside the data dictionary will be replaced by their name (which
-    would for example make it easier to hash it).
-
-    Args:
-        data (dict[str, Any]): The data dictionary containing nodes and types.
-        class_dict (dict[str, type], optional): A dictionary to store types. It
-            is mainly used due to the recursivity of this function. Defaults to
-            None.
-
-    Returns:
-        tuple: A tuple containing the modified data dictionary and the
-            class dictionary.
-    """
-    data = copy.deepcopy(data)
-    if class_dict is None:
-        class_dict = {}
-    if "nodes" in data:
-        for key, node in data["nodes"].items():
-            child_node, child_class_dict = separate_types(node, class_dict)
-            class_dict.update(child_class_dict)
-            data["nodes"][key] = child_node
-    for io_ in ["inputs", "outputs"]:
-        for key, content in data[io_].items():
-            if "dtype" in content and isinstance(content["dtype"], type):
-                class_dict[content["dtype"].__name__] = content["dtype"]
-                data[io_][key]["dtype"] = content["dtype"].__name__
-    return data, class_dict
-
-
-def separate_functions(
-    data: dict[str, Any], function_dict: dict[str, Callable] | None = None
-) -> tuple[dict[str, Any], dict[str, Callable]]:
-    """
-    Separate functions from the data dictionary and store them in a function
-    dictionary. The functions inside the data dictionary will be replaced by
-    their name (which would for example make it easier to hash it)
-
-    Args:
-        data (dict[str, Any]): The data dictionary containing nodes and
-            functions.
-        function_dict (dict[str, Callable], optional): A dictionary to store
-            functions. It is mainly used due to the recursivity of this
-            function. Defaults to None.
-
-    Returns:
-        tuple: A tuple containing the modified data dictionary and the
-            function dictionary.
-    """
-    data = copy.deepcopy(data)
-    if function_dict is None:
-        function_dict = {}
-    if "nodes" in data:
-        for key, node in data["nodes"].items():
-            child_node, child_function_dict = separate_functions(node, function_dict)
-            function_dict.update(child_function_dict)
-            data["nodes"][key] = child_node
-    elif "function" in data and not isinstance(data["function"], str):
-        fnc_object = data["function"]
-        as_string = fnc_object.__module__ + "." + fnc_object.__qualname__
-        function_dict[as_string] = fnc_object
-        data["function"] = as_string
-    if "test" in data and not isinstance(data["test"]["function"], str):
-        fnc_object = data["test"]["function"]
-        as_string = fnc_object.__module__ + fnc_object.__qualname__
-        function_dict[as_string] = fnc_object
-        data["test"]["function"] = as_string
-    return data, function_dict
 
 
 def _to_workflow_dict_entry(
@@ -1243,7 +1227,7 @@ def _output_from_dictionary(io_dictionary: dict[str, object], label: str) -> Out
 
 
 def parse_workflow(
-    semantikon_workflow, metadata: CoreMetadata | Missing = MISSING
+    semantikon_workflow: dict[str, object], metadata: CoreMetadata | Missing = MISSING
 ) -> Workflow:
     label = semantikon_workflow["label"]
     inputs = Inputs(
