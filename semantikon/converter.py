@@ -298,7 +298,7 @@ def parse_input_args(func: Callable) -> dict[str, dict]:
     }
 
 
-def parse_output_args(func: Callable, separate_tuple: bool = True) -> dict | tuple:
+def parse_output_args(func: Callable, separate_tuple: bool = True) -> dict | tuple[dict, ...]:
     """
     Parse the output arguments of a function.
 

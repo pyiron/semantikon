@@ -546,30 +546,29 @@ def analyze_function(func):
 
 
 def _get_workflow_outputs(func):
-    var_output = get_return_expressions(func)
-    if isinstance(var_output, str):
-        var_output = [var_output]
-    data_output = parse_output_args(func)
-    if isinstance(data_output, dict):
-        data_output = [data_output]
-    if len(var_output) > 1 and len(data_output) == 1:
-        assert len(data_output[0]) == 0
-        return {var: {} for var in var_output}
-    return dict(zip(var_output, data_output))
+    output_hints = parse_output_args(func)
+    output_vars = get_return_expressions(func)
+    if isinstance(output_vars, str):
+        output_vars = [output_vars]
+    if isinstance(output_hints, dict):
+        output_hints = [output_hints]
+    if len(output_vars) > 1 and len(output_hints) == 1:
+        assert len(output_hints[0]) == 0
+        return {var: {} for var in output_vars}
+    return dict(zip(output_vars, output_hints))
 
 
-def _get_node_outputs(func: Callable, counts: int) -> dict[str, dict]:
+def _get_node_outputs(func: Callable, counts: int | None) -> dict[str, dict]:
     output_hints = parse_output_args(func, separate_tuple=counts > 1)
     output_vars = get_return_expressions(func)
     if output_vars is None or len(output_vars) == 0:
         return {}
-    if counts == 1:
+    if (counts is not None and counts == 1) or len(output_vars) == 1:
         if isinstance(output_vars, str):
             return {output_vars: cast(dict, output_hints)}
         else:
             return {"output": cast(dict, output_hints)}
     assert isinstance(output_vars, tuple) and len(output_vars) == counts
-    assert len(output_vars) == counts
     if output_hints == {}:
         return {key: {} for key in output_vars}
     else:
