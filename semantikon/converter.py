@@ -4,6 +4,7 @@
 
 import ast
 import inspect
+import keyword
 import re
 import sys
 import textwrap
@@ -157,10 +158,17 @@ def _resolve_annotation(annotation, func_globals=None):
         return Annotated[undefined_name, args[1]]
 
 
+def _is_valid_variable_name(name: str) -> bool:
+    return name.isidentifier() and not keyword.iskeyword(name)
+
+
 def _to_tag(item: Any, count=None, must_be_named: bool = False) -> str:
     if isinstance(item, ast.Name):
         return item.id
-    elif must_be_named:
+    elif isinstance(item, ast.Constant):
+        if isinstance(item.value, str) and _is_valid_variable_name(item.value):
+            return item.value
+    if must_be_named:
         raise NotAstNameError(
             "With `must_be_named=True`, item must be captured in an `ast.Name` "
             "variables, i.e only simple variable(-s) not containing any operation or "
@@ -172,7 +180,9 @@ def _to_tag(item: Any, count=None, must_be_named: bool = False) -> str:
         return f"output_{count}"
 
 
-def _get_return_list(func: Callable, strict: bool = False) -> list[str | tuple[str, ...]]:
+def _get_return_list(
+    func: Callable, strict: bool = False
+) -> list[str | tuple[str, ...]]:
     source = textwrap.dedent(inspect.getsource(func))
     parsed = ast.parse(source)
 
@@ -191,6 +201,15 @@ def _get_return_list(func: Callable, strict: bool = False) -> list[str | tuple[s
                         [
                             _to_tag(elt, ii, must_be_named=strict)
                             for ii, elt in enumerate(value.elts)
+                        ]
+                    )
+                )
+            elif isinstance(value, ast.Dict):
+                ret_list.append(
+                    tuple(
+                        [
+                            _to_tag(k, ii, must_be_named=strict)
+                            for ii, k in enumerate(value.keys)
                         ]
                     )
                 )

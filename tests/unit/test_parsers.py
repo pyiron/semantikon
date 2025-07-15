@@ -238,6 +238,16 @@ class TestParser(unittest.TestCase):
         self.assertEqual(get_return_expressions(f, separate_tuple=False), "None")
         self.assertEqual(get_return_expressions(f, strict=True), "None")
 
+        def f(x):
+            return {"z": x}
+
+        self.assertEqual(get_return_expressions(f), ("z",))
+
+        def f(x):
+            return {"z + 1": x}
+
+        self.assertEqual(get_return_expressions(f), ("output_0",))
+
     def test_get_return_labels(self):
 
         def f(x):
