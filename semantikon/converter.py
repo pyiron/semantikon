@@ -172,11 +172,8 @@ def _to_tag(item: Any, count=None, must_be_named: bool = False) -> str:
         return f"output_{count}"
 
 
-def get_return_expressions(
-    func: Callable, separate_tuple: bool = True, strict: bool = False
-) -> str | tuple[str, ...] | None:
-    source = inspect.getsource(func)
-    source = textwrap.dedent(source)
+def _get_return_list(func: Callable, strict: bool = False) -> list[str | tuple[str, ...]]:
+    source = textwrap.dedent(inspect.getsource(func))
     parsed = ast.parse(source)
 
     func_node = next(n for n in parsed.body if isinstance(n, ast.FunctionDef))
@@ -199,7 +196,13 @@ def get_return_expressions(
                 )
             else:
                 ret_list.append(_to_tag(value, must_be_named=strict))
+    return ret_list
 
+
+def get_return_expressions(
+    func: Callable, separate_tuple: bool = True, strict: bool = False
+) -> str | tuple[str, ...] | None:
+    ret_list = _get_return_list(func, strict=strict)
     if len(ret_list) == 0 and not strict:
         return None
     elif len(set(ret_list)) == 1 and (
