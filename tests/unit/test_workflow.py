@@ -13,7 +13,6 @@ from semantikon.workflow import (
     _get_node_outputs,
     _get_output_counts,
     _get_sorted_edges,
-    _get_workflow_outputs,
     _split_graphs_into_subgraphs,
     analyze_function,
     ast_from_dict,
@@ -261,23 +260,8 @@ class TestWorkflow(unittest.TestCase):
                     "y": {"dtype": float, "default": 1},
                 },
                 "outputs": {"output": {"dtype": float}},
-                "label": "add",
+                "function": add,
                 "uri": "add",
-                "type": "Function",
-            },
-        )
-        node_dict = get_node_dict(multiple_types_for_ape, data_format="ape")
-        node_dict.pop("id")
-        self.assertEqual(
-            node_dict,
-            {
-                "inputs": [
-                    {"Type": "ApeClass"},
-                    {"Type": "ApeClass"},
-                ],
-                "outputs": [{"Type": "ApeClass"}],
-                "label": "multiple_types_for_ape",
-                "taxonomyOperations": ["my_function"],
                 "type": "Function",
             },
         )
@@ -596,7 +580,7 @@ class TestWorkflow(unittest.TestCase):
             return a + b
 
         self.assertEqual(
-            _get_workflow_outputs(test_function_1),
+            _get_node_outputs(test_function_1),
             {"output": {}},
         )
 
@@ -604,7 +588,7 @@ class TestWorkflow(unittest.TestCase):
             return a
 
         self.assertEqual(
-            _get_workflow_outputs(test_function_2),
+            _get_node_outputs(test_function_2),
             {"a": {}},
         )
 
@@ -612,14 +596,14 @@ class TestWorkflow(unittest.TestCase):
             return a, b
 
         self.assertEqual(
-            _get_workflow_outputs(test_function_3),
+            _get_node_outputs(test_function_3),
             {"a": {}, "b": {}},
         )
 
         def test_function_4(a, b):
             return a + b, b
 
-        data = _get_workflow_outputs(test_function_4)
+        data = _get_node_outputs(test_function_4)
         self.assertEqual(data, {"output_0": {}, "b": {}})
         data["output_0"]["value"] = 0
         self.assertEqual(
@@ -631,7 +615,7 @@ class TestWorkflow(unittest.TestCase):
             return a, b
 
         self.assertEqual(
-            _get_workflow_outputs(test_function_5),
+            _get_node_outputs(test_function_5),
             {"a": {"dtype": int}, "b": {"dtype": int}},
         )
 
@@ -755,10 +739,10 @@ class TestWorkflow(unittest.TestCase):
     def test_function(self):
         for fnc in (operation, add, multiply, my_while_condition):
             with self.subTest(fnc=fnc, msg=fnc.__name__):
-                entry = swf._to_node_dict_entry(
+                entry = swf.get_node_dict(
                     fnc,
                     parse_input_args(fnc),
-                    swf._get_workflow_outputs(fnc),
+                    swf._get_node_outputs(fnc),
                 )
                 # Cheat and modify the entry to resemble the node structure
                 if hasattr(fnc, "_semantikon_metadata"):

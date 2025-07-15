@@ -545,35 +545,24 @@ def analyze_function(func):
     return analyzer.analyze()
 
 
-def _get_workflow_outputs(func):
-    var_output = get_return_expressions(func)
-    if isinstance(var_output, str):
-        var_output = [var_output]
-    data_output = parse_output_args(func)
-    if isinstance(data_output, dict):
-        data_output = [data_output]
-    if len(var_output) > 1 and len(data_output) == 1:
-        assert len(data_output[0]) == 0
-        return {var: {} for var in var_output}
-    return dict(zip(var_output, data_output))
-
-
-def _get_node_outputs(func: Callable, counts: int) -> dict[str, dict]:
-    output_hints = parse_output_args(func, separate_tuple=counts > 1)
+def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, dict]:
+    output_hints = parse_output_args(
+        func, separate_tuple=(counts is None or counts > 1)
+    )
     output_vars = get_return_expressions(func)
     if output_vars is None or len(output_vars) == 0:
         return {}
-    if counts == 1:
+    if (counts is not None and counts == 1) or isinstance(output_vars, str):
         if isinstance(output_vars, str):
             return {output_vars: cast(dict, output_hints)}
         else:
             return {"output": cast(dict, output_hints)}
-    assert isinstance(output_vars, tuple) and len(output_vars) == counts
-    assert len(output_vars) == counts
+    assert isinstance(output_vars, tuple), output_vars
+    assert counts is None or len(output_vars) == counts, output_vars
     if output_hints == {}:
         return {key: {} for key in output_vars}
     else:
-        assert len(output_hints) == counts
+        assert counts is None or len(output_hints) == counts
         return {key: hint for key, hint in zip(output_vars, output_hints)}
 
 
@@ -617,10 +606,10 @@ def _get_nodes(
             if hasattr(func, "_semantikon_metadata"):
                 result[label].update(func._semantikon_metadata)
         else:
-            result[label] = _to_node_dict_entry(
-                func,
-                parse_input_args(func),
-                _get_node_outputs(func, output_counts.get(label, 1)),
+            result[label] = get_node_dict(
+                function=func,
+                inputs=parse_input_args(func),
+                outputs=_get_node_outputs(func, output_counts.get(label, 1)),
             )
     return result
 
@@ -720,25 +709,11 @@ def _get_edges(graph: nx.DiGraph, nodes: dict[str, dict]) -> list[tuple[str, str
     return list(new_graph.edges)
 
 
-def _dtype_to_str(dtype):
-    return dtype.__name__
-
-
-def _to_ape(data, func):
-    data["taxonomyOperations"] = [data.pop("uri", func.__name__)]
-    data["id"] = data["label"] + "_" + _hash_function(func)
-    for io_ in ["inputs", "outputs"]:
-        d = []
-        for v in data[io_].values():
-            if "uri" in v:
-                d.append({"Type": str(v["uri"]), "Format": _dtype_to_str(v["dtype"])})
-            else:
-                d.append({"Type": _dtype_to_str(v["dtype"])})
-        data[io_] = d
-    return data
-
-
-def get_node_dict(func, data_format="semantikon"):
+def get_node_dict(
+    function: Callable,
+    inputs: dict[str, dict] | None = None,
+    outputs: dict[str, dict] | None = None,
+) -> dict:
     """
     Get a dictionary representation of the function node.
 
@@ -750,16 +725,18 @@ def get_node_dict(func, data_format="semantikon"):
     Returns:
         (dict) A dictionary representation of the function node.
     """
+    if inputs is None:
+        inputs = parse_input_args(function)
+    if outputs is None:
+        outputs = _get_node_outputs(function)
     data = {
-        "inputs": parse_input_args(func),
-        "outputs": _get_workflow_outputs(func),
-        "label": func.__name__,
+        "inputs": inputs,
+        "outputs": outputs,
+        "function": function,
         "type": "Function",
     }
-    if hasattr(func, "_semantikon_metadata"):
-        data.update(func._semantikon_metadata)
-    if data_format.lower() == "ape":
-        return _to_ape(data, func)
+    if hasattr(function, "_semantikon_metadata"):
+        data.update(function._semantikon_metadata)
     return data
 
 
@@ -835,20 +812,6 @@ def separate_functions(
         function_dict[as_string] = fnc_object
         data["test"]["function"] = as_string
     return data, function_dict
-
-
-def _to_node_dict_entry(
-    function: Callable, inputs: dict[str, dict], outputs: dict[str, dict]
-) -> dict:
-    entry = {
-        "function": function,
-        "inputs": inputs,
-        "outputs": outputs,
-        "type": "Function",
-    }
-    if hasattr(function, "_semantikon_metadata"):
-        entry.update(function._semantikon_metadata)
-    return entry
 
 
 def _to_workflow_dict_entry(
@@ -954,7 +917,7 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
     nested_nodes, edges = _nest_nodes(graph, nodes, f_dict)
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
-        outputs=_get_workflow_outputs(func),
+        outputs=_get_node_outputs(func),
         nodes=nested_nodes,
         edges=edges,
         label=func.__name__,
