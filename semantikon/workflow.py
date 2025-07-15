@@ -568,11 +568,11 @@ def _get_node_outputs(func: Callable, counts: int | None) -> dict[str, dict]:
             return {output_vars: cast(dict, output_hints)}
         else:
             return {"output": cast(dict, output_hints)}
-    assert isinstance(output_vars, tuple) and len(output_vars) == counts
+    assert isinstance(output_vars, tuple) and (counts is None or len(output_vars) == counts)
     if output_hints == {}:
         return {key: {} for key in output_vars}
     else:
-        assert len(output_hints) == counts
+        assert counts is None or len(output_hints) == counts
         return {key: hint for key, hint in zip(output_vars, output_hints)}
 
 
