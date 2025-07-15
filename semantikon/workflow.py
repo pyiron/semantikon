@@ -1227,7 +1227,7 @@ def _output_from_dictionary(io_dictionary: dict[str, object], label: str) -> Out
 
 
 def parse_workflow(
-    semantikon_workflow: dict[str, object], metadata: CoreMetadata | Missing = MISSING
+    semantikon_workflow: dict[str, Any], metadata: CoreMetadata | Missing = MISSING
 ) -> Workflow:
     label = semantikon_workflow["label"]
     inputs = Inputs(
