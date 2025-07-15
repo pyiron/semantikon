@@ -546,7 +546,9 @@ def analyze_function(func):
 
 
 def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, dict]:
-    output_hints = parse_output_args(func, separate_tuple=(counts is None or counts > 1))
+    output_hints = parse_output_args(
+        func, separate_tuple=(counts is None or counts > 1)
+    )
     output_vars = get_return_expressions(func)
     if output_vars is None or len(output_vars) == 0:
         return {}
