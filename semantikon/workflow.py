@@ -545,30 +545,18 @@ def analyze_function(func):
     return analyzer.analyze()
 
 
-def _get_workflow_outputs(func):
-    output_hints = parse_output_args(func)
-    output_vars = get_return_expressions(func)
-    if isinstance(output_vars, str):
-        output_vars = [output_vars]
-    if isinstance(output_hints, dict):
-        output_hints = [output_hints]
-    if len(output_vars) > 1 and len(output_hints) == 1:
-        assert len(output_hints[0]) == 0
-        return {var: {} for var in output_vars}
-    return dict(zip(output_vars, output_hints))
-
-
-def _get_node_outputs(func: Callable, counts: int | None) -> dict[str, dict]:
-    output_hints = parse_output_args(func, separate_tuple=counts > 1)
+def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, dict]:
+    output_hints = parse_output_args(func, separate_tuple=(counts is None or counts > 1))
     output_vars = get_return_expressions(func)
     if output_vars is None or len(output_vars) == 0:
         return {}
-    if (counts is not None and counts == 1) or len(output_vars) == 1:
+    if (counts is not None and counts == 1) or isinstance(output_vars, str):
         if isinstance(output_vars, str):
             return {output_vars: cast(dict, output_hints)}
         else:
             return {"output": cast(dict, output_hints)}
-    assert isinstance(output_vars, tuple) and (counts is None or len(output_vars) == counts)
+    assert isinstance(output_vars, tuple), output_vars
+    assert counts is None or len(output_vars) == counts, output_vars
     if output_hints == {}:
         return {key: {} for key in output_vars}
     else:
@@ -733,7 +721,7 @@ def get_node_dict(func):
     """
     data = {
         "inputs": parse_input_args(func),
-        "outputs": _get_workflow_outputs(func),
+        "outputs": _get_node_outputs(func),
         "label": func.__name__,
         "type": "Function",
     }
@@ -933,7 +921,7 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
     nested_nodes, edges = _nest_nodes(graph, nodes, f_dict)
     return _to_workflow_dict_entry(
         inputs=parse_input_args(func),
-        outputs=_get_workflow_outputs(func),
+        outputs=_get_node_outputs(func),
         nodes=nested_nodes,
         edges=edges,
         label=func.__name__,
