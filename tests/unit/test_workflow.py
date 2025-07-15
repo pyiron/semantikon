@@ -266,21 +266,6 @@ class TestWorkflow(unittest.TestCase):
                 "type": "Function",
             },
         )
-        node_dict = get_node_dict(multiple_types_for_ape, data_format="ape")
-        node_dict.pop("id")
-        self.assertEqual(
-            node_dict,
-            {
-                "inputs": [
-                    {"Type": "ApeClass"},
-                    {"Type": "ApeClass"},
-                ],
-                "outputs": [{"Type": "ApeClass"}],
-                "label": "multiple_types_for_ape",
-                "taxonomyOperations": ["my_function"],
-                "type": "Function",
-            },
-        )
 
     def test_get_output_counts(self):
         graph = analyze_function(example_macro)[0]

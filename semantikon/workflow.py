@@ -720,25 +720,7 @@ def _get_edges(graph: nx.DiGraph, nodes: dict[str, dict]) -> list[tuple[str, str
     return list(new_graph.edges)
 
 
-def _dtype_to_str(dtype):
-    return dtype.__name__
-
-
-def _to_ape(data, func):
-    data["taxonomyOperations"] = [data.pop("uri", func.__name__)]
-    data["id"] = data["label"] + "_" + _hash_function(func)
-    for io_ in ["inputs", "outputs"]:
-        d = []
-        for v in data[io_].values():
-            if "uri" in v:
-                d.append({"Type": str(v["uri"]), "Format": _dtype_to_str(v["dtype"])})
-            else:
-                d.append({"Type": _dtype_to_str(v["dtype"])})
-        data[io_] = d
-    return data
-
-
-def get_node_dict(func, data_format="semantikon"):
+def get_node_dict(func):
     """
     Get a dictionary representation of the function node.
 
@@ -758,8 +740,6 @@ def get_node_dict(func, data_format="semantikon"):
     }
     if hasattr(func, "_semantikon_metadata"):
         data.update(func._semantikon_metadata)
-    if data_format.lower() == "ape":
-        return _to_ape(data, func)
     return data
 
 
