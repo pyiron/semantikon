@@ -606,10 +606,10 @@ def _get_nodes(
             if hasattr(func, "_semantikon_metadata"):
                 result[label].update(func._semantikon_metadata)
         else:
-            result[label] = _to_node_dict_entry(
-                func,
-                parse_input_args(func),
-                _get_node_outputs(func, output_counts.get(label, 1)),
+            result[label] = get_node_dict(
+                function=func,
+                inputs=parse_input_args(func),
+                outputs=_get_node_outputs(func, output_counts.get(label, 1)),
             )
     return result
 
@@ -709,7 +709,11 @@ def _get_edges(graph: nx.DiGraph, nodes: dict[str, dict]) -> list[tuple[str, str
     return list(new_graph.edges)
 
 
-def get_node_dict(func):
+def get_node_dict(
+    function: Callable,
+    inputs: dict[str, dict] | None = None,
+    outputs: dict[str, dict] | None = None,
+) -> dict:
     """
     Get a dictionary representation of the function node.
 
@@ -721,14 +725,18 @@ def get_node_dict(func):
     Returns:
         (dict) A dictionary representation of the function node.
     """
+    if inputs is None:
+        inputs = parse_input_args(function)
+    if outputs is None:
+        outputs = _get_node_outputs(function)
     data = {
-        "inputs": parse_input_args(func),
-        "outputs": _get_node_outputs(func),
-        "label": func.__name__,
+        "inputs": inputs,
+        "outputs": outputs,
+        "function": function,
         "type": "Function",
     }
-    if hasattr(func, "_semantikon_metadata"):
-        data.update(func._semantikon_metadata)
+    if hasattr(function, "_semantikon_metadata"):
+        data.update(function._semantikon_metadata)
     return data
 
 
@@ -804,20 +812,6 @@ def separate_functions(
         function_dict[as_string] = fnc_object
         data["test"]["function"] = as_string
     return data, function_dict
-
-
-def _to_node_dict_entry(
-    function: Callable, inputs: dict[str, dict], outputs: dict[str, dict]
-) -> dict:
-    entry = {
-        "function": function,
-        "inputs": inputs,
-        "outputs": outputs,
-        "type": "Function",
-    }
-    if hasattr(function, "_semantikon_metadata"):
-        entry.update(function._semantikon_metadata)
-    return entry
 
 
 def _to_workflow_dict_entry(

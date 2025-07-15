@@ -260,7 +260,7 @@ class TestWorkflow(unittest.TestCase):
                     "y": {"dtype": float, "default": 1},
                 },
                 "outputs": {"output": {"dtype": float}},
-                "label": "add",
+                "function": add,
                 "uri": "add",
                 "type": "Function",
             },
@@ -739,7 +739,7 @@ class TestWorkflow(unittest.TestCase):
     def test_function(self):
         for fnc in (operation, add, multiply, my_while_condition):
             with self.subTest(fnc=fnc, msg=fnc.__name__):
-                entry = swf._to_node_dict_entry(
+                entry = swf.get_node_dict(
                     fnc,
                     parse_input_args(fnc),
                     swf._get_node_outputs(fnc),
