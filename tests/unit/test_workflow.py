@@ -1,4 +1,3 @@
-import ast
 import unittest
 
 import networkx as nx
