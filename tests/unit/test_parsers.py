@@ -253,7 +253,6 @@ class TestParser(unittest.TestCase):
             ):
                 get_return_labels(f)
 
-
     def test_use_default(self):
 
         @with_explicit_defaults
@@ -267,15 +266,11 @@ class TestParser(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             self.assertEqual(f(), 3)
             self.assertEqual(len(w), 1)
-            self.assertEqual(
-                w[0].message.args[0], "'x' not provided, using default: 3"
-            )
+            self.assertEqual(w[0].message.args[0], "'x' not provided, using default: 3")
             self.assertEqual(f(4), 4)
             self.assertEqual(len(w), 1)
             self.assertEqual(g(), 2)
-            self.assertEqual(
-                w[-1].message.args[0], "hello"
-            )
+            self.assertEqual(w[-1].message.args[0], "hello")
 
 
 if __name__ == "__main__":

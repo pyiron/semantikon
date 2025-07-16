@@ -495,7 +495,9 @@ def with_explicit_defaults(func):
                 if default_val.msg:
                     warnings.warn(default_val.msg)
                 else:
-                    warnings.warn(f"'{name}' not provided, using default: {default_val.default}")
+                    warnings.warn(
+                        f"'{name}' not provided, using default: {default_val.default}"
+                    )
                 if param.kind in [param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD]:
                     idx = list(sig.parameters).index(name)
                     if idx < len(new_args):
