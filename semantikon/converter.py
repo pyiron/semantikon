@@ -7,6 +7,7 @@ import inspect
 import re
 import sys
 import textwrap
+import warnings
 from copy import deepcopy
 from functools import update_wrapper, wraps
 from typing import (
@@ -28,7 +29,7 @@ from pint.registry_helpers import (
     _to_units_container,
 )
 
-from semantikon.datastructure import TypeMetadata
+from semantikon.datastructure import ExplicitDefault, TypeMetadata
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -459,3 +460,75 @@ def semantikon_class(cls: type) -> type:
         pass
     setattr(cls, "_is_semantikon_class", True)
     return cls
+
+
+def with_explicit_defaults(func: Callable) -> Callable:
+    """
+    Decorator to marks a value as an explicit default, which can be used to
+    indicate that a value should be replaced with a default value in the
+    context of serialization or processing.
+
+    Args:
+        func: function to be decorated
+
+    Returns:
+        decorated function that replaces explicit defaults with the actual default
+        value and issues a warning if the default is used.
+
+    Example:
+
+    >>> @with_explicit_defaults
+    >>> def f(x=use_default(3)):
+    ...     return x
+
+    >>> f()  # This will return 3, and a warning will be issued.
+
+    >>> f(3)  # This will also return 3 but without any warning.
+    """
+    sig = inspect.signature(func)
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        bound = sig.bind_partial(*args, **kwargs)
+        bound.apply_defaults()
+
+        # Track updated arguments
+        new_args = list(args)
+        new_kwargs = dict(kwargs)
+
+        for name, param in sig.parameters.items():
+            default_val = param.default
+
+            if not isinstance(default_val, ExplicitDefault):
+                continue  # Only handle sentinel-wrapped defaults
+
+            # Determine if argument was passed
+            was_explicit = (
+                name in bound.arguments
+                and name in kwargs
+                or (
+                    param.kind in [param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD]
+                    and list(sig.parameters).index(name) < len(args)
+                )
+            )
+
+            if not was_explicit:
+                # Not passed: Replace sentinel with real default
+                if default_val.msg:
+                    warnings.warn(default_val.msg)
+                else:
+                    warnings.warn(
+                        f"'{name}' not provided, using default: {default_val.default}"
+                    )
+                if param.kind in [param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD]:
+                    idx = list(sig.parameters).index(name)
+                    if idx < len(new_args):
+                        new_args[idx] = default_val.default
+                    else:
+                        new_kwargs[name] = default_val.default
+                else:
+                    new_kwargs[name] = default_val.default
+
+        return func(*new_args, **new_kwargs)
+
+    return wrapper
