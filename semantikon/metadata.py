@@ -4,6 +4,7 @@ from semantikon.converter import FunctionWithMetadata, parse_metadata
 from semantikon.datastructure import (
     MISSING,
     CoreMetadata,
+    ExplicitDefault,
     Missing,
     RestrictionLike,
     ShapeType,
@@ -115,3 +116,7 @@ def u(
         return _function_metadata(uri=uri, triples=triples, restrictions=restrictions)
     else:
         raise TypeError(f"Unsupported type: {type(type_or_func)}")
+
+
+def use_default(default, msg=None):
+    return ExplicitDefault(default, msg)
