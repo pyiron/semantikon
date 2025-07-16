@@ -462,7 +462,29 @@ def semantikon_class(cls: type) -> type:
     return cls
 
 
-def with_explicit_defaults(func):
+def with_explicit_defaults(func: Callable) -> Callable:
+    """
+    Decorator to marks a value as an explicit default, which can be used to
+    indicate that a value should be replaced with a default value in the
+    context of serialization or processing.
+
+    Args:
+        func: function to be decorated
+
+    Returns:
+        decorated function that replaces explicit defaults with the actual default
+        value and issues a warning if the default is used.
+
+    Example:
+
+    >>> @with_explicit_defaults
+    >>> def f(x=use_default(3)):
+    ...     return x
+
+    >>> f()  # This will return 3, and a warning will be issued.
+
+    >>> f(3)  # This will also return 3 but without any warning.
+    """
     sig = inspect.signature(func)
 
     @wraps(func)
