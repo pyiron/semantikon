@@ -260,8 +260,8 @@ class TestParser(unittest.TestCase):
             return x
 
         @with_explicit_defaults
-        def g(x=use_default(2, msg="hello")):
-            return x
+        def g(x=use_default(2, msg="hello"), y=1):
+            return x + y
 
         with warnings.catch_warnings(record=True) as w:
             self.assertEqual(f(), 3)
@@ -269,8 +269,11 @@ class TestParser(unittest.TestCase):
             self.assertEqual(w[0].message.args[0], "'x' not provided, using default: 3")
             self.assertEqual(f(4), 4)
             self.assertEqual(len(w), 1)
-            self.assertEqual(g(), 2)
+            self.assertEqual(g(), 3)
+            self.assertEqual(len(w), 2)
             self.assertEqual(w[-1].message.args[0], "hello")
+            self.assertEqual(g(x=2), 3)
+            self.assertEqual(len(w), 2)
 
 
 if __name__ == "__main__":
