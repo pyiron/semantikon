@@ -80,10 +80,7 @@ def _function_metadata(
         return FunctionWithMetadata(
             func,
             CoreMetadata(
-                triples=triples,
-                uri=uri,
-                restrictions=restrictions,
-                version=version
+                triples=triples, uri=uri, restrictions=restrictions, version=version
             ).to_dictionary(),
         )
 
