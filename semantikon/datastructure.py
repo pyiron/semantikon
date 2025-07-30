@@ -68,6 +68,7 @@ class CoreMetadata(_VariadicDataclass):
     uri: str | Missing = missing()
     triples: TriplesLike | Missing = missing()
     restrictions: RestrictionLike | Missing = missing()
+    version: str | Missing = missing()
 
 
 @dataclasses.dataclass(slots=True)

@@ -38,6 +38,7 @@ def _type_metadata(
     units: str | Missing = MISSING,
     shape: ShapeType | Missing = MISSING,
     derived_from: str | Missing = MISSING,
+    version: str | Missing = MISSING,
     **extra,
 ) -> Any:
     presently_requested_metadata = TypeMetadata(
@@ -48,6 +49,7 @@ def _type_metadata(
         units=units,
         shape=shape,
         derived_from=derived_from,
+        version=version,
     )
 
     kwargs = {"extra": extra} if len(extra) > 0 else {}
@@ -70,6 +72,7 @@ def _function_metadata(
     uri: str | Missing = MISSING,
     triples: TriplesLike | Missing = MISSING,
     restrictions: RestrictionLike | Missing = MISSING,
+    version: str | Missing = MISSING,
 ):
     def decorator(func: Callable):
         if not callable(func):
@@ -77,7 +80,10 @@ def _function_metadata(
         return FunctionWithMetadata(
             func,
             CoreMetadata(
-                triples=triples, uri=uri, restrictions=restrictions
+                triples=triples,
+                uri=uri,
+                restrictions=restrictions,
+                version=version
             ).to_dictionary(),
         )
 
@@ -94,6 +100,7 @@ def u(
     units: str | Missing = MISSING,
     shape: ShapeType | Missing = MISSING,
     derived_from: str | Missing = MISSING,
+    version: str | Missing = MISSING,
     **kwargs,
 ) -> Callable[[Callable], FunctionWithMetadata] | Annotated[Any, object]:
     if isinstance(type_or_func, type) or get_origin(type_or_func) is not None:
@@ -106,6 +113,7 @@ def u(
             units=units,
             shape=shape,
             derived_from=derived_from,
+            version=version,
             **kwargs,
         )
     elif type_or_func is None:
@@ -113,7 +121,9 @@ def u(
             raise NotImplementedError(
                 "Function decoration does not currently support arbitrary keyword data."
             )
-        return _function_metadata(uri=uri, triples=triples, restrictions=restrictions)
+        return _function_metadata(
+            uri=uri, triples=triples, restrictions=restrictions, version=version
+        )
     else:
         raise TypeError(f"Unsupported type: {type(type_or_func)}")
 
