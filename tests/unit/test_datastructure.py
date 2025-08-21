@@ -12,9 +12,6 @@ class ConcreteDC(datastructure._VariadicDataclass):
     optional_field: int | datastructure.Missing = datastructure.missing()
 
 
-class ConcreteHtDM(datastructure._HasToDictionarMapping[int]): ...
-
-
 class TestDataclasses(unittest.TestCase):
     def setUp(self):
         self.complex_object = {"Here is some non-trivial, mutable object"}
@@ -71,26 +68,6 @@ class TestDataclasses(unittest.TestCase):
             "type compliance!",
         ):
             ConcreteDC.from_dict({"complex_field": "This is not type-compliant"})
-
-
-class TestHasToDictionaryMapping(unittest.TestCase):
-    def test_mapping(self):
-        t = (1, 2, 3)
-        a, b, c = t
-        mapping = ConcreteHtDM(a=a, b=b)
-        self.assertEqual(mapping["a"], a)
-        self.assertEqual(mapping["b"], b)
-
-        mapping["c"] = c
-        self.assertEqual(mapping.c, c)
-
-        self.assertEqual(len(mapping), len(t))
-
-        del mapping["b"]
-        self.assertEqual(len(mapping), len(t) - 1)
-        self.assertIsNone(mapping.get("b", None))
-        self.assertEqual(mapping.a, a)
-        self.assertEqual(mapping.c, c)
 
 
 if __name__ == "__main__":
