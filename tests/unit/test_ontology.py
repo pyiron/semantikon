@@ -250,7 +250,7 @@ def dont_add_onetology(x: u(int, EX.NotInput)) -> u(int, EX.NotOutput):
 
 
 @workflow
-def mismatching_internals(x_outer: u(int, EX.Input)) -> u(int, EX.NotOutput):
+def mismatching_peers(x_outer: u(int, EX.Input)) -> u(int, EX.NotOutput):
     add = add_onetology(x_outer)
     dont_add = dont_add_onetology(add)
     return dont_add
@@ -389,7 +389,7 @@ class TestOntology(unittest.TestCase):
             )
 
         with self.subTest("Mismatching peers"):
-            graph = get_knowledge_graph(mismatching_internals._semantikon_workflow)
+            graph = get_knowledge_graph(mismatching_peers._semantikon_workflow)
             result = validate_values(graph)
             incompatible = [
                 (
@@ -404,8 +404,8 @@ class TestOntology(unittest.TestCase):
                 incompatible,
                 [
                     (
-                        "mismatching_internals.dont_add_onetology_0.inputs.x",
-                        "mismatching_internals.add_onetology_0.outputs.y",
+                        "mismatching_peers.dont_add_onetology_0.inputs.x",
+                        "mismatching_peers.add_onetology_0.outputs.y",
                         ["http://example.org/NotInput"],
                         ["http://example.org/Output"],
                     )
