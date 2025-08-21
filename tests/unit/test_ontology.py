@@ -423,6 +423,37 @@ class TestOntology(unittest.TestCase):
             self.assertEqual(result["missing_triples"], [])
             self.assertEqual(result["incompatible_connections"], [])
 
+        with self.subTest("Wrongly informed peers"):
+            context = Graph()
+            context.add((EX.NotOutput, RDFS.subClassOf, EX.Output))  # Reversed
+            # Now we're saying the downstream is expecting a subclass of the upstream,
+            # which the upstream base class is _not_ guaranteeing
+            graph = get_knowledge_graph(
+                wf_dict=mismatching_peers._semantikon_workflow,
+                graph=context,
+            )
+            result = validate_values(graph)
+            incompatible = [
+                (
+                    str(a),
+                    str(b),
+                    [str(x) for x in expected],
+                    [str(x) for x in provided],
+                )
+                for (a, b, expected, provided) in result["incompatible_connections"]
+            ]
+            self.assertEqual(
+                incompatible,
+                [
+                    (
+                        "mismatching_peers.dont_add_onetology_0.inputs.x",
+                        "mismatching_peers.add_onetology_0.outputs.y",
+                        ["http://example.org/NotOutput", "http://example.org/Output"],
+                        ["http://example.org/Output"],
+                    )
+                ],
+            )
+
     def test_macro(self):
         graph = get_knowledge_graph(get_macro.run())
         subj = list(
