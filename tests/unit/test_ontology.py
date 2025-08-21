@@ -4,7 +4,7 @@ from textwrap import dedent
 
 from graphviz import Digraph
 from pyshacl import validate
-from rdflib import OWL, PROV, RDF, RDFS, SH, Literal, Namespace, URIRef
+from rdflib import Graph, OWL, PROV, RDF, RDFS, SH, Literal, Namespace, URIRef
 
 from semantikon.metadata import u
 from semantikon.ontology import (
@@ -244,7 +244,7 @@ def mismatching_output(x_outer: u(int, uri=EX.Input)) -> u(int, uri=EX.NotOutput
     return add
 
 
-def dont_add_onetology(x: u(int, uri=EX.NotInput)) -> u(int, uri=EX.NotOutput):
+def dont_add_onetology(x: u(int, uri=EX.NotOutput)) -> u(int, uri=EX.NotOutput):
     y = x
     return y
 
@@ -406,11 +406,22 @@ class TestOntology(unittest.TestCase):
                     (
                         "mismatching_peers.dont_add_onetology_0.inputs.x",
                         "mismatching_peers.add_onetology_0.outputs.y",
-                        ["http://example.org/NotInput"],
+                        ["http://example.org/NotOutput"],
                         ["http://example.org/Output"],
                     )
                 ],
             )
+
+        with self.subTest("Externally informed peers"):
+            context = Graph()
+            context.add((EX.Output, RDFS.subClassOf, EX.NotOutput))
+            graph = get_knowledge_graph(
+                wf_dict=mismatching_peers._semantikon_workflow,
+                graph=context,
+            )
+            result = validate_values(graph)
+            self.assertEqual(result["missing_triples"], [])
+            self.assertEqual(result["incompatible_connections"], [])
 
     def test_macro(self):
         graph = get_knowledge_graph(get_macro.run())
