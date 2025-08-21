@@ -221,36 +221,36 @@ def eat_pizza():
     return comment
 
 
-def add_onetology(x: u(int, EX.Input)) -> u(int, EX.Output):
+def add_onetology(x: u(int, uri=EX.Input)) -> u(int, uri=EX.Output):
     y = x + 1
     return y
 
 
 @workflow
-def matching_wrapper(x_outer: u(int, EX.Input)) -> u(int, EX.Output):
+def matching_wrapper(x_outer: u(int, uri=EX.Input)) -> u(int, uri=EX.Output):
     add = add_onetology(x_outer)
     return add
 
 
 @workflow
-def mismatching_input(x_outer: u(int, EX.NotInput)) -> u(int, EX.Output):
+def mismatching_input(x_outer: u(int, uri=EX.NotInput)) -> u(int, uri=EX.Output):
     add = add_onetology(x_outer)
     return add
 
 
 @workflow
-def mismatching_output(x_outer: u(int, EX.Input)) -> u(int, EX.NotOutput):
+def mismatching_output(x_outer: u(int, uri=EX.Input)) -> u(int, uri=EX.NotOutput):
     add = add_onetology(x_outer)
     return add
 
 
-def dont_add_onetology(x: u(int, EX.NotInput)) -> u(int, EX.NotOutput):
+def dont_add_onetology(x: u(int, uri=EX.NotInput)) -> u(int, uri=EX.NotOutput):
     y = x
     return y
 
 
 @workflow
-def mismatching_peers(x_outer: u(int, EX.Input)) -> u(int, EX.NotOutput):
+def mismatching_peers(x_outer: u(int, uri=EX.Input)) -> u(int, uri=EX.NotOutput):
     add = add_onetology(x_outer)
     dont_add = dont_add_onetology(add)
     return dont_add
