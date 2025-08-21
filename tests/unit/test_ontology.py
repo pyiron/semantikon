@@ -325,17 +325,30 @@ class TestOntology(unittest.TestCase):
                 self.assertIn(
                     URIRef("get_macro." + tag), subj, msg=f"{tag} not in {subj}"
                 )
-        same_as = [(str(g[0]), str(g[1])) for g in graph.subject_objects(OWL.sameAs)]
+        inherits_from = [
+            (str(g[0]), str(g[1]))
+            for g in graph.subject_objects(SNS.inheritsPropertiesFrom)
+        ]
+        get_macro_io_passing = 2
+        get_three_io_passing = 2
+        get_three_internal = 1
+        get_macro_internal = 1
+        expected_inheritance = (
+            get_macro_io_passing
+            + get_three_io_passing
+            + get_three_internal
+            + get_macro_internal
+        )
         prefix = "get_macro.add_three_0"
         sub_obj = [
             ("add_one_0.inputs.a", "inputs.c"),
             ("outputs.w", "add_two_0.outputs.result"),
         ]
         sub_obj = [(prefix + "." + s, prefix + "." + o) for s, o in sub_obj]
-        self.assertEqual(len(same_as), 4)
+        self.assertEqual(len(inherits_from), expected_inheritance)
         for ii, pair in enumerate(sub_obj):
             with self.subTest(i=ii):
-                self.assertIn(pair, same_as)
+                self.assertIn(pair, inherits_from)
 
     def test_macro_full_comparison(self):
         txt = dedent(
