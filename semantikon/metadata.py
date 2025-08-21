@@ -87,6 +87,7 @@ def _function_metadata(
 def u(
     type_or_func=None,
     /,
+    *,
     uri: str | Missing = MISSING,
     triples: TriplesLike | Missing = MISSING,
     restrictions: RestrictionLike | Missing = MISSING,
