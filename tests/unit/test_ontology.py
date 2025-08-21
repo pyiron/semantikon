@@ -326,7 +326,7 @@ class TestOntology(unittest.TestCase):
         graph.add((EX.Pizza, RDFS.subClassOf, EX.Meal))
         self.assertEqual(validate_values(graph)["incompatible_connections"], [])
 
-    def test_value_validation_examples(self):
+    def test_workflow_edge_validation(self):
         # matching
         graph = get_knowledge_graph(matching_wrapper._semantikon_workflow)
         result = validate_values(graph)
