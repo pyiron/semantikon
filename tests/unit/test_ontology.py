@@ -220,6 +220,37 @@ def eat_pizza():
     comment = eat(pizza)
     return comment
 
+# New helper functions for validation tests (using http://www.example.org/)
+EXW = Namespace("http://www.example.org/")
+
+def add_onetology(x: u(int, EXW.Input)) -> u(int, EXW.Output):
+    y = x + 1
+    return y
+
+@workflow
+def matching_wrapper(x_outer: u(int, EXW.Input)) -> u(int, EXW.Output):
+    add = add_onetology(x_outer)
+    return add
+
+@workflow
+def mismatching_input(x_outer: u(int, EXW.NotInput)) -> u(int, EXW.Output):
+    add = add_onetology(x_outer)
+    return add
+
+@workflow
+def mismatching_output(x_outer: u(int, EXW.Input)) -> u(int, EXW.NotOutput):
+    add = add_onetology(x_outer)
+    return add
+
+def dont_add_onetology(x: u(int, EXW.NotInput)) -> u(int, EXW.NotOutput):
+    y = x
+    return y
+
+@workflow
+def mismatching_internals(x_outer: u(int, EXW.Input)) -> u(int, EXW.NotOutput):
+    add = add_onetology(x_outer)
+    dont_add = dont_add_onetology(add)
+    return dont_add
 
 class TestOntology(unittest.TestCase):
     @classmethod
@@ -297,6 +328,85 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(len(validate_values(graph)["incompatible_connections"]), 1)
         graph.add((EX.Pizza, RDFS.subClassOf, EX.Meal))
         self.assertEqual(validate_values(graph)["incompatible_connections"], [])
+
+    def test_value_validation_examples(self):
+        # matching
+        graph = get_knowledge_graph(matching_wrapper._semantikon_workflow)
+        result = validate_values(graph)
+        self.assertEqual(result["missing_triples"], [])
+        self.assertEqual(result["incompatible_connections"], [])
+
+        # mismatching input
+        graph = get_knowledge_graph(mismatching_input._semantikon_workflow)
+        result = validate_values(graph)
+        incompatible = [
+            (
+                str(a),
+                str(b),
+                [str(x) for x in expected],
+                [str(x) for x in provided],
+            )
+            for (a, b, expected, provided) in result["incompatible_connections"]
+        ]
+        self.assertEqual(
+            incompatible,
+            [
+                (
+                    "mismatching_input.add_onetology_0.inputs.x",
+                    "mismatching_input.inputs.x_outer",
+                    ["http://www.example.org/Input"],
+                    ["http://www.example.org/NotInput"],
+                )
+            ],
+        )
+
+        # mismatching output
+        graph = get_knowledge_graph(mismatching_output._semantikon_workflow)
+        result = validate_values(graph)
+        incompatible = [
+            (
+                str(a),
+                str(b),
+                [str(x) for x in expected],
+                [str(x) for x in provided],
+            )
+            for (a, b, expected, provided) in result["incompatible_connections"]
+        ]
+        self.assertEqual(
+            incompatible,
+            [
+                (
+                    "mismatching_output.outputs.add",
+                    "mismatching_output.add_onetology_0.outputs.y",
+                    ["http://www.example.org/NotOutput"],
+                    ["http://www.example.org/Output"],
+                )
+            ],
+        )
+
+        # mismatching internals
+        graph = get_knowledge_graph(mismatching_internals._semantikon_workflow)
+        result = validate_values(graph)
+        incompatible = [
+            (
+                str(a),
+                str(b),
+                [str(x) for x in expected],
+                [str(x) for x in provided],
+            )
+            for (a, b, expected, provided) in result["incompatible_connections"]
+        ]
+        self.assertEqual(
+            incompatible,
+            [
+                (
+                    "mismatching_internals.dont_add_onetology_0.inputs.x",
+                    "mismatching_internals.add_onetology_0.outputs.y",
+                    ["http://www.example.org/NotInput"],
+                    ["http://www.example.org/Output"],
+                )
+            ],
+        )
 
     def test_macro(self):
         graph = get_knowledge_graph(get_macro.run())
