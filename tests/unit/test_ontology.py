@@ -220,34 +220,31 @@ def eat_pizza():
     comment = eat(pizza)
     return comment
 
-# New helper functions for validation tests (using http://www.example.org/)
-EXW = Namespace("http://www.example.org/")
-
-def add_onetology(x: u(int, EXW.Input)) -> u(int, EXW.Output):
+def add_onetology(x: u(int, EX.Input)) -> u(int, EX.Output):
     y = x + 1
     return y
 
 @workflow
-def matching_wrapper(x_outer: u(int, EXW.Input)) -> u(int, EXW.Output):
+def matching_wrapper(x_outer: u(int, EX.Input)) -> u(int, EX.Output):
     add = add_onetology(x_outer)
     return add
 
 @workflow
-def mismatching_input(x_outer: u(int, EXW.NotInput)) -> u(int, EXW.Output):
+def mismatching_input(x_outer: u(int, EX.NotInput)) -> u(int, EX.Output):
     add = add_onetology(x_outer)
     return add
 
 @workflow
-def mismatching_output(x_outer: u(int, EXW.Input)) -> u(int, EXW.NotOutput):
+def mismatching_output(x_outer: u(int, EX.Input)) -> u(int, EX.NotOutput):
     add = add_onetology(x_outer)
     return add
 
-def dont_add_onetology(x: u(int, EXW.NotInput)) -> u(int, EXW.NotOutput):
+def dont_add_onetology(x: u(int, EX.NotInput)) -> u(int, EX.NotOutput):
     y = x
     return y
 
 @workflow
-def mismatching_internals(x_outer: u(int, EXW.Input)) -> u(int, EXW.NotOutput):
+def mismatching_internals(x_outer: u(int, EX.Input)) -> u(int, EX.NotOutput):
     add = add_onetology(x_outer)
     dont_add = dont_add_onetology(add)
     return dont_add
@@ -354,8 +351,8 @@ class TestOntology(unittest.TestCase):
                 (
                     "mismatching_input.add_onetology_0.inputs.x",
                     "mismatching_input.inputs.x_outer",
-                    ["http://www.example.org/Input"],
-                    ["http://www.example.org/NotInput"],
+                    ["http://example.org/Input"],
+                    ["http://example.org/NotInput"],
                 )
             ],
         )
@@ -378,8 +375,8 @@ class TestOntology(unittest.TestCase):
                 (
                     "mismatching_output.outputs.add",
                     "mismatching_output.add_onetology_0.outputs.y",
-                    ["http://www.example.org/NotOutput"],
-                    ["http://www.example.org/Output"],
+                    ["http://example.org/NotOutput"],
+                    ["http://example.org/Output"],
                 )
             ],
         )
@@ -402,8 +399,8 @@ class TestOntology(unittest.TestCase):
                 (
                     "mismatching_internals.dont_add_onetology_0.inputs.x",
                     "mismatching_internals.add_onetology_0.outputs.y",
-                    ["http://www.example.org/NotInput"],
-                    ["http://www.example.org/Output"],
+                    ["http://example.org/NotInput"],
+                    ["http://example.org/Output"],
                 )
             ],
         )
