@@ -220,34 +220,41 @@ def eat_pizza():
     comment = eat(pizza)
     return comment
 
+
 def add_onetology(x: u(int, EX.Input)) -> u(int, EX.Output):
     y = x + 1
     return y
+
 
 @workflow
 def matching_wrapper(x_outer: u(int, EX.Input)) -> u(int, EX.Output):
     add = add_onetology(x_outer)
     return add
 
+
 @workflow
 def mismatching_input(x_outer: u(int, EX.NotInput)) -> u(int, EX.Output):
     add = add_onetology(x_outer)
     return add
+
 
 @workflow
 def mismatching_output(x_outer: u(int, EX.Input)) -> u(int, EX.NotOutput):
     add = add_onetology(x_outer)
     return add
 
+
 def dont_add_onetology(x: u(int, EX.NotInput)) -> u(int, EX.NotOutput):
     y = x
     return y
+
 
 @workflow
 def mismatching_internals(x_outer: u(int, EX.Input)) -> u(int, EX.NotOutput):
     add = add_onetology(x_outer)
     dont_add = dont_add_onetology(add)
     return dont_add
+
 
 class TestOntology(unittest.TestCase):
     @classmethod
@@ -327,83 +334,83 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(validate_values(graph)["incompatible_connections"], [])
 
     def test_workflow_edge_validation(self):
-        # matching
-        graph = get_knowledge_graph(matching_wrapper._semantikon_workflow)
-        result = validate_values(graph)
-        self.assertEqual(result["missing_triples"], [])
-        self.assertEqual(result["incompatible_connections"], [])
+        with self.subTest("Matching"):
+            graph = get_knowledge_graph(matching_wrapper._semantikon_workflow)
+            result = validate_values(graph)
+            self.assertEqual(result["missing_triples"], [])
+            self.assertEqual(result["incompatible_connections"], [])
 
-        # mismatching input
-        graph = get_knowledge_graph(mismatching_input._semantikon_workflow)
-        result = validate_values(graph)
-        incompatible = [
-            (
-                str(a),
-                str(b),
-                [str(x) for x in expected],
-                [str(x) for x in provided],
-            )
-            for (a, b, expected, provided) in result["incompatible_connections"]
-        ]
-        self.assertEqual(
-            incompatible,
-            [
+        with self.subTest("Mismatching input"):
+            graph = get_knowledge_graph(mismatching_input._semantikon_workflow)
+            result = validate_values(graph)
+            incompatible = [
                 (
-                    "mismatching_input.add_onetology_0.inputs.x",
-                    "mismatching_input.inputs.x_outer",
-                    ["http://example.org/Input"],
-                    ["http://example.org/NotInput"],
+                    str(a),
+                    str(b),
+                    [str(x) for x in expected],
+                    [str(x) for x in provided],
                 )
-            ],
-        )
+                for (a, b, expected, provided) in result["incompatible_connections"]
+            ]
+            self.assertEqual(
+                incompatible,
+                [
+                    (
+                        "mismatching_input.add_onetology_0.inputs.x",
+                        "mismatching_input.inputs.x_outer",
+                        ["http://example.org/Input"],
+                        ["http://example.org/NotInput"],
+                    )
+                ],
+            )
 
-        # mismatching output
-        graph = get_knowledge_graph(mismatching_output._semantikon_workflow)
-        result = validate_values(graph)
-        incompatible = [
-            (
-                str(a),
-                str(b),
-                [str(x) for x in expected],
-                [str(x) for x in provided],
-            )
-            for (a, b, expected, provided) in result["incompatible_connections"]
-        ]
-        self.assertEqual(
-            incompatible,
-            [
+        with self.subTest("Mismatching output"):
+            graph = get_knowledge_graph(mismatching_output._semantikon_workflow)
+            result = validate_values(graph)
+            incompatible = [
                 (
-                    "mismatching_output.outputs.add",
-                    "mismatching_output.add_onetology_0.outputs.y",
-                    ["http://example.org/NotOutput"],
-                    ["http://example.org/Output"],
+                    str(a),
+                    str(b),
+                    [str(x) for x in expected],
+                    [str(x) for x in provided],
                 )
-            ],
-        )
+                for (a, b, expected, provided) in result["incompatible_connections"]
+            ]
+            self.assertEqual(
+                incompatible,
+                [
+                    (
+                        "mismatching_output.outputs.add",
+                        "mismatching_output.add_onetology_0.outputs.y",
+                        ["http://example.org/NotOutput"],
+                        ["http://example.org/Output"],
+                    )
+                ],
+            )
 
-        # mismatching internals
-        graph = get_knowledge_graph(mismatching_internals._semantikon_workflow)
-        result = validate_values(graph)
-        incompatible = [
-            (
-                str(a),
-                str(b),
-                [str(x) for x in expected],
-                [str(x) for x in provided],
-            )
-            for (a, b, expected, provided) in result["incompatible_connections"]
-        ]
-        self.assertEqual(
-            incompatible,
-            [
+        with self.subTest("Mismatching peers"):
+            graph = get_knowledge_graph(mismatching_internals._semantikon_workflow)
+            result = validate_values(graph)
+            incompatible = [
                 (
-                    "mismatching_internals.dont_add_onetology_0.inputs.x",
-                    "mismatching_internals.add_onetology_0.outputs.y",
-                    ["http://example.org/NotInput"],
-                    ["http://example.org/Output"],
+                    str(a),
+                    str(b),
+                    [str(x) for x in expected],
+                    [str(x) for x in provided],
                 )
-            ],
-        )
+                for (a, b, expected, provided) in result["incompatible_connections"]
+            ]
+            self.assertEqual(
+                incompatible,
+                [
+                    (
+                        "mismatching_internals.dont_add_onetology_0.inputs.x",
+                        "mismatching_internals.add_onetology_0.outputs.y",
+                        ["http://example.org/NotInput"],
+                        ["http://example.org/Output"],
+                    )
+                ],
+            )
 
     def test_macro(self):
         graph = get_knowledge_graph(get_macro.run())
