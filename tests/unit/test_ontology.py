@@ -4,7 +4,7 @@ from textwrap import dedent
 
 from graphviz import Digraph
 from pyshacl import validate
-from rdflib import Graph, OWL, PROV, RDF, RDFS, SH, Literal, Namespace, URIRef
+from rdflib import OWL, PROV, RDF, RDFS, SH, Graph, Literal, Namespace, URIRef
 
 from semantikon.metadata import u
 from semantikon.ontology import (
