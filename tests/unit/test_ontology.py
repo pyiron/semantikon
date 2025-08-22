@@ -389,7 +389,7 @@ class TestOntology(unittest.TestCase):
                     (
                         "mismatching_input.add_onetology_0.inputs.x",
                         "mismatching_input.inputs.x_outer",
-                        ["http://example.org/Input"],
+                        ["http://example.org/Input", "http://example.org/NotInput"],
                         ["http://example.org/NotInput"],
                     )
                 ],
@@ -413,7 +413,7 @@ class TestOntology(unittest.TestCase):
                     (
                         "mismatching_output.outputs.add",
                         "mismatching_output.add_onetology_0.outputs.y",
-                        ["http://example.org/NotOutput"],
+                        ["http://example.org/NotOutput", "http://example.org/Output"],
                         ["http://example.org/Output"],
                     )
                 ],
@@ -437,7 +437,7 @@ class TestOntology(unittest.TestCase):
                     (
                         "mismatching_peers.dont_add_onetology_0.inputs.x",
                         "mismatching_peers.add_onetology_0.outputs.y",
-                        ["http://example.org/NotOutput"],
+                        ["http://example.org/NotOutput", "http://example.org/Output"],
                         ["http://example.org/Output"],
                     )
                 ],
