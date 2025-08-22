@@ -4,7 +4,7 @@ from textwrap import dedent
 
 from graphviz import Digraph
 from pyshacl import validate
-from rdflib import OWL, PROV, RDF, RDFS, SH, Literal, Namespace, URIRef
+from rdflib import OWL, PROV, RDF, RDFS, SH, Graph, Literal, Namespace, URIRef
 
 from semantikon.metadata import u
 from semantikon.ontology import (
@@ -221,6 +221,41 @@ def eat_pizza():
     return comment
 
 
+def add_onetology(x: u(int, uri=EX.Input)) -> u(int, uri=EX.Output):
+    y = x + 1
+    return y
+
+
+@workflow
+def matching_wrapper(x_outer: u(int, uri=EX.Input)) -> u(int, uri=EX.Output):
+    add = add_onetology(x_outer)
+    return add
+
+
+@workflow
+def mismatching_input(x_outer: u(int, uri=EX.NotInput)) -> u(int, uri=EX.Output):
+    add = add_onetology(x_outer)
+    return add
+
+
+@workflow
+def mismatching_output(x_outer: u(int, uri=EX.Input)) -> u(int, uri=EX.NotOutput):
+    add = add_onetology(x_outer)
+    return add
+
+
+def dont_add_onetology(x: u(int, uri=EX.NotOutput)) -> u(int, uri=EX.NotOutput):
+    y = x
+    return y
+
+
+@workflow
+def mismatching_peers(x_outer: u(int, uri=EX.Input)) -> u(int, uri=EX.NotOutput):
+    add = add_onetology(x_outer)
+    dont_add = dont_add_onetology(add)
+    return dont_add
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -298,6 +333,127 @@ class TestOntology(unittest.TestCase):
         graph.add((EX.Pizza, RDFS.subClassOf, EX.Meal))
         self.assertEqual(validate_values(graph)["incompatible_connections"], [])
 
+    def test_workflow_edge_validation(self):
+        with self.subTest("Matching"):
+            graph = get_knowledge_graph(matching_wrapper._semantikon_workflow)
+            result = validate_values(graph)
+            self.assertEqual(result["missing_triples"], [])
+            self.assertEqual(result["incompatible_connections"], [])
+
+        with self.subTest("Mismatching input"):
+            graph = get_knowledge_graph(mismatching_input._semantikon_workflow)
+            result = validate_values(graph)
+            incompatible = [
+                (
+                    str(a),
+                    str(b),
+                    [str(x) for x in expected],
+                    [str(x) for x in provided],
+                )
+                for (a, b, expected, provided) in result["incompatible_connections"]
+            ]
+            self.assertEqual(
+                incompatible,
+                [
+                    (
+                        "mismatching_input.add_onetology_0.inputs.x",
+                        "mismatching_input.inputs.x_outer",
+                        ["http://example.org/Input"],
+                        ["http://example.org/NotInput"],
+                    )
+                ],
+            )
+
+        with self.subTest("Mismatching output"):
+            graph = get_knowledge_graph(mismatching_output._semantikon_workflow)
+            result = validate_values(graph)
+            incompatible = [
+                (
+                    str(a),
+                    str(b),
+                    [str(x) for x in expected],
+                    [str(x) for x in provided],
+                )
+                for (a, b, expected, provided) in result["incompatible_connections"]
+            ]
+            self.assertEqual(
+                incompatible,
+                [
+                    (
+                        "mismatching_output.outputs.add",
+                        "mismatching_output.add_onetology_0.outputs.y",
+                        ["http://example.org/NotOutput"],
+                        ["http://example.org/Output"],
+                    )
+                ],
+            )
+
+        with self.subTest("Mismatching peers"):
+            graph = get_knowledge_graph(mismatching_peers._semantikon_workflow)
+            result = validate_values(graph)
+            incompatible = [
+                (
+                    str(a),
+                    str(b),
+                    [str(x) for x in expected],
+                    [str(x) for x in provided],
+                )
+                for (a, b, expected, provided) in result["incompatible_connections"]
+            ]
+            self.assertEqual(
+                incompatible,
+                [
+                    (
+                        "mismatching_peers.dont_add_onetology_0.inputs.x",
+                        "mismatching_peers.add_onetology_0.outputs.y",
+                        ["http://example.org/NotOutput"],
+                        ["http://example.org/Output"],
+                    )
+                ],
+            )
+
+        with self.subTest("Externally informed peers"):
+            context = Graph()
+            context.add((EX.Output, RDFS.subClassOf, EX.NotOutput))
+            graph = get_knowledge_graph(
+                wf_dict=mismatching_peers._semantikon_workflow,
+                graph=context,
+            )
+            result = validate_values(graph)
+            self.assertEqual(result["missing_triples"], [])
+            self.assertEqual(result["incompatible_connections"], [])
+
+        with self.subTest("Wrongly informed peers"):
+            context = Graph()
+            context.add((EX.NotOutput, RDFS.subClassOf, EX.Output))  # Reversed
+            # Now we're saying the downstream is expecting a subclass of the upstream,
+            # which the upstream base class is _not_ guaranteeing
+            graph = get_knowledge_graph(
+                wf_dict=mismatching_peers._semantikon_workflow,
+                graph=context,
+            )
+            result = validate_values(graph)
+            incompatible = [
+                (
+                    str(a),
+                    str(b),
+                    [str(x) for x in expected],
+                    [str(x) for x in provided],
+                )
+                for (a, b, expected, provided) in result["incompatible_connections"]
+            ]
+            self.assertEqual(
+                incompatible,
+                [
+                    (
+                        "mismatching_peers.dont_add_onetology_0.inputs.x",
+                        "mismatching_peers.add_onetology_0.outputs.y",
+                        ["http://example.org/NotOutput", "http://example.org/Output"],
+                        ["http://example.org/Output"],
+                    )
+                ],
+            )
+
     def test_macro(self):
         graph = get_knowledge_graph(get_macro.run())
         subj = list(
@@ -325,99 +481,117 @@ class TestOntology(unittest.TestCase):
                 self.assertIn(
                     URIRef("get_macro." + tag), subj, msg=f"{tag} not in {subj}"
                 )
-        same_as = [(str(g[0]), str(g[1])) for g in graph.subject_objects(OWL.sameAs)]
+        inherits_from = [
+            (str(g[0]), str(g[1]))
+            for g in graph.subject_objects(SNS.inheritsPropertiesFrom)
+        ]
+        get_macro_io_passing = 2
+        get_three_io_passing = 2
+        get_three_internal = 1
+        get_macro_internal = 1
+        expected_inheritance = (
+            get_macro_io_passing
+            + get_three_io_passing
+            + get_three_internal
+            + get_macro_internal
+        )
         prefix = "get_macro.add_three_0"
         sub_obj = [
             ("add_one_0.inputs.a", "inputs.c"),
             ("outputs.w", "add_two_0.outputs.result"),
         ]
         sub_obj = [(prefix + "." + s, prefix + "." + o) for s, o in sub_obj]
-        self.assertEqual(len(same_as), 4)
+        self.assertEqual(len(inherits_from), expected_inheritance)
         for ii, pair in enumerate(sub_obj):
             with self.subTest(i=ii):
-                self.assertIn(pair, same_as)
+                self.assertIn(pair, inherits_from)
 
     def test_macro_full_comparison(self):
         txt = dedent(
             """\
         @prefix ns1: <http://pyiron.org/ontology/> .
-        @prefix owl: <http://www.w3.org/2002/07/owl#> .
         @prefix prov: <http://www.w3.org/ns/prov#> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
         @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-
+        
         <get_macro.add_one_0.inputs.a> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
             ns1:inheritsPropertiesFrom <get_macro.add_three_0.outputs.w> ;
             ns1:inputOf <get_macro.add_one_0> ;
-            ns1:outputOf <get_macro.add_three_0> .
-
+            ns1:outputOf <get_macro.add_three_0>,
+                <get_macro.add_three_0.add_two_0> .
+        
         <get_macro.add_three_0.add_one_0.inputs.a> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
-            ns1:inputOf <get_macro.add_three_0.add_one_0> ;
-            owl:sameAs <get_macro.add_three_0.inputs.c> .
-
+            ns1:inheritsPropertiesFrom <get_macro.add_three_0.inputs.c> ;
+            ns1:inputOf <get_macro>,
+                <get_macro.add_three_0>,
+                <get_macro.add_three_0.add_one_0> .
+        
         <get_macro.add_three_0.add_two_0.inputs.b> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> ;
             ns1:inheritsPropertiesFrom <get_macro.add_three_0.add_one_0.outputs.result> ;
             ns1:inputOf <get_macro.add_three_0.add_two_0> ;
             ns1:outputOf <get_macro.add_three_0.add_one_0> .
-
+        
         <get_macro.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
-            ns1:outputOf <get_macro> ;
-            owl:sameAs <get_macro.add_one_0.outputs.result> .
-
+            ns1:inheritsPropertiesFrom <get_macro.add_one_0.outputs.result> ;
+            ns1:outputOf <get_macro>,
+                <get_macro.add_one_0> .
+        
         <get_macro.add_one_0.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
             ns1:outputOf <get_macro.add_one_0> .
-
+        
         <get_macro.add_three_0.add_one_0.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> ;
             ns1:outputOf <get_macro.add_three_0.add_one_0> .
-
+        
         <get_macro.add_three_0.add_two_0.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
             ns1:outputOf <get_macro.add_three_0.add_two_0> .
-
+        
         <get_macro.add_three_0.inputs.c> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
-            ns1:inputOf <get_macro.add_three_0> ;
-            owl:sameAs <get_macro.inputs.c> .
-
+            ns1:inheritsPropertiesFrom <get_macro.inputs.c> ;
+            ns1:inputOf <get_macro>,
+                <get_macro.add_three_0> .
+        
         <get_macro.add_three_0.outputs.w> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_three_0> ;
-            owl:sameAs <get_macro.add_three_0.add_two_0.outputs.result> .
-
+            ns1:inheritsPropertiesFrom <get_macro.add_three_0.add_two_0.outputs.result> ;
+            ns1:outputOf <get_macro.add_three_0>,
+                <get_macro.add_three_0.add_two_0> .
+        
         <get_macro.inputs.c> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
             ns1:inputOf <get_macro> .
-
+        
+        <get_macro.add_one_0.outputs.result.value> rdf:value 5 .
+        
+        <get_macro.add_three_0.add_one_0.outputs.result.value> rdf:value 2 .
+        
+        <get_macro.add_three_0.add_one_0.inputs.a.value> rdf:value 1 .
+        
+        <get_macro.add_three_0.add_two_0.outputs.result.value> rdf:value 4 .
+        
         <get_macro> a prov:Activity ;
             ns1:hasNode <get_macro.add_one_0>,
                 <get_macro.add_three_0> .
-
-        <get_macro.add_one_0.outputs.result.value> rdf:value 5 .
-
-        <get_macro.add_three_0.add_one_0.outputs.result.value> rdf:value 2 .
-
+        
         <get_macro.add_one_0> a prov:Activity ;
             ns1:hasSourceFunction <add_one> .
-
-        <get_macro.add_three_0.add_one_0.inputs.a.value> rdf:value 1 .
-
-        <get_macro.add_three_0.add_two_0> a prov:Activity ;
-            ns1:hasSourceFunction <add_two> .
-
-        <get_macro.add_three_0.add_two_0.outputs.result.value> rdf:value 4 .
-
+        
+        <get_macro.add_three_0.add_one_0> a prov:Activity ;
+            ns1:hasSourceFunction <add_one> .
+        
         <get_macro.add_three_0> a prov:Activity ;
             ns1:hasNode <get_macro.add_three_0.add_one_0>,
                 <get_macro.add_three_0.add_two_0> .
-
-        <get_macro.add_three_0.add_one_0> a prov:Activity ;
-            ns1:hasSourceFunction <add_one> .\n\n"""
+        
+        <get_macro.add_three_0.add_two_0> a prov:Activity ;
+            ns1:hasSourceFunction <add_two> .\n\n"""
         )
         ref_data = txt.splitlines()
         graph = get_knowledge_graph(get_macro.run())

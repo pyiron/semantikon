@@ -439,14 +439,8 @@ def _dot(*args) -> str:
     return ".".join([a for a in args if a is not None])
 
 
-def _convert_edge_triples(inp: str, out: str, ontology=SNS) -> tuple:
-    if inp.split(".")[-2] == "outputs" or out.split(".")[-2] == "inputs":
-        return (inp, OWL.sameAs, out)
-    return (inp, ontology.inheritsPropertiesFrom, out)
-
-
 def _edges_to_triples(edges: dict, ontology=SNS) -> list:
-    return [_convert_edge_triples(inp, out, ontology) for inp, out in edges.items()]
+    return [(inp, ontology.inheritsPropertiesFrom, out) for inp, out in edges.items()]
 
 
 def _parse_workflow(
