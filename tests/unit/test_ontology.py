@@ -221,6 +221,37 @@ def eat_pizza():
     return comment
 
 
+class Clothes:
+    pass
+
+
+def machine_wash(
+    clothes: u(
+        Clothes,
+        uri=EX.Garment,
+        triples=(EX.hasProperty, EX.MachineWashable),
+    ),
+) -> u(
+    Clothes,
+    uri=EX.SomethingElse,
+    triples=(EX.hasProperty, EX.Cleaned),
+    derived_from="inputs.clothes",
+):
+    return clothes
+
+
+@workflow
+def clothes_wf(
+    clothes: u(
+        Clothes,
+        uri=EX.Garment,
+        triples=(EX.hasProperty, EX.MachineWashable),
+    ),
+):
+    washed = machine_wash(clothes)
+    return washed
+
+
 def add_onetology(x: u(int, uri=EX.Input)) -> u(int, uri=EX.Output):
     y = x + 1
     return y
@@ -358,7 +389,7 @@ class TestOntology(unittest.TestCase):
                     (
                         "mismatching_input.add_onetology_0.inputs.x",
                         "mismatching_input.inputs.x_outer",
-                        ["http://example.org/Input"],
+                        ["http://example.org/Input", "http://example.org/NotInput"],
                         ["http://example.org/NotInput"],
                     )
                 ],
@@ -382,7 +413,7 @@ class TestOntology(unittest.TestCase):
                     (
                         "mismatching_output.outputs.add",
                         "mismatching_output.add_onetology_0.outputs.y",
-                        ["http://example.org/NotOutput"],
+                        ["http://example.org/NotOutput", "http://example.org/Output"],
                         ["http://example.org/Output"],
                     )
                 ],
@@ -406,7 +437,7 @@ class TestOntology(unittest.TestCase):
                     (
                         "mismatching_peers.dont_add_onetology_0.inputs.x",
                         "mismatching_peers.add_onetology_0.outputs.y",
-                        ["http://example.org/NotOutput"],
+                        ["http://example.org/NotOutput", "http://example.org/Output"],
                         ["http://example.org/Output"],
                     )
                 ],
@@ -452,6 +483,77 @@ class TestOntology(unittest.TestCase):
                         ["http://example.org/Output"],
                     )
                 ],
+            )
+
+    def test_derive_from(self):
+        out_tag = URIRef(
+            f"{clothes_wf.__name__}.{machine_wash.__name__}_0.outputs.clothes"
+        )
+        inp_tag = URIRef(
+            f"{clothes_wf.__name__}.{machine_wash.__name__}_0.inputs.clothes"
+        )
+
+        with self.subTest("Inherit type"):
+            graph = get_knowledge_graph(clothes_wf._semantikon_workflow)
+            out_types = set(graph.objects(out_tag, RDF.type))
+            self.assertIn(
+                EX.Garment,
+                out_types,
+                msg="Should inherit from input",
+            )
+            self.assertIn(
+                EX.SomethingElse,
+                out_types,
+                msg="Should gain from u-specification",
+            )
+
+        with self.subTest("Inherit properties"):
+            graph = get_knowledge_graph(clothes_wf._semantikon_workflow)
+            out_properties = set(graph.objects(out_tag, EX.hasProperty))
+            self.assertIn(
+                EX.MachineWashable,
+                out_properties,
+                msg="Should inherit from input",
+            )
+            self.assertIn(
+                EX.Cleaned, out_properties, msg="Should retain from u-specification"
+            )
+
+        type_validation_conflict = [
+            (out_tag, inp_tag, [EX.SomethingElse, EX.Garment], [EX.Garment])
+        ]
+        with self.subTest("No other types"):
+            graph = get_knowledge_graph(clothes_wf._semantikon_workflow)
+            val = validate_values(graph)
+            self.assertListEqual(val["missing_triples"], [])
+            self.assertEqual(
+                val["incompatible_connections"],
+                type_validation_conflict,
+                msg="Completely unrelated types should be flagged",
+            )
+
+        with self.subTest("No type narrowing"):
+            g0 = Graph()
+            g0.add((EX.SomethingElse, RDFS.subClassOf, EX.Garment))
+            graph = get_knowledge_graph(clothes_wf._semantikon_workflow)
+            val = validate_values(graph)
+            self.assertListEqual(val["missing_triples"], [])
+            self.assertListEqual(
+                val["incompatible_connections"],
+                type_validation_conflict,
+                msg="Downstream having a broader type than upstream is disallowed",
+            )
+
+        with self.subTest("Type broadening OK"):
+            context = Graph()
+            context.add((EX.Garment, RDFS.subClassOf, EX.SomethingElse))
+            graph = get_knowledge_graph(clothes_wf._semantikon_workflow, graph=context)
+            val = validate_values(graph)
+            self.assertListEqual(val["missing_triples"], [])
+            self.assertListEqual(
+                val["incompatible_connections"],
+                [],
+                msg="Downstream having a narrower type than upstream is fine",
             )
 
     def test_macro(self):
