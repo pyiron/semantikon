@@ -307,21 +307,6 @@ def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
     return incompatible_types
 
 
-def _check_types(graph: Graph) -> list:
-    query = f"""
-    PREFIX rdfs: <{RDFS}>
-    PREFIX owl: <{OWL}>
-    
-    SELECT ?subject ?class1 ?class2 WHERE {{
-        ?subject rdfs:subClassOf ?class1 .
-        ?subject rdfs:subClassOf ?class2 .
-        ?class1 owl:disjointWith ?class2 .
-        FILTER(?class1 != ?class2)
-    }}
-    """
-    return list(graph.query(query))
-
-
 def validate_values(
     graph: Graph, run_reasoner: bool = True, strict_typing: bool = False
 ) -> dict[str, list]:
@@ -343,7 +328,6 @@ def validate_values(
         "incompatible_connections": _check_connections(
             graph, strict_typing=strict_typing
         ),
-        "inconsistent_types": _check_types(graph),
     }
 
 
