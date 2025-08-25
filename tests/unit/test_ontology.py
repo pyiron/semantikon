@@ -619,28 +619,22 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_one_0.inputs.a> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
             ns1:inheritsPropertiesFrom <get_macro.add_three_0.outputs.w> ;
-            ns1:inputOf <get_macro.add_one_0> ;
-            ns1:outputOf <get_macro.add_three_0>,
-                <get_macro.add_three_0.add_two_0> .
+            ns1:inputOf <get_macro.add_one_0> .
         
         <get_macro.add_three_0.add_one_0.inputs.a> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
             ns1:inheritsPropertiesFrom <get_macro.add_three_0.inputs.c> ;
-            ns1:inputOf <get_macro>,
-                <get_macro.add_three_0>,
-                <get_macro.add_three_0.add_one_0> .
+            ns1:inputOf <get_macro.add_three_0.add_one_0> .
         
         <get_macro.add_three_0.add_two_0.inputs.b> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> ;
             ns1:inheritsPropertiesFrom <get_macro.add_three_0.add_one_0.outputs.result> ;
-            ns1:inputOf <get_macro.add_three_0.add_two_0> ;
-            ns1:outputOf <get_macro.add_three_0.add_one_0> .
+            ns1:inputOf <get_macro.add_three_0.add_two_0> .
         
         <get_macro.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
             ns1:inheritsPropertiesFrom <get_macro.add_one_0.outputs.result> ;
-            ns1:outputOf <get_macro>,
-                <get_macro.add_one_0> .
+            ns1:outputOf <get_macro> .
         
         <get_macro.add_one_0.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
@@ -657,14 +651,12 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_three_0.inputs.c> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
             ns1:inheritsPropertiesFrom <get_macro.inputs.c> ;
-            ns1:inputOf <get_macro>,
-                <get_macro.add_three_0> .
+            ns1:inputOf <get_macro.add_three_0> .
         
         <get_macro.add_three_0.outputs.w> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
             ns1:inheritsPropertiesFrom <get_macro.add_three_0.add_two_0.outputs.result> ;
-            ns1:outputOf <get_macro.add_three_0>,
-                <get_macro.add_three_0.add_two_0> .
+            ns1:outputOf <get_macro.add_three_0> .
         
         <get_macro.inputs.c> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;

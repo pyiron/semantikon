@@ -248,6 +248,8 @@ def _inherit_properties(
         FILTER(?p != rdfs:label)
         FILTER(?p != rdf:value)
         FILTER(?p != ns:hasValue)
+        FILTER(?p != ns:inputOf)
+        FILTER(?p != ns:outputOf)
         FILTER(?p != owl:sameAs)
     }}
     """
