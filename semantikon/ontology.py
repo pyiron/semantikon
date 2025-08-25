@@ -232,30 +232,30 @@ def _parse_triple(
 def _inherit_properties(
     graph: Graph, triples_to_cancel: list | None = None, n_max: int = 1000, ontology=SNS
 ):
-    update_query = (
-        f"PREFIX ns: <{ontology.BASE}>",
-        f"PREFIX rdfs: <{RDFS}>",
-        f"PREFIX rdf: <{RDF}>",
-        f"PREFIX owl: <{OWL}>",
-        "",
-        "INSERT {",
-        "    ?subject ?p ?o .",
-        "}",
-        "WHERE {",
-        "    ?subject ns:inheritsPropertiesFrom ?target .",
-        "    ?target ?p ?o .",
-        "    FILTER(?p != ns:inheritsPropertiesFrom)",
-        "    FILTER(?p != rdfs:label)",
-        "    FILTER(?p != rdf:value)",
-        "    FILTER(?p != ns:hasValue)",
-        "    FILTER(?p != owl:sameAs)",
-        "}",
-    )
+    update_query = f"""\
+    PREFIX ns: <{ontology.BASE}>
+    PREFIX rdfs: <{RDFS}>
+    PREFIX rdf: <{RDF}>
+    PREFIX owl: <{OWL}>
+    
+    INSERT {{
+        ?subject ?p ?o .
+    }}
+    WHERE {{
+        ?subject ns:inheritsPropertiesFrom ?target .
+        ?target ?p ?o .
+        FILTER(?p != ns:inheritsPropertiesFrom)
+        FILTER(?p != rdfs:label)
+        FILTER(?p != rdf:value)
+        FILTER(?p != ns:hasValue)
+        FILTER(?p != owl:sameAs)
+    }}
+    """
     if triples_to_cancel is None:
         triples_to_cancel = []
     n = 0
     for _ in range(n_max):
-        graph.update("\n".join(update_query))
+        graph.update(update_query)
         for t in triples_to_cancel:
             if t in graph:
                 graph.remove(t)
