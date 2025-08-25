@@ -294,16 +294,16 @@ def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
         (list): list of incompatible connections
     """
     incompatible_types = []
-    for inp_out in graph.subject_objects(SNS.inheritsPropertiesFrom):
+    for (inp, out) in graph.subject_objects(SNS.inheritsPropertiesFrom):
         i_type, o_type = [
             [g for g in graph.objects(tag, RDF.type) if g != PROV.Entity]
-            for tag in inp_out
+            for tag in (inp, out)
         ]
         if not strict_typing and (i_type == [] or o_type == []):
             continue
         diff = set(i_type).difference(o_type)
         if len(diff) > 0:
-            incompatible_types.append(inp_out + (i_type, o_type))
+            incompatible_types.append((inp, out) + (i_type, o_type))
     return incompatible_types
 
 
