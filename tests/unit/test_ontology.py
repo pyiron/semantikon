@@ -701,7 +701,7 @@ class TestOntology(unittest.TestCase):
         original_graph = get_knowledge_graph(get_macro.run())
         graph_to_compare = Graph()
         graph_to_compare = graph_to_compare.parse(data=original_graph.serialize())
-        in_both, in_first, in_second = graph_diff(graph_to_compare, ref_graph)
+        _, in_first, in_second = graph_diff(graph_to_compare, ref_graph)
         self.assertEqual(
             len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
         )
