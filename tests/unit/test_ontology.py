@@ -585,8 +585,7 @@ class TestOntology(unittest.TestCase):
                     URIRef("get_macro." + tag), subj, msg=f"{tag} not in {subj}"
                 )
         inherits_from = [
-            (str(g[0]), str(g[1]))
-            for g in graph.subject_objects(PROV.wasDerivedFrom)
+            (str(g[0]), str(g[1])) for g in graph.subject_objects(PROV.wasDerivedFrom)
         ]
         get_macro_io_passing = 2
         get_three_io_passing = 2
