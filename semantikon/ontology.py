@@ -18,6 +18,7 @@ class SNS:
     inputOf: URIRef = BASE["inputOf"]
     outputOf: URIRef = BASE["outputOf"]
     hasValue: URIRef = BASE["hasValue"]
+    fulfills: URIRef = BASE["fulfills"]
 
 
 class NS:
@@ -250,6 +251,7 @@ def _inherit_properties(
         FILTER(?p != ns:hasValue)
         FILTER(?p != ns:inputOf)
         FILTER(?p != ns:outputOf)
+        FILTER(?p != ns:fulfills)
         FILTER(?p != owl:sameAs)
     }}
     """
