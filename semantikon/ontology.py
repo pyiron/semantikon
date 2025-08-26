@@ -294,7 +294,7 @@ def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
         (list): list of incompatible connections
     """
     incompatible_types = []
-    for (inp, out) in graph.subject_objects(SNS.inheritsPropertiesFrom):
+    for inp, out in graph.subject_objects(SNS.inheritsPropertiesFrom):
         i_type, o_type = [
             [g for g in graph.objects(tag, RDF.type) if g != PROV.Entity]
             for tag in (inp, out)
