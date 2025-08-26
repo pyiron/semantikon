@@ -702,8 +702,12 @@ class TestOntology(unittest.TestCase):
         graph_to_compare = Graph()
         graph_to_compare = graph_to_compare.parse(data=original_graph.serialize())
         in_both, in_first, in_second = graph_diff(graph_to_compare, ref_graph)
-        self.assertEqual(len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}")
-        self.assertEqual(len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}")
+        self.assertEqual(
+            len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
+        )
+        self.assertEqual(
+            len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
+        )
 
     def test_parse_cancel(self):
         channels, edges = serialize_data(get_wrong_order._semantikon_workflow)[1:]
