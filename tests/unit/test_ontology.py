@@ -5,6 +5,7 @@ from textwrap import dedent
 from graphviz import Digraph
 from pyshacl import validate
 from rdflib import OWL, PROV, RDF, RDFS, SH, Graph, Literal, Namespace, URIRef
+from rdflib.compare import graph_diff
 
 from semantikon.metadata import u
 from semantikon.ontology import (
@@ -695,12 +696,18 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_three_0.add_two_0> a prov:Activity ;
             ns1:hasSourceFunction <add_two> .\n\n"""
         )
-        ref_data = txt.splitlines()
-        graph = get_knowledge_graph(get_macro.run())
-        serialized_data = graph.serialize(format="turtle").splitlines()
-        for line in serialized_data:
-            self.assertIn(line, ref_data, msg=f"{line} not in {ref_data}")
-        self.assertEqual(len(serialized_data), len(ref_data))
+        ref_graph = Graph()
+        ref_graph.parse(data=txt, format="turtle", publicID="")
+        original_graph = get_knowledge_graph(get_macro.run())
+        graph_to_compare = Graph()
+        graph_to_compare = graph_to_compare.parse(data=original_graph.serialize())
+        _, in_first, in_second = graph_diff(graph_to_compare, ref_graph)
+        self.assertEqual(
+            len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
+        )
+        self.assertEqual(
+            len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
+        )
 
     def test_parse_cancel(self):
         channels, edges = serialize_data(get_wrong_order._semantikon_workflow)[1:]
