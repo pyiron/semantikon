@@ -107,7 +107,12 @@ def _get_triples_from_restrictions(data: dict) -> list:
     if data.get("triples", None) is not None:
         triples.extend(_align_triples(data["triples"]))
     if data.get("derived_from", None) is not None:
-        triples.append(("self", PROV.wasDerivedFrom, data["derived_from"]))
+        triples.extend(
+            [
+                ("self", PROV.wasDerivedFrom, data["derived_from"]),
+                ("self", SNS.fulfills, data["derived_from"])
+            ]
+        )
     return triples
 
 
@@ -455,8 +460,16 @@ def _dot(*args) -> str:
     return ".".join([a for a in args if a is not None])
 
 
-def _edges_to_triples(edges: dict, ontology=SNS) -> list:
-    return [(inp, PROV.wasDerivedFrom, out) for inp, out in edges.items()]
+def _edges_to_triples(edges: dict) -> list:
+    triples = []
+    for downstream, upstream in edges.items():
+        triples.extend(
+            [
+                (downstream, PROV.wasDerivedFrom, upstream),
+                (upstream, SNS.fulfills, downstream)
+            ]
+        )
+    return triples
 
 
 def _parse_workflow(
@@ -471,7 +484,7 @@ def _parse_workflow(
         for label, content in channel_dict.items()
         for triple in _parse_channel(content, label, full_edge_dict, ontology)
     ]
-    triples.extend(_edges_to_triples(_get_edge_dict(edge_list), ontology))
+    triples.extend(_edges_to_triples(_get_edge_dict(edge_list)))
 
     for key, node in node_dict.items():
         triples.append((key, RDF.type, PROV.Activity))

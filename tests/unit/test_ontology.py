@@ -638,29 +638,35 @@ class TestOntology(unittest.TestCase):
         
         <get_macro.add_one_0.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_one_0> .
+            ns1:outputOf <get_macro.add_one_0> ;
+            ns1:fulfills <get_macro.outputs.result> .
         
         <get_macro.add_three_0.add_one_0.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_three_0.add_one_0> .
+            ns1:outputOf <get_macro.add_three_0.add_one_0> ;
+            ns1:fulfills <get_macro.add_three_0.add_two_0.inputs.b> .
         
         <get_macro.add_three_0.add_two_0.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_three_0.add_two_0> .
+            ns1:outputOf <get_macro.add_three_0.add_two_0> ;
+            ns1:fulfills <get_macro.add_three_0.outputs.w> .
         
         <get_macro.add_three_0.inputs.c> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
             prov:wasDerivedFrom <get_macro.inputs.c> ;
-            ns1:inputOf <get_macro.add_three_0> .
+            ns1:inputOf <get_macro.add_three_0> ;
+            ns1:fulfills <get_macro.add_three_0.add_one_0.inputs.a> .
         
         <get_macro.add_three_0.outputs.w> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
             prov:wasDerivedFrom <get_macro.add_three_0.add_two_0.outputs.result> ;
-            ns1:outputOf <get_macro.add_three_0> .
+            ns1:outputOf <get_macro.add_three_0> ;
+            ns1:fulfills <get_macro.add_one_0.inputs.a> .
         
         <get_macro.inputs.c> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
-            ns1:inputOf <get_macro> .
+            ns1:inputOf <get_macro> ;
+            ns1:fulfills <get_macro.add_three_0.inputs.c> .
         
         <get_macro.add_one_0.outputs.result.value> rdf:value 5 .
         
