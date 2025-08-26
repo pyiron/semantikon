@@ -328,9 +328,7 @@ def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
     return incompatible_types
 
 
-def _query_meaning(
-    graph: Graph, subject: rdflib.term.Node, ontology=SNS
-):
+def _query_meaning(graph: Graph, subject: rdflib.term.Node, ontology=SNS):
     query = f"""\
         PREFIX ns: <{ontology.BASE}>
         PREFIX prov: <{PROV}>
@@ -392,9 +390,7 @@ def validate_values(
         "incompatible_connections": _check_connections(
             graph, strict_typing=strict_typing
         ),
-        "broken_promises": _check_fulfillment(
-            graph, strict_typing=strict_typing
-        )
+        "broken_promises": _check_fulfillment(graph, strict_typing=strict_typing),
     }
 
 
