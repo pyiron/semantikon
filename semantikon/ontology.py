@@ -15,7 +15,6 @@ class SNS:
     hasNode: URIRef = BASE["hasNode"]
     hasSourceFunction: URIRef = BASE["hasSourceFunction"]
     hasUnits: URIRef = BASE["hasUnits"]
-    inheritsPropertiesFrom: URIRef = BASE["inheritsPropertiesFrom"]
     inputOf: URIRef = BASE["inputOf"]
     outputOf: URIRef = BASE["outputOf"]
     hasValue: URIRef = BASE["hasValue"]
@@ -107,7 +106,7 @@ def _get_triples_from_restrictions(data: dict) -> list:
     if data.get("triples", None) is not None:
         triples.extend(_align_triples(data["triples"]))
     if data.get("derived_from", None) is not None:
-        triples.append(("self", SNS.inheritsPropertiesFrom, data["derived_from"]))
+        triples.append(("self", PROV.wasDerivedFrom, data["derived_from"]))
     return triples
 
 
@@ -234,6 +233,7 @@ def _inherit_properties(
 ):
     update_query = f"""\
     PREFIX ns: <{ontology.BASE}>
+    PREFIX prov: <{PROV}>
     PREFIX rdfs: <{RDFS}>
     PREFIX rdf: <{RDF}>
     PREFIX owl: <{OWL}>
@@ -242,9 +242,9 @@ def _inherit_properties(
         ?subject ?p ?o .
     }}
     WHERE {{
-        ?subject ns:inheritsPropertiesFrom ?target .
+        ?subject prov:wasDerivedFrom ?target .
         ?target ?p ?o .
-        FILTER(?p != ns:inheritsPropertiesFrom)
+        FILTER(?p != prov:wasDerivedFrom)
         FILTER(?p != rdfs:label)
         FILTER(?p != rdf:value)
         FILTER(?p != ns:hasValue)
@@ -292,7 +292,7 @@ def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
         (list): list of incompatible connections
     """
     incompatible_types = []
-    for inp_out in graph.subject_objects(SNS.inheritsPropertiesFrom):
+    for inp_out in graph.subject_objects(PROV.wasDerivedFrom):
         i_type, o_type = [
             [g for g in graph.objects(tag, RDF.type) if g != PROV.Entity]
             for tag in inp_out
@@ -439,7 +439,7 @@ def _dot(*args) -> str:
 
 
 def _edges_to_triples(edges: dict, ontology=SNS) -> list:
-    return [(inp, ontology.inheritsPropertiesFrom, out) for inp, out in edges.items()]
+    return [(inp, PROV.wasDerivedFrom, out) for inp, out in edges.items()]
 
 
 def _parse_workflow(
