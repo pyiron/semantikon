@@ -2,6 +2,7 @@ import warnings
 from dataclasses import is_dataclass
 from typing import Any, Callable, TypeAlias, cast
 
+import rdflib.term
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.term import IdentifiedNode
@@ -110,7 +111,7 @@ def _get_triples_from_restrictions(data: dict) -> list:
         triples.extend(
             [
                 ("self", PROV.wasDerivedFrom, data["derived_from"]),
-                ("self", SNS.fulfills, data["derived_from"])
+                ("self", SNS.fulfills, data["derived_from"]),
             ]
         )
     return triples
@@ -327,6 +328,49 @@ def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
     return incompatible_types
 
 
+def _query_meaning(
+    graph: Graph, subject: rdflib.term.Node, ontology=SNS
+):
+    query = f"""\
+        PREFIX ns: <{ontology.BASE}>
+        PREFIX prov: <{PROV}>
+        PREFIX rdfs: <{RDFS}>
+        PREFIX rdf: <{RDF}>
+        PREFIX owl: <{OWL}>
+        
+        SELECT ?p ?o 
+        
+        WHERE {{
+            ?s ?p ?o .
+            FILTER(?s = <{subject}>)
+            FILTER(?p != prov:wasDerivedFrom)
+            FILTER(?p != rdfs:label)
+            FILTER(?p != rdf:value)
+            FILTER(?p != ns:hasValue)
+            FILTER(?p != ns:inputOf)
+            FILTER(?p != ns:outputOf)
+            FILTER(?p != ns:fulfills)
+            FILTER(?p != owl:sameAs)
+            FILTER(!(?p = rdf:type && ?o = prov:Entity))  # Null info added ubiquitously
+        }}
+    """
+    return set(graph.query(query))
+
+
+def _check_fulfillment(graph: Graph, strict_typing: bool = False):
+    promises = graph.subject_objects(SNS.fulfills)
+    broken_promises = {}
+    for fulfilled_by, fulfilled in promises:
+        alleged_superset = _query_meaning(graph, fulfilled_by)
+        alleged_subset = _query_meaning(graph, fulfilled)
+        if not strict_typing and (not alleged_superset or not alleged_subset):
+            continue
+        diff = alleged_subset.difference(alleged_superset)
+        if len(diff) > 0:
+            broken_promises[fulfilled_by] = fulfilled, diff
+    return broken_promises
+
+
 def validate_values(
     graph: Graph, run_reasoner: bool = True, strict_typing: bool = False
 ) -> dict[str, list]:
@@ -348,6 +392,9 @@ def validate_values(
         "incompatible_connections": _check_connections(
             graph, strict_typing=strict_typing
         ),
+        "broken_promises": _check_fulfillment(
+            graph, strict_typing=strict_typing
+        )
     }
 
 
@@ -466,7 +513,7 @@ def _edges_to_triples(edges: dict) -> list:
         triples.extend(
             [
                 (downstream, PROV.wasDerivedFrom, upstream),
-                (upstream, SNS.fulfills, downstream)
+                (upstream, SNS.fulfills, downstream),
             ]
         )
     return triples
