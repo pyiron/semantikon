@@ -585,7 +585,7 @@ class TestOntology(unittest.TestCase):
                 )
         inherits_from = [
             (str(g[0]), str(g[1]))
-            for g in graph.subject_objects(SNS.inheritsPropertiesFrom)
+            for g in graph.subject_objects(PROV.wasDerivedFrom)
         ]
         get_macro_io_passing = 2
         get_three_io_passing = 2
@@ -618,27 +618,27 @@ class TestOntology(unittest.TestCase):
         
         <get_macro.add_one_0.inputs.a> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
-            ns1:inheritsPropertiesFrom <get_macro.add_three_0.outputs.w> ;
+            prov:wasDerivedFrom <get_macro.add_three_0.outputs.w> ;
             ns1:inputOf <get_macro.add_one_0> ;
             ns1:outputOf <get_macro.add_three_0>,
                 <get_macro.add_three_0.add_two_0> .
         
         <get_macro.add_three_0.add_one_0.inputs.a> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
-            ns1:inheritsPropertiesFrom <get_macro.add_three_0.inputs.c> ;
+            prov:wasDerivedFrom <get_macro.add_three_0.inputs.c> ;
             ns1:inputOf <get_macro>,
                 <get_macro.add_three_0>,
                 <get_macro.add_three_0.add_one_0> .
         
         <get_macro.add_three_0.add_two_0.inputs.b> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> ;
-            ns1:inheritsPropertiesFrom <get_macro.add_three_0.add_one_0.outputs.result> ;
+            prov:wasDerivedFrom <get_macro.add_three_0.add_one_0.outputs.result> ;
             ns1:inputOf <get_macro.add_three_0.add_two_0> ;
             ns1:outputOf <get_macro.add_three_0.add_one_0> .
         
         <get_macro.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
-            ns1:inheritsPropertiesFrom <get_macro.add_one_0.outputs.result> ;
+            prov:wasDerivedFrom <get_macro.add_one_0.outputs.result> ;
             ns1:outputOf <get_macro>,
                 <get_macro.add_one_0> .
         
@@ -656,13 +656,13 @@ class TestOntology(unittest.TestCase):
         
         <get_macro.add_three_0.inputs.c> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
-            ns1:inheritsPropertiesFrom <get_macro.inputs.c> ;
+            prov:wasDerivedFrom <get_macro.inputs.c> ;
             ns1:inputOf <get_macro>,
                 <get_macro.add_three_0> .
         
         <get_macro.add_three_0.outputs.w> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
-            ns1:inheritsPropertiesFrom <get_macro.add_three_0.add_two_0.outputs.result> ;
+            prov:wasDerivedFrom <get_macro.add_three_0.add_two_0.outputs.result> ;
             ns1:outputOf <get_macro.add_three_0>,
                 <get_macro.add_three_0.add_two_0> .
         
@@ -699,7 +699,7 @@ class TestOntology(unittest.TestCase):
         graph = get_knowledge_graph(get_macro.run())
         serialized_data = graph.serialize(format="turtle").splitlines()
         for line in serialized_data:
-            self.assertIn(line, ref_data, msg=f"{line} not in {ref_data}")
+            self.assertIn(line, ref_data, msg=f"{line} not in {'\n'.join(ref_data)}")
         self.assertEqual(len(serialized_data), len(ref_data))
 
     def test_parse_cancel(self):
