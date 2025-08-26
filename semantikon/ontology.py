@@ -308,6 +308,8 @@ def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
             if (
                 (t, RDFS.subClassOf, OWL.Restriction) not in graph
                 and (t, RDF.type, OWL.Restriction) not in graph
+                and (t, RDFS.subClassOf, SH.NodeShape) not in graph
+                and (t, RDF.type, SH.NodeShape) not in graph
             )
         ]
         if not strict_typing and (i_type_filtered == [] or o_type == []):
