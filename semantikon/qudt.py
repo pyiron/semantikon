@@ -154,8 +154,8 @@ def get_units_dict(graph: Graph) -> dict[str, term.Node]:
     ureg = UnitRegistry()
     units_dict = {}
     for uri, tag in graph.subject_objects(None):
-        units_dict[tag] = uri
-        tag = tag.replace("electron volt", "electron_volt")
+        units_dict[str(tag)] = uri
+        tag = str(tag).replace("electron volt", "electron_volt")
         for _ in range(2):
             try:
                 # this is safe and works for both Quantity and Unit
