@@ -58,7 +58,7 @@ def multiply(a: float, b: float) -> u(
     return a * b
 
 
-def correct_analysis(
+def correct_analysis_owl(
     a: u(
         float,
         restrictions=(
@@ -70,7 +70,7 @@ def correct_analysis(
     return a
 
 
-def wrong_analysis(
+def wrong_analysis_owl(
     a: u(
         float,
         restrictions=(
@@ -157,18 +157,18 @@ def get_vacancy_formation_energy(
 
 
 @workflow
-def get_correct_analysis(a=1.0, b=2.0, c=3.0):
+def get_correct_analysis_owl(a=1.0, b=2.0, c=3.0):
     d = add(a=a, b=b)
     m = multiply(a=d, b=c)
-    analysis = correct_analysis(a=m)
+    analysis = correct_analysis_owl(a=m)
     return analysis
 
 
 @workflow
-def get_wrong_analysis(a=1.0, b=2.0, c=3.0):
+def get_wrong_analysis_owl(a=1.0, b=2.0, c=3.0):
     d = add(a=a, b=b)
     m = multiply(a=d, b=c)
-    analysis = wrong_analysis(a=m)
+    analysis = wrong_analysis_owl(a=m)
     return analysis
 
 
@@ -342,15 +342,15 @@ class TestOntology(unittest.TestCase):
         self.assertTrue((subj, EX.predicate, label) in graph)
         self.assertTrue((label, EX.predicate, obj) in graph)
 
-    def test_correct_analysis(self):
-        graph = get_knowledge_graph(get_correct_analysis._semantikon_workflow)
+    def test_correct_analysis_owl(self):
+        graph = get_knowledge_graph(get_correct_analysis_owl._semantikon_workflow)
         t = validate_values(graph)
         self.assertEqual(
             t["missing_triples"],
             [],
             msg=f"{t} missing in {graph.serialize()}",
         )
-        graph = get_knowledge_graph(get_wrong_analysis._semantikon_workflow)
+        graph = get_knowledge_graph(get_wrong_analysis_owl._semantikon_workflow)
         self.assertEqual(len(validate_values(graph)["missing_triples"]), 1)
 
     def test_correct_analysis_sh(self):
@@ -759,12 +759,12 @@ class TestOntology(unittest.TestCase):
         self.assertIsInstance(visualize(graph), Digraph)
 
     def test_function_referencing(self):
-        graph = get_knowledge_graph(get_correct_analysis._semantikon_workflow)
+        graph = get_knowledge_graph(get_correct_analysis_owl._semantikon_workflow)
         self.assertEqual(
             list(graph.subject_objects(PROV.wasGeneratedBy))[0],
             (
-                URIRef("get_correct_analysis.add_0.inputs.a"),
-                URIRef("get_correct_analysis.add_0"),
+                URIRef("get_correct_analysis_owl.add_0.inputs.a"),
+                URIRef("get_correct_analysis_owl.add_0"),
             ),
         )
 
