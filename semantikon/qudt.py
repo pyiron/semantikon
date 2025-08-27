@@ -105,19 +105,26 @@ class UnitsDict:
     def __getitem__(self, key: str) -> term.Node | None:
         if key.startswith("http"):
             return URIRef(key)
-        key = key.lower()
-        if key in self._units_dict:
-            return self._units_dict[key]
-        key = str(self._ureg[str(key)].units)
-        if key in self._units_dict:
-            return self._units_dict[key]
-        new_key = str(self._ureg[key].to_base_units().units)
-        if new_key in self._base_units:
-            raise KeyError(
-                f"'{key}' is not available in QUDT; use a full URI. "
-                "Alternatively, you can change it to one of the following units: "
-                f"{', '.join(self._base_units[new_key])}"
-            )
+        for key_tmp in [key, key.lower()]:
+            if key_tmp in self._units_dict:
+                return self._units_dict[key_tmp]
+        for key_tmp in [key, key.lower()]:
+            if str(key_tmp) not in self._ureg:
+                continue
+            key_tmp = str(self._ureg[str(key_tmp)].units)
+            if key_tmp in self._units_dict:
+                return self._units_dict[key_tmp]
+        for key_tmp in [key, key.lower()]:
+            if str(key_tmp) not in self._ureg:
+                continue
+            key_tmp = str(self._ureg[str(key_tmp)].units)
+            new_key = str(self._ureg[key_tmp].to_base_units().units)
+            if new_key in self._base_units:
+                raise KeyError(
+                    f"'{key}' is not available in QUDT; use a full URI. "
+                    "Alternatively, you can change it to one of the following units: "
+                    f"{', '.join(self._base_units[new_key])}"
+                )
         raise KeyError(f"'{key}' is not available in QUDT; use a full URI.")
 
 
@@ -147,15 +154,15 @@ def get_units_dict(graph: Graph) -> dict[str, term.Node]:
     ureg = UnitRegistry()
     units_dict = {}
     for uri, tag in graph.subject_objects(None):
-        tag = str(tag).lower()
         units_dict[tag] = uri
+        tag = tag.replace("electron volt", "electron_volt")
         for _ in range(2):
             try:
                 # this is safe and works for both Quantity and Unit
-                tag = str(ureg[str(tag).lower()].units)
+                tag = str(ureg[tag].units)
                 if tag not in units_dict or len(str(uri)) < len(str(units_dict[tag])):
                     units_dict[tag] = uri
             except Exception:
                 pass
-            tag = tag.replace("electron volt", "electron_volt")
+            tag = str(tag).lower()
     return units_dict
