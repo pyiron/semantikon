@@ -58,6 +58,14 @@ def multiply(a: float, b: float) -> u(
     return a * b
 
 
+def correct_analysis(a: u(float, triples=(EX.HasOperation, EX.Addition))) -> float:
+    return a
+
+
+def wrong_analysis(a: u(float, triples=(EX.HasOperation, EX.Division))) -> float:
+    return a
+
+
 def correct_analysis_owl(
     a: u(
         float,
@@ -154,6 +162,22 @@ def get_vacancy_formation_energy(
     ),
 ):
     return len(structure)
+
+
+@workflow
+def get_correct_analysis(a=1.0, b=2.0, c=3.0):
+    d = add(a=a, b=b)
+    m = multiply(a=d, b=c)
+    analysis = correct_analysis(a=m)
+    return analysis
+
+
+@workflow
+def get_wrong_analysis(a=1.0, b=2.0, c=3.0):
+    d = add(a=a, b=b)
+    m = multiply(a=d, b=c)
+    analysis = wrong_analysis(a=m)
+    return analysis
 
 
 @workflow
@@ -341,6 +365,16 @@ class TestOntology(unittest.TestCase):
         self.assertTrue((EX.subject, EX.predicate, EX.object) in graph)
         self.assertTrue((subj, EX.predicate, label) in graph)
         self.assertTrue((label, EX.predicate, obj) in graph)
+
+    def test_correct_analysis(self):
+        graph = get_knowledge_graph(get_correct_analysis._semantikon_workflow)
+        t = validate_values(graph)
+        self.assertFalse(
+            t["broken_promises"],
+            msg=f"{t["broken_promises"]} expected to be empty in {graph.serialize()}",
+        )
+        graph = get_knowledge_graph(get_wrong_analysis_owl._semantikon_workflow)
+        self.assertEqual(len(validate_values(graph)["broken_promises"]), 1)
 
     def test_correct_analysis_owl(self):
         graph = get_knowledge_graph(get_correct_analysis_owl._semantikon_workflow)
