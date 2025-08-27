@@ -319,7 +319,7 @@ def _check_units(graph: Graph) -> dict[URIRef, list[URIRef]]:
         (dict): dictionary of terms with multiple units
     """
     term_units = defaultdict(list)
-    for items in graph.subject_objects(URIRef('http://pyiron.org/ontology/hasUnits')):
+    for items in graph.subject_objects(URIRef("http://pyiron.org/ontology/hasUnits")):
         term_units[items[0]].append(items[1])
     return {key: value for key, value in term_units.items() if len(value) > 1}
 
