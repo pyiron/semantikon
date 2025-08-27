@@ -292,7 +292,7 @@ class Foo: ...
 
 
 def upstream(
-    foo: u(Foo, uri=EX.Foo, triples=(EX.alsoHas, EX.Bar))
+    foo: u(Foo, uri=EX.Foo, triples=(EX.alsoHas, EX.Bar)),
 ) -> u(Foo, derived_from="inputs.foo"):
     return foo
 
@@ -598,7 +598,7 @@ class TestOntology(unittest.TestCase):
             self.assertFalse(
                 val["missing_triples"] or val["incompatible_connections"],
                 msg=f"URI specification, restrictions, and derived_from should all play"
-                    f"well together. Expected no validation problems, but got {val}"
+                f"well together. Expected no validation problems, but got {val}",
             )
 
         with self.subTest("Chain steps"):
@@ -607,7 +607,7 @@ class TestOntology(unittest.TestCase):
             self.assertFalse(
                 val["missing_triples"] or val["incompatible_connections"],
                 msg=f"URI specification, restrictions, and derived_from should all play"
-                    f"well together. Expected no validation problems, but got {val}"
+                f"well together. Expected no validation problems, but got {val}",
             )
 
     def test_macro(self):
