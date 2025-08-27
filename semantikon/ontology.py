@@ -326,7 +326,7 @@ def _check_units(graph: Graph) -> dict[URIRef, list[URIRef]]:
 
 def validate_values(
     graph: Graph, run_reasoner: bool = True, strict_typing: bool = False
-) -> dict[str, list]:
+) -> dict[str, Any]:
     """
     Validate if all values required by restrictions are present in the graph
 
