@@ -164,6 +164,18 @@ def get_vacancy_formation_energy(
     return len(structure)
 
 
+def get_vacancy_formation_energy_fulfills(
+    structure: u(
+        str,
+        triples=(
+            (EX.hasDefect, EX.vacancy),
+            (EX.hasState, EX.relaxed),
+        ),
+    ),
+):
+    return len(structure)
+
+
 @workflow
 def get_correct_analysis(a=1.0, b=2.0, c=3.0):
     d = add(a=a, b=b)
@@ -224,6 +236,22 @@ def get_wrong_order(structure="abc"):
     relaxed = relax_structure(structure=structure)
     vac = create_vacancy(structure=relaxed)
     energy = get_vacancy_formation_energy(structure=vac)
+    return energy
+
+
+@workflow
+def get_right_order_for_fulfillment(structure="abc"):
+    vac = create_vacancy(structure=structure)
+    relaxed = relax_structure(structure=vac)
+    energy = get_vacancy_formation_energy_fulfills(structure=relaxed)
+    return energy
+
+
+@workflow
+def get_wrong_order_for_fulfillment(structure="abc"):
+    relaxed = relax_structure(structure=structure)
+    vac = create_vacancy(structure=relaxed)
+    energy = get_vacancy_formation_energy_fulfills(structure=vac)
     return energy
 
 
@@ -775,6 +803,36 @@ class TestOntology(unittest.TestCase):
                 ]
             ],
         )
+
+    def test_cancel_and_fulfills(self):
+        with self.subTest("Early cancellation"):
+            graph = get_knowledge_graph(
+                get_right_order_for_fulfillment._semantikon_workflow
+            )
+            self.assertFalse(
+                validate_values(graph)["broken_promises"],
+                msg="If the cancel comes before there is anything to cancel, it should "
+                "be harmless",
+            )
+
+        with self.subTest("Late cancellation"):
+            graph = get_knowledge_graph(
+                get_wrong_order_for_fulfillment._semantikon_workflow
+            )
+            o_port = URIRef(
+                "get_wrong_order_for_fulfillment.create_vacancy_0.outputs.structure"
+            )
+            i_port = URIRef(
+                "get_wrong_order_for_fulfillment."
+                "get_vacancy_formation_energy_fulfills_0.inputs.structure"
+            )
+            cancelled = (EX.hasState, EX.relaxed)
+            self.assertDictEqual(
+                {o_port: (i_port, {cancelled})},
+                validate_values(graph)["broken_promises"],
+                msg="If the cancel comes after a triple has been added, it should be "
+                "removed -- here it was necessary.",
+            )
 
     def test_serialize_data(self):
         data = get_macro.run()
