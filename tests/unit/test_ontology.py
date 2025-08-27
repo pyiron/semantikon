@@ -399,7 +399,7 @@ class TestOntology(unittest.TestCase):
         t = validate_values(graph)
         self.assertFalse(
             t["broken_promises"],
-            msg=f"{t["broken_promises"]} expected to be empty in {graph.serialize()}",
+            msg=f"{t['broken_promises']} expected to be empty in {graph.serialize()}",
         )
         graph = get_knowledge_graph(get_wrong_analysis_owl._semantikon_workflow)
         self.assertEqual(len(validate_values(graph)["broken_promises"]), 1)
