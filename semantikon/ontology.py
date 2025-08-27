@@ -308,7 +308,7 @@ def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
     return incompatible_types
 
 
-def _check_units(graph: Graph) -> dict[URIRef, list[URIRef]]:
+def _check_units(graph: Graph, ontology=SNS) -> dict[URIRef, list[URIRef]]:
     """
     Check if there are multiple units assigned to the same term
 
@@ -319,13 +319,13 @@ def _check_units(graph: Graph) -> dict[URIRef, list[URIRef]]:
         (dict): dictionary of terms with multiple units
     """
     term_units = defaultdict(list)
-    for items in graph.subject_objects(SNS.hasUnits):
+    for items in graph.subject_objects(ontology.hasUnits):
         term_units[items[0]].append(items[1])
     return {key: value for key, value in term_units.items() if len(value) > 1}
 
 
 def validate_values(
-    graph: Graph, run_reasoner: bool = True, strict_typing: bool = False
+    graph: Graph, run_reasoner: bool = True, strict_typing: bool = False, ontology=SNS
 ) -> dict[str, Any]:
     """
     Validate if all values required by restrictions are present in the graph
@@ -345,7 +345,7 @@ def validate_values(
         "incompatible_connections": _check_connections(
             graph, strict_typing=strict_typing
         ),
-        "distinct_units": _check_units(graph),
+        "distinct_units": _check_units(graph, ontology=ontology),
     }
 
 
