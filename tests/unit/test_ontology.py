@@ -23,6 +23,18 @@ from semantikon.workflow import workflow
 EX = Namespace("http://example.org/")
 
 
+def get_time_correct_units(
+    start: u(float, units="second"), end: u(float, units="second")
+) -> u(float, units="second"):
+    return end - start
+
+
+def get_time_incorrect_units(
+    start: u(float, units="nanosecond"), end: u(float, units="nanosecond")
+) -> u(float, units="nanosecond"):
+    return end - start
+
+
 def calculate_speed(
     distance: u(float, units="meter") = 10.0,
     time: u(float, units="second") = 2.0,
@@ -37,6 +49,20 @@ def calculate_speed(
     ),
 ):
     return distance / time
+
+
+@workflow
+def get_speed_correct_units(start, end, distance):
+    time = get_time_correct_units(start, end)
+    speed = calculate_speed(distance, time)
+    return speed
+
+
+@workflow
+def get_speed_incorrect_units(start, end, distance):
+    time = get_time_incorrect_units(start, end)
+    speed = calculate_speed(distance, time)
+    return speed
 
 
 @workflow
@@ -760,6 +786,19 @@ class TestOntology(unittest.TestCase):
                 URIRef("get_correct_analysis.add_0.inputs.a"),
                 URIRef("get_correct_analysis.add_0"),
             ),
+        )
+
+    def test_units(self):
+        graph = get_knowledge_graph(get_speed_correct_units._semantikon_workflow)
+        self.assertEqual(validate_values(graph)["distinct_units"], {})
+        graph = get_knowledge_graph(get_speed_incorrect_units._semantikon_workflow)
+        self.assertEqual(
+            list(validate_values(graph)["distinct_units"].keys()),
+            [
+                URIRef(
+                    "get_speed_incorrect_units.get_time_incorrect_units_0.outputs.output.value"
+                )
+            ],
         )
 
 
