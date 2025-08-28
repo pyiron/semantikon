@@ -201,9 +201,3 @@ class For(Workflow): ...  # TODO
 
 @dataclasses.dataclass(slots=True)
 class If(Workflow): ...  # TODO
-
-
-class ExplicitDefault:
-    def __init__(self, default, msg=None):
-        self.default = default
-        self.msg = msg

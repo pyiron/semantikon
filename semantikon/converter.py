@@ -29,7 +29,7 @@ from pint.registry_helpers import (
     _to_units_container,
 )
 
-from semantikon.datastructure import ExplicitDefault, TypeMetadata
+from semantikon.datastructure import TypeMetadata
 
 __author__ = "Sam Waseda"
 __copyright__ = (
