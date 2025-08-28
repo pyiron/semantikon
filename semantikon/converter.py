@@ -29,7 +29,7 @@ from pint.registry_helpers import (
     _to_units_container,
 )
 
-from semantikon.datastructure import ExplicitDefault, TypeMetadata
+from semantikon.datastructure import TypeMetadata
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -462,14 +462,17 @@ def semantikon_class(cls: type) -> type:
     return cls
 
 
-def with_explicit_defaults(func: Callable) -> Callable:
+def with_explicit_defaults(**messages) -> Callable:
     """
     Decorator to marks a value as an explicit default, which can be used to
     indicate that a value should be replaced with a default value in the
     context of serialization or processing.
 
     Args:
-        func: function to be decorated
+        **messages: keyword arguments where the key is the name of the argument
+        to be checked for an explicit default, and the value is the warning
+        message to be issued if the default is used. If the value is `None`,
+        a generic warning message will be issued.
 
     Returns:
         decorated function that replaces explicit defaults with the actual default
@@ -477,58 +480,40 @@ def with_explicit_defaults(func: Callable) -> Callable:
 
     Example:
 
-    >>> @with_explicit_defaults
-    >>> def f(x=use_default(3)):
+    >>> @with_explicit_defaults(x=None)
+    >>> def f(x=3):
     ...     return x
 
     >>> f()  # This will return 3, and a warning will be issued.
 
     >>> f(3)  # This will also return 3 but without any warning.
     """
-    sig = inspect.signature(func)
 
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        bound = sig.bind_partial(*args, **kwargs)
-        bound.apply_defaults()
+    if len(messages) == 0:
+        raise ValueError(
+            "At least one argument must be provided to the decorator."
+            "Read the docstring for more details."
+        )
 
-        # Track updated arguments
-        new_args = list(args)
-        new_kwargs = dict(kwargs)
+    def decorator(func):
+        sig = inspect.signature(func)
 
-        for name, param in sig.parameters.items():
-            default_val = param.default
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            bound = sig.bind_partial(*args, **kwargs)
 
-            if not isinstance(default_val, ExplicitDefault):
-                continue  # Only handle sentinel-wrapped defaults
-
-            # Determine if argument was passed
-            was_explicit = (
-                name in bound.arguments
-                and name in kwargs
-                or (
-                    param.kind in [param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD]
-                    and list(sig.parameters).index(name) < len(args)
-                )
-            )
-
-            if not was_explicit:
-                # Not passed: Replace sentinel with real default
-                if default_val.msg:
-                    warnings.warn(default_val.msg)
-                else:
-                    warnings.warn(
-                        f"'{name}' not provided, using default: {default_val.default}"
-                    )
-                if param.kind in [param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD]:
-                    idx = list(sig.parameters).index(name)
-                    if idx < len(new_args):
-                        new_args[idx] = default_val.default
+            for name in messages:
+                if name not in bound.arguments:
+                    if messages[name] is not None:
+                        warnings.warn(messages[name])
                     else:
-                        new_kwargs[name] = default_val.default
-                else:
-                    new_kwargs[name] = default_val.default
+                        warnings.warn(
+                            f"'{name}' not provided,"
+                            f" using default: {sig.parameters['x'].default}"
+                        )
 
-        return func(*new_args, **new_kwargs)
+            return func(*args, **kwargs)
 
-    return wrapper
+        return wrapper
+
+    return decorator
