@@ -275,7 +275,7 @@ class TestParser(unittest.TestCase):
             self.assertEqual(g(a=2, x=2), 5)
             self.assertEqual(len(w), 2)
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
 
             @with_explicit_defaults()
             def dead_function(a, x=2, y=1):
