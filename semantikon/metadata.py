@@ -117,32 +117,3 @@ def u(
         return _function_metadata(uri=uri, triples=triples, restrictions=restrictions)
     else:
         raise TypeError(f"Unsupported type: {type(type_or_func)}")
-
-
-def use_default(default: Any, msg: str | None = None) -> ExplicitDefault:
-    """
-    Marks a value as an explicit default, which can be used to indicate that
-    a value should be replaced with a default value in the context of
-    serialization or processing.
-
-    Args:
-        default (Any): The default value to be used.
-        msg (str | None): An optional warning message. If not provided, the
-            default message "'{arg}' not provided, using default: {value}" is
-            used.
-
-    Returns:
-        ExplicitDefault: An instance of ExplicitDefault containing the default
-        value and the message.
-
-    Example:
-
-    >>> @with_explicit_defaults
-    >>> def f(x=use_default(3)):
-    ...     return x
-
-    >>> f()  # This will return 3, and a warning will be issued.
-
-    >>> f(3)  # This will also return 3 but without any warning.
-    """
-    return ExplicitDefault(default, msg)
