@@ -4,7 +4,6 @@ from semantikon.converter import FunctionWithMetadata, parse_metadata
 from semantikon.datastructure import (
     MISSING,
     CoreMetadata,
-    ExplicitDefault,
     Missing,
     RestrictionLike,
     ShapeType,
