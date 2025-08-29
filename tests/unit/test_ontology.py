@@ -314,6 +314,40 @@ def mismatching_peers(x_outer: u(int, uri=EX.Input)) -> u(int, uri=EX.NotOutput)
     return dont_add
 
 
+class Foo: ...
+
+
+def upstream(
+    foo: u(Foo, uri=EX.Foo, triples=(EX.alsoHas, EX.Bar)),
+) -> u(Foo, derived_from="inputs.foo"):
+    return foo
+
+
+def downstream(
+    foo: u(
+        Foo,
+        uri=EX.Foo,
+        restrictions=((OWL.onProperty, EX.alsoHas), (OWL.someValuesFrom, EX.Bar)),
+    ),
+) -> u(Foo, derived_from="inputs.foo"):
+    return foo
+
+
+@workflow
+def single(foo: u(Foo, uri=EX.Foo)) -> u(Foo, derived_from="inputs.foo"):
+    up = upstream(foo)
+    dn = downstream(up)
+    return dn
+
+
+@workflow
+def chain(foo: u(Foo, uri=EX.Foo)) -> u(Foo, derived_from="inputs.foo"):
+    up = upstream(foo)
+    dn1 = downstream(up)
+    dn2 = downstream(dn1)
+    return dn2
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -581,6 +615,25 @@ class TestOntology(unittest.TestCase):
                 val["incompatible_connections"],
                 [],
                 msg="Downstream having a narrower type than upstream is fine",
+            )
+
+    def test_uri_restrictions_derived_from_interaction(self):
+        with self.subTest("Single step"):
+            graph = get_knowledge_graph(single._semantikon_workflow)
+            val = validate_values(graph)
+            self.assertFalse(
+                val["missing_triples"] or val["incompatible_connections"],
+                msg=f"URI specification, restrictions, and derived_from should all play"
+                f"well together. Expected no validation problems, but got {val}",
+            )
+
+        with self.subTest("Chain steps"):
+            graph = get_knowledge_graph(chain._semantikon_workflow)
+            val = validate_values(graph)
+            self.assertFalse(
+                val["missing_triples"] or val["incompatible_connections"],
+                msg=f"URI specification, restrictions, and derived_from should all play"
+                f"well together. Expected no validation problems, but got {val}",
             )
 
     def test_macro(self):

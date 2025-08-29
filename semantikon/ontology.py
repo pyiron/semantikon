@@ -280,7 +280,7 @@ def _check_missing_triples(graph: Graph) -> list:
             ?instance ?onProperty ?someValuesFrom .
         }
     }"""
-    return list(graph.query(query))
+    return list(set(graph.query(query)))
 
 
 def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
@@ -295,16 +295,29 @@ def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
         (list): list of incompatible connections
     """
     incompatible_types = []
-    for inp_out in graph.subject_objects(PROV.wasDerivedFrom):
+    for inp, out in graph.subject_objects(PROV.wasDerivedFrom):
         i_type, o_type = [
             [g for g in graph.objects(tag, RDF.type) if g != PROV.Entity]
-            for tag in inp_out
+            for tag in (inp, out)
         ]
-        if not strict_typing and (i_type == [] or o_type == []):
+        # Exclude any i_type that is an OWL restriction or a subclass of OWL.Restriction
+        # (What about SH restrictions?)
+        # This is because we handle restrictions in _check_missing_triples
+        i_type_filtered = [
+            t
+            for t in i_type
+            if (
+                (t, RDFS.subClassOf, OWL.Restriction) not in graph
+                and (t, RDF.type, OWL.Restriction) not in graph
+                and (t, RDFS.subClassOf, SH.NodeShape) not in graph
+                and (t, RDF.type, SH.NodeShape) not in graph
+            )
+        ]
+        if not strict_typing and (i_type_filtered == [] or o_type == []):
             continue
-        diff = set(i_type).difference(o_type)
+        diff = set(i_type_filtered).difference(o_type)
         if len(diff) > 0:
-            incompatible_types.append(inp_out + (i_type, o_type))
+            incompatible_types.append((inp, out) + (i_type, o_type))
     return incompatible_types
 
 
