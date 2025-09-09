@@ -7,6 +7,7 @@ import rdflib.term
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.term import IdentifiedNode
+from string import Template
 
 from semantikon.converter import get_function_dict, meta_to_dict
 from semantikon.qudt import UnitsDict
@@ -20,7 +21,7 @@ class SNS:
     inputOf: URIRef = BASE["inputOf"]
     outputOf: URIRef = BASE["outputOf"]
     hasValue: URIRef = BASE["hasValue"]
-    fulfills: URIRef = BASE["fulfills"]
+    linksTo: URIRef = BASE["linksTo"]
 
 
 class NS:
@@ -109,12 +110,7 @@ def _get_triples_from_restrictions(data: dict) -> list:
     if data.get("triples", None) is not None:
         triples.extend(_align_triples(data["triples"]))
     if data.get("derived_from", None) is not None:
-        triples.extend(
-            [
-                ("self", PROV.wasDerivedFrom, data["derived_from"]),
-                ("self", SNS.fulfills, data["derived_from"]),
-            ]
-        )
+        triples.append(("self", PROV.wasDerivedFrom, data["derived_from"]))
     return triples
 
 
@@ -239,7 +235,7 @@ def _parse_triple(
 def _inherit_properties(
     graph: Graph, triples_to_cancel: list | None = None, n_max: int = 1000, ontology=SNS
 ):
-    update_query = f"""\
+    update_query = Template(f"""\
     PREFIX ns: <{ontology.BASE}>
     PREFIX prov: <{PROV}>
     PREFIX rdfs: <{RDFS}>
@@ -250,7 +246,7 @@ def _inherit_properties(
         ?subject ?p ?o .
     }}
     WHERE {{
-        ?subject prov:wasDerivedFrom ?target .
+        $line
         ?target ?p ?o .
         FILTER(?p != prov:wasDerivedFrom)
         FILTER(?p != rdfs:label)
@@ -258,15 +254,24 @@ def _inherit_properties(
         FILTER(?p != ns:hasValue)
         FILTER(?p != ns:inputOf)
         FILTER(?p != ns:outputOf)
-        FILTER(?p != ns:fulfills)
+        FILTER(?p != ns:linksTo)
         FILTER(?p != owl:sameAs)
+        $additiona_filter
     }}
-    """
+    """)
+    prov_query = update_query.substitute(
+        line="?subject prov:wasDerivedFrom ?target .", additiona_filter=""
+    )
+    link_query = update_query.substitute(
+        line="?target ns:linksTo ?subject .",
+        additiona_filter="FILTER(?o != rdf:type)",
+    )
     if triples_to_cancel is None:
         triples_to_cancel = []
     n = 0
     for _ in range(n_max):
-        graph.update(update_query)
+        graph.update(prov_query)
+        graph.update(link_query)
         for t in triples_to_cancel:
             if t in graph:
                 graph.remove(t)
@@ -329,47 +334,6 @@ def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
     return incompatible_types
 
 
-def _query_meaning(graph: Graph, subject: rdflib.term.Node, ontology=SNS):
-    query = f"""\
-        PREFIX ns: <{ontology.BASE}>
-        PREFIX prov: <{PROV}>
-        PREFIX rdfs: <{RDFS}>
-        PREFIX rdf: <{RDF}>
-        PREFIX owl: <{OWL}>
-        
-        SELECT ?p ?o 
-        
-        WHERE {{
-            ?s ?p ?o .
-            FILTER(?s = <{subject}>)
-            FILTER(?p != prov:wasDerivedFrom)
-            FILTER(?p != rdfs:label)
-            FILTER(?p != rdf:value)
-            FILTER(?p != ns:hasValue)
-            FILTER(?p != ns:inputOf)
-            FILTER(?p != ns:outputOf)
-            FILTER(?p != ns:fulfills)
-            FILTER(?p != owl:sameAs)
-            FILTER(!(?p = rdf:type && ?o = prov:Entity))  # Null info added ubiquitously
-        }}
-    """
-    return set(graph.query(query))
-
-
-def _check_fulfillment(graph: Graph, strict_typing: bool = False):
-    promises = graph.subject_objects(SNS.fulfills)
-    broken_promises = {}
-    for fulfilled_by, fulfilled in promises:
-        alleged_superset = _query_meaning(graph, fulfilled_by)
-        alleged_subset = _query_meaning(graph, fulfilled)
-        if not strict_typing and (not alleged_superset or not alleged_subset):
-            continue
-        diff = alleged_subset.difference(alleged_superset)
-        if len(diff) > 0:
-            broken_promises[fulfilled_by] = fulfilled, diff
-    return broken_promises
-
-
 def _check_units(graph: Graph, ontology=SNS) -> dict[URIRef, list[URIRef]]:
     """
     Check if there are multiple units assigned to the same term
@@ -408,7 +372,6 @@ def validate_values(
             graph, strict_typing=strict_typing
         ),
         "distinct_units": _check_units(graph, ontology=ontology),
-        "broken_promises": _check_fulfillment(graph, strict_typing=strict_typing),
     }
 
 
@@ -524,12 +487,7 @@ def _dot(*args) -> str:
 def _edges_to_triples(edges: dict) -> list:
     triples = []
     for downstream, upstream in edges.items():
-        triples.extend(
-            [
-                (downstream, PROV.wasDerivedFrom, upstream),
-                (upstream, SNS.fulfills, downstream),
-            ]
-        )
+        triples.append((upstream, SNS.linksTo, downstream))
     return triples
 
 
