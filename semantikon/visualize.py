@@ -11,6 +11,8 @@ _edge_colors = {
     "sns:outputOf": "darkred",
     "sns:inputOf": "darkorange",
     "sns:hasValue": "brown",
+    "sns:linksTo": "gray",
+    "sns:hasNode": "deeppink",
     "prov:wasDerivedFrom": "purple",
 }
 
