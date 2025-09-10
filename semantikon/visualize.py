@@ -5,7 +5,6 @@ from rdflib import RDF, BNode, Literal, URIRef
 
 from semantikon.ontology import SNS
 
-
 _edge_colors = {
     "rdf:type": "darkblue",
     "sns:hasSourceFunction": "darkgreen",
