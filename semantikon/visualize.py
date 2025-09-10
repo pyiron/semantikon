@@ -6,6 +6,16 @@ from rdflib import RDF, BNode, Literal, URIRef
 from semantikon.ontology import SNS
 
 
+_edge_colors = {
+    "rdf:type": "darkblue",
+    "sns:hasSourceFunction": "darkgreen",
+    "sns:outputOf": "darkred",
+    "sns:inputOf": "darkorange",
+    "sns:hasValue": "brown",
+    "prov:wasDerivedFrom": "purple",
+}
+
+
 def _short_label(graph, node):
     """Use graph's prefixes to shorten URIs nicely."""
     if isinstance(node, URIRef):
@@ -101,6 +111,7 @@ def visualize(graph, engine="dot"):
         else:
             dot.node(key.replace(":", "_"), _to_node(key, **value))
     for edges in edge_list:
-        dot.edge(edges[0], edges[1], label=edges[2])
+        color = _edge_colors.get(edges[2], "black")
+        dot.edge(edges[0], edges[1], label=edges[2], color=color, fontcolor=color)
 
     return dot
