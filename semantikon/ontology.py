@@ -270,11 +270,11 @@ def _inherit_properties(
         triples_to_cancel = []
     n = 0
     for _ in range(n_max):
-        graph.update(prov_query)
-        graph.update(link_query)
-        for t in triples_to_cancel:
-            if t in graph:
-                graph.remove(t)
+        for query in [prov_query, link_query]:
+            graph.update(query)
+            for t in triples_to_cancel:
+                if t in graph:
+                    graph.remove(t)
         if len(graph) == n:
             break
         n = len(graph)
@@ -308,7 +308,7 @@ def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
         (list): list of incompatible connections
     """
     incompatible_types = []
-    for inp, out in graph.subject_objects(PROV.wasDerivedFrom):
+    for out, inp in graph.subject_objects(SNS.linksTo):
         i_type, o_type = [
             [g for g in graph.objects(tag, RDF.type) if g != PROV.Entity]
             for tag in (inp, out)
