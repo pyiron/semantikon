@@ -369,7 +369,7 @@ def validate_values(
     return {
         "missing_triples": _check_missing_triples(graph),
         "incompatible_connections": _check_connections(
-            graph, strict_typing=strict_typing
+            graph, strict_typing=strict_typing, ontology=ontology
         ),
         "distinct_units": _check_units(graph, ontology=ontology),
     }
@@ -500,7 +500,7 @@ def _parse_workflow(
         for label, content in channel_dict.items()
         for triple in _parse_channel(content, label, full_edge_dict, ontology)
     ]
-    triples.extend(_edges_to_triples(_get_edge_dict(edge_list)))
+    triples.extend(_edges_to_triples(_get_edge_dict(edge_list), ontology=ontology))
 
     for key, node in node_dict.items():
         triples.append((key, RDF.type, PROV.Activity))
