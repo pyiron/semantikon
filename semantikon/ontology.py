@@ -296,7 +296,7 @@ def _check_missing_triples(graph: Graph) -> list:
     return list(set(graph.query(query)))
 
 
-def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
+def _check_connections(graph: Graph, strict_typing: bool = False, ontology=SNS) -> list:
     """
     Check if the connections between inputs and outputs are compatible
 
@@ -308,7 +308,7 @@ def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
         (list): list of incompatible connections
     """
     incompatible_types = []
-    for out, inp in graph.subject_objects(SNS.linksTo):
+    for out, inp in graph.subject_objects(ontology.linksTo):
         i_type, o_type = [
             [g for g in graph.objects(tag, RDF.type) if g != PROV.Entity]
             for tag in (inp, out)
@@ -484,11 +484,8 @@ def _dot(*args) -> str:
     return ".".join([a for a in args if a is not None])
 
 
-def _edges_to_triples(edges: dict) -> list:
-    triples = []
-    for downstream, upstream in edges.items():
-        triples.append((upstream, SNS.linksTo, downstream))
-    return triples
+def _edges_to_triples(edges: dict, ontology=SNS) -> list:
+    return [(upstream, ontology.linksTo, downstream) for downstream, upstream in edges.items()]
 
 
 def _parse_workflow(
