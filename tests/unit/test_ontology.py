@@ -265,22 +265,6 @@ def get_wrong_order(structure="abc"):
     return energy
 
 
-@workflow
-def get_right_order_for_fulfillment(structure="abc"):
-    vac = create_vacancy(structure=structure)
-    relaxed = relax_structure(structure=vac)
-    energy = get_vacancy_formation_energy_fulfills(structure=relaxed)
-    return energy
-
-
-@workflow
-def get_wrong_order_for_fulfillment(structure="abc"):
-    relaxed = relax_structure(structure=structure)
-    vac = create_vacancy(structure=relaxed)
-    energy = get_vacancy_formation_energy_fulfills(structure=vac)
-    return energy
-
-
 class Meal:
     pass
 
