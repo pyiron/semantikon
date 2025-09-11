@@ -594,9 +594,8 @@ class TestOntology(unittest.TestCase):
             )
 
         with self.subTest("No type narrowing"):
-            g0 = Graph()
-            g0.add((EX.SomethingElse, RDFS.subClassOf, EX.Garment))
             graph = get_knowledge_graph(clothes_wf._semantikon_workflow)
+            graph.add((EX.SomethingElse, RDFS.subClassOf, EX.Garment))
             val = validate_values(graph)
             self.assertListEqual(val["missing_triples"], [])
             self.assertListEqual(
