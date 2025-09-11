@@ -314,7 +314,6 @@ def _check_connections(graph: Graph, strict_typing: bool = False, ontology=SNS) 
             for tag in (inp, out)
         ]
         # Exclude any i_type that is an OWL restriction or a subclass of OWL.Restriction
-        # (What about SH restrictions?)
         # This is because we handle restrictions in _check_missing_triples
         i_type_filtered = [
             t
