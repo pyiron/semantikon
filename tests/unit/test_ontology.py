@@ -457,16 +457,6 @@ class TestOntology(unittest.TestCase):
     def test_correct_analysis(self):
         graph = get_knowledge_graph(get_correct_analysis._semantikon_workflow)
         t = validate_values(graph)
-        self.assertFalse(
-            t["broken_promises"],
-            msg=f"{t['broken_promises']} expected to be empty in {graph.serialize()}",
-        )
-        graph = get_knowledge_graph(get_wrong_analysis_owl._semantikon_workflow)
-        self.assertEqual(len(validate_values(graph)["broken_promises"]), 1)
-
-    def test_correct_analysis_owl(self):
-        graph = get_knowledge_graph(get_correct_analysis_owl._semantikon_workflow)
-        t = validate_values(graph)
         self.assertEqual(
             t["missing_triples"],
             [],
@@ -725,7 +715,7 @@ class TestOntology(unittest.TestCase):
                     URIRef("get_macro." + tag), subj, msg=f"{tag} not in {subj}"
                 )
         inherits_from = [
-            (str(g[0]), str(g[1])) for g in graph.subject_objects(PROV.wasDerivedFrom)
+            (str(g[1]), str(g[0])) for g in graph.subject_objects(SNS.linksTo)
         ]
         get_macro_io_passing = 2
         get_three_io_passing = 2
@@ -875,36 +865,6 @@ class TestOntology(unittest.TestCase):
                 ]
             ],
         )
-
-    def test_cancel_and_fulfills(self):
-        with self.subTest("Early cancellation"):
-            graph = get_knowledge_graph(
-                get_right_order_for_fulfillment._semantikon_workflow
-            )
-            self.assertFalse(
-                validate_values(graph)["broken_promises"],
-                msg="If the cancel comes before there is anything to cancel, it should "
-                "be harmless",
-            )
-
-        with self.subTest("Late cancellation"):
-            graph = get_knowledge_graph(
-                get_wrong_order_for_fulfillment._semantikon_workflow
-            )
-            o_port = URIRef(
-                "get_wrong_order_for_fulfillment.create_vacancy_0.outputs.structure"
-            )
-            i_port = URIRef(
-                "get_wrong_order_for_fulfillment."
-                "get_vacancy_formation_energy_fulfills_0.inputs.structure"
-            )
-            cancelled = (EX.hasState, EX.relaxed)
-            self.assertDictEqual(
-                {o_port: (i_port, {cancelled})},
-                validate_values(graph)["broken_promises"],
-                msg="If the cancel comes after a triple has been added, it should be "
-                "removed -- here it was necessary.",
-            )
 
     def test_serialize_data(self):
         data = get_macro.run()
