@@ -4,7 +4,6 @@ from dataclasses import is_dataclass
 from string import Template
 from typing import Any, Callable, TypeAlias, cast
 
-import rdflib.term
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.term import IdentifiedNode
