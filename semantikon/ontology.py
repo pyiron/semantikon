@@ -251,21 +251,18 @@ def _inherit_properties(
         FILTER(?p != prov:wasDerivedFrom)
         FILTER(?p != rdfs:label)
         FILTER(?p != rdf:value)
+        FILTER(?p != rdf:type)
         FILTER(?p != ns:hasValue)
         FILTER(?p != ns:inputOf)
         FILTER(?p != ns:outputOf)
         FILTER(?p != ns:linksTo)
         FILTER(?p != owl:sameAs)
-        $additiona_filter
     }}
     """)
     prov_query = update_query.substitute(
-        line="?subject prov:wasDerivedFrom ?target .", additiona_filter=""
+        line="?subject prov:wasDerivedFrom ?target ."
     )
-    link_query = update_query.substitute(
-        line="?target ns:linksTo ?subject .",
-        additiona_filter="FILTER(?o != rdf:type)",
-    )
+    link_query = update_query.substitute(line="?target ns:linksTo ?subject .")
     if triples_to_cancel is None:
         triples_to_cancel = []
     n = 0
