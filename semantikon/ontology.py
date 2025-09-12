@@ -1,13 +1,13 @@
 import warnings
 from collections import defaultdict
 from dataclasses import is_dataclass
+from string import Template
 from typing import Any, Callable, TypeAlias, cast
 
 import rdflib.term
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.term import IdentifiedNode
-from string import Template
 
 from semantikon.converter import get_function_dict, meta_to_dict
 from semantikon.qudt import UnitsDict
@@ -235,7 +235,8 @@ def _parse_triple(
 def _inherit_properties(
     graph: Graph, triples_to_cancel: list | None = None, n_max: int = 1000, ontology=SNS
 ):
-    update_query = Template(f"""\
+    update_query = Template(
+        f"""\
     PREFIX ns: <{ontology.BASE}>
     PREFIX prov: <{PROV}>
     PREFIX rdfs: <{RDFS}>
@@ -258,10 +259,9 @@ def _inherit_properties(
         FILTER(?p != ns:linksTo)
         FILTER(?p != owl:sameAs)
     }}
-    """)
-    prov_query = update_query.substitute(
-        line="?subject prov:wasDerivedFrom ?target ."
+    """
     )
+    prov_query = update_query.substitute(line="?subject prov:wasDerivedFrom ?target .")
     link_query = update_query.substitute(line="?target ns:linksTo ?subject .")
     if triples_to_cancel is None:
         triples_to_cancel = []
@@ -481,7 +481,10 @@ def _dot(*args) -> str:
 
 
 def _edges_to_triples(edges: dict, ontology=SNS) -> list:
-    return [(upstream, ontology.linksTo, downstream) for downstream, upstream in edges.items()]
+    return [
+        (upstream, ontology.linksTo, downstream)
+        for downstream, upstream in edges.items()
+    ]
 
 
 def _parse_workflow(

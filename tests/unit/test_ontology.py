@@ -586,12 +586,7 @@ class TestOntology(unittest.TestCase):
         out_tag = URIRef(
             f"{clothes_wf.__name__}.{machine_wash.__name__}_0.outputs.clothes"
         )
-        out_global_tag = URIRef(
-            f"{clothes_wf.__name__}.outputs.washed"
-        )
-        inp_tag = URIRef(
-            f"{clothes_wf.__name__}.{machine_wash.__name__}_0.inputs.clothes"
-        )
+        out_global_tag = URIRef(f"{clothes_wf.__name__}.outputs.washed")
 
         with self.subTest("Inherit type"):
             graph = get_knowledge_graph(clothes_wf._semantikon_workflow)
@@ -636,7 +631,14 @@ class TestOntology(unittest.TestCase):
             self.assertListEqual(val["missing_triples"], [])
             self.assertListEqual(
                 val["incompatible_connections"],
-                [(out_global_tag, out_tag, [EX.Garment, EX.SomethingElse], [EX.SomethingElse])],
+                [
+                    (
+                        out_global_tag,
+                        out_tag,
+                        [EX.Garment, EX.SomethingElse],
+                        [EX.SomethingElse],
+                    )
+                ],
                 msg="Downstream having a broader type than upstream is disallowed",
             )
 
