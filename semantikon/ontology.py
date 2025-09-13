@@ -1,6 +1,7 @@
 import warnings
 from collections import defaultdict
 from dataclasses import is_dataclass
+from string import Template
 from typing import Any, Callable, TypeAlias, cast
 
 from owlrl import DeductiveClosure, OWLRL_Semantics
@@ -19,6 +20,7 @@ class SNS:
     inputOf: URIRef = BASE["inputOf"]
     outputOf: URIRef = BASE["outputOf"]
     hasValue: URIRef = BASE["hasValue"]
+    linksTo: URIRef = BASE["linksTo"]
 
 
 class NS:
@@ -232,7 +234,8 @@ def _parse_triple(
 def _inherit_properties(
     graph: Graph, triples_to_cancel: list | None = None, n_max: int = 1000, ontology=SNS
 ):
-    update_query = f"""\
+    update_query = Template(
+        f"""\
     PREFIX ns: <{ontology.BASE}>
     PREFIX prov: <{PROV}>
     PREFIX rdfs: <{RDFS}>
@@ -243,25 +246,31 @@ def _inherit_properties(
         ?subject ?p ?o .
     }}
     WHERE {{
-        ?subject prov:wasDerivedFrom ?target .
+        $line
         ?target ?p ?o .
         FILTER(?p != prov:wasDerivedFrom)
         FILTER(?p != rdfs:label)
         FILTER(?p != rdf:value)
+        FILTER(?p != rdf:type)
         FILTER(?p != ns:hasValue)
         FILTER(?p != ns:inputOf)
         FILTER(?p != ns:outputOf)
+        FILTER(?p != ns:linksTo)
         FILTER(?p != owl:sameAs)
     }}
     """
+    )
+    prov_query = update_query.substitute(line="?subject prov:wasDerivedFrom ?target .")
+    link_query = update_query.substitute(line="?target ns:linksTo ?subject .")
     if triples_to_cancel is None:
         triples_to_cancel = []
     n = 0
     for _ in range(n_max):
-        graph.update(update_query)
-        for t in triples_to_cancel:
-            if t in graph:
-                graph.remove(t)
+        for query in [prov_query, link_query]:
+            graph.update(query)
+            for t in triples_to_cancel:
+                if t in graph:
+                    graph.remove(t)
         if len(graph) == n:
             break
         n = len(graph)
@@ -283,7 +292,7 @@ def _check_missing_triples(graph: Graph) -> list:
     return list(set(graph.query(query)))
 
 
-def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
+def _check_connections(graph: Graph, strict_typing: bool = False, ontology=SNS) -> list:
     """
     Check if the connections between inputs and outputs are compatible
 
@@ -295,13 +304,12 @@ def _check_connections(graph: Graph, strict_typing: bool = False) -> list:
         (list): list of incompatible connections
     """
     incompatible_types = []
-    for inp, out in graph.subject_objects(PROV.wasDerivedFrom):
+    for out, inp in graph.subject_objects(ontology.linksTo):
         i_type, o_type = [
             [g for g in graph.objects(tag, RDF.type) if g != PROV.Entity]
             for tag in (inp, out)
         ]
         # Exclude any i_type that is an OWL restriction or a subclass of OWL.Restriction
-        # (What about SH restrictions?)
         # This is because we handle restrictions in _check_missing_triples
         i_type_filtered = [
             t
@@ -356,7 +364,7 @@ def validate_values(
     return {
         "missing_triples": _check_missing_triples(graph),
         "incompatible_connections": _check_connections(
-            graph, strict_typing=strict_typing
+            graph, strict_typing=strict_typing, ontology=ontology
         ),
         "distinct_units": _check_units(graph, ontology=ontology),
     }
@@ -472,7 +480,10 @@ def _dot(*args) -> str:
 
 
 def _edges_to_triples(edges: dict, ontology=SNS) -> list:
-    return [(inp, PROV.wasDerivedFrom, out) for inp, out in edges.items()]
+    return [
+        (upstream, ontology.linksTo, downstream)
+        for downstream, upstream in edges.items()
+    ]
 
 
 def _parse_workflow(
@@ -487,7 +498,7 @@ def _parse_workflow(
         for label, content in channel_dict.items()
         for triple in _parse_channel(content, label, full_edge_dict, ontology)
     ]
-    triples.extend(_edges_to_triples(_get_edge_dict(edge_list), ontology))
+    triples.extend(_edges_to_triples(_get_edge_dict(edge_list), ontology=ontology))
 
     for key, node in node_dict.items():
         triples.append((key, RDF.type, PROV.Activity))

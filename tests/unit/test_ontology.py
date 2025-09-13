@@ -84,7 +84,15 @@ def multiply(a: float, b: float) -> u(
     return a * b
 
 
-def correct_analysis(
+def correct_analysis(a: u(float, triples=(EX.HasOperation, EX.Addition))) -> float:
+    return a
+
+
+def wrong_analysis(a: u(float, triples=(EX.HasOperation, EX.Division))) -> float:
+    return a
+
+
+def correct_analysis_owl(
     a: u(
         float,
         restrictions=(
@@ -96,7 +104,7 @@ def correct_analysis(
     return a
 
 
-def wrong_analysis(
+def wrong_analysis_owl(
     a: u(
         float,
         restrictions=(
@@ -182,6 +190,18 @@ def get_vacancy_formation_energy(
     return len(structure)
 
 
+def get_vacancy_formation_energy_fulfills(
+    structure: u(
+        str,
+        triples=(
+            (EX.hasDefect, EX.vacancy),
+            (EX.hasState, EX.relaxed),
+        ),
+    ),
+):
+    return len(structure)
+
+
 @workflow
 def get_correct_analysis(a=1.0, b=2.0, c=3.0):
     d = add(a=a, b=b)
@@ -195,6 +215,22 @@ def get_wrong_analysis(a=1.0, b=2.0, c=3.0):
     d = add(a=a, b=b)
     m = multiply(a=d, b=c)
     analysis = wrong_analysis(a=m)
+    return analysis
+
+
+@workflow
+def get_correct_analysis_owl(a=1.0, b=2.0, c=3.0):
+    d = add(a=a, b=b)
+    m = multiply(a=d, b=c)
+    analysis = correct_analysis_owl(a=m)
+    return analysis
+
+
+@workflow
+def get_wrong_analysis_owl(a=1.0, b=2.0, c=3.0):
+    d = add(a=a, b=b)
+    m = multiply(a=d, b=c)
+    analysis = wrong_analysis_owl(a=m)
     return analysis
 
 
@@ -274,7 +310,7 @@ def clothes_wf(
         uri=EX.Garment,
         triples=(EX.hasProperty, EX.MachineWashable),
     ),
-):
+) -> u(Clothes, uri=EX.Garment, derived_from="inputs.clothes"):
     washed = machine_wash(clothes)
     return washed
 
@@ -410,7 +446,7 @@ class TestOntology(unittest.TestCase):
             [],
             msg=f"{t} missing in {graph.serialize()}",
         )
-        graph = get_knowledge_graph(get_wrong_analysis._semantikon_workflow)
+        graph = get_knowledge_graph(get_wrong_analysis_owl._semantikon_workflow)
         self.assertEqual(len(validate_values(graph)["missing_triples"]), 1)
 
     def test_correct_analysis_sh(self):
@@ -450,7 +486,7 @@ class TestOntology(unittest.TestCase):
                     (
                         "mismatching_input.add_onetology_0.inputs.x",
                         "mismatching_input.inputs.x_outer",
-                        ["http://example.org/Input", "http://example.org/NotInput"],
+                        ["http://example.org/Input"],
                         ["http://example.org/NotInput"],
                     )
                 ],
@@ -474,7 +510,7 @@ class TestOntology(unittest.TestCase):
                     (
                         "mismatching_output.outputs.add",
                         "mismatching_output.add_onetology_0.outputs.y",
-                        ["http://example.org/NotOutput", "http://example.org/Output"],
+                        ["http://example.org/NotOutput"],
                         ["http://example.org/Output"],
                     )
                 ],
@@ -498,7 +534,7 @@ class TestOntology(unittest.TestCase):
                     (
                         "mismatching_peers.dont_add_onetology_0.inputs.x",
                         "mismatching_peers.add_onetology_0.outputs.y",
-                        ["http://example.org/NotOutput", "http://example.org/Output"],
+                        ["http://example.org/NotOutput"],
                         ["http://example.org/Output"],
                     )
                 ],
@@ -550,17 +586,15 @@ class TestOntology(unittest.TestCase):
         out_tag = URIRef(
             f"{clothes_wf.__name__}.{machine_wash.__name__}_0.outputs.clothes"
         )
-        inp_tag = URIRef(
-            f"{clothes_wf.__name__}.{machine_wash.__name__}_0.inputs.clothes"
-        )
+        out_global_tag = URIRef(f"{clothes_wf.__name__}.outputs.washed")
 
         with self.subTest("Inherit type"):
             graph = get_knowledge_graph(clothes_wf._semantikon_workflow)
             out_types = set(graph.objects(out_tag, RDF.type))
-            self.assertIn(
+            self.assertNotIn(
                 EX.Garment,
                 out_types,
-                msg="Should inherit from input",
+                msg="Should not inherit from input",
             )
             self.assertIn(
                 EX.SomethingElse,
@@ -580,33 +614,37 @@ class TestOntology(unittest.TestCase):
                 EX.Cleaned, out_properties, msg="Should retain from u-specification"
             )
 
-        type_validation_conflict = [
-            (out_tag, inp_tag, [EX.SomethingElse, EX.Garment], [EX.Garment])
-        ]
         with self.subTest("No other types"):
             graph = get_knowledge_graph(clothes_wf._semantikon_workflow)
             val = validate_values(graph)
             self.assertListEqual(val["missing_triples"], [])
             self.assertEqual(
                 val["incompatible_connections"],
-                type_validation_conflict,
+                [(out_global_tag, out_tag, [EX.Garment], [EX.SomethingElse])],
                 msg="Completely unrelated types should be flagged",
             )
 
         with self.subTest("No type narrowing"):
             graph = get_knowledge_graph(clothes_wf._semantikon_workflow)
-            graph.add((EX.SomethingElse, RDFS.subClassOf, EX.Garment))
+            graph.add((EX.Garment, RDFS.subClassOf, EX.SomethingElse))
             val = validate_values(graph)
             self.assertListEqual(val["missing_triples"], [])
             self.assertListEqual(
                 val["incompatible_connections"],
-                type_validation_conflict,
+                [
+                    (
+                        out_global_tag,
+                        out_tag,
+                        [EX.Garment, EX.SomethingElse],
+                        [EX.SomethingElse],
+                    )
+                ],
                 msg="Downstream having a broader type than upstream is disallowed",
             )
 
         with self.subTest("Type broadening OK"):
             context = Graph()
-            context.add((EX.Garment, RDFS.subClassOf, EX.SomethingElse))
+            context.add((EX.SomethingElse, RDFS.subClassOf, EX.Garment))
             graph = get_knowledge_graph(clothes_wf._semantikon_workflow, graph=context)
             val = validate_values(graph)
             self.assertListEqual(val["missing_triples"], [])
@@ -663,7 +701,7 @@ class TestOntology(unittest.TestCase):
                     URIRef("get_macro." + tag), subj, msg=f"{tag} not in {subj}"
                 )
         inherits_from = [
-            (str(g[0]), str(g[1])) for g in graph.subject_objects(PROV.wasDerivedFrom)
+            (str(g[1]), str(g[0])) for g in graph.subject_objects(SNS.linksTo)
         ]
         get_macro_io_passing = 2
         get_three_io_passing = 2
@@ -696,49 +734,49 @@ class TestOntology(unittest.TestCase):
         
         <get_macro.add_one_0.inputs.a> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
-            prov:wasDerivedFrom <get_macro.add_three_0.outputs.w> ;
             ns1:inputOf <get_macro.add_one_0> .
         
         <get_macro.add_three_0.add_one_0.inputs.a> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
-            prov:wasDerivedFrom <get_macro.add_three_0.inputs.c> ;
             ns1:inputOf <get_macro.add_three_0.add_one_0> .
         
         <get_macro.add_three_0.add_two_0.inputs.b> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> ;
-            prov:wasDerivedFrom <get_macro.add_three_0.add_one_0.outputs.result> ;
             ns1:inputOf <get_macro.add_three_0.add_two_0> .
         
         <get_macro.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
-            prov:wasDerivedFrom <get_macro.add_one_0.outputs.result> ;
             ns1:outputOf <get_macro> .
         
         <get_macro.add_one_0.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_one_0> .
+            ns1:outputOf <get_macro.add_one_0> ;
+            ns1:linksTo <get_macro.outputs.result> .
         
         <get_macro.add_three_0.add_one_0.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_three_0.add_one_0> .
+            ns1:outputOf <get_macro.add_three_0.add_one_0> ;
+            ns1:linksTo <get_macro.add_three_0.add_two_0.inputs.b> .
         
         <get_macro.add_three_0.add_two_0.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_three_0.add_two_0> .
+            ns1:outputOf <get_macro.add_three_0.add_two_0> ;
+            ns1:linksTo <get_macro.add_three_0.outputs.w> .
         
         <get_macro.add_three_0.inputs.c> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
-            prov:wasDerivedFrom <get_macro.inputs.c> ;
-            ns1:inputOf <get_macro.add_three_0> .
+            ns1:inputOf <get_macro.add_three_0> ;
+            ns1:linksTo <get_macro.add_three_0.add_one_0.inputs.a> .
         
         <get_macro.add_three_0.outputs.w> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
-            prov:wasDerivedFrom <get_macro.add_three_0.add_two_0.outputs.result> ;
-            ns1:outputOf <get_macro.add_three_0> .
+            ns1:outputOf <get_macro.add_three_0> ;
+            ns1:linksTo <get_macro.add_one_0.inputs.a> .
         
         <get_macro.inputs.c> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
-            ns1:inputOf <get_macro> .
+            ns1:inputOf <get_macro> ;
+            ns1:linksTo <get_macro.add_three_0.inputs.c> .
         
         <get_macro.add_one_0.outputs.result.value> rdf:value 5 .
         
@@ -831,12 +869,12 @@ class TestOntology(unittest.TestCase):
         self.assertIsInstance(visualize(graph), Digraph)
 
     def test_function_referencing(self):
-        graph = get_knowledge_graph(get_correct_analysis._semantikon_workflow)
+        graph = get_knowledge_graph(get_correct_analysis_owl._semantikon_workflow)
         self.assertEqual(
             list(graph.subject_objects(PROV.wasGeneratedBy))[0],
             (
-                URIRef("get_correct_analysis.add_0.inputs.a"),
-                URIRef("get_correct_analysis.add_0"),
+                URIRef("get_correct_analysis_owl.add_0.inputs.a"),
+                URIRef("get_correct_analysis_owl.add_0"),
             ),
         )
 
