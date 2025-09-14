@@ -13,7 +13,7 @@ from semantikon.converter import (
     parse_output_args,
     with_explicit_defaults,
 )
-from semantikon.metadata import u, meta
+from semantikon.metadata import meta, u
 
 if TYPE_CHECKING:
 
