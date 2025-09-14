@@ -7,7 +7,7 @@ from pyshacl import validate
 from rdflib import OWL, PROV, RDF, RDFS, SH, Graph, Literal, Namespace, URIRef
 from rdflib.compare import graph_diff
 
-from semantikon.metadata import u
+from semantikon.metadata import u, meta
 from semantikon.ontology import (
     NS,
     SNS,
@@ -71,7 +71,7 @@ def get_speed(distance=10.0, time=2.0):
     return speed
 
 
-@u(uri=EX.Addition, triples=("inputs.a", PROV.wasGeneratedBy, None))
+@meta(uri=EX.Addition, triples=("inputs.a", PROV.wasGeneratedBy, None))
 def add(a: float, b: float) -> u(float, triples=(EX.HasOperation, EX.Addition)):
     return a + b
 

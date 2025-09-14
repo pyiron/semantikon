@@ -27,7 +27,7 @@ def _is_annotated(type_):
     return hasattr(type_, "__metadata__") and hasattr(type_, "__origin__")
 
 
-def _type_metadata(
+def u(
     type_,
     /,
     uri: str | Missing = MISSING,
@@ -65,7 +65,7 @@ def _type_metadata(
     return Annotated[type_, items]
 
 
-def _function_metadata(
+def meta(
     uri: str | Missing = MISSING,
     triples: TriplesLike | Missing = MISSING,
     restrictions: RestrictionLike | Missing = MISSING,
@@ -81,38 +81,3 @@ def _function_metadata(
         )
 
     return decorator
-
-
-def u(
-    type_or_func=None,
-    /,
-    *,
-    uri: str | Missing = MISSING,
-    triples: TriplesLike | Missing = MISSING,
-    restrictions: RestrictionLike | Missing = MISSING,
-    label: str | Missing = MISSING,
-    units: str | Missing = MISSING,
-    shape: ShapeType | Missing = MISSING,
-    derived_from: str | Missing = MISSING,
-    **kwargs,
-) -> Callable[[Callable], FunctionWithMetadata] | Annotated[Any, object]:
-    if isinstance(type_or_func, type) or get_origin(type_or_func) is not None:
-        return _type_metadata(
-            type_or_func,
-            uri=uri,
-            triples=triples,
-            restrictions=restrictions,
-            label=label,
-            units=units,
-            shape=shape,
-            derived_from=derived_from,
-            **kwargs,
-        )
-    elif type_or_func is None:
-        if len(kwargs) > 0:
-            raise NotImplementedError(
-                "Function decoration does not currently support arbitrary keyword data."
-            )
-        return _function_metadata(uri=uri, triples=triples, restrictions=restrictions)
-    else:
-        raise TypeError(f"Unsupported type: {type(type_or_func)}")
