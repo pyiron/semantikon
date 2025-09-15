@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Callable, get_origin
+from typing import Annotated, Any, Callable
 
 from semantikon.converter import FunctionWithMetadata, parse_metadata
 from semantikon.datastructure import (
