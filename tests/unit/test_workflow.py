@@ -5,14 +5,14 @@ import networkx as nx
 import semantikon.workflow as swf
 from semantikon import datastructure
 from semantikon.converter import parse_input_args
-from semantikon.metadata import u
+from semantikon.metadata import meta, u
 
 
 def operation(x: float, y: float) -> tuple[float, float]:
     return x + y, x - y
 
 
-@u(uri="add")
+@meta(uri="add")
 def add(x: float = 2.0, y: float = 1) -> float:
     return x + y
 
@@ -22,7 +22,7 @@ def multiply(x: float, y: float = 5) -> float:
 
 
 @swf.workflow
-@u(uri="this macro has metadata")
+@meta(uri="this macro has metadata")
 def example_macro(a=10, b=20):
     c, d = operation(a, b)
     e = add(c, y=d)
@@ -58,7 +58,7 @@ def workflow_with_while(a=10, b=20):
     return z
 
 
-@u(uri="some URI")
+@meta(uri="some URI")
 def complex_function(
     x: u(float, units="meter") = 2.0,
     y: u(float, units="second", something_extra=42) = 1,
@@ -72,7 +72,7 @@ def complex_function(
 
 
 @swf.workflow
-@u(uri="some other URI")
+@meta(uri="some other URI")
 def complex_macro(
     x: u(float, units="meter") = 2.0,
 ):
@@ -81,7 +81,7 @@ def complex_macro(
 
 
 @swf.workflow
-@u(triples=("a", "b", "c"))
+@meta(triples=("a", "b", "c"))
 def complex_workflow(
     x: u(float, units="meter") = 2.0,
 ):
@@ -93,7 +93,7 @@ class ApeClass:
     pass
 
 
-@u(uri="my_function")
+@meta(uri="my_function")
 def multiple_types_for_ape(a: ApeClass, b: ApeClass) -> ApeClass:
     return a + b
 

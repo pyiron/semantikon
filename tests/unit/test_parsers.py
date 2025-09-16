@@ -13,7 +13,7 @@ from semantikon.converter import (
     parse_output_args,
     with_explicit_defaults,
 )
-from semantikon.metadata import u
+from semantikon.metadata import meta, u
 
 if TYPE_CHECKING:
 
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 class TestParser(unittest.TestCase):
     def test_basic(self):
-        @u(uri="abc")
+        @meta(uri="abc")
         def get_speed(
             distance: u(float, units="meter"),
             time: u(float, units="second") = 1.0,
@@ -51,16 +51,6 @@ class TestParser(unittest.TestCase):
         f_dict = get_function_dict(get_speed)
         self.assertEqual(f_dict["uri"], "abc")
         self.assertEqual(f_dict["label"], "get_speed")
-
-    def test_extra_function_metadata(self):
-        def f(x):
-            return x
-
-        with self.assertRaises(
-            NotImplementedError,
-            msg="Arbitrary metadata is not currently supported for function decoration",
-        ):
-            u(uri="abc", unexpected_data=123)(f)
 
     def test_canonical_types(self):
         def f(x: float) -> float:
