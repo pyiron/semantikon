@@ -59,8 +59,8 @@ In the realm of the workflow management systems, there are well defined inputs a
 You can also type-hint the inputs and outputs of a function using a class, i.e.:
 
 ```python
->>> from semantikon.metadata import u
 >>> from semantikon.converter import semantikon_class
+>>> from semantikon.metadata import u
 >>> from rdflib import Namespace
 >>>
 >>> EX = Namespace("http://example.org/")
@@ -89,8 +89,8 @@ In order to extract argument information, you can use the functions `parse_input
 Example:
 
 ```python
->>> from semantikon.metadata import u
 >>> from semantikon.converter import parse_input_args, parse_output_args
+>>> from semantikon.metadata import u
 >>> from rdflib import Namespace
 >>>
 >>> EX = Namespace("http://example.org/")
