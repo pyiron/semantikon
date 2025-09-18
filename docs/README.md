@@ -12,7 +12,8 @@ Let's take a look at the following function:
 
 ```python
 def get_speed(distance: float, time: float) -> float:
-    return distance / time
+    speed = distance / time
+    return speed
 ```
 
 For you as a human, it is clear that this is a function to calculate the speed for a given distance and a time. But for a computer, it is just a function that takes two floats and returns a float. The computer does not know what the inputs and outputs mean. This is where `semantikon` comes in. It provides a way to give scientific context to the inputs and outputs, as well as to the function itself.
@@ -50,7 +51,8 @@ In the realm of the workflow management systems, there are well defined inputs a
 ...     distance: u(float, units="meter", uri=EX.distance),
 ...     time: u(float, units="second", uri=EX.time),
 ... ) -> u(float, units="meter/second", label="speed", uri=EX.speed):
-...     return distance / time
+...     speed = distance / time
+...     return speed
 
 ```
 
@@ -72,7 +74,8 @@ You can also type-hint the inputs and outputs of a function using a class, i.e.:
 ...     result: u(float, units="meter/second", label="speed", uri=EX.speed)
 >>>
 >>> def get_speed(distance: MyRecord.distance, time: MyRecord.time) -> MyRecord.result:
-...     return distance / time
+...     speed = distance / time
+...     return speed
 
 ```
 
@@ -96,13 +99,14 @@ Example:
 >>> EX = Namespace("http://example.org/")
 >>>
 >>> def get_speed(
-...     a: u(float, units="meter", uri=EX.distance),
-...     b: u(float, units="second", uri=EX.time),
+...     distance: u(float, units="meter", uri=EX.distance),
+...     time: u(float, units="second", uri=EX.time),
 ... ) -> u(float, units="meter/second", label="speed", uri=EX.speed):
-...     return a / b
+...     speed = distance / time
+...     return speed
 >>>
 >>> print(dict(sorted({k: dict(sorted(v.items())) for k, v in parse_input_args(get_speed).items()}.items())))
-{'a': {'dtype': <class 'float'>, 'units': 'meter', 'uri': rdflib.term.URIRef('http://example.org/distance')}, 'b': {'dtype': <class 'float'>, 'units': 'second', 'uri': rdflib.term.URIRef('http://example.org/time')}}
+{'distance': {'dtype': <class 'float'>, 'units': 'meter', 'uri': rdflib.term.URIRef('http://example.org/distance')}, 'time': {'dtype': <class 'float'>, 'units': 'second', 'uri': rdflib.term.URIRef('http://example.org/time')}}
 
 >>> print(dict(sorted(parse_output_args(get_speed).items())))
 {'dtype': <class 'float'>, 'label': 'speed', 'units': 'meter/second', 'uri': rdflib.term.URIRef('http://example.org/speed')}
@@ -120,10 +124,11 @@ Example:
 >>>
 >>> @units
 ... def get_speed(
-...     a: u(float, units="meter"),
-...     b: u(float, units="second")
+...     distance: u(float, units="meter"),
+...     time: u(float, units="second")
 ... ) -> u(float, units="meter/second", label="speed"):
-...     return a / b
+...     speed = distance / time
+...     return speed
 >>>
 >>> ureg = UnitRegistry()
 >>>
