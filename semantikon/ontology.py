@@ -1,3 +1,4 @@
+import uuid
 import warnings
 from collections import defaultdict
 from dataclasses import is_dataclass
@@ -530,6 +531,7 @@ def get_knowledge_graph(
     inherit_properties: bool = True,
     ontology=SNS,
     append_missing_items: bool = True,
+    use_uuid: bool = False,
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
@@ -544,7 +546,7 @@ def get_knowledge_graph(
     """
     if graph is None:
         graph = Graph()
-    node_dict, channel_dict, edge_list = serialize_data(wf_dict)
+    node_dict, channel_dict, edge_list = serialize_data(wf_dict, use_uuid=use_uuid)
     triples = _parse_workflow(node_dict, channel_dict, edge_list, ontology=ontology)
     triples_to_cancel = _parse_cancel(channel_dict)
     for triple in triples:
@@ -600,7 +602,9 @@ def dataclass_to_knowledge_graph(class_name, name_space):
     )
 
 
-def serialize_data(wf_dict: dict, prefix: str | None = None) -> tuple[dict, dict, list]:
+def serialize_data(
+    wf_dict: dict, prefix: str | None = None, use_uuid: bool = False
+) -> tuple[dict, dict, list]:
     """
     Serialize a nested workflow dictionary into a knowledge graph
 
@@ -615,6 +619,8 @@ def serialize_data(wf_dict: dict, prefix: str | None = None) -> tuple[dict, dict
     channel_dict = {}
     if prefix is None:
         prefix = wf_dict["label"]
+        if use_uuid:
+            prefix = f"{prefix}-{uuid.uuid4()}"
     node_dict = {
         prefix: {
             key: value
