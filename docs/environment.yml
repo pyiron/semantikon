@@ -22,3 +22,4 @@ dependencies:
 - typeguard=4.4.4
 - pandas =2.3.2
 - ase =3.25.0
+- structuretoolkit =0.0.34
