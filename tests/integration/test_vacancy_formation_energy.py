@@ -1,8 +1,8 @@
+import unittest
 from collections import defaultdict
 
 import numpy as np
 import pandas as pd
-import unittest
 from ase import Atoms, build
 from pint import UnitRegistry
 from rdflib import OWL, RDF, Graph, Namespace
