@@ -10,7 +10,6 @@ from structuretoolkit import get_neighbors
 
 from semantikon.metadata import u
 from semantikon.ontology import SNS, get_knowledge_graph
-from semantikon.visualize import visualize
 from semantikon.workflow import workflow
 
 EX = Namespace("http://example.org/")
