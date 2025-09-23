@@ -5,7 +5,7 @@ import pandas as pd
 import unittest
 from ase import Atoms, build
 from pint import UnitRegistry
-from rdflib import OWL, RDFS, Graph, Namespace
+from rdflib import OWL, RDF, Graph, Namespace
 from structuretoolkit import get_neighbors
 
 from semantikon.metadata import u
