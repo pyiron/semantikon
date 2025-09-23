@@ -390,25 +390,27 @@ class TestOntology(unittest.TestCase):
         cls.maxDiff = None
 
     def test_units_with_sparql(self):
-        graph = get_knowledge_graph(get_speed.run())
-        query_txt = [
-            "PREFIX ex: <http://example.org/>",
-            "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
-            f"PREFIX pns: <{SNS.BASE}>",
-            "SELECT DISTINCT ?speed ?units",
-            "WHERE {",
-            "    ?output pns:hasValue ?output_tag .",
-            "    ?output_tag rdf:value ?speed .",
-            "    ?output_tag pns:hasUnits ?units .",
-            "}",
-        ]
-        query = "\n".join(query_txt)
-        results = graph.query(query)
-        self.assertEqual(
-            len(results), 3, msg=f"Results: {results.serialize(format='txt').decode()}"
-        )
-        result_list = [row[0].value for row in graph.query(query)]
-        self.assertEqual(sorted(result_list), [2.0, 5.0, 10.0])
+        wf_graph = get_speed.run()
+        for use_uuid in [True, False]:
+            graph = get_knowledge_graph(wf_graph, use_uuid=use_uuid)
+            query_txt = [
+                "PREFIX ex: <http://example.org/>",
+                "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
+                f"PREFIX pns: <{SNS.BASE}>",
+                "SELECT DISTINCT ?speed ?units",
+                "WHERE {",
+                "    ?output pns:hasValue ?output_tag .",
+                "    ?output_tag rdf:value ?speed .",
+                "    ?output_tag pns:hasUnits ?units .",
+                "}",
+            ]
+            query = "\n".join(query_txt)
+            results = graph.query(query)
+            self.assertEqual(
+                len(results), 3, msg=f"Results: {results.serialize(format='txt').decode()}"
+            )
+            result_list = [row[0].value for row in graph.query(query)]
+            self.assertEqual(sorted(result_list), [2.0, 5.0, 10.0])
 
     def test_triples(self):
         graph = get_knowledge_graph(get_speed.run())
