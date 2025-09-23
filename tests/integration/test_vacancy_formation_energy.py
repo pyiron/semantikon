@@ -1,15 +1,17 @@
-import unittest
-from rdflib import Graph, Literal, RDF, RDFS, URIRef, Namespace, OWL
-from semantikon.metadata import u
-from semantikon.workflow import workflow
-from semantikon.ontology import get_knowledge_graph, SNS
-from semantikon.visualize import visualize
-from ase import build, Atoms
-from structuretoolkit import get_neighbors
-import numpy as np
-from pint import UnitRegistry
 from collections import defaultdict
+
+import numpy as np
 import pandas as pd
+import unittest
+from ase import Atoms, build
+from pint import UnitRegistry
+from rdflib import OWL, RDF, RDFS, Graph, Literal, Namespace, URIRef
+from structuretoolkit import get_neighbors
+
+from semantikon.metadata import u
+from semantikon.ontology import SNS, get_knowledge_graph
+from semantikon.visualize import visualize
+from semantikon.workflow import workflow
 
 EX = Namespace("http://example.org/")
 
@@ -155,8 +157,8 @@ def relax_structure(
         )
         if E_hist[-1][-1] < f_max:
             break
-        dx = np.diff(x_lst, axis=0).reshape(-1, np.prod(vac.positions.shape))
-        dg = -np.diff(f_lst, axis=0).reshape(-1, np.prod(vac.positions.shape))
+        dx = np.diff(x_lst, axis=0).reshape(-1, np.prod(structure.positions.shape))
+        dg = -np.diff(f_lst, axis=0).reshape(-1, np.prod(structure.positions.shape))
         H = get_BFGS(dx[-1], dg[-1], H)
     return structure
 
