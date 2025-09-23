@@ -5,11 +5,11 @@ import pandas as pd
 import unittest
 from ase import Atoms, build
 from pint import UnitRegistry
-from rdflib import OWL, RDF, RDFS, Graph, Literal, Namespace, URIRef
+from rdflib import OWL, RDFS, Graph, Namespace
 from structuretoolkit import get_neighbors
 
 from semantikon.metadata import u
-from semantikon.ontology import SNS, get_knowledge_graph
+from semantikon.ontology import get_knowledge_graph
 from semantikon.workflow import workflow
 
 EX = Namespace("http://example.org/")
