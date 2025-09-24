@@ -70,14 +70,14 @@ def u(
 def meta(
     uri: str | URIRef | Missing = MISSING,
     triples: TriplesLike | Missing = MISSING,
-    uses: str | URIRef | Missing = MISSING,
+    used: str | URIRef | Missing = MISSING,
 ):
     def decorator(func: Callable):
         if not callable(func):
             raise TypeError(f"Expected a callable, got {type(func)}")
         return FunctionWithMetadata(
             func,
-            FunctionMetadata(triples=triples, uri=uri, uses=uses).to_dictionary(),
+            FunctionMetadata(triples=triples, uri=uri, used=used).to_dictionary(),
         )
 
     return decorator

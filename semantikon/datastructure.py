@@ -81,7 +81,7 @@ class TypeMetadata(CoreMetadata):
 
 @dataclasses.dataclass(slots=True)
 class FunctionMetadata(CoreMetadata):
-    uses: str | Missing = missing()
+    used: str | Missing = missing()
 
 
 _MetadataType = TypeVar("_MetadataType", bound=CoreMetadata)
