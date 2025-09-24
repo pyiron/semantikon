@@ -78,6 +78,7 @@ class TypeMetadata(CoreMetadata):
     extra: dict[str, Any] | Missing = missing()
     restrictions: RestrictionLike | Missing = missing()
 
+
 @dataclasses.dataclass(slots=True)
 class FunctionMetadata(CoreMetadata):
     uses: str | Missing = missing()

@@ -1,10 +1,10 @@
 from typing import Annotated, Any, Callable
 
 from rdflib import URIRef
+
 from semantikon.converter import FunctionWithMetadata, parse_metadata
 from semantikon.datastructure import (
     MISSING,
-    CoreMetadata,
     FunctionMetadata,
     Missing,
     RestrictionLike,
