@@ -404,6 +404,12 @@ def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> l
     if f_dict.get("triples", None) is not None:
         for t in _align_triples(f_dict["triples"]):
             triples.append(_parse_triple(t, ns=node_label, label=node_label))
+    used = f_dict.get("used")
+    if used is not None:
+        if not isinstance(used, (list, tuple)):
+            used = [used]
+        for uu in used:
+            triples.append((node_label, PROV.used, uu))
     triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
     return triples
 

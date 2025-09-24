@@ -1,9 +1,11 @@
 from typing import Annotated, Any, Callable
 
+from rdflib import URIRef
+
 from semantikon.converter import FunctionWithMetadata, parse_metadata
 from semantikon.datastructure import (
     MISSING,
-    CoreMetadata,
+    FunctionMetadata,
     Missing,
     RestrictionLike,
     ShapeType,
@@ -30,11 +32,11 @@ def _is_annotated(type_):
 def u(
     type_,
     /,
-    uri: str | Missing = MISSING,
+    uri: str | URIRef | Missing = MISSING,
     triples: TriplesLike | Missing = MISSING,
     restrictions: RestrictionLike | Missing = MISSING,
-    label: str | Missing = MISSING,
-    units: str | Missing = MISSING,
+    label: str | URIRef | Missing = MISSING,
+    units: str | URIRef | Missing = MISSING,
     shape: ShapeType | Missing = MISSING,
     derived_from: str | Missing = MISSING,
     **extra,
@@ -66,18 +68,16 @@ def u(
 
 
 def meta(
-    uri: str | Missing = MISSING,
+    uri: str | URIRef | Missing = MISSING,
     triples: TriplesLike | Missing = MISSING,
-    restrictions: RestrictionLike | Missing = MISSING,
+    used: str | URIRef | Missing = MISSING,
 ):
     def decorator(func: Callable):
         if not callable(func):
             raise TypeError(f"Expected a callable, got {type(func)}")
         return FunctionWithMetadata(
             func,
-            CoreMetadata(
-                triples=triples, uri=uri, restrictions=restrictions
-            ).to_dictionary(),
+            FunctionMetadata(triples=triples, uri=uri, used=used).to_dictionary(),
         )
 
     return decorator

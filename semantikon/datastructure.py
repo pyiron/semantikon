@@ -67,7 +67,6 @@ ShapeType: TypeAlias = tuple[int, ...]
 class CoreMetadata(_VariadicDataclass):
     uri: str | Missing = missing()
     triples: TriplesLike | Missing = missing()
-    restrictions: RestrictionLike | Missing = missing()
 
 
 @dataclasses.dataclass(slots=True)
@@ -77,6 +76,12 @@ class TypeMetadata(CoreMetadata):
     shape: ShapeType | Missing = missing()
     derived_from: str | Missing = missing()
     extra: dict[str, Any] | Missing = missing()
+    restrictions: RestrictionLike | Missing = missing()
+
+
+@dataclasses.dataclass(slots=True)
+class FunctionMetadata(CoreMetadata):
+    used: str | Missing = missing()
 
 
 _MetadataType = TypeVar("_MetadataType", bound=CoreMetadata)

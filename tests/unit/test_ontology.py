@@ -71,7 +71,7 @@ def get_speed(distance=10.0, time=2.0):
     return speed
 
 
-@meta(uri=EX.Addition, triples=("inputs.a", PROV.wasGeneratedBy, None))
+@meta(uri=EX.Addition, triples=("inputs.a", PROV.wasGeneratedBy, None), used="add")
 def add(a: float, b: float) -> u(float, triples=(EX.HasOperation, EX.Addition)):
     return a + b
 
@@ -879,6 +879,13 @@ class TestOntology(unittest.TestCase):
             (
                 URIRef("get_correct_analysis_owl.add_0.inputs.a"),
                 URIRef("get_correct_analysis_owl.add_0"),
+            ),
+        )
+        self.assertEqual(
+            list(graph.subject_objects(PROV.used))[0],
+            (
+                URIRef("get_correct_analysis_owl.add_0"),
+                URIRef("add"),
             ),
         )
 
