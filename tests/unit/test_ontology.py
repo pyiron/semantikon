@@ -886,7 +886,7 @@ class TestOntology(unittest.TestCase):
             (
                 URIRef("get_correct_analysis_owl.add_0"),
                 URIRef("add"),
-            )
+            ),
         )
 
     def test_units(self):
