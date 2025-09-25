@@ -33,8 +33,9 @@ def _short_label(graph, node):
 
 
 def _get_value(graph, label, **kwargs):
-    if ":" in label:
-        return {"prefix": dict(graph.namespaces())[label.split(":")[0]]} | kwargs
+    prefix = dict(graph.namespaces()).get(label.split(":")[0])
+    if prefix is not None:
+        return {"prefix": prefix} | kwargs
     else:
         return kwargs
 
