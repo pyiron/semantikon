@@ -15,7 +15,6 @@
 import importlib.util
 import os
 import shutil
-import subprocess
 
 from sphinx.ext.apidoc import main
 
@@ -78,7 +77,7 @@ copyright = (
 #
 # The short X.Y version.
 version_full = semantikon.__version__
-version = '.'.join(version_full.split('.')[:2])
+version = ".".join(version_full.split(".")[:2])
 # The full version, including alpha/beta/rc tags.
 release = version_full
 
