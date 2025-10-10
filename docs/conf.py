@@ -19,6 +19,8 @@ import subprocess
 
 from sphinx.ext.apidoc import main
 
+import semantikon
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -75,14 +77,8 @@ copyright = (
 # built documents.
 #
 # The short X.Y version.
-version_full = subprocess.check_output(
-    "python -c 'import versioneer; print(versioneer.get_version())'",
-    cwd=os.path.join(os.path.curdir, ".."),
-    universal_newlines=True,
-    shell=True,
-)
-version_full = version_full.split("\n")[0]
-version = ".".join(version_full.split(".")[0:2])
+version_full = semantikon.__version__
+version = '.'.join(version_full.split('.')[:2])
 # The full version, including alpha/beta/rc tags.
 release = version_full
 

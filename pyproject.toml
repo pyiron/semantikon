@@ -1,9 +1,9 @@
 [build-system]
 requires = [
-    "setuptools==80.9.0",
-    "versioneer[toml]==0.29",
+    "hatchling==1.27.0",
+    "hatch-vcs==0.5.0",
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "hatchling.build"
 
 [project]
 name = "semantikon"
@@ -45,21 +45,28 @@ Homepage = "https://pyiron.org/"
 Documentation = "https://semantikon.readthedocs.io"
 Repository = "https://github.com/pyiron/semantikon"
 
-[tool.versioneer]
-VCS = "git"
-style = "pep440-pre"
-versionfile_source = "semantikon/_version.py"
-parentdir_prefix = "semantikon"
-tag_prefix = "semantikon-"
+[tool.hatch.build]
+include = [
+    "semantikon"
+]
 
-[tool.setuptools.packages.find]
-include = [ "semantikon*",]
+[tool.hatch.build.hooks.vcs]
+version-file = "semantikon/_version.py"
 
-[tool.setuptools.dynamic.version]
-attr = "semantikon.__version__"
+[tool.hatch.build.targets.sdist]
+include = [
+    "semantikon"
+]
 
-[tool.setuptools.package-data]
-semantikon = ["data/qudt.ttl"]
+[tool.hatch.build.targets.wheel]
+packages = [
+    "semantikon"
+]
+
+[tool.hatch.version]
+source = "vcs"
+path = "semantikon/_version.py"
+
 
 [tool.mypy]
 exclude = [
