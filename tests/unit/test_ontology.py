@@ -735,6 +735,8 @@ class TestOntology(unittest.TestCase):
         @prefix prov: <http://www.w3.org/ns/prov#> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
         @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        @prefix ro: <http://purl.obolibrary.org/obo/RO_> .
+        @prefix iao: <http://purl.obolibrary.org/obo/IAO_> .
         
         <get_macro.add_one_0.inputs.a> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
@@ -791,21 +793,25 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_three_0.add_two_0.outputs.result.value> rdf:value 4 .
         
         <get_macro> a prov:Activity ;
-            ns1:hasNode <get_macro.add_one_0>,
+            ro:hasPart <get_macro.add_one_0>,
                 <get_macro.add_three_0> .
         
-        <get_macro.add_one_0> a prov:Activity ;
-            ns1:hasSourceFunction <add_one> .
+        <get_macro.add_one_0> a prov:Activity .
+
+        <add_one> iao:isAbout <get_macro.add_one_0> ;
+            iao:isAbout <get_macro.add_three_0.add_one_0> ;
+            a iao:informationContentEntity .
         
-        <get_macro.add_three_0.add_one_0> a prov:Activity ;
-            ns1:hasSourceFunction <add_one> .
+        <get_macro.add_three_0.add_one_0> a prov:Activity .
         
         <get_macro.add_three_0> a prov:Activity ;
-            ns1:hasNode <get_macro.add_three_0.add_one_0>,
+            ro:hasPart <get_macro.add_three_0.add_one_0>,
                 <get_macro.add_three_0.add_two_0> .
         
-        <get_macro.add_three_0.add_two_0> a prov:Activity ;
-            ns1:hasSourceFunction <add_two> .\n\n"""
+        <get_macro.add_three_0.add_two_0> a prov:Activity .
+        
+        <add_two> iao:isAbout <get_macro.add_three_0.add_two_0> ;
+            a iao:informationContentEntity .\n\n"""
         )
         ref_graph = Graph()
         ref_graph.parse(data=txt, format="turtle", publicID="")

@@ -12,11 +12,14 @@ from rdflib.term import IdentifiedNode
 from semantikon.converter import get_function_dict, meta_to_dict
 from semantikon.qudt import UnitsDict
 
+IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")
+
 
 class SNS:
+    RO: Namespace = Namespace("http://purl.obolibrary.org/obo/RO_")
     BASE: Namespace = Namespace("http://pyiron.org/ontology/")
-    hasNode: URIRef = BASE["hasNode"]
-    hasSourceFunction: URIRef = BASE["hasSourceFunction"]
+    hasPart: URIRef = RO["hasPart"]
+    isAbout: URIRef = IAO["isAbout"]
     hasUnits: URIRef = BASE["hasUnits"]
     inputOf: URIRef = BASE["inputOf"]
     outputOf: URIRef = BASE["outputOf"]
@@ -410,7 +413,8 @@ def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> l
             used = [used]
         for uu in used:
             triples.append((node_label, PROV.used, uu))
-    triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
+    triples.append((f_dict["label"], ontology.isAbout, node_label))
+    triples.append((f_dict["label"], RDF.type, IAO.informationContentEntity))
     return triples
 
 
@@ -512,7 +516,7 @@ def _parse_workflow(
         if "function" in node:
             triples.extend(_function_to_triples(node["function"], key, ontology))
         if "." in key:
-            triples.append((".".join(key.split(".")[:-1]), ontology.hasNode, key))
+            triples.append((".".join(key.split(".")[:-1]), ontology.hasPart, key))
     return triples
 
 

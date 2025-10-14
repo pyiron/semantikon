@@ -3,16 +3,16 @@ from string import Template
 from graphviz import Digraph
 from rdflib import RDF, BNode, Literal, URIRef
 
-from semantikon.ontology import SNS
+from semantikon.ontology import SNS, IAO
 
 _edge_colors = {
     "rdf:type": "darkblue",
-    "sns:hasSourceFunction": "darkgreen",
+    "iao:isAbout": "darkgreen",
     "sns:outputOf": "darkred",
     "sns:inputOf": "darkorange",
     "sns:hasValue": "brown",
     "sns:linksTo": "gray",
-    "sns:hasNode": "deeppink",
+    "ro:hasPart": "deeppink",
     "prov:wasDerivedFrom": "purple",
 }
 
@@ -58,7 +58,7 @@ def _get_data(graph):
     for obj in graph.objects(None, RDF.type):
         _add_color(data_dict, graph, obj, "lightyellow")
 
-    for obj in graph.objects(None, SNS.hasSourceFunction):
+    for obj in graph.subjects(IAO.isAbout, None):
         _add_color(data_dict, graph, obj, "lightgreen")
 
     for subj, obj in graph.subject_objects(SNS.outputOf):
