@@ -3,7 +3,7 @@ from string import Template
 from graphviz import Digraph
 from rdflib import RDF, BNode, Literal, URIRef
 
-from semantikon.ontology import SNS, IAO
+from semantikon.ontology import IAO, SNS
 
 _edge_colors = {
     "rdf:type": "darkblue",
