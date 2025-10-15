@@ -396,12 +396,13 @@ class TestOntology(unittest.TestCase):
             query_txt = [
                 "PREFIX ex: <http://example.org/>",
                 "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
-                f"PREFIX pns: <{SNS.BASE}>",
+                f"PREFIX sns: <{SNS.BASE}>",
+                "PREFIX qudt: <http://qudt.org/schema/qudt/>",
                 "SELECT DISTINCT ?speed ?units",
                 "WHERE {",
-                "    ?output pns:hasValue ?output_tag .",
+                "    ?output sns:hasValue ?output_tag .",
                 "    ?output_tag rdf:value ?speed .",
-                "    ?output_tag pns:hasUnits ?units .",
+                "    ?output_tag qudt:hasUnit ?units .",
                 "}",
             ]
             query = "\n".join(query_txt)

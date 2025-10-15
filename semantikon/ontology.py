@@ -13,6 +13,7 @@ from semantikon.converter import get_function_dict, meta_to_dict
 from semantikon.qudt import UnitsDict
 
 IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")
+QUDT: Namespace = Namespace("http://qudt.org/schema/qudt/")
 
 
 class SNS:
@@ -20,7 +21,7 @@ class SNS:
     BASE: Namespace = Namespace("http://pyiron.org/ontology/")
     hasPart: URIRef = RO["hasPart"]
     isAbout: URIRef = IAO["isAbout"]
-    hasUnits: URIRef = BASE["hasUnits"]
+    hasUnits: URIRef = QUDT["hasUnit"]
     inputOf: URIRef = BASE["inputOf"]
     outputOf: URIRef = BASE["outputOf"]
     hasValue: URIRef = BASE["hasValue"]
