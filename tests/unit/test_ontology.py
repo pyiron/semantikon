@@ -424,7 +424,7 @@ class TestOntology(unittest.TestCase):
             len(
                 list(
                     graph.subjects(
-                        SNS.hasUnits, URIRef("http://qudt.org/vocab/unit/M-PER-SEC")
+                        SNS.has_unit, URIRef("http://qudt.org/vocab/unit/M-PER-SEC")
                     )
                 )
             ),
