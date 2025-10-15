@@ -8,8 +8,7 @@ from semantikon.ontology import IAO, SNS
 _edge_colors = {
     "rdf:type": "darkblue",
     "iao:0000136": "darkgreen",
-    "sns:outputOf": "darkred",
-    "sns:inputOf": "darkorange",
+    "bfo:0000051": "darkred",
     "sns:hasValue": "brown",
     "sns:linksTo": "gray",
     "ro:0000051": "deeppink",
@@ -61,13 +60,9 @@ def _get_data(graph):
     for obj in graph.subjects(IAO.isAbout, None):
         _add_color(data_dict, graph, obj, "lightgreen")
 
-    for subj, obj in graph.subject_objects(SNS.outputOf):
+    for subj, obj in graph.subject_objects(SNS.has_part):
         _add_color(data_dict, graph, obj, "lightpink")
         _add_color(data_dict, graph, subj, "lightcyan")
-
-    for subj, obj in graph.subject_objects(SNS.inputOf):
-        _add_color(data_dict, graph, obj, "lightpink")
-        _add_color(data_dict, graph, subj, "lightskyblue")
 
     for obj in graph.objects(None, SNS.hasValue):
         _add_color(data_dict, graph, obj, "peachpuff")

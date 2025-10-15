@@ -23,11 +23,10 @@ class SNS:
     has_part: URIRef = BFO["0000051"]
     is_about: URIRef = IAO["0000136"]
     has_unit: URIRef = QUDT["hasUnit"]
-    inputOf: URIRef = BASE["inputOf"]
-    outputOf: URIRef = BASE["outputOf"]
     hasValue: URIRef = BASE["hasValue"]
     linksTo: URIRef = BASE["linksTo"]
     precedes: URIRef = BFO["0000063"]
+    participates_in: URIRef = RO["0000056"]
 
 
 class NS:
@@ -248,7 +247,8 @@ def _inherit_properties(
     PREFIX rdfs: <{RDFS}>
     PREFIX rdf: <{RDF}>
     PREFIX owl: <{OWL}>
-    
+    PREFIX bfo: <{BFO}>
+
     INSERT {{
         ?subject ?p ?o .
     }}
@@ -260,8 +260,7 @@ def _inherit_properties(
         FILTER(?p != rdf:value)
         FILTER(?p != rdf:type)
         FILTER(?p != ns:hasValue)
-        FILTER(?p != ns:inputOf)
-        FILTER(?p != ns:outputOf)
+        FILTER(?p != bfo:0000051)  # has_part
         FILTER(?p != ns:linksTo)
         FILTER(?p != owl:sameAs)
     }}
@@ -417,7 +416,7 @@ def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> l
         for uu in used:
             triples.append((node_label, PROV.used, uu))
     triples.append((f_dict["label"], ontology.is_about, node_label))
-    triples.append((f_dict["label"], RDF.type, IAO.informationContentEntity))
+    triples.append((f_dict["label"], RDF.type, IAO["0000030"]))
     return triples
 
 
@@ -442,11 +441,11 @@ def _parse_channel(
     )
     if channel_dict[NS.TYPE] == "inputs":
         triples.append(
-            (channel_label, ontology.inputOf, channel_label.split(".inputs.")[0])
+            (channel_label.split(".inputs.")[0], ontology.has_part, channel_label)
         )
     elif channel_dict[NS.TYPE] == "outputs":
         triples.append(
-            (channel_label, ontology.outputOf, channel_label.split(".outputs.")[0])
+            (channel_label.split(".outputs.")[0], ontology.has_part, channel_label)
         )
     for t in _get_triples_from_restrictions(channel_dict):
         triples.append(

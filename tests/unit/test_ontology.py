@@ -801,7 +801,7 @@ class TestOntology(unittest.TestCase):
 
         <add_one> iao:0000136 <get_macro.add_one_0> ;
             iao:0000136 <get_macro.add_three_0.add_one_0> ;
-            a iao:informationContentEntity .
+            a iao:0000030 .
 
         <get_macro.add_three_0.add_one_0> a prov:Activity .
 
@@ -812,7 +812,7 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_three_0.add_two_0> a prov:Activity .
 
         <add_two> iao:0000136 <get_macro.add_three_0.add_two_0> ;
-            a iao:informationContentEntity .\n\n"""
+            a iao:0000030 .\n\n"""
         )
         ref_graph = Graph()
         ref_graph.parse(data=txt, format="turtle", publicID="")
