@@ -15,6 +15,7 @@ from semantikon.qudt import UnitsDict
 IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")
 QUDT: Namespace = Namespace("http://qudt.org/schema/qudt/")
 RO: Namespace = Namespace("http://purl.obolibrary.org/obo/RO_")
+OBO: Namespace = Namespace("http://purl.obolibrary.org/obo/OBO_")
 
 
 class SNS:
@@ -26,6 +27,7 @@ class SNS:
     outputOf: URIRef = BASE["outputOf"]
     hasValue: URIRef = BASE["hasValue"]
     linksTo: URIRef = BASE["linksTo"]
+    precedes: URIRef = OBO["0000063"]
 
 
 class NS:
