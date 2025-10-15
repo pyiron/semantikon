@@ -736,7 +736,7 @@ class TestOntology(unittest.TestCase):
         @prefix prov: <http://www.w3.org/ns/prov#> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
         @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-        @prefix ro: <http://purl.obolibrary.org/obo/RO_> .
+        @prefix bfo: <http://purl.obolibrary.org/obo/BFO_> .
         @prefix iao: <http://purl.obolibrary.org/obo/IAO_> .
         
         <get_macro.add_one_0.inputs.a> a prov:Entity ;
@@ -794,7 +794,7 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_three_0.add_two_0.outputs.result.value> rdf:value 4 .
         
         <get_macro> a prov:Activity ;
-            ro:0000051 <get_macro.add_one_0>,
+            bfo:0000051 <get_macro.add_one_0>,
                 <get_macro.add_three_0> .
         
         <get_macro.add_one_0> a prov:Activity .
@@ -806,7 +806,7 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_three_0.add_one_0> a prov:Activity .
         
         <get_macro.add_three_0> a prov:Activity ;
-            ro:0000051 <get_macro.add_three_0.add_one_0>,
+            bfo:0000051 <get_macro.add_three_0.add_one_0>,
                 <get_macro.add_three_0.add_two_0> .
         
         <get_macro.add_three_0.add_two_0> a prov:Activity .

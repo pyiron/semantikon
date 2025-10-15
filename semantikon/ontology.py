@@ -20,7 +20,7 @@ BFO: Namespace = Namespace("http://purl.obolibrary.org/obo/BFO_")
 
 class SNS:
     BASE: Namespace = Namespace("http://pyiron.org/ontology/")
-    has_part: URIRef = RO["0000051"]
+    has_part: URIRef = BFO["0000051"]
     is_about: URIRef = IAO["0000136"]
     has_unit: URIRef = QUDT["hasUnit"]
     inputOf: URIRef = BASE["inputOf"]
