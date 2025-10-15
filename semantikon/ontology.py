@@ -14,10 +14,10 @@ from semantikon.qudt import UnitsDict
 
 IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")
 QUDT: Namespace = Namespace("http://qudt.org/schema/qudt/")
+RO: Namespace = Namespace("http://purl.obolibrary.org/obo/RO_")
 
 
 class SNS:
-    RO: Namespace = Namespace("http://purl.obolibrary.org/obo/RO_")
     BASE: Namespace = Namespace("http://pyiron.org/ontology/")
     hasPart: URIRef = RO["0000051"]
     isAbout: URIRef = IAO["0000136"]
