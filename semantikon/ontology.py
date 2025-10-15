@@ -19,9 +19,9 @@ RO: Namespace = Namespace("http://purl.obolibrary.org/obo/RO_")
 
 class SNS:
     BASE: Namespace = Namespace("http://pyiron.org/ontology/")
-    hasPart: URIRef = RO["0000051"]
-    isAbout: URIRef = IAO["0000136"]
-    hasUnits: URIRef = QUDT["hasUnit"]
+    has_part: URIRef = RO["0000051"]
+    is_about: URIRef = IAO["0000136"]
+    has_unit: URIRef = QUDT["hasUnit"]
     inputOf: URIRef = BASE["inputOf"]
     outputOf: URIRef = BASE["outputOf"]
     hasValue: URIRef = BASE["hasValue"]
@@ -90,11 +90,11 @@ def _translate_has_value(
             if isinstance(units, str):
                 key = ud[units]
                 if key is not None:
-                    triples.append((tag_uri, ontology.hasUnits, key))
+                    triples.append((tag_uri, ontology.has_unit, key))
                 else:
-                    triples.append((tag_uri, ontology.hasUnits, URIRef(units)))
+                    triples.append((tag_uri, ontology.has_unit, URIRef(units)))
             else:
-                triples.append((tag_uri, ontology.hasUnits, URIRef(units)))
+                triples.append((tag_uri, ontology.has_unit, URIRef(units)))
     return triples
 
 
@@ -345,7 +345,7 @@ def _check_units(graph: Graph, ontology=SNS) -> dict[URIRef, list[URIRef]]:
         (dict): dictionary of terms with multiple units
     """
     term_units = defaultdict(list)
-    for items in graph.subject_objects(ontology.hasUnits):
+    for items in graph.subject_objects(ontology.has_unit):
         term_units[items[0]].append(items[1])
     return {key: value for key, value in term_units.items() if len(value) > 1}
 
@@ -414,7 +414,7 @@ def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> l
             used = [used]
         for uu in used:
             triples.append((node_label, PROV.used, uu))
-    triples.append((f_dict["label"], ontology.isAbout, node_label))
+    triples.append((f_dict["label"], ontology.is_about, node_label))
     triples.append((f_dict["label"], RDF.type, IAO.informationContentEntity))
     return triples
 
@@ -517,7 +517,7 @@ def _parse_workflow(
         if "function" in node:
             triples.extend(_function_to_triples(node["function"], key, ontology))
         if "." in key:
-            triples.append((".".join(key.split(".")[:-1]), ontology.hasPart, key))
+            triples.append((".".join(key.split(".")[:-1]), ontology.has_part, key))
     return triples
 
 
@@ -569,7 +569,7 @@ def get_knowledge_graph(
         _inherit_properties(graph, triples_to_cancel, ontology=ontology)
     if append_missing_items:
         graph = _append_missing_items(graph)
-    if len(list(graph.subject_objects(SNS.hasUnits))) > 0:
+    if len(list(graph.subject_objects(SNS.has_unit))) > 0:
         graph.bind("qudt", "http://qudt.org/vocab/unit/")
     graph.bind("sns", str(ontology.BASE))
     return graph
