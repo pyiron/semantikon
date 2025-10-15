@@ -794,24 +794,24 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_three_0.add_two_0.outputs.result.value> rdf:value 4 .
         
         <get_macro> a prov:Activity ;
-            ro:hasPart <get_macro.add_one_0>,
+            ro:0000051 <get_macro.add_one_0>,
                 <get_macro.add_three_0> .
         
         <get_macro.add_one_0> a prov:Activity .
 
-        <add_one> iao:isAbout <get_macro.add_one_0> ;
-            iao:isAbout <get_macro.add_three_0.add_one_0> ;
+        <add_one> iao:0000136 <get_macro.add_one_0> ;
+            iao:0000136 <get_macro.add_three_0.add_one_0> ;
             a iao:informationContentEntity .
         
         <get_macro.add_three_0.add_one_0> a prov:Activity .
         
         <get_macro.add_three_0> a prov:Activity ;
-            ro:hasPart <get_macro.add_three_0.add_one_0>,
+            ro:0000051 <get_macro.add_three_0.add_one_0>,
                 <get_macro.add_three_0.add_two_0> .
         
         <get_macro.add_three_0.add_two_0> a prov:Activity .
         
-        <add_two> iao:isAbout <get_macro.add_three_0.add_two_0> ;
+        <add_two> iao:0000136 <get_macro.add_three_0.add_two_0> ;
             a iao:informationContentEntity .\n\n"""
         )
         ref_graph = Graph()

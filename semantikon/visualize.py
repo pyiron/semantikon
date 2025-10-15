@@ -7,12 +7,12 @@ from semantikon.ontology import IAO, SNS
 
 _edge_colors = {
     "rdf:type": "darkblue",
-    "iao:isAbout": "darkgreen",
+    "iao:0000136": "darkgreen",
     "sns:outputOf": "darkred",
     "sns:inputOf": "darkorange",
     "sns:hasValue": "brown",
     "sns:linksTo": "gray",
-    "ro:hasPart": "deeppink",
+    "ro:0000051": "deeppink",
     "prov:wasDerivedFrom": "purple",
 }
 

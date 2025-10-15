@@ -19,8 +19,8 @@ QUDT: Namespace = Namespace("http://qudt.org/schema/qudt/")
 class SNS:
     RO: Namespace = Namespace("http://purl.obolibrary.org/obo/RO_")
     BASE: Namespace = Namespace("http://pyiron.org/ontology/")
-    hasPart: URIRef = RO["hasPart"]
-    isAbout: URIRef = IAO["isAbout"]
+    hasPart: URIRef = RO["0000051"]
+    isAbout: URIRef = IAO["0000136"]
     hasUnits: URIRef = QUDT["hasUnit"]
     inputOf: URIRef = BASE["inputOf"]
     outputOf: URIRef = BASE["outputOf"]
