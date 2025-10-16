@@ -740,49 +740,41 @@ class TestOntology(unittest.TestCase):
         @prefix iao: <http://purl.obolibrary.org/obo/IAO_> .
 
         <get_macro.add_one_0.inputs.a> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
-            ns1:inputOf <get_macro.add_one_0> .
+            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> .
 
         <get_macro.add_three_0.add_one_0.inputs.a> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
-            ns1:inputOf <get_macro.add_three_0.add_one_0> .
+            ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> .
 
         <get_macro.add_three_0.add_two_0.inputs.b> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> ;
-            ns1:inputOf <get_macro.add_three_0.add_two_0> .
+            ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> .
+
 
         <get_macro.outputs.result> a prov:Entity ;
-            ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
-            ns1:outputOf <get_macro> .
+            ns1:hasValue <get_macro.add_one_0.outputs.result.value> .
+
 
         <get_macro.add_one_0.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_one_0> ;
             ns1:linksTo <get_macro.outputs.result> .
 
         <get_macro.add_three_0.add_one_0.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_three_0.add_one_0> ;
             ns1:linksTo <get_macro.add_three_0.add_two_0.inputs.b> .
 
         <get_macro.add_three_0.add_two_0.outputs.result> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_three_0.add_two_0> ;
             ns1:linksTo <get_macro.add_three_0.outputs.w> .
 
         <get_macro.add_three_0.inputs.c> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
-            ns1:inputOf <get_macro.add_three_0> ;
             ns1:linksTo <get_macro.add_three_0.add_one_0.inputs.a> .
 
         <get_macro.add_three_0.outputs.w> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_three_0> ;
             ns1:linksTo <get_macro.add_one_0.inputs.a> .
 
         <get_macro.inputs.c> a prov:Entity ;
             ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
-            ns1:inputOf <get_macro> ;
             ns1:linksTo <get_macro.add_three_0.inputs.c> .
 
         <get_macro.add_one_0.outputs.result.value> rdf:value 5 .
@@ -795,21 +787,32 @@ class TestOntology(unittest.TestCase):
 
         <get_macro> a prov:Activity ;
             bfo:0000051 <get_macro.add_one_0>,
-                <get_macro.add_three_0> .
+                <get_macro.add_three_0>,
+                <get_macro.outputs.result>,
+                <get_macro.inputs.c> .
 
-        <get_macro.add_one_0> a prov:Activity .
+
+        <get_macro.add_one_0> a prov:Activity ;
+            bfo:0000051 <get_macro.add_one_0.outputs.result>,
+                <get_macro.add_one_0.inputs.a> .
 
         <add_one> iao:0000136 <get_macro.add_one_0> ;
             iao:0000136 <get_macro.add_three_0.add_one_0> ;
             a iao:0000030 .
 
-        <get_macro.add_three_0.add_one_0> a prov:Activity .
+        <get_macro.add_three_0.add_one_0> a prov:Activity ;
+            bfo:0000051 <get_macro.add_three_0.add_one_0.outputs.result>,
+                <get_macro.add_three_0.add_one_0.inputs.a> .
 
         <get_macro.add_three_0> a prov:Activity ;
             bfo:0000051 <get_macro.add_three_0.add_one_0>,
-                <get_macro.add_three_0.add_two_0> .
+                <get_macro.add_three_0.add_two_0>,
+                <get_macro.add_three_0.outputs.w>,
+                <get_macro.add_three_0.inputs.c> .
 
-        <get_macro.add_three_0.add_two_0> a prov:Activity .
+        <get_macro.add_three_0.add_two_0> a prov:Activity ;
+            bfo:0000051 <get_macro.add_three_0.add_two_0.outputs.result>,
+                <get_macro.add_three_0.add_two_0.inputs.b> .
 
         <add_two> iao:0000136 <get_macro.add_three_0.add_two_0> ;
             a iao:0000030 .\n\n"""
