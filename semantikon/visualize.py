@@ -3,16 +3,15 @@ from string import Template
 from graphviz import Digraph
 from rdflib import RDF, BNode, Literal, URIRef
 
-from semantikon.ontology import SNS
+from semantikon.ontology import IAO, SNS
 
 _edge_colors = {
     "rdf:type": "darkblue",
-    "sns:hasSourceFunction": "darkgreen",
-    "sns:outputOf": "darkred",
-    "sns:inputOf": "darkorange",
-    "sns:hasValue": "brown",
+    "iao:0000136": "darkgreen",
+    "bfo:0000051": "darkred",
+    "ro:0000056": "brown",
     "sns:linksTo": "gray",
-    "sns:hasNode": "deeppink",
+    "ro:0000051": "deeppink",
     "prov:wasDerivedFrom": "purple",
 }
 
@@ -58,18 +57,14 @@ def _get_data(graph):
     for obj in graph.objects(None, RDF.type):
         _add_color(data_dict, graph, obj, "lightyellow")
 
-    for obj in graph.objects(None, SNS.hasSourceFunction):
+    for obj in graph.subjects(IAO.isAbout, None):
         _add_color(data_dict, graph, obj, "lightgreen")
 
-    for subj, obj in graph.subject_objects(SNS.outputOf):
+    for subj, obj in graph.subject_objects(SNS.has_part):
         _add_color(data_dict, graph, obj, "lightpink")
         _add_color(data_dict, graph, subj, "lightcyan")
 
-    for subj, obj in graph.subject_objects(SNS.inputOf):
-        _add_color(data_dict, graph, obj, "lightpink")
-        _add_color(data_dict, graph, subj, "lightskyblue")
-
-    for obj in graph.objects(None, SNS.hasValue):
+    for obj in graph.subjects(SNS.participates_in, None):
         _add_color(data_dict, graph, obj, "peachpuff")
 
     for subj, pred, obj in graph:

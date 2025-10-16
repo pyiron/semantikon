@@ -12,16 +12,20 @@ from rdflib.term import IdentifiedNode
 from semantikon.converter import get_function_dict, meta_to_dict
 from semantikon.qudt import UnitsDict
 
+IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")
+QUDT: Namespace = Namespace("http://qudt.org/schema/qudt/")
+RO: Namespace = Namespace("http://purl.obolibrary.org/obo/RO_")
+BFO: Namespace = Namespace("http://purl.obolibrary.org/obo/BFO_")
+
 
 class SNS:
     BASE: Namespace = Namespace("http://pyiron.org/ontology/")
-    hasNode: URIRef = BASE["hasNode"]
-    hasSourceFunction: URIRef = BASE["hasSourceFunction"]
-    hasUnits: URIRef = BASE["hasUnits"]
-    inputOf: URIRef = BASE["inputOf"]
-    outputOf: URIRef = BASE["outputOf"]
-    hasValue: URIRef = BASE["hasValue"]
+    has_part: URIRef = BFO["0000051"]
+    is_about: URIRef = IAO["0000136"]
+    has_unit: URIRef = QUDT["hasUnit"]
     linksTo: URIRef = BASE["linksTo"]
+    precedes: URIRef = BFO["0000063"]
+    participates_in: URIRef = RO["0000056"]
 
 
 class NS:
@@ -46,7 +50,7 @@ def _translate_has_value(
     ontology=SNS,
 ) -> _triple_type:
     tag_uri = URIRef(tag + ".value")
-    triples: _triple_type = [(label, ontology.hasValue, tag_uri)]
+    triples: _triple_type = [(tag_uri, ontology.participates_in, label)]
     if is_dataclass(dtype):
         warnings.warn(
             "semantikon_class is experimental - triples may change in the future",
@@ -86,11 +90,11 @@ def _translate_has_value(
             if isinstance(units, str):
                 key = ud[units]
                 if key is not None:
-                    triples.append((tag_uri, ontology.hasUnits, key))
+                    triples.append((tag_uri, ontology.has_unit, key))
                 else:
-                    triples.append((tag_uri, ontology.hasUnits, URIRef(units)))
+                    triples.append((tag_uri, ontology.has_unit, URIRef(units)))
             else:
-                triples.append((tag_uri, ontology.hasUnits, URIRef(units)))
+                triples.append((tag_uri, ontology.has_unit, URIRef(units)))
     return triples
 
 
@@ -242,7 +246,9 @@ def _inherit_properties(
     PREFIX rdfs: <{RDFS}>
     PREFIX rdf: <{RDF}>
     PREFIX owl: <{OWL}>
-    
+    PREFIX bfo: <{BFO}>
+    PREFIX ro: <{RO}>
+
     INSERT {{
         ?subject ?p ?o .
     }}
@@ -253,9 +259,8 @@ def _inherit_properties(
         FILTER(?p != rdfs:label)
         FILTER(?p != rdf:value)
         FILTER(?p != rdf:type)
-        FILTER(?p != ns:hasValue)
-        FILTER(?p != ns:inputOf)
-        FILTER(?p != ns:outputOf)
+        FILTER(?p != ro:0000056)  # participates_in
+        FILTER(?p != bfo:0000051)  # has_part
         FILTER(?p != ns:linksTo)
         FILTER(?p != owl:sameAs)
     }}
@@ -341,7 +346,7 @@ def _check_units(graph: Graph, ontology=SNS) -> dict[URIRef, list[URIRef]]:
         (dict): dictionary of terms with multiple units
     """
     term_units = defaultdict(list)
-    for items in graph.subject_objects(ontology.hasUnits):
+    for items in graph.subject_objects(ontology.has_unit):
         term_units[items[0]].append(items[1])
     return {key: value for key, value in term_units.items() if len(value) > 1}
 
@@ -410,7 +415,8 @@ def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> l
             used = [used]
         for uu in used:
             triples.append((node_label, PROV.used, uu))
-    triples.append((node_label, ontology.hasSourceFunction, f_dict["label"]))
+    triples.append((f_dict["label"], ontology.is_about, node_label))
+    triples.append((f_dict["label"], RDF.type, IAO["0000030"]))
     return triples
 
 
@@ -435,11 +441,11 @@ def _parse_channel(
     )
     if channel_dict[NS.TYPE] == "inputs":
         triples.append(
-            (channel_label, ontology.inputOf, channel_label.split(".inputs.")[0])
+            (channel_label.split(".inputs.")[0], ontology.has_part, channel_label)
         )
     elif channel_dict[NS.TYPE] == "outputs":
         triples.append(
-            (channel_label, ontology.outputOf, channel_label.split(".outputs.")[0])
+            (channel_label.split(".outputs.")[0], ontology.has_part, channel_label)
         )
     for t in _get_triples_from_restrictions(channel_dict):
         triples.append(
@@ -512,7 +518,7 @@ def _parse_workflow(
         if "function" in node:
             triples.extend(_function_to_triples(node["function"], key, ontology))
         if "." in key:
-            triples.append((".".join(key.split(".")[:-1]), ontology.hasNode, key))
+            triples.append((".".join(key.split(".")[:-1]), ontology.has_part, key))
     return triples
 
 
@@ -564,7 +570,7 @@ def get_knowledge_graph(
         _inherit_properties(graph, triples_to_cancel, ontology=ontology)
     if append_missing_items:
         graph = _append_missing_items(graph)
-    if len(list(graph.subject_objects(SNS.hasUnits))) > 0:
+    if len(list(graph.subject_objects(SNS.has_unit))) > 0:
         graph.bind("qudt", "http://qudt.org/vocab/unit/")
     graph.bind("sns", str(ontology.BASE))
     return graph
