@@ -9,7 +9,7 @@ _edge_colors = {
     "rdf:type": "darkblue",
     "iao:0000136": "darkgreen",
     "bfo:0000051": "darkred",
-    "sns:hasValue": "brown",
+    "ro:0000056": "brown",
     "sns:linksTo": "gray",
     "ro:0000051": "deeppink",
     "prov:wasDerivedFrom": "purple",
@@ -64,7 +64,7 @@ def _get_data(graph):
         _add_color(data_dict, graph, obj, "lightpink")
         _add_color(data_dict, graph, subj, "lightcyan")
 
-    for obj in graph.objects(None, SNS.hasValue):
+    for obj in graph.subjects(SNS.participates_in, None):
         _add_color(data_dict, graph, obj, "peachpuff")
 
     for subj, pred, obj in graph:

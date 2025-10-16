@@ -396,11 +396,11 @@ class TestOntology(unittest.TestCase):
             query_txt = [
                 "PREFIX ex: <http://example.org/>",
                 "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
-                f"PREFIX sns: <{SNS.BASE}>",
+                "PREFIX ro: <http://purl.obolibrary.org/obo/RO_>",
                 "PREFIX qudt: <http://qudt.org/schema/qudt/>",
                 "SELECT DISTINCT ?speed ?units",
                 "WHERE {",
-                "    ?output sns:hasValue ?output_tag .",
+                "    ?output_tag ro:0000056 ?output .",
                 "    ?output_tag rdf:value ?speed .",
                 "    ?output_tag qudt:hasUnit ?units .",
                 "}",
@@ -681,16 +681,16 @@ class TestOntology(unittest.TestCase):
     def test_macro(self):
         graph = get_knowledge_graph(get_macro.run())
         subj = list(
-            graph.subjects(
-                SNS.hasValue,
+            graph.objects(
                 URIRef("get_macro.add_three_0.add_one_0.inputs.a.value"),
+                SNS.participates_in,
             )
         )
         self.assertEqual(len(subj), 3)
         subj = list(
-            graph.subjects(
-                SNS.hasValue,
+            graph.objects(
                 URIRef("get_macro.add_three_0.add_two_0.outputs.result.value"),
+                SNS.participates_in,
             )
         )
         self.assertEqual(len(subj), 3)
@@ -738,52 +738,51 @@ class TestOntology(unittest.TestCase):
         @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
         @prefix bfo: <http://purl.obolibrary.org/obo/BFO_> .
         @prefix iao: <http://purl.obolibrary.org/obo/IAO_> .
+        @prefix ro: <http://purl.obolibrary.org/obo/RO_> .
 
-        <get_macro.add_one_0.inputs.a> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> .
+        <get_macro.add_one_0.inputs.a> a prov:Entity .
 
-        <get_macro.add_three_0.add_one_0.inputs.a> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> .
+        <get_macro.add_three_0.add_one_0.inputs.a> a prov:Entity .
 
-        <get_macro.add_three_0.add_two_0.inputs.b> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> .
+        <get_macro.add_three_0.add_two_0.inputs.b> a prov:Entity .
 
-
-        <get_macro.outputs.result> a prov:Entity ;
-            ns1:hasValue <get_macro.add_one_0.outputs.result.value> .
-
+        <get_macro.outputs.result> a prov:Entity .
 
         <get_macro.add_one_0.outputs.result> a prov:Entity ;
-            ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
             ns1:linksTo <get_macro.outputs.result> .
 
         <get_macro.add_three_0.add_one_0.outputs.result> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> ;
             ns1:linksTo <get_macro.add_three_0.add_two_0.inputs.b> .
 
         <get_macro.add_three_0.add_two_0.outputs.result> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
             ns1:linksTo <get_macro.add_three_0.outputs.w> .
 
         <get_macro.add_three_0.inputs.c> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
             ns1:linksTo <get_macro.add_three_0.add_one_0.inputs.a> .
 
         <get_macro.add_three_0.outputs.w> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
             ns1:linksTo <get_macro.add_one_0.inputs.a> .
 
         <get_macro.inputs.c> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
             ns1:linksTo <get_macro.add_three_0.inputs.c> .
 
-        <get_macro.add_one_0.outputs.result.value> rdf:value 5 .
+        <get_macro.add_one_0.outputs.result.value> rdf:value 5 ;
+            ro:0000056 <get_macro.outputs.result>,
+                <get_macro.add_one_0.outputs.result> .
 
-        <get_macro.add_three_0.add_one_0.outputs.result.value> rdf:value 2 .
+        <get_macro.add_three_0.add_one_0.outputs.result.value> rdf:value 2 ;
+            ro:0000056 <get_macro.add_three_0.add_two_0.inputs.b>,
+                <get_macro.add_three_0.add_one_0.outputs.result> .
 
-        <get_macro.add_three_0.add_one_0.inputs.a.value> rdf:value 1 .
+        <get_macro.add_three_0.add_one_0.inputs.a.value> rdf:value 1 ;
+            ro:0000056 <get_macro.inputs.c>,
+                <get_macro.add_three_0.inputs.c>,
+                <get_macro.add_three_0.add_one_0.inputs.a> .
 
-        <get_macro.add_three_0.add_two_0.outputs.result.value> rdf:value 4 .
+        <get_macro.add_three_0.add_two_0.outputs.result.value> rdf:value 4 ;
+            ro:0000056 <get_macro.add_one_0.inputs.a>,
+                <get_macro.add_three_0.add_two_0.outputs.result>,
+                <get_macro.add_three_0.outputs.w> .
 
         <get_macro> a prov:Activity ;
             bfo:0000051 <get_macro.add_one_0>,
@@ -975,7 +974,7 @@ class TestDataclass(unittest.TestCase):
             (URIRef(f"{i_txt}.n.value"), RDFS.subClassOf, URIRef(f"{i_txt}.value")),
             (URIRef(f"{i_txt}.n.value"), RDF.value, Literal(100)),
             (URIRef(f"{i_txt}.parameters.a.value"), RDF.value, Literal(2)),
-            (URIRef(o_txt), SNS.hasValue, URIRef(f"{o_txt}.E.value")),
+            (URIRef(f"{o_txt}.E.value"), SNS.participates_in, URIRef(o_txt)),
         )
         for ii, triple in enumerate(triples):
             with self.subTest(i=ii):
