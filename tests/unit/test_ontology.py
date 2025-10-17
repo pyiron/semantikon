@@ -739,6 +739,7 @@ class TestOntology(unittest.TestCase):
         @prefix bfo: <http://purl.obolibrary.org/obo/BFO_> .
         @prefix iao: <http://purl.obolibrary.org/obo/IAO_> .
         @prefix ro: <http://purl.obolibrary.org/obo/RO_> .
+        @prefix pmd: <https://w3id.org/pmd/co/PMD_> .
 
         <get_macro.add_one_0.inputs.a> a prov:Entity .
 
@@ -746,25 +747,32 @@ class TestOntology(unittest.TestCase):
 
         <get_macro.add_three_0.add_two_0.inputs.b> a prov:Entity .
 
-        <get_macro.outputs.result> a prov:Entity .
+        <get_macro.outputs.result> a prov:Entity ;
+            a pmd:0000067 .
 
         <get_macro.add_one_0.outputs.result> a prov:Entity ;
-            ns1:linksTo <get_macro.outputs.result> .
+            ns1:linksTo <get_macro.outputs.result> ;
+            a pmd:0000067 .
 
         <get_macro.add_three_0.add_one_0.outputs.result> a prov:Entity ;
-            ns1:linksTo <get_macro.add_three_0.add_two_0.inputs.b> .
+            ns1:linksTo <get_macro.add_three_0.add_two_0.inputs.b> ;
+            a pmd:0000067 .
 
         <get_macro.add_three_0.add_two_0.outputs.result> a prov:Entity ;
-            ns1:linksTo <get_macro.add_three_0.outputs.w> .
+            ns1:linksTo <get_macro.add_three_0.outputs.w> ;
+            a pmd:0000067 .
 
         <get_macro.add_three_0.inputs.c> a prov:Entity ;
-            ns1:linksTo <get_macro.add_three_0.add_one_0.inputs.a> .
+            ns1:linksTo <get_macro.add_three_0.add_one_0.inputs.a> ;
+            a pmd:0000066 .
 
         <get_macro.add_three_0.outputs.w> a prov:Entity ;
-            ns1:linksTo <get_macro.add_one_0.inputs.a> .
+            ns1:linksTo <get_macro.add_one_0.inputs.a> ;
+            a pmd:0000067 .
 
         <get_macro.inputs.c> a prov:Entity ;
-            ns1:linksTo <get_macro.add_three_0.inputs.c> .
+            ns1:linksTo <get_macro.add_three_0.inputs.c> ;
+            a pmd:0000066 .
 
         <get_macro.add_one_0.outputs.result.value> rdf:value 5 ;
             ro:0000056 <get_macro.outputs.result>,
@@ -789,7 +797,6 @@ class TestOntology(unittest.TestCase):
                 <get_macro.add_three_0>,
                 <get_macro.outputs.result>,
                 <get_macro.inputs.c> .
-
 
         <get_macro.add_one_0> a prov:Activity ;
             bfo:0000051 <get_macro.add_one_0.outputs.result>,

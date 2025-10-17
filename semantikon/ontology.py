@@ -16,16 +16,20 @@ IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")
 QUDT: Namespace = Namespace("http://qudt.org/schema/qudt/")
 RO: Namespace = Namespace("http://purl.obolibrary.org/obo/RO_")
 BFO: Namespace = Namespace("http://purl.obolibrary.org/obo/BFO_")
+PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
 
 
 class SNS:
     BASE: Namespace = Namespace("http://pyiron.org/ontology/")
     has_part: URIRef = BFO["0000051"]
+    has_participants: URIRef = BFO["0000057"]
     is_about: URIRef = IAO["0000136"]
     has_unit: URIRef = QUDT["hasUnit"]
     linksTo: URIRef = BASE["linksTo"]
     precedes: URIRef = BFO["0000063"]
     participates_in: URIRef = RO["0000056"]
+    input_assignment: URIRef = PMD["0000066"]
+    output_assignment: URIRef = PMD["0000067"]
 
 
 class NS:
@@ -440,12 +444,18 @@ def _parse_channel(
         )
     )
     if channel_dict[NS.TYPE] == "inputs":
-        triples.append(
-            (channel_label.split(".inputs.")[0], ontology.has_part, channel_label)
+        triples.extend(
+            [
+                (channel_label.split(".inputs.")[0], ontology.has_part, channel_label),
+                (channel_label, RDF.type, ontology.input_assignment),
+            ]
         )
     elif channel_dict[NS.TYPE] == "outputs":
-        triples.append(
-            (channel_label.split(".outputs.")[0], ontology.has_part, channel_label)
+        triples.extend(
+            [
+                (channel_label.split(".outputs.")[0], ontology.has_part, channel_label),
+                (channel_label, RDF.type, ontology.output_assignment),
+            ]
         )
     for t in _get_triples_from_restrictions(channel_dict):
         triples.append(
