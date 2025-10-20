@@ -97,7 +97,9 @@ class UnitsDict:
         data = defaultdict(list)
         for key in self._units_dict.keys():
             try:
-                data[str(self._ureg.parse_expression(key.lower()).to_base_units().units)].append(key)
+                data[
+                    str(self._ureg.parse_expression(key.lower()).to_base_units().units)
+                ].append(key)
             except Exception:
                 pass
         return data
