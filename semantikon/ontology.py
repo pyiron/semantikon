@@ -47,7 +47,7 @@ def _translate_has_value(
     parent: URIRef | None = None,
     ontology=SNS,
 ) -> _triple_type:
-    tag_uri = URIRef(tag + ".value")
+    tag_uri = tag + ".value"
     triples: _triple_type = [(label, ontology.hasValue, tag_uri)]
     if is_dataclass(dtype):
         warnings.warn(
@@ -389,11 +389,15 @@ def _append_missing_items(graph: Graph) -> Graph:
     return graph
 
 
-def _convert_to_uriref(value: URIRef | Literal | str | None) -> URIRef | Literal:
+def _convert_to_uriref(
+    value: URIRef | Literal | str | None, namespace: Namespace | None = None
+) -> URIRef | Literal:
     if isinstance(value, URIRef) or isinstance(value, Literal):
-        return value  # Already a URIRef
+        return value
     elif isinstance(value, str):
-        return URIRef(value)  # Convert string to URIRef
+        if namespace is not None and not value.startswith("http"):
+            return namespace[value]
+        return URIRef(value)
     else:
         raise TypeError(f"Unsupported type: {type(value)}")
 
@@ -518,7 +522,7 @@ def _parse_workflow(
     return triples
 
 
-def _parse_cancel(wf_channels: dict) -> list:
+def _parse_cancel(wf_channels: dict, namespace: Namespace | None = None) -> list:
     triples = []
     for n_label, channel_dict in wf_channels.items():
         if "extra" not in channel_dict or "cancel" not in channel_dict["extra"]:
@@ -530,7 +534,10 @@ def _parse_cancel(wf_channels: dict) -> list:
             cancel = [cancel]
         for c in cancel:
             triples.append(_parse_triple(c, label=n_label))
-    return [tuple([_convert_to_uriref(tt) for tt in t]) for t in triples]
+    return [
+        tuple([_convert_to_uriref(tt, namespace=namespace) for tt in t])
+        for t in triples
+    ]
 
 
 def get_knowledge_graph(
@@ -540,6 +547,7 @@ def get_knowledge_graph(
     ontology=SNS,
     append_missing_items: bool = True,
     use_uuid: bool = False,
+    namespace: Namespace | None = None,
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
@@ -556,11 +564,11 @@ def get_knowledge_graph(
         graph = Graph()
     node_dict, channel_dict, edge_list = serialize_data(wf_dict, use_uuid=use_uuid)
     triples = _parse_workflow(node_dict, channel_dict, edge_list, ontology=ontology)
-    triples_to_cancel = _parse_cancel(channel_dict)
+    triples_to_cancel = _parse_cancel(channel_dict, namespace=namespace)
     for triple in triples:
         if any(t is None for t in triple):
             continue
-        s, p, o = tuple([_convert_to_uriref(t) for t in triple])
+        s, p, o = tuple([_convert_to_uriref(t, namespace=namespace) for t in triple])
         graph.add((s, p, o))
     if inherit_properties:
         _inherit_properties(graph, triples_to_cancel, ontology=ontology)
@@ -569,6 +577,8 @@ def get_knowledge_graph(
     if len(list(graph.subject_objects(SNS.hasUnits))) > 0:
         graph.bind("qudt", "http://qudt.org/vocab/unit/")
     graph.bind("sns", str(ontology.BASE))
+    if namespace is not None:
+        graph.bind("ns", str(namespace))
     return graph
 
 
