@@ -395,7 +395,7 @@ def _convert_to_uriref(
     if isinstance(value, URIRef) or isinstance(value, Literal):
         return value
     elif isinstance(value, str):
-        if namespace is not None and not value.startswith("http"):
+        if namespace is not None and not value.lower().startswith("http"):
             return namespace[value]
         return URIRef(value)
     else:
