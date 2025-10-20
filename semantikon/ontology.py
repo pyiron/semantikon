@@ -12,12 +12,14 @@ from rdflib.term import IdentifiedNode
 from semantikon.converter import get_function_dict, meta_to_dict
 from semantikon.qudt import UnitsDict
 
+QUDT = Namespace("http://qudt.org/schema/qudt/")
+
 
 class SNS:
     BASE: Namespace = Namespace("http://pyiron.org/ontology/")
     hasNode: URIRef = BASE["hasNode"]
     hasSourceFunction: URIRef = BASE["hasSourceFunction"]
-    hasUnits: URIRef = BASE["hasUnits"]
+    hasUnits: URIRef = QUDT["unit"]
     inputOf: URIRef = BASE["inputOf"]
     outputOf: URIRef = BASE["outputOf"]
     hasValue: URIRef = BASE["hasValue"]
