@@ -47,8 +47,8 @@ def _translate_has_value(
     parent: URIRef | None = None,
     ontology=SNS,
 ) -> _triple_type:
-    tag_uri = tag + ".value"
-    triples: _triple_type = [(label, ontology.hasValue, tag_uri)]
+    tag_value = tag + ".value"
+    triples: _triple_type = [(label, ontology.hasValue, tag_value)]
     if is_dataclass(dtype):
         warnings.warn(
             "semantikon_class is experimental - triples may change in the future",
@@ -62,7 +62,7 @@ def _translate_has_value(
                         tag=_dot(tag, k),
                         value=getattr(value, k, None),
                         dtype=v,
-                        parent=tag_uri,
+                        parent=tag_value,
                         ontology=ontology,
                     )
                 )
@@ -75,24 +75,24 @@ def _translate_has_value(
                     value=getattr(value, k, None),
                     dtype=metadata["dtype"],
                     units=metadata.get("units", None),
-                    parent=tag_uri,
+                    parent=tag_value,
                     ontology=ontology,
                 )
             )
     else:
         if parent is not None:
-            triples.append((tag_uri, RDFS.subClassOf, parent))
+            triples.append((tag_value, RDFS.subClassOf, parent))
         if value is not None:
-            triples.append((tag_uri, RDF.value, Literal(value)))
+            triples.append((tag_value, RDF.value, Literal(value)))
         if units is not None:
             if isinstance(units, str):
                 key = ud[units]
                 if key is not None:
-                    triples.append((tag_uri, ontology.hasUnits, key))
+                    triples.append((tag_value, ontology.hasUnits, key))
                 else:
-                    triples.append((tag_uri, ontology.hasUnits, URIRef(units)))
+                    triples.append((tag_value, ontology.hasUnits, URIRef(units)))
             else:
-                triples.append((tag_uri, ontology.hasUnits, URIRef(units)))
+                triples.append((tag_value, ontology.hasUnits, URIRef(units)))
     return triples
 
 
