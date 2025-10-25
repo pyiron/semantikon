@@ -1,6 +1,7 @@
 import unittest
 
 import networkx as nx
+from flowrep import workflow as fwf
 
 import semantikon.workflow as swf
 from semantikon import datastructure
@@ -21,7 +22,7 @@ def multiply(x: float, y: float = 5) -> float:
     return x * y
 
 
-@swf.workflow
+@fwf.workflow
 @meta(uri="this macro has metadata")
 def example_macro(a=10, b=20):
     c, d = operation(a, b)
@@ -30,14 +31,14 @@ def example_macro(a=10, b=20):
     return f
 
 
-@swf.workflow
+@fwf.workflow
 def example_workflow(a=10, b=20):
     y = example_macro(a, b)
     z = add(y, b)
     return z
 
 
-@swf.workflow
+@fwf.workflow
 def parallel_execution(a=10, b=20):
     c = add(a)
     d = multiply(b)
@@ -71,7 +72,7 @@ def complex_function(
     return x, speed, speed / y
 
 
-@swf.workflow
+@fwf.workflow
 @meta(uri="some other URI")
 def complex_macro(
     x: u(float, units="meter") = 2.0,
@@ -80,7 +81,7 @@ def complex_macro(
     return b, c
 
 
-@swf.workflow
+@fwf.workflow
 @meta(triples=("a", "b", "c"))
 def complex_workflow(
     x: u(float, units="meter") = 2.0,
@@ -471,7 +472,7 @@ class TestWorkflow(unittest.TestCase):
         )
 
     def test_workflow_with_while(self):
-        wf = swf.workflow(workflow_with_while)._semantikon_workflow
+        wf = swf.get_workflow_dict(workflow_with_while)
         self.assertIn("injected_While_0", wf["nodes"])
         self.assertEqual(
             sorted(wf["nodes"]["injected_While_0"]["inputs"].keys()),
