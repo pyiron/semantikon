@@ -18,7 +18,7 @@ from semantikon.ontology import (
     validate_values,
 )
 from semantikon.visualize import visualize
-from semantikon.workflow import workflow
+from flowrep.workflow import workflow
 
 EX = Namespace("http://example.org/")
 

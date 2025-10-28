@@ -212,28 +212,6 @@ class TestWorkflow(unittest.TestCase):
     def setUpClass(cls):
         cls.maxDiff = None
 
-    def test_analyzer(self):
-        graph = swf.analyze_function(example_macro)[0]
-        all_data = [
-            ("operation_0", "c_0", {"type": "output", "output_index": 0}),
-            ("operation_0", "d_0", {"type": "output", "output_index": 1}),
-            ("c_0", "add_0", {"type": "input", "input_index": 0}),
-            ("d_0", "add_0", {"type": "input", "input_name": "y"}),
-            ("a_0", "operation_0", {"type": "input", "input_index": 0}),
-            ("b_0", "operation_0", {"type": "input", "input_index": 1}),
-            ("add_0", "e_0", {"type": "output"}),
-            ("e_0", "multiply_0", {"type": "input", "input_index": 0}),
-            ("multiply_0", "f_0", {"type": "output"}),
-            ("f_0", "output", {"type": "input"}),
-            ("input", "a_0", {"type": "output"}),
-            ("input", "b_0", {"type": "output"}),
-        ]
-        self.maxDiff = None
-        self.assertEqual(
-            sorted([data for data in graph.edges.data()]),
-            sorted(all_data),
-        )
-
     def test_get_node_dict(self):
         node_dict = swf.get_node_dict(add)
         self.assertEqual(
@@ -421,11 +399,11 @@ class TestWorkflow(unittest.TestCase):
             return result
 
         with self.assertRaises(NotImplementedError):
-            swf.workflow(example_invalid_operator)
+            fwf.workflow(example_invalid_operator)
         with self.assertRaises(NotImplementedError):
-            swf.workflow(example_invalid_multiple_operation)
+            fwf.workflow(example_invalid_multiple_operation)
         with self.assertRaises(NotImplementedError):
-            swf.workflow(example_invalid_local_var_def)
+            fwf.workflow(example_invalid_local_var_def)
 
     def test_separate_functions(self):
         old_data = example_workflow._semantikon_workflow
@@ -460,7 +438,7 @@ class TestWorkflow(unittest.TestCase):
 
     def test_workflow_to_use_undefined_variable(self):
         with self.assertRaises(KeyError):
-            swf.workflow(workflow_to_use_undefined_variable)
+            fwf.workflow(workflow_to_use_undefined_variable)
 
     def test_get_sorted_edges(self):
         graph = nx.DiGraph()
@@ -535,7 +513,7 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
 
         with self.subTest("As dataclass"):
-            wf = swf.get_node(swf.workflow(workflow_with_leaf))
+            wf = swf.get_node(fwf.workflow(workflow_with_leaf))
             self.assertIn("check_positive_0", wf.nodes.keys())
             self.assertIn("add_0", wf.nodes.keys())
             self.assertIn("y", wf.outputs.keys())
