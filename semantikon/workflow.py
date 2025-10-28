@@ -96,7 +96,7 @@ def get_node_dict(
     function: Callable,
     inputs: dict[str, dict] | None = None,
     outputs: dict[str, dict] | None = None,
-    type_: str = "Function",
+    type_: str | None = None,
 ) -> dict:
     """
     Get a dictionary representation of the function node.
@@ -113,6 +113,8 @@ def get_node_dict(
         inputs = parse_input_args(function)
     if outputs is None:
         outputs = _get_node_outputs(function)
+    if type_ is None:
+        type_ = "Function"
     data = {
         "inputs": inputs,
         "outputs": outputs,
@@ -139,7 +141,7 @@ def to_semantikon_workflow_dict(data: dict) -> dict:
         for key, node in data["nodes"].items():
             data["nodes"][key] = to_semantikon_workflow_dict(node)
     if "function" in data:
-        data.update(get_node_dict(data["function"]))
+        data.update(get_node_dict(data["function"], type_=data.get("type")))
     elif "test" in data:
         data["test"] = get_node_dict(data["test"]["function"])
     return data

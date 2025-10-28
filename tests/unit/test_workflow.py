@@ -239,7 +239,11 @@ class TestWorkflow(unittest.TestCase):
                         "output_0": {"dtype": float},
                         "output_1": {"dtype": float},
                     },
-                    "function": f"{operation.__module__}.operation",
+                    "function": {
+                        "module": "__main__",
+                        "qualname": "operation",
+                        "version": "not_defined",
+                    },
                     "type": "Function",
                 },
                 "add_0": {
@@ -248,7 +252,11 @@ class TestWorkflow(unittest.TestCase):
                         "y": {"dtype": float, "default": 1},
                     },
                     "outputs": {"output": {"dtype": float}},
-                    "function": f"{add.__module__}.add",
+                    "function": {
+                        "module": "__main__",
+                        "qualname": "add",
+                        "version": "not_defined",
+                    },
                     "uri": "add",
                     "type": "Function",
                 },
@@ -258,24 +266,30 @@ class TestWorkflow(unittest.TestCase):
                         "y": {"dtype": float, "default": 5},
                     },
                     "outputs": {"output": {"dtype": float}},
-                    "function": f"{multiply.__module__}.multiply",
+                    "function": {
+                        "module": "__main__",
+                        "qualname": "multiply",
+                        "version": "not_defined",
+                    },
                     "type": "Function",
                 },
             },
             "edges": [
                 ("inputs.a", "operation_0.inputs.x"),
                 ("inputs.b", "operation_0.inputs.y"),
-                ("operation_0.outputs.output_0", "add_0.inputs.x"),
-                ("operation_0.outputs.output_1", "add_0.inputs.y"),
+                ("operation_0.outputs.0", "add_0.inputs.x"),
+                ("operation_0.outputs.1", "add_0.inputs.y"),
                 ("add_0.outputs.output", "multiply_0.inputs.x"),
                 ("multiply_0.outputs.output", "outputs.f"),
             ],
             "label": "example_macro",
             "type": "Workflow",
         }
-        self.assertEqual(
-            swf.separate_functions(example_macro._semantikon_workflow)[0], ref_data
-        )
+        fwf_wf = fwf.get_workflow_dict(example_macro, with_function=True)
+        self.assertEqual(fwf_wf["type"], "Workflow")
+        smtk_wf = fwf.serialize_functions(swf.to_semantikon_workflow_dict(fwf_wf))
+        del smtk_wf["function"]
+        self.assertEqual(smtk_wf, ref_data)
 
     def test_get_workflow_dict_macro(self):
         result = swf.get_workflow_dict(example_workflow)
