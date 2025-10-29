@@ -68,19 +68,19 @@ class FunctionWithMetadata(Generic[F]):
     For more info, take a look at semantikon.ontology.get_knowledge_graph.
     """
 
-    def __init__(self, func: F, metadata: dict[str, object]) -> None:
-        self.func = func
+    def __init__(self, function: F, metadata: dict[str, object]) -> None:
+        self.function = function
         self._semantikon_metadata: dict[str, object] = metadata
-        update_wrapper(self, func)  # Copies __name__, __doc__, etc.
+        update_wrapper(self, function)  # Copies __name__, __doc__, etc.
 
     def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
+        return self.function(*args, **kwargs)
 
     def __getattr__(self, item):
-        return getattr(self.func, item)
+        return getattr(self.function, item)
 
     def __deepcopy__(self, memo=None):
-        new_func = deepcopy(self.func, memo)
+        new_func = deepcopy(self.function, memo)
         return FunctionWithMetadata(new_func, self._semantikon_metadata)
 
 
