@@ -292,7 +292,6 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(smtk_wf, ref_data)
 
     def test_get_workflow_dict_macro(self):
-        result = swf.get_workflow_dict(example_workflow)
         ref_data = {
             "inputs": {"a": {"default": 10}, "b": {"default": 20}},
             "outputs": {"z": {}},
@@ -302,7 +301,11 @@ class TestWorkflow(unittest.TestCase):
                     "outputs": {"f": {}},
                     "nodes": {
                         "operation_0": {
-                            "function": f"{operation.__module__}.operation",
+                            "function": {
+                                "module": "__main__",
+                                "qualname": "operation",
+                                "version": "not_defined",
+                            },
                             "inputs": {"x": {"dtype": float}, "y": {"dtype": float}},
                             "outputs": {
                                 "output_0": {"dtype": float},
@@ -311,7 +314,11 @@ class TestWorkflow(unittest.TestCase):
                             "type": "Function",
                         },
                         "add_0": {
-                            "function": f"{add.__module__}.add",
+                            "function": {
+                                "module": "__main__",
+                                "qualname": "add",
+                                "version": "not_defined",
+                            },
                             "inputs": {
                                 "x": {"dtype": float, "default": 2.0},
                                 "y": {"dtype": float, "default": 1},
@@ -321,7 +328,11 @@ class TestWorkflow(unittest.TestCase):
                             "type": "Function",
                         },
                         "multiply_0": {
-                            "function": f"{multiply.__module__}.multiply",
+                            "function": {
+                                "module": "__main__",
+                                "qualname": "multiply",
+                                "version": "not_defined",
+                            },
                             "inputs": {
                                 "x": {"dtype": float},
                                 "y": {"dtype": float, "default": 5},
@@ -333,8 +344,8 @@ class TestWorkflow(unittest.TestCase):
                     "edges": [
                         ("inputs.a", "operation_0.inputs.x"),
                         ("inputs.b", "operation_0.inputs.y"),
-                        ("operation_0.outputs.output_0", "add_0.inputs.x"),
-                        ("operation_0.outputs.output_1", "add_0.inputs.y"),
+                        ("operation_0.outputs.0", "add_0.inputs.x"),
+                        ("operation_0.outputs.1", "add_0.inputs.y"),
                         ("add_0.outputs.output", "multiply_0.inputs.x"),
                         ("multiply_0.outputs.output", "outputs.f"),
                     ],
@@ -343,7 +354,11 @@ class TestWorkflow(unittest.TestCase):
                     "uri": "this macro has metadata",
                 },
                 "add_0": {
-                    "function": f"{add.__module__}.add",
+                    "function": {
+                        "module": "__main__",
+                        "qualname": "add",
+                        "version": "not_defined",
+                    },
                     "inputs": {
                         "x": {"dtype": float, "default": 2.0},
                         "y": {"dtype": float, "default": 1},
@@ -363,7 +378,12 @@ class TestWorkflow(unittest.TestCase):
             "label": "example_workflow",
             "type": "Workflow",
         }
-        self.assertEqual(swf.separate_functions(result)[0], ref_data, msg=result)
+        fwf_wf = fwf.get_workflow_dict(example_workflow, with_function=True)
+        self.assertEqual(fwf_wf["type"], "Workflow")
+        smtk_wf = fwf.serialize_functions(swf.to_semantikon_workflow_dict(fwf_wf))
+        del smtk_wf["function"]
+        del smtk_wf["nodes"]["example_macro_0"]["function"]
+        self.assertEqual(smtk_wf, ref_data)
 
     def test_parallel_execution(self):
         graph = swf.analyze_function(parallel_execution)[0]
