@@ -27,7 +27,7 @@ dependencies = [
     "networkx==3.4.2",
     "numpy==2.3.3",
     "owlrl==7.1.4",
-    "pint==0.25.0",
+    "pint==0.25.1",
     "rdflib==7.3.0",
     "pyshacl==0.30.1",
     "requests==2.32.5",
