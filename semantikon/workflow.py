@@ -201,8 +201,8 @@ def get_node(func: Callable, label: str | None = None) -> Function | Workflow:
         else CoreMetadata.from_dict(metadata_dict)
     )
 
-    if hasattr(func, "_semantikon_workflow"):
-        return parse_workflow(func._semantikon_workflow, metadata)
+    if isinstance(func, fwf.FunctionWithWorkflow):
+        return parse_workflow(get_workflow_dict(func), metadata)
     else:
         return parse_function(func, metadata, label=label)
 
@@ -265,7 +265,7 @@ def parse_workflow(
         **{
             k: (
                 get_node(v["function"], label=k)
-                if "function" in v
+                if v["type"] == "Function"
                 else parse_workflow(v)
             )
             for k, v in semantikon_workflow["nodes"].items()
