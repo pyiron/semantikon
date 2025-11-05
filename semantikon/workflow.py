@@ -39,7 +39,7 @@ from semantikon.datastructure import (
 
 class FunctionWithWorkflow(fwf.FunctionWithWorkflow):
     def run(self, *args, **kwargs) -> dict[str, Any]:
-        return super().run(with_function=True, *args, **kwargs)
+        return to_semantikon_workflow_dict(super().run(with_function=True, *args, **kwargs))
 
     def serialize_workflow(self) -> dict:
         wf_dict = self._serialize_workflow(with_function=True, with_outputs=True)
