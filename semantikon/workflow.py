@@ -95,7 +95,7 @@ def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, di
 def get_node_dict(
     function: Callable,
     inputs: dict[str, dict] | None = None,
-    outputs: dict[str, dict] | None = None,
+    outputs: dict[str, Any] | list | None = None,
     type_: str | None = None,
 ) -> dict:
     """
@@ -109,15 +109,34 @@ def get_node_dict(
     Returns:
         (dict) A dictionary representation of the function node.
     """
-    if inputs is None:
-        inputs = parse_input_args(function)
-    if outputs is None:
-        outputs = _get_node_outputs(function)
+
+    def regulate_output_keys(
+        outputs: dict[str, Any], ref_outputs: dict[str, dict]
+    ) -> dict[str, Any]:
+        assert len(outputs) == len(ref_outputs), (outputs, ref_outputs)
+        ref_keys = list(ref_outputs.keys())
+        result = {}
+        for key, value in outputs.items():
+            try:
+                result[ref_keys[int(key)]] = value
+            except ValueError:
+                result[key] = value
+        return result
+
+    new_inputs = parse_input_args(function)
+    new_outputs = _get_node_outputs(function)
+    if isinstance(outputs, dict):
+        assert isinstance(inputs, dict), inputs
+        outputs = regulate_output_keys(outputs, new_outputs)
+        for key, value in outputs.items():
+            new_outputs[key]["value"] = value
+        for key, value in inputs.items():
+            new_inputs[key]["value"] = value
     if type_ is None:
         type_ = "Function"
     data = {
-        "inputs": inputs,
-        "outputs": outputs,
+        "inputs": new_inputs,
+        "outputs": new_outputs,
         "function": function,
         "type": type_,
     }
@@ -141,9 +160,16 @@ def to_semantikon_workflow_dict(data: dict) -> dict:
         for key, node in data["nodes"].items():
             data["nodes"][key] = to_semantikon_workflow_dict(node)
     if "function" in data:
-        data.update(get_node_dict(data["function"], type_=data.get("type")))
+        data.update(
+            get_node_dict(
+                function=data["function"],
+                inputs=data.get("inputs"),
+                outputs=data.get("outputs"),
+                type_=data.get("type"),
+            )
+        )
     elif "test" in data:
-        data["test"] = get_node_dict(data["test"]["function"])
+        data["test"] = get_node_dict(function=data["test"]["function"])
     return data
 
 
