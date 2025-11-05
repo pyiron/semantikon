@@ -22,7 +22,7 @@ def multiply(x: float, y: float = 5) -> float:
     return x * y
 
 
-@fwf.workflow
+@swf.workflow
 @meta(uri="this macro has metadata")
 def example_macro(a=10, b=20):
     c, d = operation(a, b)
@@ -31,14 +31,14 @@ def example_macro(a=10, b=20):
     return f
 
 
-@fwf.workflow
+@swf.workflow
 def example_workflow(a=10, b=20):
     y = example_macro(a, b)
     z = add(y, b)
     return z
 
 
-@fwf.workflow
+@swf.workflow
 def parallel_execution(a=10, b=20):
     c = add(a)
     d = multiply(b)
@@ -63,7 +63,7 @@ def complex_function(
     return x, speed, speed / y
 
 
-@fwf.workflow
+@swf.workflow
 @meta(uri="some other URI")
 def complex_macro(
     x: u(float, units="meter") = 2.0,
@@ -72,7 +72,7 @@ def complex_macro(
     return b, c
 
 
-@fwf.workflow
+@swf.workflow
 @meta(triples=("a", "b", "c"))
 def complex_workflow(
     x: u(float, units="meter") = 2.0,
