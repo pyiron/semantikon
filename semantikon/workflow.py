@@ -37,7 +37,7 @@ from semantikon.datastructure import (
 )
 
 
-class SemantikonFunctionWithWorkflow(fwf.FunctionWithWorkflow):
+class FunctionWithWorkflow(fwf.FunctionWithWorkflow):
     def run(self, *args, **kwargs) -> dict[str, Any]:
         return super().run(with_function=True, *args, **kwargs)
 
@@ -317,54 +317,9 @@ def parse_workflow(
     )
 
 
-def workflow(func: Callable) -> SemantikonFunctionWithWorkflow:
-    """
-    Decorator to convert a function into a workflow with metadata.
-
-
-    Args:
-        func (Callable): The function to be converted into a workflow.
-
-
-    Returns:
-        FunctionWithWorkflow: A callable object that includes the original function
-
-
-    Example:
-
-
-    >>> def operation(x: float, y: float) -> tuple[float, float]:
-    >>>     return x + y, x - y
-    >>>
-    >>>
-    >>> def add(x: float = 2.0, y: float = 1) -> float:
-    >>>     return x + y
-    >>>
-    >>>
-    >>> def multiply(x: float, y: float = 5) -> float:
-    >>>     return x * y
-    >>>
-    >>>
-    >>> @workflow
-    >>> def example_macro(a=10, b=20):
-    >>>     c, d = operation(a, b)
-    >>>     e = add(c, y=d)
-    >>>     f = multiply(e)
-    >>>     return f
-    >>>
-    >>>
-    >>> @workflow
-    >>> def example_workflow(a=10, b=20):
-    >>>     y = example_macro(a, b)
-    >>>     z = add(y, b)
-    >>>     return z
-
-)
-    This example defines a workflow `example_macro`, that includes `operation`,
-    `add`, and `multiply`, which is nested inside another workflow
-    `example_workflow`. Both workflows can be executed using their `run` method,
-    which returns the dictionary representation of the workflow with all the
-    intermediate steps and outputs.
-    """
-    func_with_metadata = SemantikonFunctionWithWorkflow(func)
+def workflow(func: Callable) -> FunctionWithWorkflow:
+    func_with_metadata = FunctionWithWorkflow(func)
     return func_with_metadata
+
+
+workflow.__doc__ = fwf.workflow.__doc__
