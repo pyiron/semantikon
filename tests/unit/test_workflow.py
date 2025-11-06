@@ -1,7 +1,7 @@
 import unittest
 
 import networkx as nx
-from flowrep import workflow as fwf
+from flowrep import workflow as fwf, tools
 
 import semantikon.workflow as swf
 from semantikon import datastructure
@@ -151,8 +151,8 @@ class TestWorkflow(unittest.TestCase):
             "edges": [
                 ("inputs.a", "operation_0.inputs.x"),
                 ("inputs.b", "operation_0.inputs.y"),
-                ("operation_0.outputs.0", "add_0.inputs.x"),
-                ("operation_0.outputs.1", "add_0.inputs.y"),
+                ("operation_0.outputs.output_0", "add_0.inputs.x"),
+                ("operation_0.outputs.output_1", "add_0.inputs.y"),
                 ("add_0.outputs.output", "multiply_0.inputs.x"),
                 ("multiply_0.outputs.output", "outputs.f"),
             ],
@@ -160,9 +160,9 @@ class TestWorkflow(unittest.TestCase):
             "type": "Workflow",
             "uri": "this macro has metadata",
         }
-        fwf_wf = swf.get_workflow_dict(example_macro, with_function=True)
-        self.assertEqual(fwf_wf["type"], "Workflow")
-        smtk_wf = fwf.serialize_functions(swf.to_semantikon_workflow_dict(fwf_wf))
+        wf = example_macro.serialize_workflow()
+        self.assertEqual(wf["type"], "Workflow")
+        smtk_wf = tools.serialize_functions(wf)
         del smtk_wf["function"]
         self.assertEqual(smtk_wf, ref_data)
 
@@ -253,7 +253,7 @@ class TestWorkflow(unittest.TestCase):
             "label": "example_workflow",
             "type": "Workflow",
         }
-        fwf_wf = fwf.get_workflow_dict(example_workflow, with_function=True)
+        fwf_wf = fwf.get_workflow_dict(example_workflow)
         self.assertEqual(fwf_wf["type"], "Workflow")
         smtk_wf = fwf.serialize_functions(swf.to_semantikon_workflow_dict(fwf_wf))
         del smtk_wf["function"]
