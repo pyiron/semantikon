@@ -132,6 +132,7 @@ def get_node_dict(
     function: Callable,
     inputs: dict[str, dict] | None = None,
     outputs: dict[str, Any] | list | None = None,
+    output_counts: int | None = None,
     type_: str | None = None,
 ) -> dict:
     """
@@ -160,7 +161,7 @@ def get_node_dict(
         return result
 
     new_inputs = parse_input_args(function)
-    new_outputs = _get_node_outputs(function)
+    new_outputs = _get_node_outputs(function, counts=output_counts)
     if isinstance(outputs, dict):
         assert isinstance(inputs, dict), inputs
         outputs = regulate_output_keys(outputs, new_outputs)
@@ -181,7 +182,9 @@ def get_node_dict(
     return data
 
 
-def to_semantikon_workflow_dict(data: dict) -> dict:
+def to_semantikon_workflow_dict(
+    data: dict, output_counts: dict[str, int] | None = None
+) -> dict:
     """
     Convert a workflow dictionary to the Semantikon format.
 
@@ -192,20 +195,25 @@ def to_semantikon_workflow_dict(data: dict) -> dict:
         dict: The workflow dictionary in the semantikon format.
     """
     data = copy.deepcopy(data)
-    if "nodes" in data:
-        for key, node in data["nodes"].items():
-            data["nodes"][key] = to_semantikon_workflow_dict(node)
     if "function" in data:
         data.update(
             get_node_dict(
                 function=data["function"],
                 inputs=data.get("inputs"),
                 outputs=data.get("outputs"),
+                output_counts=output_counts,
                 type_=data.get("type"),
             )
         )
     elif "test" in data:
         data["test"] = get_node_dict(function=data["test"]["function"])
+    if "nodes" in data:
+        if "edges" in data:
+            output_counts = _edges_to_output_counts(data["edges"])
+        for key, node in data["nodes"].items():
+            data["nodes"][key] = to_semantikon_workflow_dict(
+                node, output_counts=output_counts.get(key)
+            )
     return data
 
 
