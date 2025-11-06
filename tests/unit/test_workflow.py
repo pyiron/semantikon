@@ -253,9 +253,9 @@ class TestWorkflow(unittest.TestCase):
             "label": "example_workflow",
             "type": "Workflow",
         }
-        fwf_wf = fwf.get_workflow_dict(example_workflow)
-        self.assertEqual(fwf_wf["type"], "Workflow")
-        smtk_wf = fwf.serialize_functions(swf.to_semantikon_workflow_dict(fwf_wf))
+        wf = example_workflow.serialize_workflow()
+        self.assertEqual(wf["type"], "Workflow")
+        smtk_wf = fwf.serialize_functions(wf)
         del smtk_wf["function"]
         del smtk_wf["nodes"]["example_macro_0"]["function"]
         self.assertEqual(smtk_wf, ref_data)
