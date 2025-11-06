@@ -87,7 +87,7 @@ class TestWorkflow(unittest.TestCase):
         cls.maxDiff = None
 
     def test_get_node_dict(self):
-        node_dict = swf.get_node_dict(add)
+        node_dict = swf._get_node_dict(add)
         self.assertEqual(
             node_dict,
             {
@@ -160,7 +160,7 @@ class TestWorkflow(unittest.TestCase):
             "type": "Workflow",
             "uri": "this macro has metadata",
         }
-        fwf_wf = fwf.get_workflow_dict(example_macro, with_function=True)
+        fwf_wf = swf.get_workflow_dict(example_macro, with_function=True)
         self.assertEqual(fwf_wf["type"], "Workflow")
         smtk_wf = fwf.serialize_functions(swf.to_semantikon_workflow_dict(fwf_wf))
         del smtk_wf["function"]
@@ -332,7 +332,7 @@ class TestWorkflow(unittest.TestCase):
         for fnc in (operation, add, multiply, my_while_condition, complex_function):
             with self.subTest(fnc=fnc, msg=fnc.__name__):
                 inputs, outputs = swf.get_ports(fnc)
-                full_entry = swf.get_node_dict(fnc)
+                full_entry = swf._get_node_dict(fnc)
                 for entry, node in (
                     (full_entry["inputs"], inputs),
                     (full_entry["outputs"], outputs),
@@ -448,7 +448,7 @@ class TestWorkflow(unittest.TestCase):
     def test_function(self):
         for fnc in (operation, add, multiply, my_while_condition):
             with self.subTest(fnc=fnc, msg=fnc.__name__):
-                entry = swf.get_node_dict(
+                entry = swf._get_node_dict(
                     fnc,
                     parse_input_args(fnc),
                     swf._get_node_outputs(fnc),
