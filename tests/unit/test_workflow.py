@@ -219,8 +219,8 @@ class TestWorkflow(unittest.TestCase):
                     "edges": [
                         ("inputs.a", "operation_0.inputs.x"),
                         ("inputs.b", "operation_0.inputs.y"),
-                        ("operation_0.outputs.0", "add_0.inputs.x"),
-                        ("operation_0.outputs.1", "add_0.inputs.y"),
+                        ("operation_0.outputs.output_0", "add_0.inputs.x"),
+                        ("operation_0.outputs.output_1", "add_0.inputs.y"),
                         ("add_0.outputs.output", "multiply_0.inputs.x"),
                         ("multiply_0.outputs.output", "outputs.f"),
                     ],
@@ -255,7 +255,7 @@ class TestWorkflow(unittest.TestCase):
         }
         wf = example_workflow.serialize_workflow()
         self.assertEqual(wf["type"], "Workflow")
-        smtk_wf = fwf.serialize_functions(wf)
+        smtk_wf = tools.serialize_functions(wf)
         del smtk_wf["function"]
         del smtk_wf["nodes"]["example_macro_0"]["function"]
         self.assertEqual(smtk_wf, ref_data)
