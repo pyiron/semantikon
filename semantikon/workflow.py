@@ -128,7 +128,7 @@ def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, di
         return {key: hint for key, hint in zip(output_vars, output_hints)}
 
 
-def get_node_dict(
+def _get_node_dict(
     function: Callable,
     inputs: dict[str, dict] | None = None,
     outputs: dict[str, Any] | list | None = None,
@@ -182,6 +182,28 @@ def get_node_dict(
     return data
 
 
+def _flowrep_to_semantikon_edges(wf: dict) -> list[tuple[str, str]]:
+    output_tags = {
+        key: list(node["outputs"].keys()) for key, node in wf["nodes"].items()
+    }
+    edges = []
+    for edge in wf["edges"]:
+        if ".outputs." not in edge[0]:
+            edges.append(edge)
+        else:
+            f, _, port = edge[0].split(".")
+            if port == "output":
+                assert len(output_tags[f]) == 1
+                port = output_tags[f][0]
+            else:
+                try:
+                    port = output_tags[f][int(port)]
+                except ValueError:
+                    pass
+            edges.append((f"{f}.outputs.{port}", edge[1]))
+    return edges
+
+
 def to_semantikon_workflow_dict(
     data: dict, output_counts: dict[str, int] | None = None
 ) -> dict:
@@ -197,7 +219,7 @@ def to_semantikon_workflow_dict(
     data = copy.deepcopy(data)
     if "function" in data:
         data.update(
-            get_node_dict(
+            _get_node_dict(
                 function=data["function"],
                 inputs=data.get("inputs"),
                 outputs=data.get("outputs"),
@@ -206,14 +228,16 @@ def to_semantikon_workflow_dict(
             )
         )
     elif "test" in data:
-        data["test"] = get_node_dict(function=data["test"]["function"])
+        data["test"] = _get_node_dict(function=data["test"]["function"])
     if "nodes" in data:
-        if "edges" in data:
-            output_counts = _edges_to_output_counts(data["edges"])
+        assert "edges" in data, data
+        output_counts = _edges_to_output_counts(data["edges"])
         for key, node in data["nodes"].items():
             data["nodes"][key] = to_semantikon_workflow_dict(
                 node, output_counts=output_counts.get(key)
             )
+    if "edges" in data:
+        data["edges"] = _flowrep_to_semantikon_edges(data)
     return data
 
 
