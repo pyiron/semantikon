@@ -475,5 +475,13 @@ class TestWorkflow(unittest.TestCase):
                     msg="Just an interim cyclicity test",
                 )
 
+    def test_edges_to_output_counts(self):
+        self.assertDictEqual(
+            swf._edges_to_output_counts(
+                example_macro.serialize_workflow()["edges"],
+            ),
+            {'operation_0': 2, 'add_0': 1, 'multiply_0': 1}
+        )
+
 if __name__ == "__main__":
     unittest.main()

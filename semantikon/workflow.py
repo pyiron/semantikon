@@ -4,7 +4,7 @@ import copy
 import dataclasses
 import inspect
 import textwrap
-from collections import deque
+from collections import deque, Counter
 from functools import cached_property, update_wrapper
 from typing import Any, Callable, Generic, Iterable, TypeVar, cast, get_args, get_origin
 
@@ -78,6 +78,33 @@ def separate_types(
                 class_dict[content["dtype"].__name__] = content["dtype"]
                 data[io_][key]["dtype"] = content["dtype"].__name__
     return data, class_dict
+
+
+def _edges_to_output_counts(edges: Iterable[tuple[str, str]]) -> dict[str, int]:
+    """
+    Get a count of outputs from edges.
+
+    Args:
+        edges (Iterable[tuple[str, str]]): An iterable of edges.
+
+    Returns:
+        dict[str, int]: A dictionary with output names as keys and their counts as values.
+
+    Example:
+        >>> edges = [
+        ...     ("node1.outputs.0", "node2.inputs.input1"),
+        ...     ("node1.outputs.1", "node3.inputs.input1"),
+        ...     ("node2.outputs.output", "node4.inputs.input1")
+        ... ]
+        >>> _edges_to_output_counts(edges)
+        {'node1': 2, 'node2': 1}
+    """
+    counts = [
+        edge[0].split(".outputs.")[0]
+        for edge in edges
+        if ".outputs." in edge[0]
+    ]
+    return dict(Counter(counts))
 
 
 def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, dict]:
