@@ -154,6 +154,9 @@ def _get_node_dict(
         ref_keys = list(ref_outputs.keys())
         result = {}
         for key, value in outputs.items():
+            if len(ref_keys) == 1 and key == "output":
+                result[ref_keys[0]] = value
+                continue
             try:
                 result[ref_keys[int(key)]] = value
             except ValueError:
