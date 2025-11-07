@@ -413,7 +413,7 @@ class TestWorkflow(unittest.TestCase):
             self.assertDictEqual(
                 {
                     "complex_function_0.inputs.x": "inputs.x",
-                    "outputs.b": "complex_function_0.outputs.output_1",
+                    "outputs.b": "complex_function_0.outputs.speed",
                     "outputs.c": "complex_function_0.outputs.output_2",
                 },
                 node.edges.to_dictionary(),
