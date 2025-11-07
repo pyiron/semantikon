@@ -8,7 +8,7 @@ dependencies:
 - networkx =3.4.2
 - numpy =2.3.3
 - owlrl =7.1.4
-- pint =0.25.1
+- pint =0.25.2
 - rdflib =7.4.0
 - pyshacl =0.30.1
 - python >=3.11,<3.15
