@@ -448,11 +448,7 @@ class TestWorkflow(unittest.TestCase):
     def test_function(self):
         for fnc in (operation, add, multiply, my_while_condition):
             with self.subTest(fnc=fnc, msg=fnc.__name__):
-                entry = swf._get_node_dict(
-                    fnc,
-                    parse_input_args(fnc),
-                    swf._get_node_outputs(fnc),
-                )
+                entry = swf._get_node_dict(fnc)
                 # Cheat and modify the entry to resemble the node structure
                 if hasattr(fnc, "_semantikon_metadata"):
                     # Nest the metadata in the entry
@@ -472,7 +468,7 @@ class TestWorkflow(unittest.TestCase):
                 self.assertDictEqual(
                     entry,
                     node_dictionary,
-                    msg="Just an interim cyclicity test",
+                    msg=f"Just an interim cyclicity test for {fnc.__name__}",
                 )
 
     def test_edges_to_output_counts(self):
