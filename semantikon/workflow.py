@@ -120,11 +120,11 @@ def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, di
         else:
             return {"output": cast(dict, output_hints)}
     assert isinstance(output_vars, tuple), output_vars
-    assert counts is None or len(output_vars) == counts, output_vars
+    assert counts is None or len(output_vars) >= counts, output_vars
     if output_hints == {}:
         return {key: {} for key in output_vars}
     else:
-        assert counts is None or len(output_hints) == counts
+        assert counts is None or len(output_hints) >= counts
         return {key: hint for key, hint in zip(output_vars, output_hints)}
 
 
@@ -252,7 +252,7 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
         dict: A dictionary representation of the workflow, including inputs,
             outputs, nodes, edges, and label.
     """
-    wf = fwf.get_workflow_dict(func, with_function=True)
+    wf = fwf.get_workflow_dict(func, with_function=True, with_outputs=True)
     return to_semantikon_workflow_dict(wf)
 
 

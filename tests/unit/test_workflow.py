@@ -261,7 +261,7 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(smtk_wf, ref_data)
 
     def test_separate_types(self):
-        old_data = swf.get_workflow_dict(example_workflow)
+        old_data = example_workflow.serialize_workflow()
         class_dict = swf.separate_types(old_data)[1]
         self.assertEqual(class_dict, {"float": float})
 
