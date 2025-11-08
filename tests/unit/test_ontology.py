@@ -805,6 +805,12 @@ class TestOntology(unittest.TestCase):
             ns1:hasNode <get_macro.add_three_0.add_one_0>,
                 <get_macro.add_three_0.add_two_0> .
 
+
+        <get_macro.add_three_0> ns1:hasSourceFunction <add_three> .
+
+        <get_macro> ns1:hasSourceFunction <get_macro> .
+
+
         <get_macro.add_three_0.add_two_0> a prov:Activity ;
             ns1:hasSourceFunction <add_two> .\n\n"""
         )
