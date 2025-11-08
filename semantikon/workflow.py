@@ -39,7 +39,9 @@ from semantikon.datastructure import (
 
 class FunctionWithWorkflow(fwf.FunctionWithWorkflow):
     def run(self, *args, **kwargs) -> dict[str, Any]:
-        return to_semantikon_workflow_dict(super().run(with_function=True, *args, **kwargs))
+        return to_semantikon_workflow_dict(
+            super().run(*args, with_function=True, **kwargs)
+        )
 
     def serialize_workflow(self) -> dict:
         wf_dict = self._serialize_workflow(with_function=True, with_outputs=True)
@@ -99,11 +101,7 @@ def _edges_to_output_counts(edges: Iterable[tuple[str, str]]) -> dict[str, int]:
         >>> _edges_to_output_counts(edges)
         {'node1': 2, 'node2': 1}
     """
-    counts = [
-        edge[0].split(".outputs.")[0]
-        for edge in edges
-        if ".outputs." in edge[0]
-    ]
+    counts = [edge[0].split(".outputs.")[0] for edge in edges if ".outputs." in edge[0]]
     return dict(Counter(counts))
 
 
