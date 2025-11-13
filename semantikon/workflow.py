@@ -44,7 +44,7 @@ class FunctionWithWorkflow(fwf.FunctionWithWorkflow):
         )
 
     def serialize_workflow(self) -> dict:
-        wf_dict = self._serialize_workflow(with_function=True, with_outputs=True)
+        wf_dict = self._serialize_workflow(with_function=True, with_io=True)
         return to_semantikon_workflow_dict(wf_dict)
 
 
@@ -253,7 +253,7 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
         dict: A dictionary representation of the workflow, including inputs,
             outputs, nodes, edges, and label.
     """
-    wf = fwf.get_workflow_dict(func, with_function=True, with_outputs=True)
+    wf = fwf.get_workflow_dict(func, with_function=True, with_io=True)
     return to_semantikon_workflow_dict(wf)
 
 
