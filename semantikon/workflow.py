@@ -129,7 +129,7 @@ def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, di
 def _get_node_dict(
     function: Callable,
     inputs: dict[str, dict] | None = None,
-    outputs: dict[str, Any] | list | None = None,
+    outputs: dict[str, Any] | None = None,
     output_counts: int | None = None,
     type_: str | None = None,
 ) -> dict:
@@ -162,14 +162,11 @@ def _get_node_dict(
         return result
 
     new_inputs = parse_input_args(function)
+    if inputs is not None:
+        new_inputs.update(inputs)
     new_outputs = _get_node_outputs(function, counts=output_counts)
-    if isinstance(outputs, dict):
-        assert isinstance(inputs, dict), inputs
-        outputs = regulate_output_keys(outputs, new_outputs)
-        for key, value in outputs.items():
-            new_outputs[key]["value"] = value
-        for key, value in inputs.items():
-            new_inputs[key]["value"] = value
+    if outputs is not None:
+        new_outputs = regulate_output_keys(outputs, new_outputs)
     if type_ is None:
         type_ = "Function"
     data = {
@@ -225,7 +222,7 @@ def to_semantikon_workflow_dict(
                 inputs=data.get("inputs"),
                 outputs=data.get("outputs"),
                 output_counts=output_counts,
-                type_=data.get("type"),
+                type_=data["type"],
             )
         )
     elif "test" in data:
