@@ -204,9 +204,7 @@ def _flowrep_to_semantikon_edges(wf: dict) -> list[tuple[str, str]]:
     return edges
 
 
-def to_semantikon_workflow_dict(
-    data: dict, output_counts: int | None = None
-) -> dict:
+def to_semantikon_workflow_dict(data: dict, output_counts: int | None = None) -> dict:
     """
     Convert a workflow dictionary to the Semantikon format.
 
