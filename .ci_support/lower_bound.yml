@@ -5,7 +5,6 @@ dependencies:
 - graphviz =12.2.1
 - hatchling =1.27.0
 - hatch-vcs =0.5.0
-- networkx =3.4.2
 - numpy =1.26.3
 - owlrl =7.1.2
 - pint =0.23
