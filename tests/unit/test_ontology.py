@@ -17,8 +17,8 @@ from semantikon.ontology import (
     serialize_data,
     validate_values,
 )
-from semantikon.workflow import get_workflow_dict, workflow
 from semantikon.visualize import visualize
+from semantikon.workflow import get_workflow_dict, workflow
 
 EX = Namespace("http://example.org/")
 

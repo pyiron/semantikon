@@ -4,14 +4,14 @@ import copy
 import dataclasses
 import inspect
 import textwrap
-from collections import deque, Counter
+from collections import Counter, deque
 from functools import cached_property, update_wrapper
 from typing import Any, Callable, Generic, Iterable, TypeVar, cast, get_args, get_origin
 
 import networkx as nx
+from flowrep import workflow as fwf
 from networkx.algorithms.dag import topological_sort
 
-from flowrep import workflow as fwf
 from semantikon.converter import (
     get_annotated_type_hints,
     get_return_expressions,
@@ -205,7 +205,7 @@ def _flowrep_to_semantikon_edges(wf: dict) -> list[tuple[str, str]]:
 
 
 def to_semantikon_workflow_dict(
-    data: dict, output_counts: dict[str, int] | None = None
+    data: dict, output_counts: int | None = None
 ) -> dict:
     """
     Convert a workflow dictionary to the Semantikon format.

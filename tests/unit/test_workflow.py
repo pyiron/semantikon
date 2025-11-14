@@ -1,7 +1,8 @@
 import unittest
 
 import networkx as nx
-from flowrep import workflow as fwf, tools
+from flowrep import tools
+from flowrep import workflow as fwf
 
 import semantikon.workflow as swf
 from semantikon import datastructure
