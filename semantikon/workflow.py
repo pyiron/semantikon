@@ -151,15 +151,15 @@ def _get_node_dict(
     ) -> dict[str, Any]:
         assert len(outputs) == len(ref_outputs), (outputs, ref_outputs)
         ref_keys = list(ref_outputs.keys())
-        result = {}
+        result = ref_outputs.copy()
         for key, value in outputs.items():
             if len(ref_keys) == 1 and key == "output":
-                result[ref_keys[0]] = value
+                result[ref_keys[0]].update(value)
                 continue
             try:
-                result[ref_keys[int(key)]] = value
+                result[ref_keys[int(key)]].update(value)
             except ValueError:
-                result[key] = value
+                result[key].update(value)
         return result
 
     new_inputs = parse_input_args(function)
