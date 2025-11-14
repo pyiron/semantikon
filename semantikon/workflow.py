@@ -223,10 +223,10 @@ def to_semantikon_workflow_dict(data: dict, output_counts: int | None = None) ->
         data["test"] = _get_node_dict(function=data["test"]["function"])
     if "nodes" in data:
         assert "edges" in data, data
-        output_counts = _edges_to_output_counts(data["edges"])
+        counts = _edges_to_output_counts(data["edges"])
         for key, node in data["nodes"].items():
             data["nodes"][key] = to_semantikon_workflow_dict(
-                node, output_counts=output_counts.get(key)
+                node, output_counts=counts.get(key)
             )
     if "edges" in data:
         data["edges"] = _flowrep_to_semantikon_edges(data)
