@@ -35,6 +35,7 @@ from semantikon.datastructure import (
     TypeMetadata,
     Workflow,
 )
+from semantikon.metadata import FunctionWithMetadata
 
 
 class FunctionWithWorkflow(fwf.FunctionWithWorkflow):
@@ -175,7 +176,7 @@ def _get_node_dict(
         "function": function,
         "type": type_,
     }
-    if hasattr(function, "_semantikon_metadata"):
+    if isinstance(function, FunctionWithMetadata):
         data.update(function._semantikon_metadata)
     return data
 
@@ -285,7 +286,7 @@ def get_ports(
 
 def get_node(func: Callable, label: str | None = None) -> Function | Workflow:
     metadata_dict = (
-        func._semantikon_metadata if hasattr(func, "_semantikon_metadata") else MISSING
+        func._semantikon_metadata if isinstance(func, FunctionWithMetadata) else MISSING
     )
     metadata = (
         metadata_dict
@@ -316,7 +317,7 @@ def _port_from_dictionary(
     io_dictionary: dict[str, object], label: str, port_class: type[PortType]
 ) -> PortType:
     """
-    Take a traditional _semantikon_workflow dictionary's input or output subdictionary
+    Take a traditional semantikon workflow dictionary's input or output subdictionary
     and nest the metadata (if any) as a dataclass.
     """
     metadata_kwargs = {}
