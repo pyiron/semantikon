@@ -1,12 +1,9 @@
 import unittest
 
-import networkx as nx
 from flowrep import tools
-from flowrep import workflow as fwf
 
 import semantikon.workflow as swf
 from semantikon import datastructure
-from semantikon.converter import parse_input_args
 from semantikon.metadata import meta, u
 
 
