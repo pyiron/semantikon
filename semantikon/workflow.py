@@ -164,7 +164,9 @@ def _get_node_dict(
 
     new_inputs = parse_input_args(function)
     if inputs is not None:
-        new_inputs.update(inputs)
+        for key, value in inputs.items():
+            if key in new_inputs:
+                new_inputs[key].update(value)
     new_outputs = _get_node_outputs(function, counts=output_counts)
     if outputs is not None:
         new_outputs = regulate_output_keys(outputs, new_outputs)
