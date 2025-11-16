@@ -49,8 +49,8 @@ def _translate_has_value(
     parent: URIRef | None = None,
     ontology=SNS,
 ) -> _triple_type:
-    tag_uri = URIRef(tag + ".value")
-    triples: _triple_type = [(tag_uri, ontology.participates_in, label)]
+    tag_value = tag + ".value"
+    triples: _triple_type = [(label, ontology.participates_in, tag_value)]
     if is_dataclass(dtype):
         warnings.warn(
             "semantikon_class is experimental - triples may change in the future",
@@ -64,7 +64,7 @@ def _translate_has_value(
                         tag=_dot(tag, k),
                         value=getattr(value, k, None),
                         dtype=v,
-                        parent=tag_uri,
+                        parent=tag_value,
                         ontology=ontology,
                     )
                 )
@@ -77,24 +77,24 @@ def _translate_has_value(
                     value=getattr(value, k, None),
                     dtype=metadata["dtype"],
                     units=metadata.get("units", None),
-                    parent=tag_uri,
+                    parent=tag_value,
                     ontology=ontology,
                 )
             )
     else:
         if parent is not None:
-            triples.append((tag_uri, RDFS.subClassOf, parent))
+            triples.append((tag_value, RDFS.subClassOf, parent))
         if value is not None:
-            triples.append((tag_uri, RDF.value, Literal(value)))
+            triples.append((tag_value, RDF.value, Literal(value)))
         if units is not None:
             if isinstance(units, str):
                 key = ud[units]
                 if key is not None:
-                    triples.append((tag_uri, ontology.has_unit, key))
+                    triples.append((tag_value, ontology.has_unit, key))
                 else:
-                    triples.append((tag_uri, ontology.has_unit, URIRef(units)))
+                    triples.append((tag_value, ontology.has_unit, URIRef(units)))
             else:
-                triples.append((tag_uri, ontology.has_unit, URIRef(units)))
+                triples.append((tag_value, ontology.has_unit, URIRef(units)))
     return triples
 
 
@@ -392,11 +392,15 @@ def _append_missing_items(graph: Graph) -> Graph:
     return graph
 
 
-def _convert_to_uriref(value: URIRef | Literal | str | None) -> URIRef | Literal:
+def _convert_to_uriref(
+    value: URIRef | Literal | str | None, namespace: Namespace | None = None
+) -> URIRef | Literal:
     if isinstance(value, URIRef) or isinstance(value, Literal):
-        return value  # Already a URIRef
+        return value
     elif isinstance(value, str):
-        return URIRef(value)  # Convert string to URIRef
+        if namespace is not None and not value.lower().startswith("http"):
+            return namespace[value]
+        return URIRef(value)
     else:
         raise TypeError(f"Unsupported type: {type(value)}")
 
@@ -522,7 +526,7 @@ def _parse_workflow(
     return triples
 
 
-def _parse_cancel(wf_channels: dict) -> list:
+def _parse_cancel(wf_channels: dict, namespace: Namespace | None = None) -> list:
     triples = []
     for n_label, channel_dict in wf_channels.items():
         if "extra" not in channel_dict or "cancel" not in channel_dict["extra"]:
@@ -534,7 +538,10 @@ def _parse_cancel(wf_channels: dict) -> list:
             cancel = [cancel]
         for c in cancel:
             triples.append(_parse_triple(c, label=n_label))
-    return [tuple([_convert_to_uriref(tt) for tt in t]) for t in triples]
+    return [
+        tuple([_convert_to_uriref(tt, namespace=namespace) for tt in t])
+        for t in triples
+    ]
 
 
 def get_knowledge_graph(
@@ -544,6 +551,7 @@ def get_knowledge_graph(
     ontology=SNS,
     append_missing_items: bool = True,
     use_uuid: bool = False,
+    namespace: Namespace | None = None,
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
@@ -560,11 +568,11 @@ def get_knowledge_graph(
         graph = Graph()
     node_dict, channel_dict, edge_list = serialize_data(wf_dict, use_uuid=use_uuid)
     triples = _parse_workflow(node_dict, channel_dict, edge_list, ontology=ontology)
-    triples_to_cancel = _parse_cancel(channel_dict)
+    triples_to_cancel = _parse_cancel(channel_dict, namespace=namespace)
     for triple in triples:
         if any(t is None for t in triple):
             continue
-        s, p, o = tuple([_convert_to_uriref(t) for t in triple])
+        s, p, o = tuple([_convert_to_uriref(t, namespace=namespace) for t in triple])
         graph.add((s, p, o))
     if inherit_properties:
         _inherit_properties(graph, triples_to_cancel, ontology=ontology)
@@ -573,6 +581,8 @@ def get_knowledge_graph(
     if len(list(graph.subject_objects(SNS.has_unit))) > 0:
         graph.bind("qudt", "http://qudt.org/vocab/unit/")
     graph.bind("sns", str(ontology.BASE))
+    if namespace is not None:
+        graph.bind("ns", str(namespace))
     return graph
 
 

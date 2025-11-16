@@ -911,6 +911,14 @@ class TestOntology(unittest.TestCase):
             ],
         )
 
+    def test_namespace(self):
+        graph = get_knowledge_graph(
+            add_three.run(c=1), namespace=Namespace("http://www.example.org/")
+        )
+        for s_o in graph.subject_objects():
+            self.assertTrue("http" in s_o[0] or isinstance(s_o[0], Literal))
+            self.assertTrue("http" in s_o[1] or isinstance(s_o[1], Literal))
+
 
 @dataclass
 class Input:
