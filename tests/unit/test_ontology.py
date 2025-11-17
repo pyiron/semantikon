@@ -23,18 +23,6 @@ from semantikon.workflow import workflow
 EX = Namespace("http://example.org/")
 
 
-def get_time_correct_units(
-    start: u(float, units="second"), end: u(float, units="second")
-) -> u(float, units="second"):
-    return end - start
-
-
-def get_time_incorrect_units(
-    start: u(float, units="nanosecond"), end: u(float, units="nanosecond")
-) -> u(float, units="nanosecond"):
-    return end - start
-
-
 def calculate_speed(
     distance: u(float, units="meter") = 10.0,
     time: u(float, units="second") = 2.0,
@@ -52,6 +40,24 @@ def calculate_speed(
 
 
 @workflow
+def get_speed(distance=10.0, time=2.0):
+    speed = calculate_speed(distance, time)
+    return speed
+
+
+def get_time_correct_units(
+    start: u(float, units="second"), end: u(float, units="second")
+) -> u(float, units="second"):
+    return end - start
+
+
+def get_time_incorrect_units(
+    start: u(float, units="nanosecond"), end: u(float, units="nanosecond")
+) -> u(float, units="nanosecond"):
+    return end - start
+
+
+@workflow
 def get_speed_correct_units(start, end, distance):
     time = get_time_correct_units(start, end)
     speed = calculate_speed(distance, time)
@@ -61,12 +67,6 @@ def get_speed_correct_units(start, end, distance):
 @workflow
 def get_speed_incorrect_units(start, end, distance):
     time = get_time_incorrect_units(start, end)
-    speed = calculate_speed(distance, time)
-    return speed
-
-
-@workflow
-def get_speed(distance=10.0, time=2.0):
     speed = calculate_speed(distance, time)
     return speed
 
