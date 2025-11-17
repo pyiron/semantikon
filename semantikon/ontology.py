@@ -503,6 +503,20 @@ def _edges_to_triples(edges: dict, ontology=SNS) -> list:
     ]
 
 
+def _get_precedes(
+    edge_dict: dict[str, str], ontology=SNS
+) -> list[tuple[str, URIRef, str]]:
+    triples = []
+    for dest, prov in edge_dict.items():
+        if min(len(dest.split(".")), len(prov.split("."))) < 3:
+            continue
+        dest_node, dest_io, _ = dest.rsplit(".", 2)
+        prov_node, prov_io, _ = prov.rsplit(".", 2)
+        if dest_io == "inputs" and prov_io == "outputs":
+            triples.append((prov_node, SNS.precedes, dest_node))
+    return triples
+
+
 def _parse_workflow(
     node_dict: dict,
     channel_dict: dict,
@@ -516,6 +530,7 @@ def _parse_workflow(
         for triple in _parse_channel(content, label, full_edge_dict, ontology)
     ]
     triples.extend(_edges_to_triples(_get_edge_dict(edge_list), ontology=ontology))
+    triples.extend(_get_precedes(_get_edge_dict(edge_list), ontology=ontology))
 
     for key, node in node_dict.items():
         triples.append((key, RDF.type, PROV.Activity))

@@ -11,6 +11,8 @@ from semantikon.metadata import meta, u
 from semantikon.ontology import (
     NS,
     SNS,
+    _get_edge_dict,
+    _get_precedes,
     _parse_cancel,
     dataclass_to_knowledge_graph,
     get_knowledge_graph,
@@ -809,12 +811,15 @@ class TestOntology(unittest.TestCase):
                 <get_macro.add_three_0.outputs.w>,
                 <get_macro.add_three_0.inputs.c> .
 
-
         <add_three> iao:0000136 <get_macro.add_three_0> ;
             a iao:0000030 .
 
         <get_macro> iao:0000136 <get_macro> ;
             a iao:0000030 .
+
+        <get_macro.add_three_0> bfo:0000063 <get_macro.add_one_0> .
+
+        <get_macro.add_three_0.add_one_0> bfo:0000063 <get_macro.add_three_0.add_two_0> .
 
 
         <get_macro.add_three_0.add_two_0> a prov:Activity ;
@@ -926,6 +931,15 @@ class TestOntology(unittest.TestCase):
         for s_o in graph.subject_objects():
             self.assertTrue("http" in s_o[0] or isinstance(s_o[0], Literal))
             self.assertTrue("http" in s_o[1] or isinstance(s_o[1], Literal))
+
+    def test_precedes(self):
+        wf_dict = get_correct_analysis.serialize_workflow()
+        edge_list = serialize_data(wf_dict)[2]
+        triples = _get_precedes(_get_edge_dict(edge_list))
+        self.assertEqual(triples[0][0], "get_correct_analysis.add_0")
+        self.assertEqual(triples[0][2], "get_correct_analysis.multiply_0")
+        self.assertEqual(triples[1][0], "get_correct_analysis.multiply_0")
+        self.assertEqual(triples[1][2], "get_correct_analysis.correct_analysis_0")
 
 
 @dataclass
