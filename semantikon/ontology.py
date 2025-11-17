@@ -50,7 +50,7 @@ def _translate_has_value(
     ontology=SNS,
 ) -> _triple_type:
     tag_value = tag + ".value"
-    triples: _triple_type = [(label, ontology.participates_in, tag_value)]
+    triples: _triple_type = [(tag_value, ontology.participates_in, label)]
     if is_dataclass(dtype):
         warnings.warn(
             "semantikon_class is experimental - triples may change in the future",
