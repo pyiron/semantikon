@@ -112,7 +112,7 @@ class TestWorkflow(unittest.TestCase):
                         "output_1": {"dtype": float},
                     },
                     "function": {
-                        "module": "__main__",
+                        "module": operation.__module__,
                         "qualname": "operation",
                         "version": "not_defined",
                     },
@@ -125,7 +125,7 @@ class TestWorkflow(unittest.TestCase):
                     },
                     "outputs": {"output": {"dtype": float}},
                     "function": {
-                        "module": "__main__",
+                        "module": add.__module__,
                         "qualname": "add",
                         "version": "not_defined",
                     },
@@ -139,7 +139,7 @@ class TestWorkflow(unittest.TestCase):
                     },
                     "outputs": {"output": {"dtype": float}},
                     "function": {
-                        "module": "__main__",
+                        "module": multiply.__module__,
                         "qualname": "multiply",
                         "version": "not_defined",
                     },
@@ -175,7 +175,7 @@ class TestWorkflow(unittest.TestCase):
                     "nodes": {
                         "operation_0": {
                             "function": {
-                                "module": "__main__",
+                                "module": operation.__module__,
                                 "qualname": "operation",
                                 "version": "not_defined",
                             },
@@ -188,7 +188,7 @@ class TestWorkflow(unittest.TestCase):
                         },
                         "add_0": {
                             "function": {
-                                "module": "__main__",
+                                "module": add.__module__,
                                 "qualname": "add",
                                 "version": "not_defined",
                             },
@@ -202,7 +202,7 @@ class TestWorkflow(unittest.TestCase):
                         },
                         "multiply_0": {
                             "function": {
-                                "module": "__main__",
+                                "module": multiply.__module__,
                                 "qualname": "multiply",
                                 "version": "not_defined",
                             },
@@ -228,7 +228,7 @@ class TestWorkflow(unittest.TestCase):
                 },
                 "add_0": {
                     "function": {
-                        "module": "__main__",
+                        "module": add.__module__,
                         "qualname": "add",
                         "version": "not_defined",
                     },
