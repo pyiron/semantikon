@@ -11,6 +11,8 @@ from semantikon.metadata import meta, u
 from semantikon.ontology import (
     NS,
     SNS,
+    _get_edge_dict,
+    _get_precedes,
     _parse_cancel,
     dataclass_to_knowledge_graph,
     get_knowledge_graph,
@@ -21,18 +23,6 @@ from semantikon.visualize import visualize
 from semantikon.workflow import workflow
 
 EX = Namespace("http://example.org/")
-
-
-def get_time_correct_units(
-    start: u(float, units="second"), end: u(float, units="second")
-) -> u(float, units="second"):
-    return end - start
-
-
-def get_time_incorrect_units(
-    start: u(float, units="nanosecond"), end: u(float, units="nanosecond")
-) -> u(float, units="nanosecond"):
-    return end - start
 
 
 def calculate_speed(
@@ -52,6 +42,24 @@ def calculate_speed(
 
 
 @workflow
+def get_speed(distance=10.0, time=2.0):
+    speed = calculate_speed(distance, time)
+    return speed
+
+
+def get_time_correct_units(
+    start: u(float, units="second"), end: u(float, units="second")
+) -> u(float, units="second"):
+    return end - start
+
+
+def get_time_incorrect_units(
+    start: u(float, units="nanosecond"), end: u(float, units="nanosecond")
+) -> u(float, units="nanosecond"):
+    return end - start
+
+
+@workflow
 def get_speed_correct_units(start, end, distance):
     time = get_time_correct_units(start, end)
     speed = calculate_speed(distance, time)
@@ -61,12 +69,6 @@ def get_speed_correct_units(start, end, distance):
 @workflow
 def get_speed_incorrect_units(start, end, distance):
     time = get_time_incorrect_units(start, end)
-    speed = calculate_speed(distance, time)
-    return speed
-
-
-@workflow
-def get_speed(distance=10.0, time=2.0):
     speed = calculate_speed(distance, time)
     return speed
 
@@ -396,13 +398,13 @@ class TestOntology(unittest.TestCase):
             query_txt = [
                 "PREFIX ex: <http://example.org/>",
                 "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
-                f"PREFIX sns: <{SNS.BASE}>",
+                "PREFIX ro: <http://purl.obolibrary.org/obo/RO_>",
                 "PREFIX qudt: <http://qudt.org/schema/qudt/>",
                 "SELECT DISTINCT ?speed ?units",
                 "WHERE {",
-                "    ?output sns:hasValue ?output_tag .",
+                "    ?output_tag ro:0000056 ?output .",
                 "    ?output_tag rdf:value ?speed .",
-                "    ?output_tag qudt:unit ?units .",
+                "    ?output_tag qudt:hasUnit ?units .",
                 "}",
             ]
             query = "\n".join(query_txt)
@@ -424,7 +426,7 @@ class TestOntology(unittest.TestCase):
             len(
                 list(
                     graph.subjects(
-                        SNS.hasUnits, URIRef("http://qudt.org/vocab/unit/M-PER-SEC")
+                        SNS.has_unit, URIRef("http://qudt.org/vocab/unit/M-PER-SEC")
                     )
                 )
             ),
@@ -681,16 +683,16 @@ class TestOntology(unittest.TestCase):
     def test_macro(self):
         graph = get_knowledge_graph(get_macro.run())
         subj = list(
-            graph.subjects(
-                SNS.hasValue,
+            graph.objects(
                 URIRef("get_macro.add_three_0.add_one_0.inputs.a.value"),
+                SNS.participates_in,
             )
         )
         self.assertEqual(len(subj), 3)
         subj = list(
-            graph.subjects(
-                SNS.hasValue,
+            graph.objects(
                 URIRef("get_macro.add_three_0.add_two_0.outputs.result.value"),
+                SNS.participates_in,
             )
         )
         self.assertEqual(len(subj), 3)
@@ -736,83 +738,96 @@ class TestOntology(unittest.TestCase):
         @prefix prov: <http://www.w3.org/ns/prov#> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
         @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        @prefix bfo: <http://purl.obolibrary.org/obo/BFO_> .
+        @prefix iao: <http://purl.obolibrary.org/obo/IAO_> .
+        @prefix ro: <http://purl.obolibrary.org/obo/RO_> .
 
-        <get_macro.add_one_0.inputs.a> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
-            ns1:inputOf <get_macro.add_one_0> .
+        <get_macro.add_one_0.inputs.a> a prov:Entity .
 
-        <get_macro.add_three_0.add_one_0.inputs.a> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
-            ns1:inputOf <get_macro.add_three_0.add_one_0> .
+        <get_macro.add_three_0.add_one_0.inputs.a> a prov:Entity .
 
-        <get_macro.add_three_0.add_two_0.inputs.b> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> ;
-            ns1:inputOf <get_macro.add_three_0.add_two_0> .
+        <get_macro.add_three_0.add_two_0.inputs.b> a prov:Entity .
 
-        <get_macro.outputs.result> a prov:Entity ;
-            ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
-            ns1:outputOf <get_macro> .
+        <get_macro.outputs.result> a prov:Entity .
 
         <get_macro.add_one_0.outputs.result> a prov:Entity ;
-            ns1:hasValue <get_macro.add_one_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_one_0> ;
             ns1:linksTo <get_macro.outputs.result> .
 
         <get_macro.add_three_0.add_one_0.outputs.result> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_one_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_three_0.add_one_0> ;
             ns1:linksTo <get_macro.add_three_0.add_two_0.inputs.b> .
 
         <get_macro.add_three_0.add_two_0.outputs.result> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_three_0.add_two_0> ;
             ns1:linksTo <get_macro.add_three_0.outputs.w> .
 
         <get_macro.add_three_0.inputs.c> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
-            ns1:inputOf <get_macro.add_three_0> ;
             ns1:linksTo <get_macro.add_three_0.add_one_0.inputs.a> .
 
         <get_macro.add_three_0.outputs.w> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_two_0.outputs.result.value> ;
-            ns1:outputOf <get_macro.add_three_0> ;
             ns1:linksTo <get_macro.add_one_0.inputs.a> .
 
         <get_macro.inputs.c> a prov:Entity ;
-            ns1:hasValue <get_macro.add_three_0.add_one_0.inputs.a.value> ;
-            ns1:inputOf <get_macro> ;
             ns1:linksTo <get_macro.add_three_0.inputs.c> .
 
-        <get_macro.add_one_0.outputs.result.value> rdf:value 5 .
+        <get_macro.add_one_0.outputs.result.value> rdf:value 5 ;
+            ro:0000056 <get_macro.outputs.result>,
+                <get_macro.add_one_0.outputs.result> .
 
-        <get_macro.add_three_0.add_one_0.outputs.result.value> rdf:value 2 .
+        <get_macro.add_three_0.add_one_0.outputs.result.value> rdf:value 2 ;
+            ro:0000056 <get_macro.add_three_0.add_two_0.inputs.b>,
+                <get_macro.add_three_0.add_one_0.outputs.result> .
 
-        <get_macro.add_three_0.add_one_0.inputs.a.value> rdf:value 1 .
+        <get_macro.add_three_0.add_one_0.inputs.a.value> rdf:value 1 ;
+            ro:0000056 <get_macro.inputs.c>,
+                <get_macro.add_three_0.inputs.c>,
+                <get_macro.add_three_0.add_one_0.inputs.a> .
 
-        <get_macro.add_three_0.add_two_0.outputs.result.value> rdf:value 4 .
+        <get_macro.add_three_0.add_two_0.outputs.result.value> rdf:value 4 ;
+            ro:0000056 <get_macro.add_one_0.inputs.a>,
+                <get_macro.add_three_0.add_two_0.outputs.result>,
+                <get_macro.add_three_0.outputs.w> .
 
         <get_macro> a prov:Activity ;
-            ns1:hasNode <get_macro.add_one_0>,
-                <get_macro.add_three_0> .
+            bfo:0000051 <get_macro.add_one_0>,
+                <get_macro.add_three_0>,
+                <get_macro.outputs.result>,
+                <get_macro.inputs.c> .
+
 
         <get_macro.add_one_0> a prov:Activity ;
-            ns1:hasSourceFunction <add_one> .
+            bfo:0000051 <get_macro.add_one_0.outputs.result>,
+                <get_macro.add_one_0.inputs.a> .
+
+        <add_one> iao:0000136 <get_macro.add_one_0> ;
+            iao:0000136 <get_macro.add_three_0.add_one_0> ;
+            a iao:0000030 .
 
         <get_macro.add_three_0.add_one_0> a prov:Activity ;
-            ns1:hasSourceFunction <add_one> .
+            bfo:0000051 <get_macro.add_three_0.add_one_0.outputs.result>,
+                <get_macro.add_three_0.add_one_0.inputs.a> .
 
         <get_macro.add_three_0> a prov:Activity ;
-            ns1:hasNode <get_macro.add_three_0.add_one_0>,
-                <get_macro.add_three_0.add_two_0> .
+            bfo:0000051 <get_macro.add_three_0.add_one_0>,
+                <get_macro.add_three_0.add_two_0>,
+                <get_macro.add_three_0.outputs.w>,
+                <get_macro.add_three_0.inputs.c> .
 
+        <add_three> iao:0000136 <get_macro.add_three_0> ;
+            a iao:0000030 .
 
-        <get_macro.add_three_0> ns1:hasSourceFunction <add_three> .
+        <get_macro> iao:0000136 <get_macro> ;
+            a iao:0000030 .
 
-        <get_macro> ns1:hasSourceFunction <get_macro> .
+        <get_macro.add_three_0> bfo:0000063 <get_macro.add_one_0> .
+
+        <get_macro.add_three_0.add_one_0> bfo:0000063 <get_macro.add_three_0.add_two_0> .
 
 
         <get_macro.add_three_0.add_two_0> a prov:Activity ;
-            ns1:hasSourceFunction <add_two> .\n\n"""
+            bfo:0000051 <get_macro.add_three_0.add_two_0.outputs.result>,
+                <get_macro.add_three_0.add_two_0.inputs.b> .
+
+        <add_two> iao:0000136 <get_macro.add_three_0.add_two_0> ;
+            a iao:0000030 .\n\n"""
         )
         ref_graph = Graph()
         ref_graph.parse(data=txt, format="turtle", publicID="")
@@ -917,6 +932,15 @@ class TestOntology(unittest.TestCase):
             self.assertTrue("http" in s_o[0] or isinstance(s_o[0], Literal))
             self.assertTrue("http" in s_o[1] or isinstance(s_o[1], Literal))
 
+    def test_precedes(self):
+        wf_dict = get_correct_analysis.serialize_workflow()
+        edge_list = serialize_data(wf_dict)[2]
+        triples = _get_precedes(_get_edge_dict(edge_list))
+        self.assertEqual(triples[0][0], "get_correct_analysis.add_0")
+        self.assertEqual(triples[0][2], "get_correct_analysis.multiply_0")
+        self.assertEqual(triples[1][0], "get_correct_analysis.multiply_0")
+        self.assertEqual(triples[1][2], "get_correct_analysis.correct_analysis_0")
+
 
 @dataclass
 class Input:
@@ -980,7 +1004,7 @@ class TestDataclass(unittest.TestCase):
             (URIRef(f"{i_txt}.n.value"), RDFS.subClassOf, URIRef(f"{i_txt}.value")),
             (URIRef(f"{i_txt}.n.value"), RDF.value, Literal(100)),
             (URIRef(f"{i_txt}.parameters.a.value"), RDF.value, Literal(2)),
-            (URIRef(o_txt), SNS.hasValue, URIRef(f"{o_txt}.E.value")),
+            (URIRef(f"{o_txt}.E.value"), SNS.participates_in, URIRef(o_txt)),
         )
         for ii, triple in enumerate(triples):
             with self.subTest(i=ii):
