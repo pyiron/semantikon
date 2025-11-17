@@ -444,37 +444,37 @@ class TestOntology(unittest.TestCase):
         self.assertTrue((label, EX.predicate, obj) in graph)
 
     def test_correct_analysis(self):
-        graph = get_knowledge_graph(get_correct_analysis._semantikon_workflow)
+        graph = get_knowledge_graph(get_correct_analysis.serialize_workflow())
         t = validate_values(graph)
         self.assertEqual(
             t["missing_triples"],
             [],
             msg=f"{t} missing in {graph.serialize()}",
         )
-        graph = get_knowledge_graph(get_wrong_analysis_owl._semantikon_workflow)
+        graph = get_knowledge_graph(get_wrong_analysis_owl.serialize_workflow())
         self.assertEqual(len(validate_values(graph)["missing_triples"]), 1)
 
     def test_correct_analysis_sh(self):
-        graph = get_knowledge_graph(get_correct_analysis_sh._semantikon_workflow)
+        graph = get_knowledge_graph(get_correct_analysis_sh.serialize_workflow())
         self.assertTrue(validate(graph)[0])
-        graph = get_knowledge_graph(get_wrong_analysis_sh._semantikon_workflow)
+        graph = get_knowledge_graph(get_wrong_analysis_sh.serialize_workflow())
         self.assertFalse(validate(graph)[0])
 
     def test_valid_connections(self):
-        graph = get_knowledge_graph(eat_pizza._semantikon_workflow)
+        graph = get_knowledge_graph(eat_pizza.serialize_workflow())
         self.assertEqual(len(validate_values(graph)["incompatible_connections"]), 1)
         graph.add((EX.Pizza, RDFS.subClassOf, EX.Meal))
         self.assertEqual(validate_values(graph)["incompatible_connections"], [])
 
     def test_workflow_edge_validation(self):
         with self.subTest("Matching"):
-            graph = get_knowledge_graph(matching_wrapper._semantikon_workflow)
+            graph = get_knowledge_graph(matching_wrapper.serialize_workflow())
             result = validate_values(graph)
             self.assertEqual(result["missing_triples"], [])
             self.assertEqual(result["incompatible_connections"], [])
 
         with self.subTest("Mismatching input"):
-            graph = get_knowledge_graph(mismatching_input._semantikon_workflow)
+            graph = get_knowledge_graph(mismatching_input.serialize_workflow())
             result = validate_values(graph)
             incompatible = [
                 (
@@ -498,7 +498,7 @@ class TestOntology(unittest.TestCase):
             )
 
         with self.subTest("Mismatching output"):
-            graph = get_knowledge_graph(mismatching_output._semantikon_workflow)
+            graph = get_knowledge_graph(mismatching_output.serialize_workflow())
             result = validate_values(graph)
             incompatible = [
                 (
@@ -522,7 +522,7 @@ class TestOntology(unittest.TestCase):
             )
 
         with self.subTest("Mismatching peers"):
-            graph = get_knowledge_graph(mismatching_peers._semantikon_workflow)
+            graph = get_knowledge_graph(mismatching_peers.serialize_workflow())
             result = validate_values(graph)
             incompatible = [
                 (
@@ -549,7 +549,7 @@ class TestOntology(unittest.TestCase):
             context = Graph()
             context.add((EX.Output, RDFS.subClassOf, EX.NotOutput))
             graph = get_knowledge_graph(
-                wf_dict=mismatching_peers._semantikon_workflow,
+                wf_dict=mismatching_peers.serialize_workflow(),
                 graph=context,
             )
             result = validate_values(graph)
@@ -562,7 +562,7 @@ class TestOntology(unittest.TestCase):
             # Now we're saying the downstream is expecting a subclass of the upstream,
             # which the upstream base class is _not_ guaranteeing
             graph = get_knowledge_graph(
-                wf_dict=mismatching_peers._semantikon_workflow,
+                wf_dict=mismatching_peers.serialize_workflow(),
                 graph=context,
             )
             result = validate_values(graph)
@@ -594,7 +594,7 @@ class TestOntology(unittest.TestCase):
         out_global_tag = URIRef(f"{clothes_wf.__name__}.outputs.washed")
 
         with self.subTest("Inherit type"):
-            graph = get_knowledge_graph(clothes_wf._semantikon_workflow)
+            graph = get_knowledge_graph(clothes_wf.serialize_workflow())
             out_types = set(graph.objects(out_tag, RDF.type))
             self.assertNotIn(
                 EX.Garment,
@@ -608,7 +608,7 @@ class TestOntology(unittest.TestCase):
             )
 
         with self.subTest("Inherit properties"):
-            graph = get_knowledge_graph(clothes_wf._semantikon_workflow)
+            graph = get_knowledge_graph(clothes_wf.serialize_workflow())
             out_properties = set(graph.objects(out_tag, EX.hasProperty))
             self.assertIn(
                 EX.MachineWashable,
@@ -620,7 +620,7 @@ class TestOntology(unittest.TestCase):
             )
 
         with self.subTest("No other types"):
-            graph = get_knowledge_graph(clothes_wf._semantikon_workflow)
+            graph = get_knowledge_graph(clothes_wf.serialize_workflow())
             val = validate_values(graph)
             self.assertListEqual(val["missing_triples"], [])
             self.assertEqual(
@@ -630,7 +630,7 @@ class TestOntology(unittest.TestCase):
             )
 
         with self.subTest("No type narrowing"):
-            graph = get_knowledge_graph(clothes_wf._semantikon_workflow)
+            graph = get_knowledge_graph(clothes_wf.serialize_workflow())
             graph.add((EX.Garment, RDFS.subClassOf, EX.SomethingElse))
             val = validate_values(graph)
             self.assertListEqual(val["missing_triples"], [])
@@ -650,7 +650,7 @@ class TestOntology(unittest.TestCase):
         with self.subTest("Type broadening OK"):
             context = Graph()
             context.add((EX.SomethingElse, RDFS.subClassOf, EX.Garment))
-            graph = get_knowledge_graph(clothes_wf._semantikon_workflow, graph=context)
+            graph = get_knowledge_graph(clothes_wf.serialize_workflow(), graph=context)
             val = validate_values(graph)
             self.assertListEqual(val["missing_triples"], [])
             self.assertListEqual(
@@ -661,7 +661,7 @@ class TestOntology(unittest.TestCase):
 
     def test_uri_restrictions_derived_from_interaction(self):
         with self.subTest("Single step"):
-            graph = get_knowledge_graph(single._semantikon_workflow)
+            graph = get_knowledge_graph(single.serialize_workflow())
             val = validate_values(graph)
             self.assertFalse(
                 val["missing_triples"] or val["incompatible_connections"],
@@ -670,7 +670,7 @@ class TestOntology(unittest.TestCase):
             )
 
         with self.subTest("Chain steps"):
-            graph = get_knowledge_graph(chain._semantikon_workflow)
+            graph = get_knowledge_graph(chain.serialize_workflow())
             val = validate_values(graph)
             self.assertFalse(
                 val["missing_triples"] or val["incompatible_connections"],
@@ -805,6 +805,12 @@ class TestOntology(unittest.TestCase):
             ns1:hasNode <get_macro.add_three_0.add_one_0>,
                 <get_macro.add_three_0.add_two_0> .
 
+
+        <get_macro.add_three_0> ns1:hasSourceFunction <add_three> .
+
+        <get_macro> ns1:hasSourceFunction <get_macro> .
+
+
         <get_macro.add_three_0.add_two_0> a prov:Activity ;
             ns1:hasSourceFunction <add_two> .\n\n"""
         )
@@ -822,7 +828,7 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_parse_cancel(self):
-        channels, edges = serialize_data(get_wrong_order._semantikon_workflow)[1:]
+        channels = serialize_data(get_wrong_order.serialize_workflow())[1]
         self.assertTrue(
             any(
                 "cancel" in channel["extra"]
@@ -842,7 +848,7 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_wrong_order(self):
-        graph = get_knowledge_graph(get_wrong_order._semantikon_workflow)
+        graph = get_knowledge_graph(get_wrong_order.serialize_workflow())
         missing_triples = [
             [str(gg) for gg in g] for g in validate_values(graph)["missing_triples"]
         ]
@@ -874,7 +880,7 @@ class TestOntology(unittest.TestCase):
         self.assertIsInstance(visualize(graph), Digraph)
 
     def test_function_referencing(self):
-        graph = get_knowledge_graph(get_correct_analysis_owl._semantikon_workflow)
+        graph = get_knowledge_graph(get_correct_analysis_owl.serialize_workflow())
         self.assertEqual(
             list(graph.subject_objects(PROV.wasGeneratedBy))[0],
             (
@@ -891,9 +897,9 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_units(self):
-        graph = get_knowledge_graph(get_speed_correct_units._semantikon_workflow)
+        graph = get_knowledge_graph(get_speed_correct_units.serialize_workflow())
         self.assertEqual(validate_values(graph)["distinct_units"], {})
-        graph = get_knowledge_graph(get_speed_incorrect_units._semantikon_workflow)
+        graph = get_knowledge_graph(get_speed_incorrect_units.serialize_workflow())
         self.assertEqual(
             list(validate_values(graph)["distinct_units"].keys()),
             [
