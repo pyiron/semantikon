@@ -810,9 +810,11 @@ class TestOntology(unittest.TestCase):
                 <get_macro.add_three_0.inputs.c> .
 
 
-        <get_macro.add_three_0> ns1:hasSourceFunction <add_three> .
+        <add_three> iao:0000136 <get_macro.add_three_0> ;
+            a iao:0000030 .
 
-        <get_macro> ns1:hasSourceFunction <get_macro> .
+        <get_macro> iao:0000136 <get_macro> ;
+            a iao:0000030 .
 
 
         <get_macro.add_three_0.add_two_0> a prov:Activity ;
