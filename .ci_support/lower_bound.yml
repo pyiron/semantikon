@@ -7,7 +7,7 @@ dependencies:
 - hatch-vcs =0.5.0
 - numpy =2.3.0
 - owlrl =7.1.2
-- pint =0.23
+- pint =0.24
 - rdflib =7.1.1
 - pyshacl =0.30.0
 - python =3.11
