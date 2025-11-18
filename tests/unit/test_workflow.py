@@ -1,10 +1,9 @@
 import unittest
 
-import networkx as nx
+from flowrep import tools
 
 import semantikon.workflow as swf
 from semantikon import datastructure
-from semantikon.converter import parse_input_args
 from semantikon.metadata import meta, u
 
 
@@ -49,15 +48,6 @@ def my_while_condition(a=10, b=20):
     return a < b
 
 
-def workflow_with_while(a=10, b=20):
-    x = add(a, b)
-    while my_while_condition(x, b):
-        x = add(a, b)
-        # Poor implementation to define variable inside the loop, but allowed
-        z = multiply(a, x)
-    return z
-
-
 @meta(uri="some URI")
 def complex_function(
     x: u(float, units="meter") = 2.0,
@@ -89,152 +79,13 @@ def complex_workflow(
     return c
 
 
-class ApeClass:
-    pass
-
-
-@meta(uri="my_function")
-def multiple_types_for_ape(a: ApeClass, b: ApeClass) -> ApeClass:
-    return a + b
-
-
-def seemingly_cyclic_workflow(a=10, b=20):
-    a = add(a, b)
-    return a
-
-
-def workflow_to_use_undefined_variable(a=10, b=20):
-    result = add(a, u)
-    return result
-
-
-def reused_args(a=10, b=20):
-    a, b = operation(a, b)
-    f = add(a, y=b)
-    f = multiply(f)
-    return f
-
-
-def check_positive(x):
-    if x < 0:
-        raise ValueError("It must not be negative")
-
-
-def workflow_with_leaf(x):
-    y = add(x, x)
-    check_positive(y)
-    return y
-
-
-def my_condition(X, Y):
-    return X + Y < 100
-
-
-def my_for_loop(a=10, b=20):
-    return range(int(a), int(b))
-
-
-def multiple_nested_workflow(a=1, b=2, c=3):
-    d = add(a, b)
-    e = multiply(b, c)
-    f = add(c, d)
-
-    while my_condition(d, e):
-        d = add(d, b)
-        e = multiply(e, c)
-
-        for ii in my_for_loop(a, d):
-            a = add(a, ii)
-            d = multiply(b, e)
-
-            while my_condition(c, f):
-                c = add(c, a)
-                f = multiply(f, b)
-
-        while my_condition(b, f):
-            b = add(b, b)
-            f = multiply(a, b)
-
-        while my_condition(c, e):
-            c = add(c, d)
-            e = multiply(e, c)
-
-    while my_condition(a, b):
-        a = add(a, c)
-        b = multiply(b, d)
-
-        while my_condition(d, f):
-            d = add(d, b)
-            f = multiply(f, a)
-
-        while my_condition(e, f):
-            e = add(e, a)
-            f = multiply(f, c)
-
-    while my_condition(f, f):
-        f = add(f, f)
-        f = multiply(f, f)
-
-    return f
-
-
-def workflow_with_for(a=10, b=20):
-    x = add(a, b)
-    for ii in my_for_loop(x, b):
-        x = add(a, ii)
-        z = multiply(a, x)
-    return z
-
-
-def my_if_condition(a=10, b=20):
-    return a > b
-
-
-def workflow_with_if(a=10, b=20):
-    x = add(a, b)
-    if my_if_condition(x, b):
-        x = multiply(x, b)
-    return x
-
-
-def workflow_with_if_else(a=10, b=20):
-    x = add(a, b)
-    if my_if_condition(x, b):
-        x = multiply(x, b)
-    else:
-        x = multiply(x, a)
-    return x
-
-
 class TestWorkflow(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.maxDiff = None
 
-    def test_analyzer(self):
-        graph = swf.analyze_function(example_macro)[0]
-        all_data = [
-            ("operation_0", "c_0", {"type": "output", "output_index": 0}),
-            ("operation_0", "d_0", {"type": "output", "output_index": 1}),
-            ("c_0", "add_0", {"type": "input", "input_index": 0}),
-            ("d_0", "add_0", {"type": "input", "input_name": "y"}),
-            ("a_0", "operation_0", {"type": "input", "input_index": 0}),
-            ("b_0", "operation_0", {"type": "input", "input_index": 1}),
-            ("add_0", "e_0", {"type": "output"}),
-            ("e_0", "multiply_0", {"type": "input", "input_index": 0}),
-            ("multiply_0", "f_0", {"type": "output"}),
-            ("f_0", "output", {"type": "input"}),
-            ("input", "a_0", {"type": "output"}),
-            ("input", "b_0", {"type": "output"}),
-        ]
-        self.maxDiff = None
-        self.assertEqual(
-            sorted([data for data in graph.edges.data()]),
-            sorted(all_data),
-        )
-
     def test_get_node_dict(self):
-        node_dict = swf.get_node_dict(add)
+        node_dict = swf._get_node_dict(add)
         self.assertEqual(
             node_dict,
             {
@@ -249,11 +100,6 @@ class TestWorkflow(unittest.TestCase):
             },
         )
 
-    def test_get_output_counts(self):
-        graph = swf.analyze_function(example_macro)[0]
-        output_counts = swf._get_output_counts(graph)
-        self.assertEqual(output_counts, {"operation_0": 2, "add_0": 1, "multiply_0": 1})
-
     def test_get_workflow_dict(self):
         ref_data = {
             "inputs": {"a": {"default": 10}, "b": {"default": 20}},
@@ -265,7 +111,11 @@ class TestWorkflow(unittest.TestCase):
                         "output_0": {"dtype": float},
                         "output_1": {"dtype": float},
                     },
-                    "function": f"{operation.__module__}.operation",
+                    "function": {
+                        "module": operation.__module__,
+                        "qualname": "operation",
+                        "version": "not_defined",
+                    },
                     "type": "Function",
                 },
                 "add_0": {
@@ -274,7 +124,11 @@ class TestWorkflow(unittest.TestCase):
                         "y": {"dtype": float, "default": 1},
                     },
                     "outputs": {"output": {"dtype": float}},
-                    "function": f"{add.__module__}.add",
+                    "function": {
+                        "module": add.__module__,
+                        "qualname": "add",
+                        "version": "not_defined",
+                    },
                     "uri": "add",
                     "type": "Function",
                 },
@@ -284,7 +138,11 @@ class TestWorkflow(unittest.TestCase):
                         "y": {"dtype": float, "default": 5},
                     },
                     "outputs": {"output": {"dtype": float}},
-                    "function": f"{multiply.__module__}.multiply",
+                    "function": {
+                        "module": multiply.__module__,
+                        "qualname": "multiply",
+                        "version": "not_defined",
+                    },
                     "type": "Function",
                 },
             },
@@ -298,13 +156,15 @@ class TestWorkflow(unittest.TestCase):
             ],
             "label": "example_macro",
             "type": "Workflow",
+            "uri": "this macro has metadata",
         }
-        self.assertEqual(
-            swf.separate_functions(example_macro._semantikon_workflow)[0], ref_data
-        )
+        wf = example_macro.serialize_workflow()
+        self.assertEqual(wf["type"], "Workflow")
+        smtk_wf = tools.serialize_functions(wf)
+        del smtk_wf["function"]
+        self.assertEqual(smtk_wf, ref_data)
 
     def test_get_workflow_dict_macro(self):
-        result = swf.get_workflow_dict(example_workflow)
         ref_data = {
             "inputs": {"a": {"default": 10}, "b": {"default": 20}},
             "outputs": {"z": {}},
@@ -314,7 +174,11 @@ class TestWorkflow(unittest.TestCase):
                     "outputs": {"f": {}},
                     "nodes": {
                         "operation_0": {
-                            "function": f"{operation.__module__}.operation",
+                            "function": {
+                                "module": operation.__module__,
+                                "qualname": "operation",
+                                "version": "not_defined",
+                            },
                             "inputs": {"x": {"dtype": float}, "y": {"dtype": float}},
                             "outputs": {
                                 "output_0": {"dtype": float},
@@ -323,7 +187,11 @@ class TestWorkflow(unittest.TestCase):
                             "type": "Function",
                         },
                         "add_0": {
-                            "function": f"{add.__module__}.add",
+                            "function": {
+                                "module": add.__module__,
+                                "qualname": "add",
+                                "version": "not_defined",
+                            },
                             "inputs": {
                                 "x": {"dtype": float, "default": 2.0},
                                 "y": {"dtype": float, "default": 1},
@@ -333,7 +201,11 @@ class TestWorkflow(unittest.TestCase):
                             "type": "Function",
                         },
                         "multiply_0": {
-                            "function": f"{multiply.__module__}.multiply",
+                            "function": {
+                                "module": multiply.__module__,
+                                "qualname": "multiply",
+                                "version": "not_defined",
+                            },
                             "inputs": {
                                 "x": {"dtype": float},
                                 "y": {"dtype": float, "default": 5},
@@ -355,7 +227,11 @@ class TestWorkflow(unittest.TestCase):
                     "uri": "this macro has metadata",
                 },
                 "add_0": {
-                    "function": f"{add.__module__}.add",
+                    "function": {
+                        "module": add.__module__,
+                        "qualname": "add",
+                        "version": "not_defined",
+                    },
                     "inputs": {
                         "x": {"dtype": float, "default": 2.0},
                         "y": {"dtype": float, "default": 1},
@@ -375,135 +251,17 @@ class TestWorkflow(unittest.TestCase):
             "label": "example_workflow",
             "type": "Workflow",
         }
-        self.assertEqual(swf.separate_functions(result)[0], ref_data, msg=result)
-
-    def test_parallel_execution(self):
-        graph = swf.analyze_function(parallel_execution)[0]
-        self.assertEqual(
-            swf.find_parallel_execution_levels(graph),
-            [
-                ["a_0", "b_0"],
-                ["add_0", "multiply_0"],
-                ["c_0", "d_0"],
-                ["operation_0"],
-                ["e_0", "f_0"],
-            ],
-        )
-
-    def test_run_single(self):
-        data = example_macro.run()
-        self.assertEqual(example_macro(), data["outputs"]["f"]["value"])
-
-    def test_run_parallel_execution(self):
-        data = parallel_execution.run()
-        results = parallel_execution()
-        self.assertEqual(results[0], data["outputs"]["e"]["value"])
-        self.assertEqual(results[1], data["outputs"]["f"]["value"])
-
-    def test_run_nested(self):
-        data = example_workflow.run()
-        self.assertEqual(example_workflow(), data["outputs"]["z"]["value"])
-
-    def test_not_implemented_error(self):
-        def example_invalid_operator(a=10, b=20):
-            y = example_macro(a, b)
-            z = add(y, b)
-            result = z + 1
-            return result
-
-        def example_invalid_multiple_operation(a=10, b=20):
-            result = add(a, add(a, b))
-            return result
-
-        def example_invalid_local_var_def(a=10, b=20):
-            result = add(a, 2)
-            return result
-
-        with self.assertRaises(NotImplementedError):
-            swf.workflow(example_invalid_operator)
-        with self.assertRaises(NotImplementedError):
-            swf.workflow(example_invalid_multiple_operation)
-        with self.assertRaises(NotImplementedError):
-            swf.workflow(example_invalid_local_var_def)
-
-    def test_separate_functions(self):
-        old_data = example_workflow._semantikon_workflow
-        data, function_dict = swf.separate_functions(old_data)
-        # add is deep copied due to the decorator
-        del function_dict[f"{add.__module__}.add"]
-        self.assertEqual(
-            function_dict,
-            {
-                f"{operation.__module__}.operation": operation,
-                f"{multiply.__module__}.multiply": multiply,
-            },
-        )
-        self.assertEqual(
-            data["nodes"]["example_macro_0"]["nodes"]["operation_0"]["function"],
-            f"{operation.__module__}.operation",
-        )
-        self.assertEqual(
-            old_data["nodes"]["example_macro_0"]["nodes"]["operation_0"]["function"],
-            operation,
-        )
+        wf = example_workflow.serialize_workflow()
+        self.assertEqual(wf["type"], "Workflow")
+        smtk_wf = tools.serialize_functions(wf)
+        del smtk_wf["function"]
+        del smtk_wf["nodes"]["example_macro_0"]["function"]
+        self.assertEqual(smtk_wf, ref_data)
 
     def test_separate_types(self):
-        old_data = example_workflow._semantikon_workflow
+        old_data = example_workflow.serialize_workflow()
         class_dict = swf.separate_types(old_data)[1]
         self.assertEqual(class_dict, {"float": float})
-
-    def test_seemingly_cyclic_workflow(self):
-        data = swf.get_workflow_dict(seemingly_cyclic_workflow)
-        self.assertIn("a", data["inputs"])
-        self.assertIn("a", data["outputs"])
-
-    def test_workflow_to_use_undefined_variable(self):
-        with self.assertRaises(KeyError):
-            swf.workflow(workflow_to_use_undefined_variable)
-
-    def test_get_sorted_edges(self):
-        graph = nx.DiGraph()
-        graph.add_edges_from([("A", "B"), ("B", "D"), ("A", "C"), ("C", "D")])
-        sorted_edges = swf._get_sorted_edges(graph)
-        self.assertEqual(
-            sorted_edges,
-            [("A", "B", {}), ("A", "C", {}), ("B", "D", {}), ("C", "D", {})],
-        )
-
-    def test_workflow_with_while(self):
-        wf = swf.workflow(workflow_with_while)._semantikon_workflow
-        self.assertIn("injected_While_0", wf["nodes"])
-        self.assertEqual(
-            sorted(wf["nodes"]["injected_While_0"]["inputs"].keys()),
-            ["a", "b", "x"],
-        )
-        self.assertEqual(
-            sorted(wf["nodes"]["injected_While_0"]["outputs"].keys()),
-            ["z"],
-        )
-        self.assertEqual(
-            sorted(wf["nodes"]["injected_While_0"]["edges"]),
-            sorted(
-                [
-                    ("inputs.x", "test.inputs.a"),
-                    ("inputs.b", "test.inputs.b"),
-                    ("inputs.b", "add_1.inputs.y"),
-                    ("inputs.a", "add_1.inputs.x"),
-                    ("inputs.a", "multiply_0.inputs.x"),
-                    ("add_1.outputs.output", "multiply_0.inputs.y"),
-                    ("multiply_0.outputs.output", "outputs.z"),
-                ]
-            ),
-        )
-        self.assertIn("add_1", wf["nodes"]["injected_While_0"]["nodes"])
-        self.assertIn("multiply_0", wf["nodes"]["injected_While_0"]["nodes"])
-
-    def test_reused_args(self):
-        data = swf.get_workflow_dict(reused_args)
-        self.assertEqual(
-            sorted(data["edges"]),
-            sorted(example_macro._semantikon_workflow["edges"]),
-        )
 
     def test_get_node_outputs(self):
         self.assertEqual(
@@ -522,31 +280,6 @@ class TestWorkflow(unittest.TestCase):
             swf._get_node_outputs(parallel_execution, counts=1),
             {"output": {}},
         )
-
-    def test_workflow_with_leaf(self):
-        data = swf.get_workflow_dict(workflow_with_leaf)
-        self.assertIn("check_positive_0", data["nodes"])
-        self.assertIn("add_0", data["nodes"])
-        self.assertIn("y", data["outputs"])
-        self.assertIn(
-            ("add_0.outputs.output", "check_positive_0.inputs.x"), data["edges"]
-        )
-        self.assertEqual(data["nodes"]["check_positive_0"]["outputs"], {})
-
-        with self.subTest("As dataclass"):
-            wf = swf.get_node(swf.workflow(workflow_with_leaf))
-            self.assertIn("check_positive_0", wf.nodes.keys())
-            self.assertIn("add_0", wf.nodes.keys())
-            self.assertIn("y", wf.outputs.keys())
-            self.assertIn(
-                ("add_0.outputs.output", "check_positive_0.inputs.x"),
-                wf.edges.to_tuple(),
-            )
-            self.assertIn("check_positive_0.inputs.x", wf.edges)
-            self.assertEqual(
-                wf.edges["check_positive_0.inputs.x"],
-                "add_0.outputs.output",
-            )
 
     def test_get_workflow_output(self):
 
@@ -597,7 +330,7 @@ class TestWorkflow(unittest.TestCase):
         for fnc in (operation, add, multiply, my_while_condition, complex_function):
             with self.subTest(fnc=fnc, msg=fnc.__name__):
                 inputs, outputs = swf.get_ports(fnc)
-                full_entry = swf.get_node_dict(fnc)
+                full_entry = swf._get_node_dict(fnc)
                 for entry, node in (
                     (full_entry["inputs"], inputs),
                     (full_entry["outputs"], outputs),
@@ -677,9 +410,9 @@ class TestWorkflow(unittest.TestCase):
             self.assertIsInstance(node.edges, swf.Edges)
             self.assertDictEqual(
                 {
-                    f"{node.nodes.complex_function_0.label}.inputs.{node.nodes.complex_function_0.inputs.x.label}": f"inputs.{node.inputs.x.label}",
-                    f"outputs.{node.outputs.b.label}": f"{node.nodes.complex_function_0.label}.outputs.{node.nodes.complex_function_0.outputs.speed.label}",
-                    f"outputs.{node.outputs.c.label}": f"{node.nodes.complex_function_0.label}.outputs.{node.nodes.complex_function_0.outputs.output_2.label}",
+                    "complex_function_0.inputs.x": "inputs.x",
+                    "outputs.b": "complex_function_0.outputs.speed",
+                    "outputs.c": "complex_function_0.outputs.output_2",
                 },
                 node.edges.to_dictionary(),
             )
@@ -704,8 +437,8 @@ class TestWorkflow(unittest.TestCase):
             self.assertIsInstance(node.edges, swf.Edges)
             self.assertDictEqual(
                 {
-                    f"{node.nodes.complex_macro_0.label}.inputs.{node.nodes.complex_macro_0.inputs.x.label}": f"inputs.{node.inputs.x.label}",
-                    f"outputs.{node.outputs.c.label}": f"{node.nodes.complex_macro_0.label}.outputs.{node.nodes.complex_macro_0.outputs.c.label}",
+                    "complex_macro_0.inputs.x": "inputs.x",
+                    "outputs.c": "complex_macro_0.outputs.c",
                 },
                 node.edges.to_dictionary(),
             )
@@ -713,11 +446,7 @@ class TestWorkflow(unittest.TestCase):
     def test_function(self):
         for fnc in (operation, add, multiply, my_while_condition):
             with self.subTest(fnc=fnc, msg=fnc.__name__):
-                entry = swf.get_node_dict(
-                    fnc,
-                    parse_input_args(fnc),
-                    swf._get_node_outputs(fnc),
-                )
+                entry = swf._get_node_dict(fnc)
                 # Cheat and modify the entry to resemble the node structure
                 if hasattr(fnc, "_semantikon_metadata"):
                     # Nest the metadata in the entry
@@ -737,179 +466,16 @@ class TestWorkflow(unittest.TestCase):
                 self.assertDictEqual(
                     entry,
                     node_dictionary,
-                    msg="Just an interim cyclicity test",
+                    msg=f"Just an interim cyclicity test for {fnc.__name__}",
                 )
 
-    def test_detect_io_variables_from_control_flow(self):
-        graph = swf.analyze_function(workflow_with_while)[0]
-        subgraphs = swf._split_graphs_into_subgraphs(graph)
-        io_vars = swf._detect_io_variables_from_control_flow(
-            graph, subgraphs["While_0"]
-        )
-        self.assertEqual(
-            {key: sorted(value) for key, value in io_vars.items()},
-            {
-                "inputs": ["a_0", "b_0", "x_0"],
-                "outputs": ["z_0"],
-            },
-        )
-
-    def test_get_control_flow_graph(self):
-        control_flows = [
-            "",
-            "While_1/While_0",
-            "While_2",
-            "While_0",
-            "While_1",
-            "While_0/While_0/While_0",
-            "While_1/While_1",
-            "While_0/While_1",
-            "While_0/While_0",
-            "While_0/While_2",
-        ]
-        graph = swf._get_control_flow_graph(control_flows)
-        self.assertEqual(
-            sorted(list(graph.successors("While_0"))),
-            ["While_0/While_0", "While_0/While_1", "While_0/While_2"],
-        )
-        self.assertEqual(
-            sorted(list(graph.successors("While_1"))),
-            ["While_1/While_0", "While_1/While_1"],
-        )
-
-    def test_multiple_nested_workflow(self):
-        data = swf.get_workflow_dict(multiple_nested_workflow)
-        self.assertIn("a", data["inputs"])
-        self.assertIn("f", data["outputs"])
-        self.assertIn("injected_While_0", data["nodes"])
-        self.assertIn(
-            "injected_While_0_While_0", data["nodes"]["injected_While_0"]["nodes"]
-        )
-        self.assertIn(
-            "injected_While_0_For_0", data["nodes"]["injected_While_0"]["nodes"]
-        )
-
-    def test_for_loop(self):
-        data = swf.get_workflow_dict(workflow_with_for)
-        self.assertIn("injected_For_0", data["nodes"])
-        self.assertIn("iter", data["nodes"]["injected_For_0"])
-        self.assertEqual(
-            sorted(data["edges"]),
-            sorted(
-                [
-                    ("inputs.a", "injected_For_0.inputs.a"),
-                    ("inputs.b", "injected_For_0.inputs.b"),
-                    ("inputs.a", "add_0.inputs.x"),
-                    ("inputs.b", "add_0.inputs.y"),
-                    ("add_0.outputs.output", "injected_For_0.inputs.x"),
-                    ("injected_For_0.outputs.z", "outputs.z"),
-                ]
+    def test_edges_to_output_counts(self):
+        self.assertDictEqual(
+            swf._edges_to_output_counts(
+                example_macro.serialize_workflow()["edges"],
             ),
+            {"operation_0": 2, "add_0": 1, "multiply_0": 1},
         )
-        self.assertEqual(
-            sorted(data["nodes"]["injected_For_0"]["edges"]),
-            sorted(
-                [
-                    ("inputs.x", "iter.inputs.a"),
-                    ("inputs.b", "iter.inputs.b"),
-                    ("iter.outputs.output", "add_1.inputs.y"),
-                    ("inputs.a", "add_1.inputs.x"),
-                    ("inputs.a", "multiply_0.inputs.x"),
-                    ("add_1.outputs.output", "multiply_0.inputs.y"),
-                    ("multiply_0.outputs.output", "outputs.z"),
-                ]
-            ),
-        )
-
-    def test_multiple_output_to_single_raise_error(self):
-
-        def multiple_output_to_single_variable(a, b):
-            output = parallel_execution(a, b)
-            return output
-
-        self.assertRaises(
-            ValueError, swf.get_workflow_dict, multiple_output_to_single_variable
-        )
-
-    def test_if_statement(self):
-        data = swf.get_workflow_dict(workflow_with_if)
-        self.assertIn("injected_If_0", data["nodes"])
-        self.assertIn("x", data["outputs"])
-        self.assertEqual(
-            sorted(data["edges"]),
-            sorted(
-                [
-                    ("inputs.b", "injected_If_0.inputs.b"),
-                    ("inputs.a", "add_0.inputs.x"),
-                    ("inputs.b", "add_0.inputs.y"),
-                    ("add_0.outputs.output", "injected_If_0.inputs.x"),
-                    ("injected_If_0.outputs.x", "outputs.x"),
-                ]
-            ),
-        )
-        self.assertEqual(
-            sorted(data["nodes"]["injected_If_0"]["edges"]),
-            sorted(
-                [
-                    ("inputs.x", "multiply_0.inputs.x"),
-                    ("inputs.b", "multiply_0.inputs.y"),
-                    ("inputs.x", "test.inputs.a"),
-                    ("inputs.b", "test.inputs.b"),
-                    ("multiply_0.outputs.output", "outputs.x"),
-                ]
-            ),
-        )
-
-    def test_if_else_statement(self):
-        data = swf.get_workflow_dict(workflow_with_if_else)
-        self.assertIn("injected_If_0", data["nodes"])
-        self.assertEqual(
-            sorted(data["edges"]),
-            sorted(
-                [
-                    ("inputs.b", "injected_If_0.inputs.b"),
-                    ("inputs.a", "injected_Else_0.inputs.a"),
-                    ("inputs.a", "add_0.inputs.x"),
-                    ("inputs.b", "add_0.inputs.y"),
-                    ("add_0.outputs.output", "injected_If_0.inputs.x"),
-                    ("add_0.outputs.output", "injected_Else_0.inputs.x"),
-                    ("injected_If_0.outputs.x", "outputs.x"),
-                    ("injected_Else_0.outputs.x", "outputs.x"),
-                ]
-            ),
-        )
-        self.assertEqual(
-            sorted(data["nodes"]["injected_If_0"]["edges"]),
-            sorted(
-                [
-                    ("inputs.x", "multiply_0.inputs.x"),
-                    ("inputs.b", "multiply_0.inputs.y"),
-                    ("inputs.x", "test.inputs.a"),
-                    ("inputs.b", "test.inputs.b"),
-                    ("multiply_0.outputs.output", "outputs.x"),
-                ]
-            ),
-        )
-        self.assertEqual(
-            sorted(data["nodes"]["injected_Else_0"]["edges"]),
-            sorted(
-                [
-                    ("inputs.x", "multiply_1.inputs.x"),
-                    ("inputs.a", "multiply_1.inputs.y"),
-                    ("multiply_1.outputs.output", "outputs.x"),
-                ]
-            ),
-        )
-
-    def test_not_implemented_line_in_workflow(self):
-
-        def f(x):
-            def g(x):
-                return x
-
-            return g
-
-        self.assertRaises(NotImplementedError, swf.get_workflow_dict, f)
 
 
 if __name__ == "__main__":
