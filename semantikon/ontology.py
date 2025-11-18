@@ -25,7 +25,7 @@ class SNS:
     has_unit: URIRef = QUDT["hasUnit"]
     linksTo: URIRef = BASE["linksTo"]
     precedes: URIRef = BFO["0000063"]
-    participates_in: URIRef = RO["0000056"]
+    has_participant: URIRef = RO["0000057"]
 
 
 class NS:
@@ -50,7 +50,7 @@ def _translate_has_value(
     ontology=SNS,
 ) -> _triple_type:
     tag_value = tag + ".value"
-    triples: _triple_type = [(tag_value, ontology.participates_in, label)]
+    triples: _triple_type = [(label, ontology.has_participant, tag_value)]
     if is_dataclass(dtype):
         warnings.warn(
             "semantikon_class is experimental - triples may change in the future",
@@ -259,7 +259,7 @@ def _inherit_properties(
         FILTER(?p != rdfs:label)
         FILTER(?p != rdf:value)
         FILTER(?p != rdf:type)
-        FILTER(?p != ro:0000056)  # participates_in
+        FILTER(?p != ro:0000057)  # has_participant
         FILTER(?p != bfo:0000051)  # has_part
         FILTER(?p != ns:linksTo)
         FILTER(?p != owl:sameAs)

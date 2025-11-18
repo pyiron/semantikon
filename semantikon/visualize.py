@@ -64,7 +64,7 @@ def _get_data(graph):
         _add_color(data_dict, graph, obj, "lightpink")
         _add_color(data_dict, graph, subj, "lightcyan")
 
-    for obj in graph.subjects(SNS.participates_in, None):
+    for obj in graph.objects(None, SNS.has_participant):
         _add_color(data_dict, graph, obj, "peachpuff")
 
     for subj, pred, obj in graph:
