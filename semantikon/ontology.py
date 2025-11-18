@@ -30,6 +30,7 @@ class SNS:
     participates_in: URIRef = RO["0000056"]
     input_assignment: URIRef = PMD["0000066"]
     output_assignment: URIRef = PMD["0000067"]
+    process: URIRef = BFO["0000015"]
 
 
 class NS:
@@ -543,7 +544,7 @@ def _parse_workflow(
     triples.extend(_get_precedes(_get_edge_dict(edge_list), ontology=ontology))
 
     for key, node in node_dict.items():
-        triples.append((key, RDF.type, PROV.Activity))
+        triples.append((key, RDF.type, ontology.process))
         if "function" in node:
             triples.extend(_function_to_triples(node["function"], key, ontology))
         if "." in key:
