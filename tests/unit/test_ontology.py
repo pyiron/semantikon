@@ -743,36 +743,36 @@ class TestOntology(unittest.TestCase):
         @prefix ro: <http://purl.obolibrary.org/obo/RO_> .
         @prefix pmd: <https://w3id.org/pmd/co/PMD_> .
 
-        <get_macro.add_one_0.inputs.a> a prov:Entity .
+        <get_macro.add_one_0.inputs.a> a pmd:0000066 .
 
-        <get_macro.add_three_0.add_one_0.inputs.a> a prov:Entity .
+        <get_macro.add_three_0.add_one_0.inputs.a> a pmd:0000066 .
 
-        <get_macro.add_three_0.add_two_0.inputs.b> a prov:Entity .
+        <get_macro.add_three_0.add_two_0.inputs.b> a pmd:0000066 .
 
-        <get_macro.outputs.result> a prov:Entity ;
+        <get_macro.outputs.result> a pmd:0000067 ;
             a pmd:0000067 .
 
-        <get_macro.add_one_0.outputs.result> a prov:Entity ;
+        <get_macro.add_one_0.outputs.result> a pmd:0000067 ;
             ns1:linksTo <get_macro.outputs.result> ;
             a pmd:0000067 .
 
-        <get_macro.add_three_0.add_one_0.outputs.result> a prov:Entity ;
+        <get_macro.add_three_0.add_one_0.outputs.result> a pmd:0000067 ;
             ns1:linksTo <get_macro.add_three_0.add_two_0.inputs.b> ;
             a pmd:0000067 .
 
-        <get_macro.add_three_0.add_two_0.outputs.result> a prov:Entity ;
+        <get_macro.add_three_0.add_two_0.outputs.result> a pmd:0000067 ;
             ns1:linksTo <get_macro.add_three_0.outputs.w> ;
             a pmd:0000067 .
 
-        <get_macro.add_three_0.inputs.c> a prov:Entity ;
+        <get_macro.add_three_0.inputs.c> a pmd:0000066 ;
             ns1:linksTo <get_macro.add_three_0.add_one_0.inputs.a> ;
             a pmd:0000066 .
 
-        <get_macro.add_three_0.outputs.w> a prov:Entity ;
+        <get_macro.add_three_0.outputs.w> a pmd:0000067 ;
             ns1:linksTo <get_macro.add_one_0.inputs.a> ;
             a pmd:0000067 .
 
-        <get_macro.inputs.c> a prov:Entity ;
+        <get_macro.inputs.c> a pmd:0000066 ;
             ns1:linksTo <get_macro.add_three_0.inputs.c> ;
             a pmd:0000066 .
 
