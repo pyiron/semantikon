@@ -22,15 +22,14 @@ PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
 class SNS:
     BASE: Namespace = Namespace("http://pyiron.org/ontology/")
     has_part: URIRef = BFO["0000051"]
-    has_participants: URIRef = BFO["0000057"]
-    is_about: URIRef = IAO["0000136"]
-    has_unit: URIRef = QUDT["hasUnit"]
-    linksTo: URIRef = BASE["linksTo"]
-    precedes: URIRef = BFO["0000063"]
-    input_assignment: URIRef = PMD["0000066"]
-    output_assignment: URIRef = PMD["0000067"]
-    process: URIRef = BFO["0000015"]
     has_participant: URIRef = RO["0000057"]
+    has_unit: URIRef = QUDT["hasUnit"]
+    input_assignment: URIRef = PMD["0000066"]
+    is_about: URIRef = IAO["0000136"]
+    linksTo: URIRef = BASE["linksTo"]
+    output_assignment: URIRef = PMD["0000067"]
+    precedes: URIRef = BFO["0000063"]
+    process: URIRef = BFO["0000015"]
 
 
 class NS:
