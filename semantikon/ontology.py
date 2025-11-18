@@ -440,7 +440,7 @@ def _parse_channel(
     triples.extend(
         _translate_has_value(
             label=channel_label,
-            tag=str(edge_dict.get(*2 * [channel_label])),
+            tag=str(edge_dict.get(channel_label, channel_label)),
             value=channel_dict.get("value", None),
             dtype=channel_dict.get("dtype", None),
             units=channel_dict.get("units", None),
