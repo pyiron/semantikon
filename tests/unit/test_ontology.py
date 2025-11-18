@@ -794,13 +794,13 @@ class TestOntology(unittest.TestCase):
                 <get_macro.add_three_0.add_two_0.outputs.result>,
                 <get_macro.add_three_0.outputs.w> .
 
-        <get_macro> a prov:Activity ;
+        <get_macro> a bfo:0000015 ;
             bfo:0000051 <get_macro.add_one_0>,
                 <get_macro.add_three_0>,
                 <get_macro.outputs.result>,
                 <get_macro.inputs.c> .
 
-        <get_macro.add_one_0> a prov:Activity ;
+        <get_macro.add_one_0> a bfo:0000015 ;
             bfo:0000051 <get_macro.add_one_0.outputs.result>,
                 <get_macro.add_one_0.inputs.a> .
 
@@ -808,11 +808,11 @@ class TestOntology(unittest.TestCase):
             iao:0000136 <get_macro.add_three_0.add_one_0> ;
             a iao:0000030 .
 
-        <get_macro.add_three_0.add_one_0> a prov:Activity ;
+        <get_macro.add_three_0.add_one_0> a bfo:0000015 ;
             bfo:0000051 <get_macro.add_three_0.add_one_0.outputs.result>,
                 <get_macro.add_three_0.add_one_0.inputs.a> .
 
-        <get_macro.add_three_0> a prov:Activity ;
+        <get_macro.add_three_0> a bfo:0000015 ;
             bfo:0000051 <get_macro.add_three_0.add_one_0>,
                 <get_macro.add_three_0.add_two_0>,
                 <get_macro.add_three_0.outputs.w>,
@@ -829,7 +829,7 @@ class TestOntology(unittest.TestCase):
         <get_macro.add_three_0.add_one_0> bfo:0000063 <get_macro.add_three_0.add_two_0> .
 
 
-        <get_macro.add_three_0.add_two_0> a prov:Activity ;
+        <get_macro.add_three_0.add_two_0> a bfo:0000015 ;
             bfo:0000051 <get_macro.add_three_0.add_two_0.outputs.result>,
                 <get_macro.add_three_0.add_two_0.inputs.b> .
 
