@@ -117,12 +117,6 @@ def visualize(graph, engine="dot"):
             dot.node(key.replace(":", "_"), _to_node(key, **value))
     for edges in edge_list:
         color = _edge_colors.get(edges[2], "black")
-        dot.edge(
-            edges[0],
-            edges[1],
-            label=_id_to_tag.get(edges[2], edges[2]),
-            color=color,
-            fontcolor=color
-        )
-
+        label = _id_to_tag.get(edges[2], edges[2])
+        dot.edge(edges[0], edges[1], label=label, color=color, fontcolor=color)
     return dot
