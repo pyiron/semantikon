@@ -41,26 +41,30 @@ _triple_type: TypeAlias = list[
 
 
 def _translate_has_value(
-    label: URIRef | str | BNode,
-    tag: str,
+    io_port: URIRef | str | BNode | list[URIRef | str | BNode],
+    unique_io_port: str,
     value: Any = None,
     dtype: type | None = None,
     units: str | URIRef | None = None,
     ontology=SNS,
 ) -> _triple_type:
-    tag_value = tag + ".value"
-    triples: _triple_type = [(label, ontology.has_participant, tag_value)]
+    value_node = unique_io_port + ".value"
+    if not isinstance(io_port, list):
+        io_port = [io_port]
+    triples: _triple_type = [
+        (io, ontology.has_participant, value_node) for io in io_port
+    ]
     if value is not None:
-        triples.append((tag_value, RDF.value, Literal(value)))
+        triples.append((value_node, RDF.value, Literal(value)))
     if units is not None:
         if isinstance(units, str):
             key = ud[units]
             if key is not None:
-                triples.append((tag_value, ontology.has_unit, key))
+                triples.append((value_node, ontology.has_unit, key))
             else:
-                triples.append((tag_value, ontology.has_unit, URIRef(units)))
+                triples.append((value_node, ontology.has_unit, URIRef(units)))
         else:
-            triples.append((tag_value, ontology.has_unit, URIRef(units)))
+            triples.append((value_node, ontology.has_unit, URIRef(units)))
     return triples
 
 
@@ -401,8 +405,8 @@ def _parse_channel(
         triples.append((channel_label, RDF.type, channel_dict["uri"]))
     triples.extend(
         _translate_has_value(
-            label=channel_label,
-            tag=str(edge_dict.get(*2 * [channel_label])),
+            io_port=channel_label,
+            unique_io_port=str(edge_dict.get(*2 * [channel_label])),
             value=channel_dict.get("value", None),
             dtype=channel_dict.get("dtype", None),
             units=channel_dict.get("units", None),
@@ -526,21 +530,23 @@ def _parse_cancel(wf_channels: dict, namespace: Namespace | None = None) -> list
 
 
 def _translate_dataclass(
-    label: URIRef | str | BNode,
-    tag: str,
+    io_port: list[URIRef | str | BNode],
+    unique_io_port: str,
     value: Any = None,
     dtype: type | None = None,
     units: str | URIRef | None = None,
     ontology=SNS,
 ) -> _triple_type:
-    tag_value = tag + ".value"
-    triples: _triple_type = [(label, ontology.has_participant, tag_value)]
+    value_node = unique_io_port + ".value"
+    triples: _triple_type = [
+        (io, ontology.has_participant, value_node) for io in io_port
+    ]
     for k, v in dtype.__dict__.items():
         if isinstance(v, type) and is_dataclass(v):
             triples.extend(
                 _translate_dataclass(
-                    label=label,
-                    tag=_dot(tag, k),
+                    io_port=io_port,
+                    unique_io_port=_dot(unique_io_port, k),
                     value=getattr(value, k, None),
                     dtype=v,
                     ontology=ontology,
@@ -548,11 +554,11 @@ def _translate_dataclass(
             )
     for k, v in dtype.__annotations__.items():
         metadata = meta_to_dict(v)
-        triples.append((_dot(tag, k) + ".value", RDFS.subClassOf, tag_value))
+        triples.append((_dot(unique_io_port, k) + ".value", RDFS.subClassOf, value_node))
         triples.extend(
             _translate_has_value(
-                label=label,
-                tag=_dot(tag, k),
+                io_port=io_port,
+                unique_io_port=_dot(unique_io_port, k),
                 value=getattr(value, k, None),
                 dtype=metadata["dtype"],
                 units=metadata.get("units", None),
@@ -560,6 +566,39 @@ def _translate_dataclass(
             )
         )
     return triples
+
+
+def _triples_to_knowledge_graph(
+    triples: list, graph: Graph | None = None,  namespace: Namespace | None = None
+) -> Graph:
+    if graph is None:
+        graph = Graph()
+    for triple in triples:
+        if any(t is None for t in triple):
+            continue
+        s, p, o = tuple([_convert_to_uriref(t, namespace=namespace) for t in triple])
+        graph.add((s, p, o))
+    return graph
+
+
+def unfold_dataclass(
+    graph: Graph, namespace: Namespace | None = None, ontology=SNS
+) -> Graph:
+    triples = []
+    for subj, obj in graph.subject_objects(RDF.value):
+        obj = obj.toPython()
+        if not is_dataclass(obj):
+            continue
+        tag = str(subj).rsplit(".value")[0]
+        triples.extend(
+            _translate_dataclass(
+                io_port=list(graph.subjects(ontology.has_participant, subj)),
+                unique_io_port=tag,
+                value=obj,
+                dtype=type(obj),
+            )
+        )
+    return _triples_to_knowledge_graph(triples, namespace=namespace, graph=graph)
 
 
 def get_knowledge_graph(
@@ -586,13 +625,9 @@ def get_knowledge_graph(
         graph = Graph()
     node_dict, channel_dict, edge_list = serialize_data(wf_dict, use_uuid=use_uuid)
     triples = _parse_workflow(node_dict, channel_dict, edge_list, ontology=ontology)
-    triples_to_cancel = _parse_cancel(channel_dict, namespace=namespace)
-    for triple in triples:
-        if any(t is None for t in triple):
-            continue
-        s, p, o = tuple([_convert_to_uriref(t, namespace=namespace) for t in triple])
-        graph.add((s, p, o))
+    graph = _triples_to_knowledge_graph(triples, graph=graph, namespace=namespace)
     if inherit_properties:
+        triples_to_cancel = _parse_cancel(channel_dict, namespace=namespace)
         _inherit_properties(graph, triples_to_cancel, ontology=ontology)
     if append_missing_items:
         graph = _append_missing_items(graph)

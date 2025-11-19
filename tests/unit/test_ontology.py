@@ -17,6 +17,7 @@ from semantikon.ontology import (
     dataclass_to_knowledge_graph,
     get_knowledge_graph,
     serialize_data,
+    unfold_dataclass,
     validate_values,
 )
 from semantikon.visualize import visualize
@@ -999,6 +1000,7 @@ class TestDataclass(unittest.TestCase):
     def test_dataclass(self):
         wf_dict = get_run_md.run(Input(T=300.0, n=100))
         graph = get_knowledge_graph(wf_dict)
+        graph = unfold_dataclass(graph=graph)
         i_txt = "get_run_md.run_md_0.inputs.inp"
         o_txt = "get_run_md.run_md_0.outputs.out"
         triples = (
