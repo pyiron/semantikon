@@ -48,8 +48,10 @@ def _translate_has_value(
     label: URIRef | str | BNode,
     tag: str,
     value: Any = None,
+    uri: URIRef | str | None = None,
     dtype: type | None = None,
     units: str | URIRef | None = None,
+    is_dependent: bool = False,
     parent: URIRef | None = None,
     ontology=SNS,
 ) -> _triple_type:
@@ -99,6 +101,9 @@ def _translate_has_value(
                     triples.append((tag_value, ontology.has_unit, URIRef(units)))
             else:
                 triples.append((tag_value, ontology.has_unit, URIRef(units)))
+    if uri is not None:
+        if not is_dependent:
+            triples.append((tag_value, RDF.type, uri))
     return triples
 
 
@@ -265,18 +270,16 @@ def _inherit_properties(
         FILTER(?p != rdf:type)
         FILTER(?p != ro:0000057)  # has_participant
         FILTER(?p != bfo:0000051)  # has_part
-        FILTER(?p != ns:linksTo)
         FILTER(?p != owl:sameAs)
     }}
     """
     )
     prov_query = update_query.substitute(line="?subject prov:wasDerivedFrom ?target .")
-    link_query = update_query.substitute(line="?target ns:linksTo ?subject .")
     if triples_to_cancel is None:
         triples_to_cancel = []
     n = 0
     for _ in range(n_max):
-        for query in [prov_query, link_query]:
+        for query in prov_query:
             graph.update(query)
             for t in triples_to_cancel:
                 if t in graph:
@@ -434,15 +437,15 @@ def _parse_channel(
     triples: _triple_type = []
     if "type_hint" in channel_dict:
         channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
-    if channel_dict.get("uri", None) is not None:
-        triples.append((channel_label, RDF.type, channel_dict["uri"]))
     triples.extend(
         _translate_has_value(
             label=channel_label,
             tag=str(edge_dict.get(channel_label, channel_label)),
             value=channel_dict.get("value", None),
+            uri=channel_dict.get("uri", None),
             dtype=channel_dict.get("dtype", None),
             units=channel_dict.get("units", None),
+            is_dependent=channel_label in edge_dict,
             ontology=ontology,
         )
     )
@@ -505,13 +508,6 @@ def _dot(*args) -> str:
     return ".".join([a for a in args if a is not None])
 
 
-def _edges_to_triples(edges: dict, ontology=SNS) -> list:
-    return [
-        (upstream, ontology.linksTo, downstream)
-        for downstream, upstream in edges.items()
-    ]
-
-
 def _get_precedes(
     edge_dict: dict[str, str], ontology=SNS
 ) -> list[tuple[str, URIRef, str]]:
@@ -538,7 +534,6 @@ def _parse_workflow(
         for label, content in channel_dict.items()
         for triple in _parse_channel(content, label, full_edge_dict, ontology)
     ]
-    triples.extend(_edges_to_triples(_get_edge_dict(edge_list), ontology=ontology))
     triples.extend(_get_precedes(_get_edge_dict(edge_list), ontology=ontology))
 
     for key, node in node_dict.items():
