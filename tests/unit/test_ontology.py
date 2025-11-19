@@ -15,9 +15,9 @@ from semantikon.ontology import (
     _get_precedes,
     _parse_cancel,
     dataclass_to_knowledge_graph,
+    extract_dataclass,
     get_knowledge_graph,
     serialize_data,
-    extract_dataclass,
     validate_values,
 )
 from semantikon.visualize import visualize

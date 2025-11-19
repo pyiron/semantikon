@@ -1,5 +1,4 @@
 import uuid
-import warnings
 from collections import defaultdict
 from dataclasses import is_dataclass
 from string import Template
@@ -554,7 +553,9 @@ def _translate_dataclass(
             )
     for k, v in dtype.__annotations__.items():
         metadata = meta_to_dict(v)
-        triples.append((_dot(unique_io_port, k) + ".value", RDFS.subClassOf, value_node))
+        triples.append(
+            (_dot(unique_io_port, k) + ".value", RDFS.subClassOf, value_node)
+        )
         triples.extend(
             _translate_has_value(
                 io_port=io_port,
@@ -569,7 +570,7 @@ def _translate_dataclass(
 
 
 def _triples_to_knowledge_graph(
-    triples: list, graph: Graph | None = None,  namespace: Namespace | None = None
+    triples: list, graph: Graph | None = None, namespace: Namespace | None = None
 ) -> Graph:
     if graph is None:
         graph = Graph()
