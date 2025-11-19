@@ -23,7 +23,6 @@ _id_to_tag = {
 }
 
 
-
 def _short_label(graph, node):
     """Use graph's prefixes to shorten URIs nicely."""
     if isinstance(node, URIRef):
