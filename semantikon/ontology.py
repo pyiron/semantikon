@@ -581,7 +581,7 @@ def _triples_to_knowledge_graph(
     return graph
 
 
-def unfold_dataclass(
+def extract_dataclass(
     graph: Graph, namespace: Namespace | None = None, ontology=SNS
 ) -> Graph:
     triples = []
