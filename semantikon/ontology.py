@@ -593,9 +593,13 @@ def get_knowledge_graph(
         _inherit_properties(graph, triples_to_cancel, ontology=ontology)
     if append_missing_items:
         graph = _append_missing_items(graph)
-    if len(list(graph.subject_objects(SNS.has_unit))) > 0:
-        graph.bind("qudt", "http://qudt.org/vocab/unit/")
+    graph.bind("qudt", str(QUDT))
+    graph.bind("unit", "http://qudt.org/vocab/unit/")
     graph.bind("sns", str(ontology.BASE))
+    graph.bind("prov", str(PROV))
+    graph.bind("iao", str(IAO))
+    graph.bind("bfo", str(BFO))
+    graph.bind("ro", str(RO))
     if namespace is not None:
         graph.bind("ns", str(namespace))
     return graph
