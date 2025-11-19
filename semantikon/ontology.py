@@ -46,55 +46,21 @@ def _translate_has_value(
     value: Any = None,
     dtype: type | None = None,
     units: str | URIRef | None = None,
-    parent: URIRef | None = None,
     ontology=SNS,
 ) -> _triple_type:
     tag_value = tag + ".value"
     triples: _triple_type = [(label, ontology.has_participant, tag_value)]
-    if is_dataclass(dtype):
-        warnings.warn(
-            "semantikon_class is experimental - triples may change in the future",
-            FutureWarning,
-        )
-        for k, v in dtype.__dict__.items():
-            if isinstance(v, type) and is_dataclass(v):
-                triples.extend(
-                    _translate_has_value(
-                        label=label,
-                        tag=_dot(tag, k),
-                        value=getattr(value, k, None),
-                        dtype=v,
-                        parent=tag_value,
-                        ontology=ontology,
-                    )
-                )
-        for k, v in dtype.__annotations__.items():
-            metadata = meta_to_dict(v)
-            triples.extend(
-                _translate_has_value(
-                    label=label,
-                    tag=_dot(tag, k),
-                    value=getattr(value, k, None),
-                    dtype=metadata["dtype"],
-                    units=metadata.get("units", None),
-                    parent=tag_value,
-                    ontology=ontology,
-                )
-            )
-    else:
-        if parent is not None:
-            triples.append((tag_value, RDFS.subClassOf, parent))
-        if value is not None:
-            triples.append((tag_value, RDF.value, Literal(value)))
-        if units is not None:
-            if isinstance(units, str):
-                key = ud[units]
-                if key is not None:
-                    triples.append((tag_value, ontology.has_unit, key))
-                else:
-                    triples.append((tag_value, ontology.has_unit, URIRef(units)))
+    if value is not None:
+        triples.append((tag_value, RDF.value, Literal(value)))
+    if units is not None:
+        if isinstance(units, str):
+            key = ud[units]
+            if key is not None:
+                triples.append((tag_value, ontology.has_unit, key))
             else:
                 triples.append((tag_value, ontology.has_unit, URIRef(units)))
+        else:
+            triples.append((tag_value, ontology.has_unit, URIRef(units)))
     return triples
 
 
@@ -557,6 +523,43 @@ def _parse_cancel(wf_channels: dict, namespace: Namespace | None = None) -> list
         tuple([_convert_to_uriref(tt, namespace=namespace) for tt in t])
         for t in triples
     ]
+
+
+def _translate_dataclass(
+    label: URIRef | str | BNode,
+    tag: str,
+    value: Any = None,
+    dtype: type | None = None,
+    units: str | URIRef | None = None,
+    ontology=SNS,
+) -> _triple_type:
+    tag_value = tag + ".value"
+    triples: _triple_type = [(label, ontology.has_participant, tag_value)]
+    for k, v in dtype.__dict__.items():
+        if isinstance(v, type) and is_dataclass(v):
+            triples.extend(
+                _translate_dataclass(
+                    label=label,
+                    tag=_dot(tag, k),
+                    value=getattr(value, k, None),
+                    dtype=v,
+                    ontology=ontology,
+                )
+            )
+    for k, v in dtype.__annotations__.items():
+        metadata = meta_to_dict(v)
+        triples.append((_dot(tag, k) + ".value", RDFS.subClassOf, tag_value))
+        triples.extend(
+            _translate_has_value(
+                label=label,
+                tag=_dot(tag, k),
+                value=getattr(value, k, None),
+                dtype=metadata["dtype"],
+                units=metadata.get("units", None),
+                ontology=ontology,
+            )
+        )
+    return triples
 
 
 def get_knowledge_graph(
