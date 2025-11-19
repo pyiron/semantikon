@@ -25,7 +25,6 @@ class SNS:
     has_unit: URIRef = QUDT["hasUnit"]
     input_assignment: URIRef = PMD["0000066"]
     is_about: URIRef = IAO["0000136"]
-    linksTo: URIRef = BASE["linksTo"]
     output_assignment: URIRef = PMD["0000067"]
     precedes: URIRef = BFO["0000063"]
     process: URIRef = BFO["0000015"]
@@ -72,7 +71,17 @@ def _translate_has_value(
             triples.append((value_node, ontology.has_unit, URIRef(units)))
     if uri is not None:
         if not is_dependent:
-            triples.append((tag_value, RDF.type, uri))
+            triples.append((value_node, RDFS.subClassOf, uri))
+        else:
+            triples.extend(
+                _owl_restriction_to_triple(
+                    restriction=(
+                        (OWL.onProperty, ontology.has_participant),
+                        (OWL.someValuesFrom, uri),
+                    ),
+                    subj=value_node,
+                )
+            )
     return triples
 
 
@@ -117,9 +126,10 @@ def _get_restriction_type(restriction: tuple[tuple[URIRef, URIRef], ...]) -> str
 
 def _owl_restriction_to_triple(
     restriction: _rest_type,
+    subj: IdentifiedNode | None = None,
 ) -> list[tuple[BNode | None, URIRef, IdentifiedNode]]:
     label = BNode()
-    triples = [(None, RDF.type, label), (label, RDF.type, OWL.Restriction)]
+    triples = [(subj, RDF.type, label), (label, RDF.type, OWL.Restriction)]
     triples.extend([(label, r[0], r[1]) for r in restriction])
     return triples
 
