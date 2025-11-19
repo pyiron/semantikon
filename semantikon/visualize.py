@@ -9,10 +9,17 @@ _edge_colors = {
     "rdf:type": "darkblue",
     "iao:0000136": "darkgreen",
     "bfo:0000051": "darkred",
-    "ro:0000056": "brown",
+    "ro:0000057": "brown",
     "sns:linksTo": "gray",
-    "ro:0000051": "deeppink",
+    "bfo:0000063": "deeppink",
     "prov:wasDerivedFrom": "purple",
+}
+
+_id_to_tag = {
+    "iao:0000136": "iao:is_about",
+    "bfo:0000051": "bfo:has_part",
+    "ro:0000057": "ro:has_participant",
+    "bfo:0000063": "bfo:precedes",
 }
 
 
@@ -109,6 +116,6 @@ def visualize(graph, engine="dot"):
             dot.node(key.replace(":", "_"), _to_node(key, **value))
     for edges in edge_list:
         color = _edge_colors.get(edges[2], "black")
-        dot.edge(edges[0], edges[1], label=edges[2], color=color, fontcolor=color)
-
+        label = _id_to_tag.get(edges[2], edges[2])
+        dot.edge(edges[0], edges[1], label=label, color=color, fontcolor=color)
     return dot
