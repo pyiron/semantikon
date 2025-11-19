@@ -15,6 +15,7 @@ from semantikon.ontology import (
     _get_precedes,
     _parse_cancel,
     dataclass_to_knowledge_graph,
+    extract_dataclass,
     get_knowledge_graph,
     serialize_data,
     validate_values,
@@ -999,6 +1000,7 @@ class TestDataclass(unittest.TestCase):
     def test_dataclass(self):
         wf_dict = get_run_md.run(Input(T=300.0, n=100))
         graph = get_knowledge_graph(wf_dict)
+        graph = extract_dataclass(graph=graph)
         i_txt = "get_run_md.run_md_0.inputs.inp"
         o_txt = "get_run_md.run_md_0.outputs.out"
         triples = (
