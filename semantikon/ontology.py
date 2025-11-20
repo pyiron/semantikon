@@ -84,6 +84,7 @@ def _translate_has_value(
                         (OWL.someValuesFrom, uri),
                     ),
                     subj=io_port[0],
+                    t_box=t_box,
                 )
             )
     return triples
