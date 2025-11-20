@@ -131,9 +131,14 @@ def _get_restriction_type(restriction: tuple[tuple[URIRef, URIRef], ...]) -> str
 def _owl_restriction_to_triple(
     restriction: _rest_type,
     subj: IdentifiedNode | None = None,
+    t_box: bool = False,
 ) -> list[tuple[BNode | None, URIRef, IdentifiedNode]]:
     label = BNode()
-    triples = [(subj, RDF.type, label), (label, RDF.type, OWL.Restriction)]
+    if t_box:
+        triples = [(subj, RDFS.subClassOf, label)]
+    else:
+        triples = [(subj, RDF.type, label)]
+    triples.append((label, RDF.type, OWL.Restriction))
     triples.extend([(label, r[0], r[1]) for r in restriction])
     return triples
 
