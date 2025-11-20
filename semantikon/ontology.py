@@ -45,11 +45,11 @@ _triple_type: TypeAlias = list[
 def _translate_has_value(
     io_port: URIRef | str | BNode | list[URIRef | str | BNode],
     unique_io_port: str,
+    t_box: bool = False,
     value: Any = None,
     uri: URIRef | str | None = None,
     dtype: type | None = None,
     units: str | URIRef | None = None,
-    is_dependent: bool = False,
     ontology=SNS,
 ) -> _triple_type:
     value_node = unique_io_port + ".value"
@@ -58,7 +58,7 @@ def _translate_has_value(
     triples: _triple_type = [
         (io, ontology.has_participant, value_node) for io in io_port
     ]
-    if value is not None:
+    if value is not None and not t_box:
         triples.append((value_node, RDF.value, Literal(value)))
     if units is not None:
         if isinstance(units, str):
@@ -70,16 +70,20 @@ def _translate_has_value(
         else:
             triples.append((value_node, ontology.has_unit, URIRef(units)))
     if uri is not None:
-        if not is_dependent:
-            triples.append((value_node, RDFS.subClassOf, uri))
+        if io_port == unique_io_port:
+            if t_box:
+                triples.append((value_node, RDFS.subClassOf, uri))
+            else:
+                triples.append((value_node, RDF.type, uri))
         else:
+            assert len(io_port) == 1
             triples.extend(
                 _owl_restriction_to_triple(
                     restriction=(
                         (OWL.onProperty, ontology.has_participant),
                         (OWL.someValuesFrom, uri),
                     ),
-                    subj=value_node,
+                    subj=io_port[0],
                 )
             )
     return triples
@@ -411,7 +415,11 @@ def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> l
 
 
 def _parse_channel(
-    channel_dict: dict, channel_label: str, edge_dict: dict, ontology=SNS
+    channel_dict: dict,
+    channel_label: str,
+    edge_dict: dict,
+    t_box: bool = False,
+    ontology=SNS,
 ):
     triples: _triple_type = []
     if "type_hint" in channel_dict:
@@ -420,11 +428,11 @@ def _parse_channel(
         _translate_has_value(
             io_port=channel_label,
             unique_io_port=str(edge_dict.get(channel_label, channel_label)),
+            t_box=t_box,
             value=channel_dict.get("value", None),
             uri=channel_dict.get("uri", None),
             dtype=channel_dict.get("dtype", None),
             units=channel_dict.get("units", None),
-            is_dependent=channel_label in edge_dict,
             ontology=ontology,
         )
     )
@@ -505,13 +513,20 @@ def _parse_workflow(
     node_dict: dict,
     channel_dict: dict,
     edge_list: list,
+    t_box: bool = False,
     ontology=SNS,
 ) -> list:
     full_edge_dict = _get_full_edge_dict(edge_list)
     triples = [
         triple
         for label, content in channel_dict.items()
-        for triple in _parse_channel(content, label, full_edge_dict, ontology)
+        for triple in _parse_channel(
+            channel_dict=content,
+            channel_label=label,
+            edge_dict=full_edge_dict,
+            t_box=t_box,
+            ontology=ontology,
+        )
     ]
     triples.extend(_get_precedes(_get_edge_dict(edge_list), ontology=ontology))
 
@@ -618,6 +633,7 @@ def extract_dataclass(
 
 def get_knowledge_graph(
     wf_dict: dict,
+    t_box: bool = False,
     graph: Graph | None = None,
     inherit_properties: bool = True,
     ontology=SNS,
@@ -630,8 +646,13 @@ def get_knowledge_graph(
 
     Args:
         wf_dict (dict): dictionary containing workflow information
+        t_box (bool): if True, generate T-Box graph, otherwise A-Box graph
         graph (rdflib.Graph): graph to be updated
         inherit_properties (bool): if True, properties are inherited
+        ontology (Namespace): ontology to be used
+        append_missing_items (bool): if True, append missing items for the
+            OWL restrictions
+        use_uuid (bool): if True, use UUIDs for node labels
 
     Returns:
         (rdflib.Graph): graph containing workflow information
@@ -639,7 +660,13 @@ def get_knowledge_graph(
     if graph is None:
         graph = Graph()
     node_dict, channel_dict, edge_list = serialize_data(wf_dict, use_uuid=use_uuid)
-    triples = _parse_workflow(node_dict, channel_dict, edge_list, ontology=ontology)
+    triples = _parse_workflow(
+        node_dict=node_dict,
+        channel_dict=channel_dict,
+        edge_list=edge_list,
+        t_box=t_box,
+        ontology=SNS,
+    )
     graph = _triples_to_knowledge_graph(triples, graph=graph, namespace=namespace)
     if inherit_properties:
         triples_to_cancel = _parse_cancel(channel_dict, namespace=namespace)
