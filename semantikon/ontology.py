@@ -262,11 +262,10 @@ def _inherit_properties(
         triples_to_cancel = []
     n = 0
     for _ in range(n_max):
-        for query in prov_query:
-            graph.update(query)
-            for t in triples_to_cancel:
-                if t in graph:
-                    graph.remove(t)
+        graph.update(prov_query)
+        for t in triples_to_cancel:
+            if t in graph:
+                graph.remove(t)
         if len(graph) == n:
             break
         n = len(graph)
