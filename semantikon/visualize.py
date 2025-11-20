@@ -3,7 +3,7 @@ from string import Template
 from graphviz import Digraph
 from rdflib import RDF, BNode, Literal, URIRef
 
-from semantikon.ontology import IAO, SNS
+from semantikon.ontology import SNS
 
 _edge_colors = {
     "rdf:type": "darkblue",
@@ -64,7 +64,7 @@ def _get_data(graph):
     for obj in graph.objects(None, RDF.type):
         _add_color(data_dict, graph, obj, "lightyellow")
 
-    for obj in graph.subjects(IAO.isAbout, None):
+    for obj in graph.subjects(SNS.is_about, None):
         _add_color(data_dict, graph, obj, "lightgreen")
 
     for subj, obj in graph.subject_objects(SNS.has_part):
