@@ -4,6 +4,7 @@ from dataclasses import is_dataclass
 from string import Template
 from typing import Any, Callable, TypeAlias, cast
 
+from flowrep.tools import get_function_metadata
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.term import IdentifiedNode
@@ -16,6 +17,7 @@ QUDT: Namespace = Namespace("http://qudt.org/schema/qudt/")
 RO: Namespace = Namespace("http://purl.obolibrary.org/obo/RO_")
 BFO: Namespace = Namespace("http://purl.obolibrary.org/obo/BFO_")
 PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
+SCHEMA: Namespace = Namespace("http://schema.org/")
 
 
 class SNS:
@@ -415,7 +417,7 @@ def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> l
         for uu in used:
             triples.append((node_label, PROV.used, uu))
     triples.append((f_dict["label"], ontology.is_about, node_label))
-    triples.append((f_dict["label"], RDF.type, IAO["0000030"]))
+    triples.append((f_dict["label"], RDF.type, IAO["0000030"])) # Information Content Entity
     return triples
 
 
