@@ -751,7 +751,7 @@ def serialize_data(
         prefix: {
             key: value
             for key, value in wf_dict.items()
-            if key not in ["inputs", "outputs", "nodes", "edges", "label"]
+            if key not in ["nodes", "edges"]
         }
     }
     for io_ in ["inputs", "outputs"]:
