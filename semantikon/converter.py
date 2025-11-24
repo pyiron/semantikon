@@ -21,6 +21,7 @@ from typing import (
     get_type_hints,
 )
 
+from flowrep.tools import get_function_metadata
 from pint import Quantity, UnitRegistry
 from pint.registry_helpers import (
     _apply_defaults,
@@ -412,9 +413,10 @@ def units(func: Callable) -> Callable:
 
 
 def get_function_dict(function: Callable | FunctionWithMetadata) -> dict[str, Any]:
-    result = {
-        "label": function.__name__,
-    }
+    result = get_function_metadata(function, full_metadata=True)
+    result["identifier"] = ":".join(
+        [result["module"], result["name"], result["version"]]
+    )
     if hasattr(function, "_semantikon_metadata"):
         result.update(function._semantikon_metadata)
     return result
