@@ -552,7 +552,9 @@ def _translate_dataclass(
             (_dot(unique_io_port, k) + ".value", RDFS.subClassOf, value_node)
         )
         for io in io_port:
-            triples.append((io, ontology.has_participant, _dot(unique_io_port, k) + ".value"))
+            triples.append(
+                (io, ontology.has_participant, _dot(unique_io_port, k) + ".value")
+            )
         triples.extend(
             _translate_has_value(
                 value_node=_dot(unique_io_port, k) + ".value",
