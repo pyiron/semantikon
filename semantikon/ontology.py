@@ -44,6 +44,9 @@ _triple_type: TypeAlias = list[
 ]
 
 
+_rest_type: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
+
+
 def _translate_has_value(
     io_port: URIRef | str | BNode | list[URIRef | str | BNode],
     unique_io_port: str,
@@ -52,6 +55,9 @@ def _translate_has_value(
     uri: URIRef | str | None = None,
     dtype: type | None = None,
     units: str | URIRef | None = None,
+    custom_triples: _triple_type | None = None,
+    derived_from: IdentifiedNode | str | None = None,
+    restrictions: _rest_type | tuple[_rest_type] | None = None,
     ontology=SNS,
 ) -> _triple_type:
     value_node = unique_io_port + ".value"
@@ -76,6 +82,12 @@ def _translate_has_value(
             triples.append((value_node, RDFS.subClassOf, uri))
         else:
             triples.append((value_node, RDF.type, uri))
+    if custom_triples is not None:
+        triples.extend(_align_triples(custom_triples))
+    if derived_from is not None:
+        triples.append(("self", PROV.wasDerivedFrom, derived_from))
+    if restrictions is not None:
+        triples.extend(_restriction_to_triple(restrictions))
     return triples
 
 
@@ -86,20 +98,6 @@ def _align_triples(triples):
     else:
         assert len(triples) in (2, 3)
         return [triples]
-
-
-def _get_triples_from_restrictions(data: dict) -> list:
-    triples = []
-    if data.get("restrictions", None) is not None:
-        triples = _restriction_to_triple(data["restrictions"])
-    if data.get("triples", None) is not None:
-        triples.extend(_align_triples(data["triples"]))
-    if data.get("derived_from", None) is not None:
-        triples.append(("self", PROV.wasDerivedFrom, data["derived_from"]))
-    return triples
-
-
-_rest_type: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
 
 
 def _validate_restriction_format(
@@ -428,6 +426,9 @@ def _parse_channel(
             uri=channel_dict.get("uri", None),
             dtype=channel_dict.get("dtype", None),
             units=channel_dict.get("units", None),
+            custom_triples=channel_dict.get("triples", None),
+            derived_from=channel_dict.get("derived_from", None),
+            restrictions=channel_dict.get("restrictions", None),
             ontology=ontology,
         )
     )
@@ -450,6 +451,10 @@ def _parse_channel(
             _parse_triple(t, ns=channel_dict[NS.PREFIX], label=channel_label)
         )
     return triples
+    return [
+        _parse_triple(t, ns=channel_dict[NS.PREFIX], label=channel_label)
+        for t in triples
+    ]
 
 
 def _remove_us(*arg) -> str:
