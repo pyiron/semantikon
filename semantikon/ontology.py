@@ -71,24 +71,11 @@ def _translate_has_value(
                 triples.append((tag_value, ontology.has_unit, URIRef(units)))
         else:
             triples.append((value_node, ontology.has_unit, URIRef(units)))
-    if uri is not None:
-        if io_port == unique_io_port:
-            if t_box:
-                triples.append((value_node, RDFS.subClassOf, uri))
-            else:
-                triples.append((value_node, RDF.type, uri))
+    if uri is not None and io_port == unique_io_port:
+        if t_box:
+            triples.append((value_node, RDFS.subClassOf, uri))
         else:
-            assert len(io_port) == 1
-            triples.extend(
-                _owl_restriction_to_triple(
-                    restriction=(
-                        (OWL.onProperty, ontology.has_participant),
-                        (OWL.someValuesFrom, uri),
-                    ),
-                    subj=io_port[0],
-                    t_box=t_box,
-                )
-            )
+            triples.append((value_node, RDF.type, uri))
     return triples
 
 
