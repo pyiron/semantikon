@@ -1,7 +1,7 @@
 from string import Template
 
 from graphviz import Digraph
-from rdflib import RDF, BNode, Literal, URIRef
+from rdflib import RDF, RDFS, BNode, Literal, URIRef
 
 from semantikon.ontology import SNS
 
@@ -64,15 +64,18 @@ def _get_data(graph):
     for obj in graph.objects(None, RDF.type):
         _add_color(data_dict, graph, obj, "lightyellow")
 
-    for obj in graph.subjects(SNS.is_about, None):
-        _add_color(data_dict, graph, obj, "lightgreen")
+    for obj in graph.objects(None, RDFS.subClassOf):
+        _add_color(data_dict, graph, obj, "lightyellow")
 
-    for subj, obj in graph.subject_objects(SNS.has_part):
+    for obj in graph.objects(None, SNS.has_part):
         _add_color(data_dict, graph, obj, "lightpink")
-        _add_color(data_dict, graph, subj, "lightcyan")
 
     for obj in graph.objects(None, SNS.has_participant):
         _add_color(data_dict, graph, obj, "peachpuff")
+
+    for subj, obj in graph.subject_objects(SNS.is_about):
+        _add_color(data_dict, graph, obj, "lightcyan")
+        _add_color(data_dict, graph, subj, "lightgreen")
 
     for subj, pred, obj in graph:
         if pred == RDF.value:

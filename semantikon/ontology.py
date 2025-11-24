@@ -58,6 +58,7 @@ def _translate_has_value(
     derived_from: IdentifiedNode | str | None = None,
     restrictions: _rest_type | tuple[_rest_type] | None = None,
     ontology=SNS,
+    **kwargs,
 ) -> _triple_type:
     triples: _triple_type = []
     if value is not None and not t_box:
@@ -65,10 +66,8 @@ def _translate_has_value(
     if units is not None:
         if isinstance(units, str):
             key = ud[units]
-            if key is not None:
-                triples.append((value_node, ontology.has_unit, key))
-            else:
-                triples.append((tag_value, ontology.has_unit, URIRef(units)))
+            obj = URIRef(units) if key is None else key
+            triples.append((value_node, ontology.has_unit, obj))
         else:
             triples.append((value_node, ontology.has_unit, URIRef(units)))
     if uri is not None:
@@ -381,11 +380,16 @@ def _convert_to_uriref(
         raise TypeError(f"Unsupported type: {type(value)}")
 
 
-def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> list:
-    f_dict = get_function_dict(function)
+def _function_to_triples(
+    node: dict, node_label: str, t_box: bool = False, ontology=SNS
+) -> list:
+    f_dict = get_function_dict(node["function"])
     triples = []
     if f_dict.get("uri", None) is not None:
-        triples.append((node_label, RDF.type, f_dict["uri"]))
+        if t_box:
+            triples.append((node_label, RDFS.subClassOf, f_dict["uri"]))
+        else:
+            triples.append((node_label, RDF.type, f_dict["uri"]))
     if f_dict.get("triples", None) is not None:
         for t in _align_triples(f_dict["triples"]):
             triples.append(_parse_triple(t, ns=node_label, label=node_label))
@@ -397,7 +401,29 @@ def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> l
             triples.append((node_label, PROV.used, uu))
     identifier = f_dict["identifier"].replace(":", ".")
     triples.append((identifier, ontology.is_about, node_label))
-    triples.append((identifier, RDF.type, IAO["0000030"]))  # Information Content Entity
+    if t_box:
+        triples.append((identifier, RDFS.subClassOf, IAO["0000030"]))
+    else:
+        triples.append((identifier, RDF.type, IAO["0000030"]))  # Information Content Entity
+    for io_ in ["inputs", "outputs"]:
+        for key, data in node[io_].items():
+            io_label = f"{identifier}.{io_}.{key}"
+            triples.append((identifier, ontology.has_part, io_label))
+            pred = RDFS.subClassOf if t_box else RDF.type
+            if io_ == "inputs":
+                triples.append((io_label, pred, ontology.input_assignment))
+            else:
+                triples.append((io_label, pred, ontology.output_assignment))
+            value_node = f"{io_label}.value"
+            triples.append((io_label, ontology.has_participant, value_node))
+            triples.extend(
+                _translate_has_value(
+                    value_node=value_node,
+                    t_box=t_box,
+                    ontology=ontology,
+                    **data,
+                )
+            )
     return triples
 
 
@@ -416,7 +442,7 @@ def _parse_channel(
         triples.append((channel_label, RDF.type, channel_dict["uri"]))
     value_node = str(edge_dict.get(*2 * [channel_label])) + ".value"
     triples.append((channel_label, ontology.has_participant, value_node))
-    if channel_label in edge_dict:
+    if channel_label not in edge_dict:
         triples.extend(
             _translate_has_value(
                 value_node=value_node,
@@ -431,18 +457,19 @@ def _parse_channel(
                 ontology=ontology,
             )
         )
+    pred = RDFS.subClassOf if t_box else RDF.type
     if channel_dict[NS.TYPE] == "inputs":
         triples.extend(
             [
                 (channel_label.split(".inputs.")[0], ontology.has_part, channel_label),
-                (channel_label, RDF.type, ontology.input_assignment),
+                (channel_label, pred, ontology.input_assignment),
             ]
         )
     elif channel_dict[NS.TYPE] == "outputs":
         triples.extend(
             [
                 (channel_label.split(".outputs.")[0], ontology.has_part, channel_label),
-                (channel_label, RDF.type, ontology.output_assignment),
+                (channel_label, pred, ontology.output_assignment),
             ]
         )
     return [
@@ -525,9 +552,16 @@ def _parse_workflow(
     triples.extend(_get_precedes(_get_edge_dict(edge_list), ontology=ontology))
 
     for key, node in node_dict.items():
-        triples.append((key, RDF.type, ontology.process))
+        if t_box:
+            triples.append((key, RDFS.subClassOf, ontology.process))
+        else:
+            triples.append((key, RDF.type, ontology.process))
         if "function" in node:
-            triples.extend(_function_to_triples(node["function"], key, ontology))
+            triples.extend(
+                _function_to_triples(
+                    node=node, node_label=key, t_box=t_box, ontology=ontology
+                )
+            )
         if "." in key:
             triples.append((".".join(key.split(".")[:-1]), ontology.has_part, key))
     return triples
@@ -677,6 +711,8 @@ def get_knowledge_graph(
     graph.bind("iao", str(IAO))
     graph.bind("bfo", str(BFO))
     graph.bind("ro", str(RO))
+    graph.bind("pmdco", str(PMD))
+    graph.bind("schema", str(SCHEMA))
     if namespace is not None:
         graph.bind("ns", str(namespace))
     return graph
