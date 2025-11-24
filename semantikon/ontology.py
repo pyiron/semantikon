@@ -48,8 +48,6 @@ _rest_type: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
 
 
 def _translate_has_value(
-    io_port: URIRef | str | BNode | list[URIRef | str | BNode],
-    unique_io_port: str,
     value_node: URIRef | str | BNode | None,
     t_box: bool = False,
     value: Any = None,
@@ -73,7 +71,7 @@ def _translate_has_value(
                 triples.append((tag_value, ontology.has_unit, URIRef(units)))
         else:
             triples.append((value_node, ontology.has_unit, URIRef(units)))
-    if uri is not None and io_port == unique_io_port:
+    if uri is not None:
         if t_box:
             triples.append((value_node, RDFS.subClassOf, uri))
         else:
@@ -418,20 +416,21 @@ def _parse_channel(
         triples.append((channel_label, RDF.type, channel_dict["uri"]))
     value_node = str(edge_dict.get(*2 * [channel_label])) + ".value"
     triples.append((channel_label, ontology.has_participant, value_node))
-    triples.extend(
-        _translate_has_value(
-            value_node=value_node,
-            t_box=t_box,
-            value=channel_dict.get("value", None),
-            uri=channel_dict.get("uri", None),
-            dtype=channel_dict.get("dtype", None),
-            units=channel_dict.get("units", None),
-            custom_triples=channel_dict.get("triples", None),
-            derived_from=channel_dict.get("derived_from", None),
-            restrictions=channel_dict.get("restrictions", None),
-            ontology=ontology,
+    if channel_label in edge_dict:
+        triples.extend(
+            _translate_has_value(
+                value_node=value_node,
+                t_box=t_box,
+                value=channel_dict.get("value", None),
+                uri=channel_dict.get("uri", None),
+                dtype=channel_dict.get("dtype", None),
+                units=channel_dict.get("units", None),
+                custom_triples=channel_dict.get("triples", None),
+                derived_from=channel_dict.get("derived_from", None),
+                restrictions=channel_dict.get("restrictions", None),
+                ontology=ontology,
+            )
         )
-    )
     if channel_dict[NS.TYPE] == "inputs":
         triples.extend(
             [
@@ -446,11 +445,6 @@ def _parse_channel(
                 (channel_label, RDF.type, ontology.output_assignment),
             ]
         )
-    for t in _get_triples_from_restrictions(channel_dict):
-        triples.append(
-            _parse_triple(t, ns=channel_dict[NS.PREFIX], label=channel_label)
-        )
-    return triples
     return [
         _parse_triple(t, ns=channel_dict[NS.PREFIX], label=channel_label)
         for t in triples
