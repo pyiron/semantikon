@@ -388,8 +388,9 @@ def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> l
             used = [used]
         for uu in used:
             triples.append((node_label, PROV.used, uu))
-    triples.append((f_dict["identifier"], ontology.is_about, node_label))
-    triples.append((f_dict["identifier"], RDF.type, IAO["0000030"]))
+    identifier = f_dict["identifier"].replace(":", ".")
+    triples.append((identifier, ontology.is_about, node_label))
+    triples.append((identifier, RDF.type, IAO["0000030"]))
     return triples
 
 
