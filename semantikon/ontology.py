@@ -43,8 +43,7 @@ _rest_type: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
 
 
 def _translate_has_value(
-    io_port: URIRef | str | BNode | list[URIRef | str | BNode],
-    unique_io_port: str,
+    value_node: URIRef | str | BNode | None,
     value: Any = None,
     dtype: type | None = None,
     units: str | URIRef | None = None,
@@ -53,12 +52,7 @@ def _translate_has_value(
     restrictions: _rest_type | tuple[_rest_type] | None = None,
     ontology=SNS,
 ) -> _triple_type:
-    value_node = unique_io_port + ".value"
-    if not isinstance(io_port, list):
-        io_port = [io_port]
-    triples: _triple_type = [
-        (io, ontology.has_participant, value_node) for io in io_port
-    ]
+    triples: _triple_type = []
     if value is not None:
         triples.append((value_node, RDF.value, Literal(value)))
     if units is not None:
@@ -400,10 +394,11 @@ def _parse_channel(
     triples.append((channel_label, RDF.type, PROV.Entity))
     if channel_dict.get("uri", None) is not None:
         triples.append((channel_label, RDF.type, channel_dict["uri"]))
+    value_node = str(edge_dict.get(*2 * [channel_label])) + ".value"
+    triples.append((channel_label, ontology.has_participant, value_node))
     triples.extend(
         _translate_has_value(
-            io_port=channel_label,
-            unique_io_port=str(edge_dict.get(*2 * [channel_label])),
+            value_node=value_node,
             value=channel_dict.get("value", None),
             dtype=channel_dict.get("dtype", None),
             units=channel_dict.get("units", None),
@@ -555,10 +550,13 @@ def _translate_dataclass(
         triples.append(
             (_dot(unique_io_port, k) + ".value", RDFS.subClassOf, value_node)
         )
+        for io in io_port:
+            triples.append(
+                (io, ontology.has_participant, _dot(unique_io_port, k) + ".value")
+            )
         triples.extend(
             _translate_has_value(
-                io_port=io_port,
-                unique_io_port=_dot(unique_io_port, k),
+                value_node=_dot(unique_io_port, k) + ".value",
                 value=getattr(value, k, None),
                 dtype=metadata["dtype"],
                 units=metadata.get("units", None),

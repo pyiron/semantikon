@@ -1014,7 +1014,7 @@ class TestDataclass(unittest.TestCase):
                 self.assertEqual(
                     len(list(graph.triples(triple))),
                     1,
-                    msg=f"{triple} not found",
+                    msg=f"{triple} not found in graph: {graph.serialize()}",
                 )
         self.assertIsNone(graph.value(URIRef(f"{i_txt}.not_dataclass.b.value")))
 
