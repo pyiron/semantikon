@@ -403,7 +403,7 @@ def _function_to_triples(function: Callable, node_label: str, ontology=SNS) -> l
             triples.append((node_label, PROV.used, uu))
     identifier = f_dict["identifier"].replace(":", ".")
     triples.append((identifier, ontology.is_about, node_label))
-    triples.append((identifier, RDF.type, IAO["0000030"])) # Information Content Entity
+    triples.append((identifier, RDF.type, IAO["0000030"]))  # Information Content Entity
     return triples
 
 
