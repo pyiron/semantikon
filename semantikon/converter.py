@@ -414,9 +414,6 @@ def units(func: Callable) -> Callable:
 
 def get_function_dict(function: Callable | FunctionWithMetadata) -> dict[str, Any]:
     result = get_function_metadata(function, full_metadata=True)
-    result["identifier"] = ":".join(
-        [result["module"], result["name"], result["version"]]
-    )
     if hasattr(function, "_semantikon_metadata"):
         result.update(function._semantikon_metadata)
     return result
