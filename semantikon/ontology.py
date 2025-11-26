@@ -486,7 +486,7 @@ def _parse_channel(
         )
     )
     return [
-        _parse_triple(t, ns=channel_dict[NS.PREFIX], label=channel_label)
+        _parse_triple(t, ns=channel_dict[NS.PREFIX], label=value_node)
         for t in triples
     ]
 
