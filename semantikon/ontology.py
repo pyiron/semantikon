@@ -284,30 +284,33 @@ def _check_connections(graph: Graph, strict_typing: bool = False, ontology=SNS) 
     Returns:
         (list): list of incompatible connections
     """
-    incompatible_types = []
-    for out, inp in graph.subject_objects(ontology.linksTo):
-        i_type, o_type = [
-            [g for g in graph.objects(tag, RDF.type) if g != PROV.Entity]
-            for tag in (inp, out)
-        ]
-        # Exclude any i_type that is an OWL restriction or a subclass of OWL.Restriction
-        # This is because we handle restrictions in _check_missing_triples
-        i_type_filtered = [
-            t
-            for t in i_type
-            if (
-                (t, RDFS.subClassOf, OWL.Restriction) not in graph
-                and (t, RDF.type, OWL.Restriction) not in graph
-                and (t, RDFS.subClassOf, SH.NodeShape) not in graph
-                and (t, RDF.type, SH.NodeShape) not in graph
+
+    query = f"""\
+        PREFIX ro:   <{RO}>
+        PREFIX iao:  <{IAO}>
+        PREFIX rdfs: <{RDFS}>
+        PREFIX pmd: <{PMD}>
+
+        SELECT ?workflow_input ?output_type ?expected_type WHERE {{
+            ?workflow_input ro:0000057 ?workflow_value .
+            ?receiver_input iao:0000136 ?workflow_input .
+            ?receiver_input ro:0000057 ?receiver_value .
+            ?workflow_input rdfs:subClassOf pmd:0000066 .
+            ?receiver_value rdfs:subClassOf ?expected_type .
+            ?workflow_value rdfs:subClassOf ?output_type .
+            FILTER (
+                NOT EXISTS {{ ?output_type rdfs:subClassOf* ?expected_type .  }}
             )
-        ]
-        if not strict_typing and (i_type_filtered == [] or o_type == []):
-            continue
-        diff = set(i_type_filtered).difference(o_type)
-        if len(diff) > 0:
-            incompatible_types.append((inp, out) + (i_type, o_type))
-    return incompatible_types
+        }}
+    """
+    return [
+        {
+            "input_port": row.workflow_input,
+            "output_type": row.output_type,
+            "expected_type": row.expected_type,
+        }
+        for row in graph.query(query)
+    ]
 
 
 def _check_units(graph: Graph, ontology=SNS) -> dict[URIRef, list[URIRef]]:
@@ -404,7 +407,9 @@ def _function_to_triples(
     if t_box:
         triples.append((identifier, RDFS.subClassOf, IAO["0000030"]))
     else:
-        triples.append((identifier, RDF.type, IAO["0000030"]))  # Information Content Entity
+        triples.append(
+            (identifier, RDF.type, IAO["0000030"])
+        )  # Information Content Entity
     for io_ in ["inputs", "outputs"]:
         for key, data in node[io_].items():
             io_label = f"{identifier}.{io_}.{key}"
@@ -473,7 +478,13 @@ def _parse_channel(
                 (channel_label, pred, ontology.output_assignment),
             ]
         )
-    triples.append((".".join([bearer] + channel_label.split(".")[-2:]), ontology.is_about, channel_label))
+    triples.append(
+        (
+            ".".join([bearer] + channel_label.split(".")[-2:]),
+            ontology.is_about,
+            channel_label,
+        )
+    )
     return [
         _parse_triple(t, ns=channel_dict[NS.PREFIX], label=channel_label)
         for t in triples
@@ -790,7 +801,7 @@ def serialize_data(
         (
             node_dict[prefix]["function"]["module"],
             node_dict[prefix]["function"]["qualname"],
-            node_dict[prefix]["function"]["version"]
+            node_dict[prefix]["function"]["version"],
         )
     )
     for io_ in ["inputs", "outputs"]:
