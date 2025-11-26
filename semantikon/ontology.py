@@ -383,7 +383,7 @@ def _convert_to_uriref(
 def _function_to_triples(
     node: dict, node_label: str, t_box: bool = False, ontology=SNS
 ) -> list:
-    f_dict = get_function_dict(node["function"])
+    f_dict = node["function"]
     triples = []
     if f_dict.get("uri", None) is not None:
         if t_box:
@@ -399,7 +399,7 @@ def _function_to_triples(
             used = [used]
         for uu in used:
             triples.append((node_label, PROV.used, uu))
-    identifier = f_dict["identifier"].replace(":", ".")
+    identifier = f_dict["identifier"]
     triples.append((identifier, ontology.is_about, node_label))
     if t_box:
         triples.append((identifier, RDFS.subClassOf, IAO["0000030"]))
@@ -431,6 +431,7 @@ def _parse_channel(
     channel_dict: dict,
     channel_label: str,
     edge_dict: dict,
+    bearer: str | URIRef | None = None,
     t_box: bool = False,
     ontology=SNS,
 ):
@@ -472,6 +473,7 @@ def _parse_channel(
                 (channel_label, pred, ontology.output_assignment),
             ]
         )
+    triples.append((".".join([bearer] + channel_label.split(".")[-2:]), ontology.is_about, channel_label))
     return [
         _parse_triple(t, ns=channel_dict[NS.PREFIX], label=channel_label)
         for t in triples
@@ -545,6 +547,7 @@ def _parse_workflow(
             channel_dict=content,
             channel_label=label,
             edge_dict=full_edge_dict,
+            bearer=node_dict[content[NS.PREFIX]]["function"]["identifier"],
             t_box=t_box,
             ontology=ontology,
         )
@@ -782,6 +785,14 @@ def serialize_data(
             if key not in ["nodes", "edges"]
         }
     }
+    node_dict[prefix]["function"] = get_function_metadata(wf_dict["function"])
+    node_dict[prefix]["function"]["identifier"] = ".".join(
+        (
+            node_dict[prefix]["function"]["module"],
+            node_dict[prefix]["function"]["qualname"],
+            node_dict[prefix]["function"]["version"]
+        )
+    )
     for io_ in ["inputs", "outputs"]:
         for key, channel in wf_dict[io_].items():
             channel_label = _remove_us(prefix, io_, key)
