@@ -80,7 +80,7 @@ def _translate_has_value(
     if derived_from is not None:
         triples.append(("self", PROV.wasDerivedFrom, derived_from))
     if restrictions is not None:
-        triples.extend(_restriction_to_triple(restrictions))
+        triples.extend(_restriction_to_triple(restrictions, t_box=t_box))
     return triples
 
 
@@ -111,14 +111,13 @@ def _get_restriction_type(restriction: tuple[tuple[URIRef, URIRef], ...]) -> str
 
 def _owl_restriction_to_triple(
     restriction: _rest_type,
-    subj: IdentifiedNode | None = None,
     t_box: bool = False,
 ) -> list[tuple[BNode | None, URIRef, IdentifiedNode]]:
     label = BNode()
     if t_box:
-        triples = [(subj, RDFS.subClassOf, label)]
+        triples = [(RDFS.subClassOf, label)]
     else:
-        triples = [(subj, RDF.type, label)]
+        triples = [(RDF.type, label)]
     triples.append((label, RDF.type, OWL.Restriction))
     triples.extend([(label, r[0], r[1]) for r in restriction])
     return triples
@@ -140,7 +139,7 @@ def _sh_restriction_to_triple(
 
 
 def _restriction_to_triple(
-    restrictions: _rest_type | tuple[_rest_type],
+    restrictions: _rest_type | tuple[_rest_type], t_box: bool = False
 ) -> list[tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str]]:
     """
     Convert restrictions to triples
@@ -171,7 +170,7 @@ def _restriction_to_triple(
     triples: list[tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str]] = []
     for r in restrictions_collection:
         if _get_restriction_type(r) == "OWL":
-            triples.extend(_owl_restriction_to_triple(r))
+            triples.extend(_owl_restriction_to_triple(r, t_box=t_box))
         else:
             triples.extend(_sh_restriction_to_triple(r))
     return triples
@@ -421,14 +420,11 @@ def _function_to_triples(
                 triples.append((io_label, pred, ontology.output_assignment))
             value_node = f"{io_label}.value"
             triples.append((io_label, ontology.has_participant, value_node))
-            triples.extend(
-                _translate_has_value(
-                    value_node=value_node,
-                    t_box=t_box,
-                    ontology=ontology,
-                    **data,
-                )
-            )
+            for triple in _translate_has_value(
+                value_node=value_node, t_box=t_box, ontology=ontology, **data,
+            ):
+                
+                triples.append(list(_parse_triple(triple, ns=node_label, label=value_node)))
     return triples
 
 
@@ -448,21 +444,20 @@ def _parse_channel(
         triples.append((channel_label, RDF.type, channel_dict["uri"]))
     value_node = str(edge_dict.get(*2 * [channel_label])) + ".value"
     triples.append((channel_label, ontology.has_participant, value_node))
-    if channel_label not in edge_dict:
-        triples.extend(
-            _translate_has_value(
-                value_node=value_node,
-                t_box=t_box,
-                value=channel_dict.get("value", None),
-                uri=channel_dict.get("uri", None),
-                dtype=channel_dict.get("dtype", None),
-                units=channel_dict.get("units", None),
-                custom_triples=channel_dict.get("triples", None),
-                derived_from=channel_dict.get("derived_from", None),
-                restrictions=channel_dict.get("restrictions", None),
-                ontology=ontology,
-            )
+    is_main = channel_label not in edge_dict
+    triples.extend(
+        _translate_has_value(
+            value_node=value_node,
+            t_box=t_box,
+            value=channel_dict.get("value", None) if is_main else None,
+            uri=channel_dict.get("uri", None) if is_main else None,
+            dtype=channel_dict.get("dtype", None),
+            units=channel_dict.get("units", None),
+            custom_triples=channel_dict.get("triples", None),
+            derived_from=channel_dict.get("derived_from", None),
+            ontology=ontology,
         )
+    )
     pred = RDFS.subClassOf if t_box else RDF.type
     if channel_dict[NS.TYPE] == "inputs":
         triples.extend(
