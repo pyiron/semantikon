@@ -39,20 +39,20 @@ _triple_type: TypeAlias = list[
 ]
 
 
+_rest_type: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
+
+
 def _translate_has_value(
-    io_port: URIRef | str | BNode | list[URIRef | str | BNode],
-    unique_io_port: str,
+    value_node: URIRef | str | BNode | None,
     value: Any = None,
     dtype: type | None = None,
     units: str | URIRef | None = None,
+    custom_triples: _triple_type | None = None,
+    derived_from: IdentifiedNode | str | None = None,
+    restrictions: _rest_type | tuple[_rest_type] | None = None,
     ontology=SNS,
 ) -> _triple_type:
-    value_node = unique_io_port + ".value"
-    if not isinstance(io_port, list):
-        io_port = [io_port]
-    triples: _triple_type = [
-        (io, ontology.has_participant, value_node) for io in io_port
-    ]
+    triples: _triple_type = []
     if value is not None:
         triples.append((value_node, RDF.value, Literal(value)))
     if units is not None:
@@ -64,6 +64,12 @@ def _translate_has_value(
                 triples.append((value_node, ontology.has_unit, URIRef(units)))
         else:
             triples.append((value_node, ontology.has_unit, URIRef(units)))
+    if custom_triples is not None:
+        triples.extend(_align_triples(custom_triples))
+    if derived_from is not None:
+        triples.append(("self", PROV.wasDerivedFrom, derived_from))
+    if restrictions is not None:
+        triples.extend(_restriction_to_triple(restrictions))
     return triples
 
 
@@ -74,20 +80,6 @@ def _align_triples(triples):
     else:
         assert len(triples) in (2, 3)
         return [triples]
-
-
-def _get_triples_from_restrictions(data: dict) -> list:
-    triples = []
-    if data.get("restrictions", None) is not None:
-        triples = _restriction_to_triple(data["restrictions"])
-    if data.get("triples", None) is not None:
-        triples.extend(_align_triples(data["triples"]))
-    if data.get("derived_from", None) is not None:
-        triples.append(("self", PROV.wasDerivedFrom, data["derived_from"]))
-    return triples
-
-
-_rest_type: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
 
 
 def _validate_restriction_format(
@@ -363,13 +355,13 @@ def _append_missing_items(graph: Graph) -> Graph:
 
 def _convert_to_uriref(
     value: URIRef | Literal | str | None, namespace: Namespace | None = None
-) -> URIRef | Literal:
-    if isinstance(value, URIRef) or isinstance(value, Literal):
+) -> URIRef | Literal | BNode:
+    if isinstance(value, URIRef | Literal | BNode):
         return value
     elif isinstance(value, str):
         if namespace is not None and not value.lower().startswith("http"):
             return namespace[value]
-        return URIRef(value)
+        return BNode(value)
     else:
         raise TypeError(f"Unsupported type: {type(value)}")
 
@@ -402,29 +394,31 @@ def _parse_channel(
     triples.append((channel_label, RDF.type, PROV.Entity))
     if channel_dict.get("uri", None) is not None:
         triples.append((channel_label, RDF.type, channel_dict["uri"]))
+    value_node = str(edge_dict.get(*2 * [channel_label])) + ".value"
+    triples.append((channel_label, ontology.has_participant, value_node))
     triples.extend(
         _translate_has_value(
-            io_port=channel_label,
-            unique_io_port=str(edge_dict.get(*2 * [channel_label])),
+            value_node=value_node,
             value=channel_dict.get("value", None),
             dtype=channel_dict.get("dtype", None),
             units=channel_dict.get("units", None),
+            custom_triples=channel_dict.get("triples", None),
+            derived_from=channel_dict.get("derived_from", None),
+            restrictions=channel_dict.get("restrictions", None),
             ontology=ontology,
         )
     )
-    if channel_dict[NS.TYPE] == "inputs":
-        triples.append(
-            (channel_label.split(".inputs.")[0], ontology.has_part, channel_label)
+    triples.append(
+        (
+            channel_label.split(f".{channel_dict[NS.TYPE]}.")[0],
+            ontology.has_part,
+            channel_label,
         )
-    elif channel_dict[NS.TYPE] == "outputs":
-        triples.append(
-            (channel_label.split(".outputs.")[0], ontology.has_part, channel_label)
-        )
-    for t in _get_triples_from_restrictions(channel_dict):
-        triples.append(
-            _parse_triple(t, ns=channel_dict[NS.PREFIX], label=channel_label)
-        )
-    return triples
+    )
+    return [
+        _parse_triple(t, ns=channel_dict[NS.PREFIX], label=channel_label)
+        for t in triples
+    ]
 
 
 def _remove_us(*arg) -> str:
@@ -556,10 +550,13 @@ def _translate_dataclass(
         triples.append(
             (_dot(unique_io_port, k) + ".value", RDFS.subClassOf, value_node)
         )
+        for io in io_port:
+            triples.append(
+                (io, ontology.has_participant, _dot(unique_io_port, k) + ".value")
+            )
         triples.extend(
             _translate_has_value(
-                io_port=io_port,
-                unique_io_port=_dot(unique_io_port, k),
+                value_node=_dot(unique_io_port, k) + ".value",
                 value=getattr(value, k, None),
                 dtype=metadata["dtype"],
                 units=metadata.get("units", None),
