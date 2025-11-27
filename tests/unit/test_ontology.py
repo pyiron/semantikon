@@ -4,7 +4,7 @@ from textwrap import dedent
 
 from graphviz import Digraph
 from pyshacl import validate
-from rdflib import OWL, PROV, RDF, RDFS, SH, Graph, Literal, Namespace, URIRef
+from rdflib import BNode, OWL, PROV, RDF, RDFS, SH, Graph, Literal, Namespace, URIRef
 from rdflib.compare import graph_diff
 
 from semantikon.metadata import meta, u
@@ -422,7 +422,7 @@ class TestOntology(unittest.TestCase):
         graph = get_knowledge_graph(get_speed.run())
         subj = URIRef("http://example.org/subject")
         obj = URIRef("http://example.org/object")
-        label = URIRef("get_speed.calculate_speed_0.outputs.output")
+        label = BNode("get_speed.calculate_speed_0.outputs.output")
         self.assertGreater(
             len(
                 list(
@@ -436,7 +436,7 @@ class TestOntology(unittest.TestCase):
         ex_triple = (
             None,
             EX.somehowRelatedTo,
-            URIRef("get_speed.calculate_speed_0.inputs.time"),
+            BNode("get_speed.calculate_speed_0.inputs.time"),
         )
         self.assertTrue(
             ex_triple in graph,
@@ -591,10 +591,10 @@ class TestOntology(unittest.TestCase):
             )
 
     def test_derive_from(self):
-        out_tag = URIRef(
+        out_tag = BNode(
             f"{clothes_wf.__name__}.{machine_wash.__name__}_0.outputs.clothes"
         )
-        out_global_tag = URIRef(f"{clothes_wf.__name__}.outputs.washed")
+        out_global_tag = BNode(f"{clothes_wf.__name__}.outputs.washed")
 
         with self.subTest("Inherit type"):
             graph = get_knowledge_graph(clothes_wf.serialize_workflow())
@@ -686,14 +686,14 @@ class TestOntology(unittest.TestCase):
         subj = list(
             graph.subjects(
                 SNS.has_participant,
-                URIRef("get_macro.add_three_0.add_one_0.inputs.a.value"),
+                BNode("get_macro.add_three_0.add_one_0.inputs.a.value"),
             )
         )
         self.assertEqual(len(subj), 3)
         subj = list(
             graph.subjects(
                 SNS.has_participant,
-                URIRef("get_macro.add_three_0.add_two_0.outputs.result.value"),
+                BNode("get_macro.add_three_0.add_two_0.outputs.result.value"),
             )
         )
         self.assertEqual(len(subj), 3)
@@ -706,7 +706,7 @@ class TestOntology(unittest.TestCase):
         ):
             with self.subTest(i=ii):
                 self.assertIn(
-                    URIRef("get_macro." + tag), subj, msg=f"{tag} not in {subj}"
+                    BNode("get_macro." + tag), subj, msg=f"{tag} not in {subj}"
                 )
         inherits_from = [
             (str(g[1]), str(g[0])) for g in graph.subject_objects(SNS.linksTo)
@@ -743,92 +743,92 @@ class TestOntology(unittest.TestCase):
         @prefix iao: <http://purl.obolibrary.org/obo/IAO_> .
         @prefix ro: <http://purl.obolibrary.org/obo/RO_> .
 
-        <get_macro.add_one_0.inputs.a> a prov:Entity ;
-            ro:0000057 <get_macro.add_three_0.add_two_0.outputs.result.value> .
+        _:get_macro.add_one_0.inputs.a a prov:Entity ;
+            ro:0000057 _:get_macro.add_three_0.add_two_0.outputs.result.value .
 
-        <get_macro.add_three_0.add_one_0.inputs.a> a prov:Entity ;
-            ro:0000057 <get_macro.add_three_0.add_one_0.inputs.a.value> .
+        _:get_macro.add_three_0.add_one_0.inputs.a a prov:Entity ;
+            ro:0000057 _:get_macro.add_three_0.add_one_0.inputs.a.value .
 
-        <get_macro.add_three_0.add_two_0.inputs.b> a prov:Entity ;
-            ro:0000057 <get_macro.add_three_0.add_one_0.outputs.result.value> .
+        _:get_macro.add_three_0.add_two_0.inputs.b a prov:Entity ;
+            ro:0000057 _:get_macro.add_three_0.add_one_0.outputs.result.value .
 
-        <get_macro.outputs.result> a prov:Entity ;
-            ro:0000057 <get_macro.add_one_0.outputs.result.value> .
+        _:get_macro.outputs.result a prov:Entity ;
+            ro:0000057 _:get_macro.add_one_0.outputs.result.value .
 
-        <get_macro.add_one_0.outputs.result> a prov:Entity ;
-            ns1:linksTo <get_macro.outputs.result> ;
-            ro:0000057 <get_macro.add_one_0.outputs.result.value> .
+        _:get_macro.add_one_0.outputs.result a prov:Entity ;
+            ns1:linksTo _:get_macro.outputs.result ;
+            ro:0000057 _:get_macro.add_one_0.outputs.result.value .
 
-        <get_macro.add_three_0.add_one_0.outputs.result> a prov:Entity ;
-            ns1:linksTo <get_macro.add_three_0.add_two_0.inputs.b> ;
-            ro:0000057 <get_macro.add_three_0.add_one_0.outputs.result.value> .
+        _:get_macro.add_three_0.add_one_0.outputs.result a prov:Entity ;
+            ns1:linksTo _:get_macro.add_three_0.add_two_0.inputs.b ;
+            ro:0000057 _:get_macro.add_three_0.add_one_0.outputs.result.value .
 
-        <get_macro.add_three_0.add_two_0.outputs.result> a prov:Entity ;
-            ns1:linksTo <get_macro.add_three_0.outputs.w> ;
-            ro:0000057 <get_macro.add_three_0.add_two_0.outputs.result.value> .
+        _:get_macro.add_three_0.add_two_0.outputs.result a prov:Entity ;
+            ns1:linksTo _:get_macro.add_three_0.outputs.w ;
+            ro:0000057 _:get_macro.add_three_0.add_two_0.outputs.result.value .
 
-        <get_macro.add_three_0.inputs.c> a prov:Entity ;
-            ns1:linksTo <get_macro.add_three_0.add_one_0.inputs.a> ;
-            ro:0000057 <get_macro.add_three_0.add_one_0.inputs.a.value> .
+        _:get_macro.add_three_0.inputs.c a prov:Entity ;
+            ns1:linksTo _:get_macro.add_three_0.add_one_0.inputs.a ;
+            ro:0000057 _:get_macro.add_three_0.add_one_0.inputs.a.value .
 
-        <get_macro.add_three_0.outputs.w> a prov:Entity ;
-            ns1:linksTo <get_macro.add_one_0.inputs.a> ;
-            ro:0000057 <get_macro.add_three_0.add_two_0.outputs.result.value>,
-                <get_macro.add_three_0.add_two_0.outputs.result.value> .
+        _:get_macro.add_three_0.outputs.w a prov:Entity ;
+            ns1:linksTo _:get_macro.add_one_0.inputs.a ;
+            ro:0000057 _:get_macro.add_three_0.add_two_0.outputs.result.value,
+                _:get_macro.add_three_0.add_two_0.outputs.result.value .
 
-        <get_macro.add_three_0.add_one_0.inputs.a.value> rdf:value 1 .
+        _:get_macro.add_three_0.add_one_0.inputs.a.value rdf:value 1 .
 
-        <get_macro.inputs.c> a prov:Entity ;
-            ns1:linksTo <get_macro.add_three_0.inputs.c> ;
-            ro:0000057 <get_macro.add_three_0.add_one_0.inputs.a.value> .
+        _:get_macro.inputs.c a prov:Entity ;
+            ns1:linksTo _:get_macro.add_three_0.inputs.c ;
+            ro:0000057 _:get_macro.add_three_0.add_one_0.inputs.a.value .
 
-        <get_macro.add_one_0.outputs.result.value> rdf:value 5 .
+        _:get_macro.add_one_0.outputs.result.value rdf:value 5 .
 
-        <get_macro.add_three_0.add_one_0.outputs.result.value> rdf:value 2 .
+        _:get_macro.add_three_0.add_one_0.outputs.result.value rdf:value 2 .
 
-        <get_macro.add_three_0.add_two_0.outputs.result.value> rdf:value 4 .
+        _:get_macro.add_three_0.add_two_0.outputs.result.value rdf:value 4 .
 
-        <get_macro> a prov:Activity ;
-            bfo:0000051 <get_macro.add_one_0>,
-                <get_macro.add_three_0>,
-                <get_macro.outputs.result>,
-                <get_macro.inputs.c> .
+        _:get_macro a prov:Activity ;
+            bfo:0000051 _:get_macro.add_one_0,
+                _:get_macro.add_three_0,
+                _:get_macro.outputs.result,
+                _:get_macro.inputs.c .
 
 
-        <get_macro.add_one_0> a prov:Activity ;
-            bfo:0000051 <get_macro.add_one_0.outputs.result>,
-                <get_macro.add_one_0.inputs.a> .
+        _:get_macro.add_one_0 a prov:Activity ;
+            bfo:0000051 _:get_macro.add_one_0.outputs.result,
+                _:get_macro.add_one_0.inputs.a .
 
-        <add_one> iao:0000136 <get_macro.add_one_0> ;
-            iao:0000136 <get_macro.add_three_0.add_one_0> ;
+        _:add_one iao:0000136 _:get_macro.add_one_0 ;
+            iao:0000136 _:get_macro.add_three_0.add_one_0 ;
             a iao:0000030 .
 
-        <get_macro.add_three_0.add_one_0> a prov:Activity ;
-            bfo:0000051 <get_macro.add_three_0.add_one_0.outputs.result>,
-                <get_macro.add_three_0.add_one_0.inputs.a> .
+        _:get_macro.add_three_0.add_one_0 a prov:Activity ;
+            bfo:0000051 _:get_macro.add_three_0.add_one_0.outputs.result,
+                _:get_macro.add_three_0.add_one_0.inputs.a .
 
-        <get_macro.add_three_0> a prov:Activity ;
-            bfo:0000051 <get_macro.add_three_0.add_one_0>,
-                <get_macro.add_three_0.add_two_0>,
-                <get_macro.add_three_0.outputs.w>,
-                <get_macro.add_three_0.inputs.c> .
+        _:get_macro.add_three_0 a prov:Activity ;
+            bfo:0000051 _:get_macro.add_three_0.add_one_0,
+                _:get_macro.add_three_0.add_two_0,
+                _:get_macro.add_three_0.outputs.w,
+                _:get_macro.add_three_0.inputs.c .
 
-        <add_three> iao:0000136 <get_macro.add_three_0> ;
+        _:add_three iao:0000136 _:get_macro.add_three_0 ;
             a iao:0000030 .
 
-        <get_macro> iao:0000136 <get_macro> ;
+        _:get_macro iao:0000136 _:get_macro ;
             a iao:0000030 .
 
-        <get_macro.add_three_0> bfo:0000063 <get_macro.add_one_0> .
+        _:get_macro.add_three_0 bfo:0000063 _:get_macro.add_one_0 .
 
-        <get_macro.add_three_0.add_one_0> bfo:0000063 <get_macro.add_three_0.add_two_0> .
+        _:get_macro.add_three_0.add_one_0 bfo:0000063 _:get_macro.add_three_0.add_two_0 .
 
 
-        <get_macro.add_three_0.add_two_0> a prov:Activity ;
-            bfo:0000051 <get_macro.add_three_0.add_two_0.outputs.result>,
-                <get_macro.add_three_0.add_two_0.inputs.b> .
+        _:get_macro.add_three_0.add_two_0 a prov:Activity ;
+            bfo:0000051 _:get_macro.add_three_0.add_two_0.outputs.result,
+                _:get_macro.add_three_0.add_two_0.inputs.b .
 
-        <add_two> iao:0000136 <get_macro.add_three_0.add_two_0> ;
+        _:add_two iao:0000136 _:get_macro.add_three_0.add_two_0 ;
             a iao:0000030 .\n\n"""
         )
         ref_graph = Graph()
@@ -858,7 +858,7 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(
             to_cancel[0],
             (
-                URIRef("get_wrong_order.create_vacancy_0.outputs.structure"),
+                BNode("get_wrong_order.create_vacancy_0.outputs.structure"),
                 URIRef("http://example.org/hasState"),
                 URIRef("http://example.org/relaxed"),
             ),
@@ -901,15 +901,15 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(
             list(graph.subject_objects(PROV.wasGeneratedBy))[0],
             (
-                URIRef("get_correct_analysis_owl.add_0.inputs.a"),
-                URIRef("get_correct_analysis_owl.add_0"),
+                BNode("get_correct_analysis_owl.add_0.inputs.a"),
+                BNode("get_correct_analysis_owl.add_0"),
             ),
         )
         self.assertEqual(
             list(graph.subject_objects(PROV.used))[0],
             (
-                URIRef("get_correct_analysis_owl.add_0"),
-                URIRef("add"),
+                BNode("get_correct_analysis_owl.add_0"),
+                BNode("add"),
             ),
         )
 
@@ -920,7 +920,7 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(
             list(validate_values(graph)["distinct_units"].keys()),
             [
-                URIRef(
+                BNode(
                     "get_speed_incorrect_units.get_time_incorrect_units_0.outputs.output.value"
                 )
             ],
@@ -1004,10 +1004,10 @@ class TestDataclass(unittest.TestCase):
         i_txt = "get_run_md.run_md_0.inputs.inp"
         o_txt = "get_run_md.run_md_0.outputs.out"
         triples = (
-            (URIRef(f"{i_txt}.n.value"), RDFS.subClassOf, URIRef(f"{i_txt}.value")),
-            (URIRef(f"{i_txt}.n.value"), RDF.value, Literal(100)),
-            (URIRef(f"{i_txt}.parameters.a.value"), RDF.value, Literal(2)),
-            (URIRef(o_txt), SNS.has_participant, URIRef(f"{o_txt}.E.value")),
+            (BNode(f"{i_txt}.n.value"), RDFS.subClassOf, BNode(f"{i_txt}.value")),
+            (BNode(f"{i_txt}.n.value"), RDF.value, Literal(100)),
+            (BNode(f"{i_txt}.parameters.a.value"), RDF.value, Literal(2)),
+            (BNode(o_txt), SNS.has_participant, BNode(f"{o_txt}.E.value")),
         )
         for ii, triple in enumerate(triples):
             with self.subTest(i=ii):
@@ -1016,7 +1016,7 @@ class TestDataclass(unittest.TestCase):
                     1,
                     msg=f"{triple} not found in graph: {graph.serialize()}",
                 )
-        self.assertIsNone(graph.value(URIRef(f"{i_txt}.not_dataclass.b.value")))
+        self.assertIsNone(graph.value(BNode(f"{i_txt}.not_dataclass.b.value")))
 
     def test_dataclass_to_knowledge_graph(self):
         EX = Namespace("http://example.org/")
