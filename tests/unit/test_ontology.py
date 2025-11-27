@@ -4,7 +4,7 @@ from textwrap import dedent
 
 from graphviz import Digraph
 from pyshacl import validate
-from rdflib import BNode, OWL, PROV, RDF, RDFS, SH, Graph, Literal, Namespace, URIRef
+from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.compare import graph_diff
 
 from semantikon.metadata import meta, u
