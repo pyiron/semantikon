@@ -355,13 +355,13 @@ def _append_missing_items(graph: Graph) -> Graph:
 
 def _convert_to_uriref(
     value: URIRef | Literal | str | None, namespace: Namespace | None = None
-) -> URIRef | Literal:
-    if isinstance(value, URIRef) or isinstance(value, Literal):
+) -> URIRef | Literal | BNode:
+    if isinstance(value, URIRef | Literal | BNode):
         return value
     elif isinstance(value, str):
         if namespace is not None and not value.lower().startswith("http"):
             return namespace[value]
-        return URIRef(value)
+        return BNode(value)
     else:
         raise TypeError(f"Unsupported type: {type(value)}")
 
