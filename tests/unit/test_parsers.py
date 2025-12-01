@@ -1,6 +1,6 @@
 import unittest
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 from unittest import mock
 
 from semantikon.converter import (
@@ -110,6 +110,9 @@ class TestParser(unittest.TestCase):
         result = parse_metadata(final_type).to_dictionary()
         self.assertEqual(result["units"], "millimeter")
         self.assertEqual(result["label"], "distance")
+        with_dict = Annotated[float, {"label": "distance", "units": "millimeter"}]
+        result_with_dict = parse_metadata(with_dict).to_dictionary()
+        self.assertDictEqual(result_with_dict, result)
 
     def test_invalid_u(self):
         with self.assertRaises(TypeError) as context:
