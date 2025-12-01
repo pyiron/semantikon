@@ -734,7 +734,7 @@ class TestOntology(unittest.TestCase):
 
     def test_macro_full_comparison(self):
         txt = dedent(
-            """\
+            f"""\
         @prefix ns1: <http://pyiron.org/ontology/> .
         @prefix prov: <http://www.w3.org/ns/prov#> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -799,7 +799,7 @@ class TestOntology(unittest.TestCase):
             bfo:0000051 _:get_macro.add_one_0.outputs.result,
                 _:get_macro.add_one_0.inputs.a .
 
-        _:add_one iao:0000136 _:get_macro.add_one_0 ;
+        _:{add_one.__module__}.add_one.not_defined iao:0000136 _:get_macro.add_one_0 ;
             iao:0000136 _:get_macro.add_three_0.add_one_0 ;
             a iao:0000030 .
 
@@ -813,10 +813,10 @@ class TestOntology(unittest.TestCase):
                 _:get_macro.add_three_0.outputs.w,
                 _:get_macro.add_three_0.inputs.c .
 
-        _:add_three iao:0000136 _:get_macro.add_three_0 ;
+        _:{add_three.__module__}.add_three.not_defined iao:0000136 _:get_macro.add_three_0 ;
             a iao:0000030 .
 
-        _:get_macro iao:0000136 _:get_macro ;
+        _:{get_macro.__module__}.get_macro.not_defined iao:0000136 _:get_macro ;
             a iao:0000030 .
 
         _:get_macro.add_three_0 bfo:0000063 _:get_macro.add_one_0 .
@@ -828,7 +828,7 @@ class TestOntology(unittest.TestCase):
             bfo:0000051 _:get_macro.add_three_0.add_two_0.outputs.result,
                 _:get_macro.add_three_0.add_two_0.inputs.b .
 
-        _:add_two iao:0000136 _:get_macro.add_three_0.add_two_0 ;
+        _:{add_two.__module__}.add_two.not_defined iao:0000136 _:get_macro.add_three_0.add_two_0 ;
             a iao:0000030 .\n\n"""
         )
         ref_graph = Graph()
@@ -837,12 +837,14 @@ class TestOntology(unittest.TestCase):
         graph_to_compare = Graph()
         graph_to_compare = graph_to_compare.parse(data=original_graph.serialize())
         _, in_first, in_second = graph_diff(graph_to_compare, ref_graph)
-        self.assertEqual(
-            len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
-        )
-        self.assertEqual(
-            len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
-        )
+        with self.subTest("Missing triples"):
+            self.assertEqual(
+                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
+            )
+        with self.subTest("Unexpected triples"):
+            self.assertEqual(
+                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
+            )
 
     def test_parse_cancel(self):
         channels = serialize_data(get_wrong_order.serialize_workflow())[1]

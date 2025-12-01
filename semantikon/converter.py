@@ -415,7 +415,7 @@ def units(func: Callable) -> Callable:
 
 
 def get_function_dict(function: Callable | FunctionWithMetadata) -> dict[str, Any]:
-    result = get_function_metadata(function)
+    result = get_function_metadata(function, full_metadata=True)
     if hasattr(function, "_semantikon_metadata"):
         result.update(function._semantikon_metadata)
     return result
