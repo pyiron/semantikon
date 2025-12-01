@@ -111,7 +111,7 @@ class TestParser(unittest.TestCase):
         self.assertEqual(result["units"], "millimeter")
         self.assertEqual(result["label"], "distance")
         with_dict = Annotated[
-            float, {"units": "meter", "label": "distance", "units": "millimeter"}
+            float, {"label": "distance", "units": "millimeter"}
         ]
         result_with_dict = parse_metadata(with_dict).to_dictionary()
         self.assertDictEqual(result_with_dict, result)
