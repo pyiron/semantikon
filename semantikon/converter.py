@@ -103,6 +103,8 @@ def parse_metadata(value: Any) -> TypeMetadata:
         dictionary of the metadata. Available keys are `units`, `label`,
         `triples`, `uri` and `shape`. See `semantikon.dataclasses.TypeMetadata` for more details.
     """
+    if len(value.__metadata__) == 1 and isinstance(value.__metadata__[0], dict):
+        return TypeMetadata(**value.__metadata__[0])
     metadata = value.__metadata__[0]
     return TypeMetadata(**{k: v for k, v in zip(metadata[::2], metadata[1::2])})
 
