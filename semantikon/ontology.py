@@ -355,9 +355,11 @@ def _append_missing_items(graph: Graph) -> Graph:
 
 
 def _convert_to_uriref(
-    value: URIRef | Literal | str | None, namespace: Namespace | None = None
+    value: SemantikonURI | URIRef | Literal | str | None, namespace: Namespace | None = None
 ) -> URIRef | Literal | BNode:
-    if isinstance(value, URIRef | Literal | BNode):
+    if isinstance(value, SemantikonURI):
+        return value.get_instance()
+    elif isinstance(value, URIRef | Literal | BNode):
         return value
     elif isinstance(value, str):
         if namespace is not None and not value.lower().startswith("http"):
@@ -574,10 +576,17 @@ def _triples_to_knowledge_graph(
     if graph is None:
         graph = Graph()
     for triple in triples:
+        triple_to_add = []
         if any(t is None for t in triple):
             continue
-        s, p, o = tuple([_convert_to_uriref(t, namespace=namespace) for t in triple])
-        graph.add((s, p, o))
+        for t in triple:
+            if t is None:
+                break
+            triple_to_add.append(_convert_to_uriref(t, namespace=namespace))
+            if isinstance(t, SemantikonURI):
+                graph.add((t.get_instance(), RDF.type, t.get_class()))
+        else:
+            graph.add(triple_to_add)
     return graph
 
 
