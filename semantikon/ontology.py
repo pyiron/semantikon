@@ -362,7 +362,7 @@ def _convert_to_uriref(
     elif isinstance(value, str):
         if namespace is not None and not value.lower().startswith("http"):
             return namespace[value]
-        return BNode(value)
+        return BNode(value.replace(".", "-"))
     else:
         raise TypeError(f"Unsupported type: {type(value)}")
 
@@ -589,7 +589,7 @@ def extract_dataclass(
         obj = obj.toPython()
         if not is_dataclass(obj):
             continue
-        tag = str(subj).rsplit(".value")[0]
+        tag = str(subj).rsplit("-value")[0]
         triples.extend(
             _translate_dataclass(
                 io_port=list(graph.subjects(ontology.has_participant, subj)),
