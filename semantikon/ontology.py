@@ -9,6 +9,7 @@ from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, U
 from rdflib.term import IdentifiedNode
 
 from semantikon.converter import get_function_dict, meta_to_dict
+from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
 IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")

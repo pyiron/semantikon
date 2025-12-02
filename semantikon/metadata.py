@@ -1,6 +1,7 @@
-from typing import Annotated, Any, Callable
+from typing import Annotated, Any, Callable, Optional
+from uuid import uuid4
 
-from rdflib import URIRef
+from rdflib import BNode, URIRef
 
 from semantikon.converter import FunctionWithMetadata, parse_metadata
 from semantikon.datastructure import (
@@ -81,3 +82,30 @@ def meta(
         )
 
     return decorator
+
+
+class SemantikonURI:
+    """A class representing a URIRef with an associated blank node instance."""
+    def __init__(
+        self, value: str, base: Optional[str] = None, instance: Optional[BNode] = None
+    ):
+        """
+        Initialize the SemantikonURI with a URIRef and an optional blank node instance.
+
+        Args:
+            value (str): The URI string.
+            base (Optional[str]): The base URI for relative URIs.
+            instance (Optional[BNode]): An optional blank node instance. If not
+                provided, a new BNode is created.
+        """
+        self._uriref = URIRef(value=value, base=base)
+        if instance is None:
+            tag = value.split("/")[-1].split("#")[-1] + "_" + str(uuid4())
+            instance = BNode(tag)
+        self._instance = instance
+
+    def get_class(self) -> URIRef:
+        return self._uriref
+
+    def get_instance(self) -> BNode:
+        return self._instance
