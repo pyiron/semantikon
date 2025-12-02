@@ -828,7 +828,7 @@ class TestOntology(unittest.TestCase):
             bfo:0000051 _:get_macro-add_three_0-add_two_0-outputs-result,
                 _:get_macro-add_three_0-add_two_0-inputs-b .
 
-        _:{add_two.__module__}.add_two.not_defined iao:0000136 _:get_macro-add_three_0-add_two_0 ;
+        _:{add_two.__module__}-add_two-not_defined iao:0000136 _:get_macro-add_three_0-add_two_0 ;
             a iao:0000030 .\n\n"""
         )
         ref_graph = Graph()
