@@ -813,7 +813,7 @@ class TestOntology(unittest.TestCase):
                 _:get_macro-add_three_0-outputs-w,
                 _:get_macro-add_three_0-inputs-c .
 
-        _:{add_three.__module__}.add_three-not_defined iao:0000136 _:get_macro-add_three_0 ;
+        _:{add_three.__module__}-add_three-not_defined iao:0000136 _:get_macro-add_three_0 ;
             a iao:0000030 .
 
         _:{get_macro.__module__}.get_macro-not_defined iao:0000136 _:get_macro ;
