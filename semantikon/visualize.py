@@ -54,7 +54,7 @@ def _add_color(data_dict, graph, tag, color):
         data_dict[label]["bgcolor"] = color
 
 
-def _get_data(graph):
+def _get_data(graph: Graph) -> tuple[dict, list]:
     data_dict = {}
     edge_list = []
     for subj, value in graph.subject_objects(RDF.value):
