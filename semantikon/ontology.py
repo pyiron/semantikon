@@ -355,7 +355,8 @@ def _append_missing_items(graph: Graph) -> Graph:
 
 
 def _convert_to_uriref(
-    value: SemantikonURI | URIRef | Literal | str | None, namespace: Namespace | None = None
+    value: SemantikonURI | URIRef | Literal | str | None,
+    namespace: Namespace | None = None,
 ) -> URIRef | Literal | BNode:
     if isinstance(value, SemantikonURI):
         return value.get_instance()

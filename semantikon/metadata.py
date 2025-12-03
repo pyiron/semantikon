@@ -86,6 +86,7 @@ def meta(
 
 class SemantikonURI(URIRef):
     """A class representing a URIRef with an associated blank node instance."""
+
     def __init__(
         self, value: str, base: Optional[str] = None, instance: Optional[BNode] = None
     ):
