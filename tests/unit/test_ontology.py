@@ -897,6 +897,8 @@ class TestOntology(unittest.TestCase):
         data = get_macro.run()
         graph = get_knowledge_graph(data)
         self.assertIsInstance(visualize(graph), Digraph)
+        self.assertIsInstance(visualize(graph, simplify_restrictions=True), Digraph)
+        self.assertEqual(len(graph), len(get_knowledge_graph(data)))
 
     def test_function_referencing(self):
         graph = get_knowledge_graph(get_correct_analysis_owl.serialize_workflow())
