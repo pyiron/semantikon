@@ -1,7 +1,7 @@
 from string import Template
 
 from graphviz import Digraph
-from rdflib import OWL, RDF, BNode, Graph, Literal, URIRef
+from rdflib import RDF, BNode, Literal, URIRef
 
 from semantikon.ontology import SNS
 
@@ -54,38 +54,7 @@ def _add_color(data_dict, graph, tag, color):
         data_dict[label]["bgcolor"] = color
 
 
-def _simplify_restrictions(graph):
-    dotted_triples = []
-    triples_to_remove = []
-    for b_node in graph.subjects(RDF.type, OWL.Restriction):
-        subj = list(graph.subjects(RDF.type, b_node))
-        assert len(subj) == 1, "Assertion failed: set simplify_restrictions to False"
-        pred = list(graph.objects(b_node, OWL.onProperty))
-        assert len(pred) == 1, "Assertion failed: set simplify_restrictions to False"
-        obj = list(graph.objects(b_node, OWL.someValuesFrom))
-        assert len(obj) == 1, "Assertion failed: set simplify_restrictions to False"
-        dotted_triples.append((subj[0], pred[0], obj[0]))
-        triples_to_remove.extend(
-            (
-                (subj[0], RDF.type, b_node),
-                (b_node, RDF.type, OWL.Restriction),
-                (b_node, OWL.onProperty, pred[0]),
-                (pred[0], RDF.type, RDF.Property),
-                (b_node, OWL.someValuesFrom, obj[0]),
-            )
-        )
-
-    new_graph = Graph()
-    for triple in graph:
-        if triple not in triples_to_remove:
-            new_graph.add(triple)
-    return new_graph, dotted_triples
-
-
-def _get_data(graph, simplify_restrictions=True):
-    dotted_triples = []
-    if simplify_restrictions:
-        graph, dotted_triples = _simplify_restrictions(graph)
+def _get_data(graph):
     data_dict = {}
     edge_list = []
     for subj, value in graph.subject_objects(RDF.value):
@@ -105,19 +74,17 @@ def _get_data(graph, simplify_restrictions=True):
     for obj in graph.objects(None, SNS.has_participant):
         _add_color(data_dict, graph, obj, "peachpuff")
 
-    for style, g in [("solid", graph), ("dotted", dotted_triples)]:
-        for subj, pred, obj in g:
-            if pred == RDF.value:
-                continue
-            edges = {"edge": []}
-            for tag in [subj, obj]:
-                label = _short_label(graph, tag)
-                if label not in data_dict:
-                    data_dict[label] = _get_value(graph, label)
-                edges["edge"].append(label.replace(":", "_"))
-            edges["label"] = _short_label(graph, pred)
-            edges["style"] = style
-            edge_list.append(edges)
+    for subj, pred, obj in graph:
+        if pred == RDF.value:
+            continue
+        edges = []
+        for tag in [subj, obj]:
+            label = _short_label(graph, tag)
+            if label not in data_dict:
+                data_dict[label] = _get_value(graph, label)
+            edges.append(label.replace(":", "_"))
+        edges.append(_short_label(graph, pred))
+        edge_list.append(edges)
     return data_dict, edge_list
 
 
@@ -136,26 +103,19 @@ def _to_node(tag, **kwargs):
     return html.substitute(rows=rows)
 
 
-def visualize(graph, engine="dot", simplify_restrictions=True):
+def visualize(graph, engine="dot"):
     dot = Digraph(comment="RDF Graph", format="png", engine=engine)
     dot.attr(overlap="false")
     dot.attr(splines="true")
     dot.attr("node", shape="none", margin="0")
-    data_dict, edge_list = _get_data(graph, simplify_restrictions=simplify_restrictions)
+    data_dict, edge_list = _get_data(graph)
     for key, value in data_dict.items():
         if len(value) == 0:
             dot.node(key.replace(":", "_"), _to_node(key))
         else:
             dot.node(key.replace(":", "_"), _to_node(key, **value))
     for edges in edge_list:
-        color = _edge_colors.get(edges["label"], "black")
-        label = _id_to_tag.get(edges["label"], edges["label"])
-        dot.edge(
-            edges["edge"][0],
-            edges["edge"][1],
-            label=label,
-            color=color,
-            fontcolor=color,
-            style=edges["style"],
-        )
+        color = _edge_colors.get(edges[2], "black")
+        label = _id_to_tag.get(edges[2], edges[2])
+        dot.edge(edges[0], edges[1], label=label, color=color, fontcolor=color)
     return dot
