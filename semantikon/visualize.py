@@ -137,6 +137,18 @@ def _to_node(tag, **kwargs):
 
 
 def visualize(graph, engine="dot", simplify_restrictions=False):
+    """
+    Visualize an RDF graph using Graphviz.
+
+    Args:
+        graph: An RDFLib Graph to visualize.
+        engine (str): Graphviz layout engine to use (default: "dot").
+        simplify_restrictions (bool): If True, simplify OWL restrictions into dotted edges
+            for cleaner visualization (default: False).
+
+    Returns:
+        Digraph: A graphviz Digraph object representing the visualized graph.
+    """
     dot = Digraph(comment="RDF Graph", format="png", engine=engine)
     dot.attr(overlap="false")
     dot.attr(splines="true")
