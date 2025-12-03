@@ -82,7 +82,7 @@ def _simplify_restrictions(graph):
     return new_graph, dotted_triples
 
 
-def _get_data(graph, simplify_restrictions=True):
+def _get_data(graph, simplify_restrictions=False):
     dotted_triples = []
     if simplify_restrictions:
         graph, dotted_triples = _simplify_restrictions(graph)
@@ -136,7 +136,7 @@ def _to_node(tag, **kwargs):
     return html.substitute(rows=rows)
 
 
-def visualize(graph, engine="dot", simplify_restrictions=True):
+def visualize(graph, engine="dot", simplify_restrictions=False):
     dot = Digraph(comment="RDF Graph", format="png", engine=engine)
     dot.attr(overlap="false")
     dot.attr(splines="true")
@@ -159,4 +159,3 @@ def visualize(graph, engine="dot", simplify_restrictions=True):
             style=edges["style"],
         )
     return dot
-
