@@ -578,8 +578,6 @@ def _triples_to_knowledge_graph(
         graph = Graph()
     for triple in triples:
         triple_to_add = []
-        if any(t is None for t in triple):
-            continue
         for t in triple:
             if t is None:
                 break
