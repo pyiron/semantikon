@@ -55,6 +55,31 @@ def _add_color(data_dict, graph, tag, color):
 
 
 def _simplify_restrictions(graph):
+    """
+    Simplify OWL restrictions into dotted triples for cleaner visualization.
+
+    Converts restriction patterns of the form:
+      node -> rdf:type -> BNode -> rdf:type -> owl:Restriction
+                        -> owl:onProperty -> property
+                        -> owl:someValuesFrom -> class
+    into simplified dotted triples: (node, property, class)
+
+    Args:
+        graph: An RDFLib Graph containing OWL restrictions.
+
+    Returns:
+        tuple: (new_graph, dotted_triples) where new_graph has restrictions removed
+               and dotted_triples is a list of simplified (subj, pred, obj) tuples.
+
+    Raises:
+        AssertionError: If any restriction doesn't have exactly one subject,
+                       property, or someValuesFrom object.
+
+    Assumptions:
+        - Each OWL restriction is represented as a blank node with exactly one subject,
+          one property (owl:onProperty), and one someValuesFrom object.
+        - The function removes the original restriction triples from the graph.
+    """
     dotted_triples = []
     triples_to_remove = []
     for b_node in graph.subjects(RDF.type, OWL.Restriction):
