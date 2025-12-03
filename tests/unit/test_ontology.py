@@ -7,7 +7,7 @@ from pyshacl import validate
 from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.compare import graph_diff
 
-from semantikon.metadata import meta, u
+from semantikon.metadata import SemantikonURI, meta, u
 from semantikon.ontology import (
     NS,
     SNS,
@@ -944,6 +944,20 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(triples[0][2], "get_correct_analysis.multiply_0")
         self.assertEqual(triples[1][0], "get_correct_analysis.multiply_0")
         self.assertEqual(triples[1][2], "get_correct_analysis.correct_analysis_0")
+
+    def test_semantikon_uri(self):
+        my_object = SemantikonURI(EX.Object)
+
+        @workflow
+        def some_workflow(x: u(int, triples=(my_object, EX.hasProperty, "self"))):
+            y = add_onetology(x)
+            return y
+
+        graph = get_knowledge_graph(some_workflow.run(x=1.0))
+        my_object_node = list(graph.subjects(RDF.type, EX.Object))
+        self.assertEqual(len(my_object_node), 1)
+        node = list(graph.objects(my_object_node[0], EX.hasProperty))
+        self.assertEqual(node[0], BNode("some_workflow-inputs-x"))
 
 
 @dataclass

@@ -2,9 +2,10 @@ import abc
 import dataclasses
 import functools
 from collections.abc import Iterable, MutableMapping
-from typing import Any, Callable, Generic, Iterator, TypeAlias, TypeVar
+from typing import Any, Callable, Generic, Iterator, TypeAlias, TypeVar, Union
 
 import typeguard
+from rdflib import URIRef
 
 
 class Missing:
@@ -51,7 +52,8 @@ class _VariadicDataclass(_HasToDictionary):
         return cls(**kwargs)
 
 
-TripleType: TypeAlias = tuple[str | None, str, str | None] | tuple[str, str]
+URIType: TypeAlias = Union[URIRef, str, None]
+TripleType: TypeAlias = tuple[URIType, str, URIType] | tuple[str, str]
 TriplesLike: TypeAlias = tuple[TripleType, ...] | TripleType
 RestrictionClause: TypeAlias = tuple[str, str]
 RestrictionType: TypeAlias = tuple[RestrictionClause, ...]
