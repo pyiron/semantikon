@@ -952,11 +952,11 @@ class TestOntology(unittest.TestCase):
         def some_workflow(x: u(int, triples=(my_object, EX.hasProperty, "self"))):
             y = add_onetology(x)
             return y
-    
+
         graph = get_knowledge_graph(some_workflow.run(x=1.0))
         my_object_node = list(graph.subjects(RDF.type, EX.Object))
         self.assertEqual(len(my_object_node), 1)
-        node = list(graph.objects(my_object_node, EX.hasProperty))
+        node = list(graph.objects(my_object_node[0], EX.hasProperty))
         self.assertEqual(node[0], BNode("some_workflow-inputs-x"))
 
 
