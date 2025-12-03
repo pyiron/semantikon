@@ -585,7 +585,7 @@ def _triples_to_knowledge_graph(
             if isinstance(t, SemantikonURI):
                 graph.add((t.get_instance(), RDF.type, t.get_class()))
         else:
-            graph.add(triple_to_add)
+            graph.add(tuple(triple_to_add))
     return graph
 
 
