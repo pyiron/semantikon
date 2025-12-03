@@ -954,7 +954,10 @@ class TestOntology(unittest.TestCase):
             return y
     
         graph = get_knowledge_graph(some_workflow.run(x=1.0))
-        print(graph.serialize(format='turtle'))
+        my_object_node = list(graph.subjects(RDF.type, EX.Object))
+        self.assertEqual(len(my_object_node), 1)
+        node = list(graph.objects(my_object_node, EX.hasProperty))
+        self.assertEqual(node[0], BNode("some_workflow-inputs-x"))
 
 
 @dataclass
