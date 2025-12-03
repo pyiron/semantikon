@@ -109,15 +109,15 @@ def _get_data(graph, simplify_restrictions=False):
         for subj, pred, obj in g:
             if pred == RDF.value:
                 continue
-            edges = {"edge": []}
+            edge = {"edge": []}
             for tag in [subj, obj]:
                 label = _short_label(graph, tag)
                 if label not in data_dict:
                     data_dict[label] = _get_value(graph, label)
-                edges["edge"].append(label.replace(":", "_"))
-            edges["label"] = _short_label(graph, pred)
-            edges["style"] = style
-            edge_list.append(edges)
+                edge["edge"].append(label.replace(":", "_"))
+            edge["label"] = _short_label(graph, pred)
+            edge["style"] = style
+            edge_list.append(edge)
     return data_dict, edge_list
 
 
