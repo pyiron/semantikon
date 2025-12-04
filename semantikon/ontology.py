@@ -10,6 +10,7 @@ from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, U
 from rdflib.term import IdentifiedNode
 
 from semantikon.converter import get_function_dict, meta_to_dict
+from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
 IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")
@@ -370,14 +371,17 @@ def _append_missing_items(graph: Graph) -> Graph:
 
 
 def _convert_to_uriref(
-    value: URIRef | Literal | str | None, namespace: Namespace | None = None
-) -> URIRef | Literal:
-    if isinstance(value, URIRef) or isinstance(value, Literal):
+    value: SemantikonURI | URIRef | Literal | str | None,
+    namespace: Namespace | None = None,
+) -> URIRef | Literal | BNode:
+    if isinstance(value, SemantikonURI):
+        return value.get_instance()
+    elif isinstance(value, URIRef | Literal | BNode):
         return value
     elif isinstance(value, str):
         if namespace is not None and not value.lower().startswith("http"):
             return namespace[value]
-        return URIRef(value)
+        return BNode(value.replace(".", "-"))
     else:
         raise TypeError(f"Unsupported type: {type(value)}")
 
@@ -401,7 +405,7 @@ def _function_to_triples(
             used = [used]
         for uu in used:
             triples.append((node_label, PROV.used, uu))
-    identifier = f_dict["identifier"]
+    identifier = ".".join([f_dict["module"], f_dict["qualname"], f_dict["version"]])
     triples.append((identifier, ontology.is_about, node_label))
     if t_box:
         triples.append((identifier, RDFS.subClassOf, IAO["0000030"]))
@@ -421,10 +425,15 @@ def _function_to_triples(
             value_node = f"{io_label}.value"
             triples.append((io_label, ontology.has_participant, value_node))
             for triple in _translate_has_value(
-                value_node=value_node, t_box=t_box, ontology=ontology, **data,
+                value_node=value_node,
+                t_box=t_box,
+                ontology=ontology,
+                **data,
             ):
-                
-                triples.append(list(_parse_triple(triple, ns=node_label, label=value_node)))
+
+                triples.append(
+                    list(_parse_triple(triple, ns=node_label, label=value_node))
+                )
     return triples
 
 
@@ -481,8 +490,7 @@ def _parse_channel(
         )
     )
     return [
-        _parse_triple(t, ns=channel_dict[NS.PREFIX], label=value_node)
-        for t in triples
+        _parse_triple(t, ns=channel_dict[NS.PREFIX], label=value_node) for t in triples
     ]
 
 
@@ -644,10 +652,15 @@ def _triples_to_knowledge_graph(
     if graph is None:
         graph = Graph()
     for triple in triples:
-        if any(t is None for t in triple):
-            continue
-        s, p, o = tuple([_convert_to_uriref(t, namespace=namespace) for t in triple])
-        graph.add((s, p, o))
+        triple_to_add = []
+        for t in triple:
+            if t is None:
+                break
+            triple_to_add.append(_convert_to_uriref(t, namespace=namespace))
+            if isinstance(t, SemantikonURI):
+                graph.add((t.get_instance(), RDF.type, t.get_class()))
+        else:
+            graph.add(tuple(triple_to_add))
     return graph
 
 
@@ -659,7 +672,7 @@ def extract_dataclass(
         obj = obj.toPython()
         if not is_dataclass(obj):
             continue
-        tag = str(subj).rsplit(".value")[0]
+        tag = str(subj).rsplit("-value")[0]
         triples.extend(
             _translate_dataclass(
                 io_port=list(graph.subjects(ontology.has_participant, subj)),
