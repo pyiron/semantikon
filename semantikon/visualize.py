@@ -7,7 +7,7 @@ from semantikon.ontology import SNS
 
 _edge_colors = {
     "rdf:type": "darkblue",
-    "iao:0000136": "darkgreen",
+    "stato:0000102": "darkgreen",
     "bfo:0000051": "darkred",
     "ro:0000057": "brown",
     "sns:linksTo": "gray",
@@ -16,7 +16,7 @@ _edge_colors = {
 }
 
 _id_to_tag = {
-    "iao:0000136": "iao:is_about",
+    "stato:0000102": "stato:executes",
     "bfo:0000051": "bfo:has_part",
     "ro:0000057": "ro:has_participant",
     "bfo:0000063": "bfo:precedes",
@@ -129,9 +129,9 @@ def _get_data(graph, simplify_restrictions=False):
     for obj in graph.objects(None, SNS.has_participant):
         _add_color(data_dict, graph, obj, "peachpuff")
 
-    for subj, obj in graph.subject_objects(SNS.is_about):
-        _add_color(data_dict, graph, obj, "lightcyan")
-        _add_color(data_dict, graph, subj, "lightgreen")
+    for subj, obj in graph.subject_objects(SNS.executes):
+        _add_color(data_dict, graph, subj, "lightcyan")
+        _add_color(data_dict, graph, obj, "lightgreen")
 
     for style, g in [("solid", graph), ("dotted", dotted_triples)]:
         for subj, pred, obj in g:

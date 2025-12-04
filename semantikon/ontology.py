@@ -729,6 +729,7 @@ def get_knowledge_graph(
     graph.bind("ro", str(RO))
     graph.bind("pmdco", str(PMD))
     graph.bind("schema", str(SCHEMA))
+    graph.bind("stato", str(STATO))
     if namespace is not None:
         graph.bind("ns", str(namespace))
     return graph
