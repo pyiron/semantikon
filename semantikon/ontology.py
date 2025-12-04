@@ -482,12 +482,6 @@ def _parse_channel(
                 (channel_label, pred, ontology.output_assignment),
             ]
         )
-    triples.append(
-        (
-            ".".join([bearer] + channel_label.split(".")[-2:]),
-            ontology.is_about,
-            channel_label,
-        )
     )
     return [
         _parse_triple(t, ns=channel_dict[NS.PREFIX], label=value_node) for t in triples
