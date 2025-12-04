@@ -19,6 +19,7 @@ RO: Namespace = Namespace("http://purl.obolibrary.org/obo/RO_")
 BFO: Namespace = Namespace("http://purl.obolibrary.org/obo/BFO_")
 PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
 SCHEMA: Namespace = Namespace("http://schema.org/")
+STATO: Namespace = Namespace("http://purl.obolibrary.org/obo/STATO_")
 
 
 class SNS:
@@ -27,7 +28,7 @@ class SNS:
     has_participant: URIRef = RO["0000057"]
     has_unit: URIRef = QUDT["hasUnit"]
     input_assignment: URIRef = PMD["0000066"]
-    is_about: URIRef = IAO["0000136"]
+    executes: URIRef = STATO["0000102"]
     output_assignment: URIRef = PMD["0000067"]
     precedes: URIRef = BFO["0000063"]
     process: URIRef = BFO["0000015"]
@@ -406,7 +407,7 @@ def _function_to_triples(
         for uu in used:
             triples.append((node_label, PROV.used, uu))
     identifier = ".".join([f_dict["module"], f_dict["qualname"], f_dict["version"]])
-    triples.append((identifier, ontology.is_about, node_label))
+    triples.append((node_label, ontology.executes, identifier))
     if t_box:
         triples.append((identifier, RDFS.subClassOf, IAO["0000030"]))
     else:
@@ -482,7 +483,6 @@ def _parse_channel(
                 (channel_label, pred, ontology.output_assignment),
             ]
         )
-    )
     return [
         _parse_triple(t, ns=channel_dict[NS.PREFIX], label=value_node) for t in triples
     ]
