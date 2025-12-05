@@ -442,7 +442,6 @@ def _parse_channel(
     channel_dict: dict,
     channel_label: str,
     edge_dict: dict,
-    bearer: str | URIRef | None = None,
     t_box: bool = False,
     ontology=SNS,
 ):
@@ -555,7 +554,6 @@ def _parse_workflow(
             channel_dict=content,
             channel_label=label,
             edge_dict=full_edge_dict,
-            bearer=node_dict[content[NS.PREFIX]]["function"]["identifier"],
             t_box=t_box,
             ontology=ontology,
         )
