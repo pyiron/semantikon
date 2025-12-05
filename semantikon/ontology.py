@@ -445,10 +445,7 @@ def _parse_channel(
     t_box: bool = False,
     ontology=SNS,
 ):
-    triples: _triple_type = []
-    if "type_hint" in channel_dict:
-        channel_dict.update(meta_to_dict(channel_dict["type_hint"]))
-    triples.append((channel_label, RDF.type, PROV.Entity))
+    triples = [(channel_label, RDF.type, PROV.Entity)]
     if channel_dict.get("uri", None) is not None:
         triples.append((channel_label, RDF.type, channel_dict["uri"]))
     value_node = str(edge_dict.get(*2 * [channel_label])) + ".value"
