@@ -7,6 +7,7 @@ from typing import Any, Callable, TypeAlias, cast
 from flowrep.tools import get_function_metadata
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
+from rdflib.collection import Collection
 from rdflib.term import IdentifiedNode
 
 from semantikon.converter import get_function_dict, meta_to_dict
@@ -823,3 +824,65 @@ def serialize_data(
     for args in wf_dict.get("edges", []):
         edge_list.append([_remove_us(prefix, a) for a in args])
     return node_dict, channel_dict, edge_list
+
+
+def _to_intersection(g: Graph, list_items: list[URIRef | BNode]) -> BNode:
+    """
+    Create an owl:intersectionOf node from a list of items
+
+    Args:
+        g (rdflib.Graph): graph to add the intersection to
+        list_items (list): list of items to intersect
+
+    Returns:
+        (rdflib.BNode): intersection node
+    """
+    intersection_node = BNode()
+    list_head = BNode()
+    g.add((intersection_node, RDF.type, OWL.Class))
+    Collection(g, list_head, list_items)
+    g.add((intersection_node, OWL.intersectionOf, list_head))
+    return intersection_node
+
+
+def _to_restrictions(
+    source_class: URIRef,
+    pred: URIRef,
+    target_classes: list[URIRef] | URIRef,
+    superclass: URIRef,
+) -> Graph:
+    """
+    Create a class definition with multiple restrictions using owl:intersectionOf
+
+    Args:
+        source_class (rdflib.URIRef): source class
+        pred (rdflib.URIRef): predicate for the restrictions
+        target_classes (list[rdflib.URIRef] | rdflib.URIRef): target classes for the restrictions
+        superclass (rdflib.URIRef): superclass of the source class
+
+    Returns:
+        (rdflib.Graph): graph containing the class definition
+    """
+    if isinstance(target_classes, URIRef):
+        target_classes = [target_classes]
+    g = Graph()
+
+    # Build the list elements:
+    #   [superclass, restriction(T1), restriction(T2), ...]
+    list_items = [superclass]
+
+    for tc in target_classes:
+        r = BNode()
+        g.add((r, RDF.type, OWL.Restriction))
+        g.add((r, OWL.onProperty, pred))
+        g.add((r, OWL.someValuesFrom, tc))
+        list_items.append(r)
+
+    # Build the owl:intersectionOf list
+    intersection_node = _to_intersection(g, list_items)
+
+    # Describe source class
+    g.add((source_class, RDF.type, OWL.Class))
+    g.add((source_class, RDFS.subClassOf, intersection_node))
+
+    return g
