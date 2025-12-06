@@ -972,7 +972,7 @@ class TestOntology(unittest.TestCase):
         @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
         <http://example.org/origin> a owl:Class ;
-            rdfs:subClassOf [ a owl:Class ;
+            owl:equivalentClass [ a owl:Class ;
                     owl:intersectionOf ( <http://example.org/my_class> [ a owl:Restriction ;
                                 owl:onProperty <http://example.org/some_predicate> ;
                                 owl:someValuesFrom <http://example.org/destination> ] ) ] .
@@ -1016,7 +1016,7 @@ class TestOntology(unittest.TestCase):
             @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
             <http://example.org/origin> a owl:Class ;
-                rdfs:subClassOf [ a owl:Class ;
+                owl:equivalentClass [ a owl:Class ;
                         owl:intersectionOf ( <http://example.org/my_class> [ a owl:Restriction ;
                                     owl:onProperty <http://example.org/some_predicate> ;
                                     owl:someValuesFrom <http://example.org/dest1> ] [ a owl:Restriction ;
