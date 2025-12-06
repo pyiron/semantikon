@@ -6,6 +6,7 @@ from typing import Any, Callable, TypeAlias, cast
 
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
+from rdflib.collection import Collection
 from rdflib.term import IdentifiedNode
 
 from semantikon.converter import get_function_dict, meta_to_dict
@@ -734,3 +735,43 @@ def serialize_data(
     for args in wf_dict.get("edges", []):
         edge_list.append([_remove_us(prefix, a) for a in args])
     return node_dict, channel_dict, edge_list
+
+
+def _to_intersection(g, list_items):
+    intersection_node = BNode()
+    list_head = BNode()
+    g.add((intersection_node, RDF.type, OWL.Class))
+    Collection(g, list_head, list_items)
+    g.add((intersection_node, OWL.intersectionOf, list_head))
+    return intersection_node
+
+
+def _to_restrictions(
+    source_class: URIRef,
+    pred: URIRef,
+    target_classes: list[URIRef] | URIRef,
+    superclass: URIRef,
+) -> Graph:
+    if isinstance(target_classes, URIRef):
+        target_classes = [target_classes]
+    g = Graph()
+
+    # Build the list elements:
+    #   [superclass, restriction(T1), restriction(T2), ...]
+    list_items = [superclass]
+
+    for tc in target_classes:
+        r = BNode()
+        g.add((r, RDF.type, OWL.Restriction))
+        g.add((r, OWL.onProperty, pred))
+        g.add((r, OWL.someValuesFrom, tc))
+        list_items.append(r)
+
+    # Build the owl:intersectionOf list
+    intersection_node = _to_intersection(g, list_items)
+
+    # Describe source class
+    g.add((source_class, RDF.type, OWL.Class))
+    g.add((source_class, RDFS.subClassOf, intersection_node))
+
+    return g
