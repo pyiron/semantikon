@@ -963,7 +963,8 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(node[0], BNode("some_workflow-inputs-x"))
 
     def test_to_restrictions(self):
-        text = dedent(
+        # Common reference graph for single target class
+        single_target_text = dedent(
             """\
         @prefix owl: <http://www.w3.org/2002/07/owl#> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -976,17 +977,64 @@ class TestOntology(unittest.TestCase):
                                 owl:someValuesFrom <http://example.org/destination> ] ) ] .
         """
         )
-        g_ref = Graph()
-        g_ref.parse(data=text, format="turtle")
-        g = _to_restrictions(
-            EX["origin"], EX["some_predicate"], [EX["destination"]], EX["my_class"]
-        )
-        _, in_first, in_second = graph_diff(g, g_ref)
-        with self.subTest("Missing triples"):
+        g_ref_single = Graph()
+        g_ref_single.parse(data=single_target_text, format="turtle")
+
+        # Test case 1: Single target class as list (original test)
+        with self.subTest("Single target class as list"):
+            g = _to_restrictions(
+                EX["origin"], EX["some_predicate"], [EX["destination"]], EX["my_class"]
+            )
+            _, in_first, in_second = graph_diff(g, g_ref_single)
             self.assertEqual(
                 len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
             )
-        with self.subTest("Unexpected triples"):
+            self.assertEqual(
+                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
+            )
+
+        # Test case 2: Single URIRef (not a list)
+        with self.subTest("Single URIRef directly"):
+            g = _to_restrictions(
+                EX["origin"], EX["some_predicate"], EX["destination"], EX["my_class"]
+            )
+            _, in_first, in_second = graph_diff(g, g_ref_single)
+            self.assertEqual(
+                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
+            )
+            self.assertEqual(
+                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
+            )
+
+        # Test case 3: Multiple target classes
+        with self.subTest("Multiple target classes"):
+            text = dedent(
+                """\
+            @prefix owl: <http://www.w3.org/2002/07/owl#> .
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+            <http://example.org/origin> a owl:Class ;
+                rdfs:subClassOf [ a owl:Class ;
+                        owl:intersectionOf ( <http://example.org/my_class> [ a owl:Restriction ;
+                                    owl:onProperty <http://example.org/some_predicate> ;
+                                    owl:someValuesFrom <http://example.org/dest1> ] [ a owl:Restriction ;
+                                    owl:onProperty <http://example.org/some_predicate> ;
+                                    owl:someValuesFrom <http://example.org/dest2> ] ) ] .
+            """
+            )
+            g_ref = Graph()
+            g_ref.parse(data=text, format="turtle")
+            g = _to_restrictions(
+                EX["origin"],
+                EX["some_predicate"],
+                [EX["dest1"], EX["dest2"]],
+                EX["my_class"],
+            )
+            _, in_first, in_second = graph_diff(g, g_ref)
+            self.assertEqual(
+                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
+            )
             self.assertEqual(
                 len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
             )
