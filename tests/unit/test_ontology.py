@@ -984,11 +984,11 @@ class TestOntology(unittest.TestCase):
         _, in_first, in_second = graph_diff(g, g_ref)
         with self.subTest("Missing triples"):
             self.assertEqual(
-                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
+                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
             )
         with self.subTest("Unexpected triples"):
             self.assertEqual(
-                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
+                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
             )
 
 
