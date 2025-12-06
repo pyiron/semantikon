@@ -25,6 +25,7 @@ STATO: Namespace = Namespace("http://purl.obolibrary.org/obo/STATO_")
 class SNS:
     BASE: Namespace = Namespace("http://pyiron.org/ontology/")
     has_part: URIRef = BFO["0000051"]
+    participates_in: URIRef = RO["0000056"]
     has_participant: URIRef = RO["0000057"]
     has_unit: URIRef = QUDT["hasUnit"]
     input_assignment: URIRef = PMD["0000066"]
@@ -32,6 +33,7 @@ class SNS:
     output_assignment: URIRef = PMD["0000067"]
     precedes: URIRef = BFO["0000063"]
     process: URIRef = BFO["0000015"]
+    continuant: URIRef = BFO["0000002"]
 
 
 class NS:
