@@ -774,7 +774,7 @@ def _to_restrictions(
     Returns:
         (rdflib.Graph): graph containing the class definition
     """
-    if isinstance(target_classes, URIRef):
+    if not isinstance(target_classes, list | tuple):
         target_classes = [target_classes]
     g = Graph()
 
@@ -794,6 +794,6 @@ def _to_restrictions(
 
     # Describe source class
     g.add((source_class, RDF.type, OWL.Class))
-    g.add((source_class, RDFS.subClassOf, intersection_node))
+    g.add((source_class, OWL.equivalentClass, intersection_node))
 
     return g
