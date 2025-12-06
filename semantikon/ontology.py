@@ -863,7 +863,7 @@ def _to_restrictions(
     Returns:
         (rdflib.Graph): graph containing the class definition
     """
-    if isinstance(target_classes, URIRef):
+    if not isinstance(target_classes, list | tuple):
         target_classes = [target_classes]
     g = Graph()
 
