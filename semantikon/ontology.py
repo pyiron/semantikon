@@ -737,7 +737,17 @@ def serialize_data(
     return node_dict, channel_dict, edge_list
 
 
-def _to_intersection(g, list_items):
+def _to_intersection(g: Graph, list_items: list[URIRef | BNode]) -> BNode:
+    """
+    Create an owl:intersectionOf node from a list of items
+
+    Args:
+        g (rdflib.Graph): graph to add the intersection to
+        list_items (list): list of items to intersect
+
+    Returns:
+        (rdflib.BNode): intersection node
+    """
     intersection_node = BNode()
     list_head = BNode()
     g.add((intersection_node, RDF.type, OWL.Class))
@@ -752,6 +762,18 @@ def _to_restrictions(
     target_classes: list[URIRef] | URIRef,
     superclass: URIRef,
 ) -> Graph:
+    """
+    Create a class definition with multiple restrictions using owl:intersectionOf
+
+    Args:
+        source_class (rdflib.URIRef): source class
+        pred (rdflib.URIRef): predicate for the restrictions
+        target_classes (list[rdflib.URIRef] | rdflib.URIRef): target classes for the restrictions
+        superclass (rdflib.URIRef): superclass of the source class
+
+    Returns:
+        (rdflib.Graph): graph containing the class definition
+    """
     if isinstance(target_classes, URIRef):
         target_classes = [target_classes]
     g = Graph()
