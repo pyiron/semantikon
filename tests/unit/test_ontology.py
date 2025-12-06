@@ -14,12 +14,12 @@ from semantikon.ontology import (
     _get_edge_dict,
     _get_precedes,
     _parse_cancel,
+    _to_restrictions,
     dataclass_to_knowledge_graph,
     extract_dataclass,
     get_knowledge_graph,
     serialize_data,
     validate_values,
-    _to_restrictions,
 )
 from semantikon.visualize import visualize
 from semantikon.workflow import workflow
@@ -963,7 +963,8 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(node[0], BNode("some_workflow-inputs-x"))
 
     def test_to_restrictions(self):
-        text = dedent("""\
+        text = dedent(
+            """\
         @prefix owl: <http://www.w3.org/2002/07/owl#> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
         @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -973,7 +974,8 @@ class TestOntology(unittest.TestCase):
                     owl:intersectionOf ( <http://example.org/my_class> [ a owl:Restriction ;
                                 owl:onProperty <http://example.org/some_predicate> ;
                                 owl:someValuesFrom <http://example.org/destination> ] ) ] .
-        """)
+        """
+        )
         g_ref = Graph()
         g_ref.parse(data=text, format="turtle")
         g = _to_restrictions(
@@ -988,7 +990,6 @@ class TestOntology(unittest.TestCase):
             self.assertEqual(
                 len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
             )
-
 
 
 @dataclass
