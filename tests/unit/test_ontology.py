@@ -20,7 +20,6 @@ from semantikon.ontology import (
     get_knowledge_graph,
     serialize_data,
     validate_values,
-    _to_restrictions,
 )
 from semantikon.visualize import visualize
 from semantikon.workflow import workflow
