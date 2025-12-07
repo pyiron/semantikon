@@ -1047,7 +1047,7 @@ class TestOntology(unittest.TestCase):
             )
             restrictions = _bundle_restrictions(g)
             g += _to_intersection(
-                EX["origin"], [EX["my_class"]] + _bundle_restrictions(g)
+                EX["origin"], [EX["my_class"]] + restrictions
             )
             _, in_first, in_second = graph_diff(g, g_ref)
             self.assertEqual(
