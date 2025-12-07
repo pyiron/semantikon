@@ -744,7 +744,7 @@ def _bundle_restrictions(g: Graph) -> list[BNode]:
 def _to_owl_restriction(
     pred: URIRef,
     target_class: URIRef,
-    predicate: URIRef = OWL.someValuesFrom,
+    restriction_type: URIRef = OWL.someValuesFrom,
 ) -> Graph:
     g = Graph()
     restriction_node = BNode()
@@ -752,7 +752,7 @@ def _to_owl_restriction(
     # Build the restriction
     g.add((restriction_node, RDF.type, OWL.Restriction))
     g.add((restriction_node, OWL.onProperty, pred))
-    g.add((restriction_node, predicate, target_class))
+    g.add((restriction_node, restriction_type, target_class))
 
     return g
 
