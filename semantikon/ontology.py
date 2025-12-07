@@ -738,6 +738,15 @@ def serialize_data(
 
 
 def _bundle_restrictions(g: Graph) -> list[BNode]:
+    """
+    Extract all OWL restriction BNodes from a graph.
+
+    Args:
+        g (Graph): RDF graph to search for restrictions
+
+    Returns:
+        (list[BNode]): list of BNodes that are OWL restrictions
+    """
     return list(g.subjects(RDF.type, OWL.Restriction))
 
 

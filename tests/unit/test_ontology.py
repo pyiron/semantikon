@@ -1046,9 +1046,7 @@ class TestOntology(unittest.TestCase):
                 EX["some_predicate"], EX["destination"], OWL.hasValue
             )
             restrictions = _bundle_restrictions(g)
-            g += _to_intersection(
-                EX["origin"], [EX["my_class"]] + restrictions
-            )
+            g += _to_intersection(EX["origin"], [EX["my_class"]] + restrictions)
             _, in_first, in_second = graph_diff(g, g_ref)
             self.assertEqual(
                 len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
