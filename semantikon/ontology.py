@@ -37,6 +37,7 @@ class SNS:
     process: URIRef = BFO["0000015"]
     continuant: URIRef = BFO["0000002"]
     value_specification: URIRef = OBI["0001933"]
+    specifies_value_of: URIRef = OBI["0001927"]
 
 
 class NS:
