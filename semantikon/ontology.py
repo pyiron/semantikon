@@ -76,7 +76,6 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
     if key is not None:
         return key
     return URIRef(units)
-
 def _align_triples(triples):
     if isinstance(triples[0], tuple | list):
         assert all(len(t) in (2, 3) for t in triples)
