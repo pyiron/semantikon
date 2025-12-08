@@ -17,6 +17,7 @@ from semantikon.ontology import (
     _parse_cancel,
     _to_intersection,
     _to_owl_restriction,
+    _units_to_uri,
     dataclass_to_knowledge_graph,
     extract_dataclass,
     get_knowledge_graph,
@@ -420,6 +421,18 @@ class TestOntology(unittest.TestCase):
             )
             result_list = [row[0].value for row in graph.query(query)]
             self.assertEqual(sorted(result_list), [2.0, 5.0, 10.0])
+        self.assertEqual(
+            _units_to_uri("meter/second"),
+            URIRef("http://qudt.org/vocab/unit/M-PER-SEC"),
+        )
+        self.assertEqual(
+            _units_to_uri(URIRef("http://qudt.org/vocab/unit/M-PER-SEC")),
+            URIRef("http://qudt.org/vocab/unit/M-PER-SEC"),
+        )
+        self.assertEqual(
+            _units_to_uri("http://qudt.org/vocab/unit/M-PER-SEC"),
+            URIRef("http://qudt.org/vocab/unit/M-PER-SEC"),
+        )
 
     def test_triples(self):
         graph = get_knowledge_graph(get_speed.run())
