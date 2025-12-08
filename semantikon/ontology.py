@@ -72,12 +72,8 @@ def _translate_has_value(
     if value is not None and not t_box:
         triples.append((value_node, RDF.value, Literal(value)))
     if units is not None:
-        if isinstance(units, str):
-            key = ud[units]
-            obj = URIRef(units) if key is None else key
-            triples.append((value_node, ontology.has_unit, obj))
-        else:
-            triples.append((value_node, ontology.has_unit, URIRef(units)))
+        unit_uri = _units_to_uri(units)
+        triples.append((value_node, ontology.has_unit, unit_uri))
     if uri is not None:
         if t_box:
             triples.append((value_node, RDFS.subClassOf, uri))
@@ -90,6 +86,15 @@ def _translate_has_value(
     if restrictions is not None:
         triples.extend(_restriction_to_triple(restrictions, t_box=t_box))
     return triples
+
+
+def _units_to_uri(units: str | URIRef) -> URIRef:
+    if isinstance(units, URIRef):
+        return units
+    key = ud[units]
+    if key is not None:
+        return key
+    return URIRef(units)
 
 
 def _align_triples(triples):
