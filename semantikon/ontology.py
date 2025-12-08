@@ -866,6 +866,6 @@ def _to_intersection(source_class: URIRef, list_items: list[URIRef]) -> Graph:
     Collection(g, list_head, list_items)
     g.add((intersection_node, OWL.intersectionOf, list_head))
 
-    g.add((source_class, OWL.equivalentClass, intersection_node))
+    g.add((source_class, OWL.subClassOf, intersection_node))
 
     return g
