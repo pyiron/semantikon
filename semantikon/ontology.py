@@ -18,6 +18,7 @@ IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")
 QUDT: Namespace = Namespace("http://qudt.org/schema/qudt/")
 RO: Namespace = Namespace("http://purl.obolibrary.org/obo/RO_")
 BFO: Namespace = Namespace("http://purl.obolibrary.org/obo/BFO_")
+OBI: Namespace = Namespace("http://purl.obolibrary.org/obo/OBI_")
 PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
 SCHEMA: Namespace = Namespace("http://schema.org/")
 STATO: Namespace = Namespace("http://purl.obolibrary.org/obo/STATO_")
@@ -35,6 +36,7 @@ class SNS:
     precedes: URIRef = BFO["0000063"]
     process: URIRef = BFO["0000015"]
     continuant: URIRef = BFO["0000002"]
+    value_specification: URIRef = OBI["0001933"]
 
 
 class NS:
@@ -724,6 +726,7 @@ def get_knowledge_graph(
     graph.bind("prov", str(PROV))
     graph.bind("iao", str(IAO))
     graph.bind("bfo", str(BFO))
+    graph.bind("obi", str(OBI))
     graph.bind("ro", str(RO))
     graph.bind("pmdco", str(PMD))
     graph.bind("schema", str(SCHEMA))
