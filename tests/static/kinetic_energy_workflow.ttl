@@ -1,0 +1,154 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+<http://pyiron.org/ontology/my_kinetic_energy_workflow> a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000299> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-mass> ],
+        [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-time> ],
+        [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-mass> ],
+        [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-distance> ],
+        <http://purl.obolibrary.org/obo/BFO_0000015> ;
+    owl:equivalentClass [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0> ],
+        [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
+            owl:someValuesFrom [ rdfs:subClassOf [ a owl:Class ;
+                            owl:intersectionOf ( <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0> [ a owl:Restriction ;
+                                        owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000063> ;
+                                        owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0> ] ) ] ] ] .
+
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-outputs-kinetic_energy> a owl:Class ;
+    rdfs:subClassOf [ a owl:Class ;
+            owl:intersectionOf ( <https://w3id.org/pmd/co/PMD_0000067> [ a owl:Restriction ;
+                        owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000299> ;
+                        owl:someValuesFrom [ rdfs:subClassOf [ a owl:Class ;
+                                        owl:intersectionOf ( <http://purl.obolibrary.org/obo/OBI_0001933> [ a owl:Restriction ;
+                                                    owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001927> ;
+                                                    owl:someValuesFrom <http://purl.obolibrary.org/obo/BFO_0000002> ] ) ] ] ] ) ] .
+
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-mass> a owl:Class ;
+    rdfs:subClassOf [ a owl:Class ;
+            owl:intersectionOf ( <https://w3id.org/pmd/co/PMD_0000066> [ a owl:Restriction ;
+                        owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
+                        owl:someValuesFrom [ rdfs:subClassOf [ a owl:Class ;
+                                        owl:intersectionOf ( <https://w3id.org/pmd/co/PMD_0020133> [ a owl:Restriction ;
+                                                    owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000312> ;
+                                                    owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-mass> ] [ a owl:Restriction ;
+                                                    owl:hasValue <http://qudt.org/vocab/unit/KiloGM> ;
+                                                    owl:onProperty <http://qudt.org/schema/qudt/hasUnit> ] ) ] ] ] ) ] .
+
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity> a owl:Class ;
+    rdfs:subClassOf [ a owl:Class ;
+            owl:intersectionOf ( <https://w3id.org/pmd/co/PMD_0000066> [ a owl:Restriction ;
+                        owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
+                        owl:someValuesFrom [ rdfs:subClassOf [ a owl:Class ;
+                                        owl:intersectionOf ( <http://purl.obolibrary.org/obo/BFO_0000002> [ a owl:Restriction ;
+                                                    owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000312> ;
+                                                    owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-outputs-speed> ] [ a owl:Restriction ;
+                                                    owl:hasValue <http://qudt.org/vocab/unit/M-PER-SEC> ;
+                                                    owl:onProperty <http://qudt.org/schema/qudt/hasUnit> ] ) ] ] ] ) ] .
+
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output> a owl:Class ;
+    rdfs:subClassOf [ a owl:Class ;
+            owl:intersectionOf ( <https://w3id.org/pmd/co/PMD_0000067> [ a owl:Restriction ;
+                        owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000299> ;
+                        owl:someValuesFrom [ rdfs:subClassOf [ a owl:Class ;
+                                        owl:intersectionOf ( <http://purl.obolibrary.org/obo/OBI_0001933> [ a owl:Restriction ;
+                                                    owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001927> ;
+                                                    owl:someValuesFrom <https://w3id.org/pmd/co/PMD_0020142> ] [ a owl:Restriction ;
+                                                    owl:hasValue <http://qudt.org/vocab/unit/J> ;
+                                                    owl:onProperty <http://qudt.org/schema/qudt/hasUnit> ] ) ] ] ] ) ] .
+
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0> a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-inputs-distance> ],
+        [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-outputs-speed> ],
+        [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-inputs-time> ],
+        <http://purl.obolibrary.org/obo/BFO_0000015> .
+
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-inputs-distance> a owl:Class ;
+    rdfs:subClassOf [ a owl:Class ;
+            owl:intersectionOf ( <https://w3id.org/pmd/co/PMD_0000066> [ a owl:Restriction ;
+                        owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
+                        owl:someValuesFrom [ rdfs:subClassOf [ a owl:Class ;
+                                        owl:intersectionOf ( <https://w3id.org/pmd/co/PMD_0040001> [ a owl:Restriction ;
+                                                    owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000312> ;
+                                                    owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-distance> ] [ a owl:Restriction ;
+                                                    owl:hasValue <http://qudt.org/vocab/unit/M> ;
+                                                    owl:onProperty <http://qudt.org/schema/qudt/hasUnit> ] ) ] ] ] ) ] .
+
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-inputs-time> a owl:Class ;
+    rdfs:subClassOf [ a owl:Class ;
+            owl:intersectionOf ( <https://w3id.org/pmd/co/PMD_0000066> [ a owl:Restriction ;
+                        owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
+                        owl:someValuesFrom [ rdfs:subClassOf [ a owl:Class ;
+                                        owl:intersectionOf ( <http://purl.obolibrary.org/obo/BFO_0000002> [ a owl:Restriction ;
+                                                    owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000312> ;
+                                                    owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-time> ] [ a owl:Restriction ;
+                                                    owl:hasValue <http://qudt.org/vocab/unit/SEC> ;
+                                                    owl:onProperty <http://qudt.org/schema/qudt/hasUnit> ] ) ] ] ] ) ] .
+
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0> a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output> ],
+        [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-mass> ],
+        [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity> ],
+        <http://purl.obolibrary.org/obo/BFO_0000015> .
+
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-outputs-speed> a owl:Class ;
+    rdfs:subClassOf [ a owl:Class ;
+            owl:intersectionOf ( <https://w3id.org/pmd/co/PMD_0000067> [ a owl:Restriction ;
+                        owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000299> ;
+                        owl:someValuesFrom [ rdfs:subClassOf [ a owl:Class ;
+                                        owl:intersectionOf ( <http://purl.obolibrary.org/obo/OBI_0001933> [ a owl:Restriction ;
+                                                    owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001927> ;
+                                                    owl:someValuesFrom <http://purl.obolibrary.org/obo/BFO_0000002> ] [ a owl:Restriction ;
+                                                    owl:hasValue <http://qudt.org/vocab/unit/M-PER-SEC> ;
+                                                    owl:onProperty <http://qudt.org/schema/qudt/hasUnit> ] ) ] ] ] ) ] .
+
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-distance> a owl:Class ;
+    rdfs:subClassOf [ a owl:Class ;
+            owl:intersectionOf ( <https://w3id.org/pmd/co/PMD_0000066> [ a owl:Restriction ;
+                        owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
+                        owl:someValuesFrom [ rdfs:subClassOf [ a owl:Class ;
+                                        owl:intersectionOf ( <http://purl.obolibrary.org/obo/OBI_0001933> [ a owl:Restriction ;
+                                                    owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001927> ;
+                                                    owl:someValuesFrom <https://w3id.org/pmd/co/PMD_0040001> ] ) ] ] ] ) ] .
+
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-time> a owl:Class ;
+    rdfs:subClassOf [ a owl:Class ;
+            owl:intersectionOf ( <https://w3id.org/pmd/co/PMD_0000066> [ a owl:Restriction ;
+                        owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
+                        owl:someValuesFrom [ rdfs:subClassOf [ a owl:Class ;
+                                        owl:intersectionOf ( <http://purl.obolibrary.org/obo/OBI_0001933> [ a owl:Restriction ;
+                                                    owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001927> ;
+                                                    owl:someValuesFrom <http://purl.obolibrary.org/obo/BFO_0000002> ] ) ] ] ] ) ] .
+
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-mass> a owl:Class ;
+    rdfs:subClassOf [ a owl:Class ;
+            owl:intersectionOf ( <https://w3id.org/pmd/co/PMD_0000066> [ a owl:Restriction ;
+                        owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
+                        owl:someValuesFrom [ rdfs:subClassOf [ a owl:Class ;
+                                        owl:intersectionOf ( <http://purl.obolibrary.org/obo/OBI_0001933> [ a owl:Restriction ;
+                                                    owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001927> ;
+                                                    owl:someValuesFrom <http://purl.obolibrary.org/obo/BFO_0000002> ] ) ] ] ] ) ] .
+

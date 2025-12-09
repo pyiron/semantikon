@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any, TypeAlias
 
 from flowrep.tools import get_function_metadata
+import networkx as nx
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, BNode, Graph, Namespace, URIRef
 from rdflib.collection import Collection
@@ -18,11 +19,11 @@ OBI: Namespace = Namespace("http://purl.obolibrary.org/obo/OBI_")
 PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
 SCHEMA: Namespace = Namespace("http://schema.org/")
 STATO: Namespace = Namespace("http://purl.obolibrary.org/obo/STATO_")
+BASE: Namespace = Namespace("http://pyiron.org/ontology/")
 
 
 @dataclass(frozen=True)
 class SNS:
-    BASE: Namespace = Namespace("http://pyiron.org/ontology/")
     has_part: URIRef = BFO["0000051"]
     part_of: URIRef = BFO["0000050"]
     participates_in: URIRef = RO["0000056"]
@@ -166,20 +167,155 @@ def get_knowledge_graph(
     if graph is None:
         graph = Graph()
     node_dict, channel_dict, edge_list = serialize_data(wf_dict, use_uuid=use_uuid)
-    graph.bind("qudt", str(QUDT))
-    graph.bind("unit", "http://qudt.org/vocab/unit/")
-    graph.bind("sns", str(ontology.BASE))
-    graph.bind("prov", str(PROV))
-    graph.bind("iao", str(IAO))
-    graph.bind("bfo", str(BFO))
-    graph.bind("obi", str(OBI))
-    graph.bind("ro", str(RO))
-    graph.bind("pmdco", str(PMD))
-    graph.bind("schema", str(SCHEMA))
-    graph.bind("stato", str(STATO))
+    G = _wf_data_to_networkx(node_dict, channel_dict, edge_list)
+    graph += _nx_to_kg(G, t_box=t_box)
     if namespace is not None:
         graph.bind("ns", str(namespace))
     return graph
+
+
+def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
+    g = Graph()
+    g.bind("qudt", str(QUDT))
+    g.bind("unit", "http://qudt.org/vocab/unit/")
+    g.bind("sns", str(BASE))
+    g.bind("prov", str(PROV))
+    g.bind("iao", str(IAO))
+    g.bind("bfo", str(BFO))
+    g.bind("obi", str(OBI))
+    g.bind("ro", str(RO))
+    g.bind("pmdco", str(PMD))
+    g.bind("schema", str(SCHEMA))
+    g.bind("stato", str(STATO))
+    workflow_name = G.name
+    for comp in G.nodes.data():
+        data = comp[1].copy()
+        step = data.pop("step")
+        node = BASE[comp[0]]
+        if t_box:
+            g.add((node, RDF.type, OWL.Class))
+        if step == "node":
+            if t_box:
+                g_rest = Graph()
+                for inp in G.predecessors(comp[0]):
+                    g_rest += _to_owl_restriction(SNS.has_part, BASE[inp])
+                for out in G.successors(comp[0]):
+                    g_rest += _to_owl_restriction(SNS.has_part, BASE[out])
+                for nn in _bundle_restrictions(g_rest):
+                    g.add((node, RDFS.subClassOf, nn))
+                g.add((node, RDFS.subClassOf, SNS.process))
+                g += g_rest
+            else:
+                g.add((node, RDF.type, SNS.process))
+                for inp in G.predecessors(comp[0]):
+                    g.add((node, SNS.has_part, BASE[inp]))
+                for out in G.successors(comp[0]):
+                    g.add((node, SNS.has_part, BASE[out]))
+        elif step == "inputs":
+            if data.get("label") is not None:
+                g.add(node, RDFS.label, Literal(data["label"]))
+            if t_box:
+                out = list(G.predecessors(comp[0]))
+                data_class = SNS.continuant if "uri" not in data else data["uri"]
+                data_node = BNode()
+                g_rest = _to_owl_restriction(SNS.has_specified_input, data_node)
+                rest = _bundle_restrictions(g_rest)
+                g += g_rest
+                g += _to_intersection(node, [SNS.input_assignment] + rest)
+                if len(out) == 1:
+                    g_rest = _to_owl_restriction(SNS.is_specified_output_of, BASE[out[0]])
+                    if data.get("units") is not None:
+                        g_rest += _to_owl_restriction(
+                            SNS.has_unit,
+                            _units_to_uri(data["units"]),
+                            OWL.hasValue,
+                        )
+                    rest = _bundle_restrictions(g_rest)
+                    g += g_rest
+                    g += _to_intersection(data_node, [data_class] + rest)
+                elif len(out) == 0:
+                    g_rest = _to_owl_restriction(SNS.specifies_value_of, data_class)
+                    if data.get("units") is not None:
+                        g_rest += _to_owl_restriction(
+                            SNS.has_unit,
+                            _units_to_uri(data["units"]),
+                            OWL.hasValue,
+                        )
+                    rest = _bundle_restrictions(g_rest)
+                    g += g_rest
+                    g += _to_intersection(data_node, [SNS.value_specification] + rest)
+                else:
+                    raise AssertionError
+            else:
+                g.add((node, RDF.type, SNS.input_assignment))
+        elif step == "outputs":
+            if t_box:
+                data_class = SNS.continuant if "uri" not in data else data["uri"]
+                data_node = BNode()
+                g_rest = _to_owl_restriction(SNS.has_specified_output, data_node)
+                rest = _bundle_restrictions(g_rest)
+                g += g_rest
+                g += _to_intersection(node, [SNS.output_assignment] + rest)
+                g_rest = _to_owl_restriction(SNS.specifies_value_of, data_class)
+                if data.get("units") is not None:
+                    g_rest += _to_owl_restriction(
+                        SNS.has_unit,
+                        _units_to_uri(data["units"]),
+                        OWL.hasValue,
+                    )
+                rest = _bundle_restrictions(g_rest)
+                g += g_rest
+                g += _to_intersection(data_node, [SNS.value_specification] + rest)
+            else:
+                g.add((node, RDF.type, SNS.output_assignment))
+        else:
+            raise AssertionError
+
+    g_all_nodes = Graph()
+    g.add((BASE[workflow_name], RDF.type, OWL.Class))
+    for node in G.nodes.data():
+        if node[1]["step"] == "node":
+            successors = list(_get_successor_nodes(G, node[0]))
+            if len(successors) == 0:
+                g_all_nodes += _to_owl_restriction(SNS.has_part, BASE[node[0]])
+            else:
+                g_rest = Graph()
+                node_tmp = BNode()
+                for succ in successors:
+                    g_rest += _to_owl_restriction(SNS.precedes, BASE[succ])
+                g_all_nodes += g_rest
+                rest = _bundle_restrictions(g_rest)
+                g_all_nodes += _to_intersection(node_tmp, [BASE[node[0]]] + rest)
+                g_all_nodes += _to_owl_restriction(SNS.has_part, node_tmp)
+    for nn in _bundle_restrictions(g_all_nodes):
+        g.add((BASE[workflow_name], OWL.equivalentClass, nn))
+    g += g_all_nodes
+
+    global_inputs = [
+        n for n in G.nodes.data() if G.in_degree(n[0]) == 0 and n[1]["step"] == "inputs"
+    ]
+    global_outputs = [
+        n
+        for n in G.nodes.data()
+        if G.out_degree(n[0]) == 0 and n[1]["step"] == "outputs"
+    ]
+    g_io_nodes = Graph()
+    for inp in global_inputs:
+        g_io_nodes += _to_owl_restriction(SNS.has_specified_input, BASE[inp[0]])
+    for out in global_outputs:
+        g_io_nodes += _to_owl_restriction(SNS.has_specified_output, BASE[inp[0]])
+    g += g_io_nodes
+    for nn in _bundle_restrictions(g_io_nodes):
+        g.add((BASE[workflow_name], RDFS.subClassOf, nn))
+    g.add((BASE[workflow_name], RDFS.subClassOf, SNS.process))
+    return g
+
+
+def _get_successor_nodes(G, node_name):
+    for out in G.successors(node_name):
+        for inp in G.successors(out):
+            for node in G.successors(inp):
+                yield node
 
 
 def serialize_data(
@@ -235,6 +371,36 @@ def serialize_data(
     for args in wf_dict.get("edges", []):
         edge_list.append([_remove_us(prefix, a) for a in args])
     return node_dict, channel_dict, edge_list
+
+
+def _wf_data_to_networkx(node_dict, channel_dict, edge_list):
+    G = nx.DiGraph()
+
+    for key, data in channel_dict.items():
+        G.add_node(
+            key,
+            step=data["semantikon_type"],
+            **{k: v for k, v in data.items() if k not in ["semantikon_type"]},
+        )
+
+    for key, data in node_dict.items():
+        if "." not in key:
+            G.name = key
+            continue
+        G.add_node(
+            key,
+            step="node",
+            **{k: v for k, v in data.items() if k not in ["inputs", "outputs"]},
+        )
+        for inp in data.get("inputs", {}).keys():
+            G.add_edge(f"{key}.inputs.{inp}", key)
+        for out in data.get("outputs", {}).keys():
+            G.add_edge(key, f"{key}.outputs.{out}")
+
+    for edge in edge_list:
+        G.add_edge(*edge)
+    mapping = {n: n.replace(".", "-") for n in G.nodes()}
+    return nx.relabel_nodes(G, mapping, copy=True)
 
 
 def _bundle_restrictions(g: Graph, only_dangling=True) -> list[BNode]:

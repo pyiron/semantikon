@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from textwrap import dedent
 
 from rdflib import OWL, Graph, Namespace
@@ -29,7 +30,7 @@ def get_kinetic_energy(
 
 
 @workflow
-def my_workflow(distance: u(float, uri=PMD["0040001"]), time, mass):
+def my_kinetic_energy_workflow(distance: u(float, uri=PMD["0040001"]), time, mass):
     speed = get_speed(distance, time)
     kinetic_energy = get_kinetic_energy(mass, speed)
     return kinetic_energy
@@ -39,6 +40,23 @@ class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.maxDiff = None
+        cls.static_dir = Path(__file__).parent.parent / "static"
+
+    def test_full_ontology(self):
+        g_ref = Graph()
+        with open(self.static_dir / "kinetic_energy_workflow.ttl", "r") as f:
+            g_ref.parse(data=f.read(), format="turtle")
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict, t_box=True)
+        _, in_first, in_second = graph_diff(g, g_ref)
+        with self.subTest("Full ontology matches reference"):
+            self.assertEqual(
+                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
+            )
+        with self.subTest("Full ontology matches reference"):
+            self.assertEqual(
+                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
+            )
 
     def test_to_restrictions(self):
         # Common reference graph for single target class
