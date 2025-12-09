@@ -9,7 +9,6 @@ from semantikon import ontology as onto
 from semantikon.metadata import u
 from semantikon.workflow import workflow
 
-
 EX: Namespace = Namespace("http://example.org/")
 PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
 
