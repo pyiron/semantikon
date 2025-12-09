@@ -1,17 +1,13 @@
 import uuid
-from collections import defaultdict
-from dataclasses import dataclass, is_dataclass
-from string import Template
-from typing import Any, Callable, TypeAlias, cast
+from dataclasses import dataclass
+from typing import Any, TypeAlias
 
 from flowrep.tools import get_function_metadata
 from owlrl import DeductiveClosure, OWLRL_Semantics
-from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
+from rdflib import OWL, PROV, RDF, RDFS, BNode, Graph, Namespace, URIRef
 from rdflib.collection import Collection
 from rdflib.term import IdentifiedNode
 
-from semantikon.converter import get_function_dict, meta_to_dict
-from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
 IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")
@@ -59,7 +55,6 @@ _triple_type: TypeAlias = list[
 
 
 _rest_type: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
-
 
 
 def _units_to_uri(units: str | URIRef) -> URIRef:
@@ -139,7 +134,7 @@ def _dot(*args) -> str:
 def extract_dataclass(
     graph: Graph, namespace: Namespace | None = None, ontology=SNS
 ) -> Graph:
-    return Grapn()
+    return Graph()
 
 
 def get_knowledge_graph(
@@ -171,16 +166,6 @@ def get_knowledge_graph(
     if graph is None:
         graph = Graph()
     node_dict, channel_dict, edge_list = serialize_data(wf_dict, use_uuid=use_uuid)
-    triples = _parse_workflow(
-        node_dict=node_dict,
-        channel_dict=channel_dict,
-        edge_list=edge_list,
-        t_box=t_box,
-        ontology=SNS,
-    )
-    graph = _triples_to_knowledge_graph(triples, graph=graph, namespace=namespace)
-    if inherit_properties:
-        _inherit_properties(graph, triples_to_cancel, ontology=ontology)
     graph.bind("qudt", str(QUDT))
     graph.bind("unit", "http://qudt.org/vocab/unit/")
     graph.bind("sns", str(ontology.BASE))

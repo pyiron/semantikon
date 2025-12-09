@@ -1,15 +1,11 @@
 import unittest
-from dataclasses import dataclass
 from textwrap import dedent
 
-from graphviz import Digraph
-from pyshacl import validate
-from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
+from rdflib import OWL, Graph, Namespace
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
-from semantikon.metadata import SemantikonURI, meta, u
-from semantikon.visualize import visualize
+from semantikon.metadata import u
 from semantikon.workflow import workflow
 
 
@@ -19,7 +15,7 @@ PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
 
 def get_speed(
     distance: u(float, uri=PMD["0040001"], units="meter"),
-    time: u(float, units="second")
+    time: u(float, units="second"),
 ) -> u(float, units="meter/second"):
     speed = distance / time
     return speed
@@ -27,7 +23,7 @@ def get_speed(
 
 def get_kinetic_energy(
     mass: u(float, uri=PMD["0020133"], units="kilogram"),
-    velocity: u(float, units="meter/second")
+    velocity: u(float, units="meter/second"),
 ) -> u(float, uri=PMD["0020142"], units="joule"):
     return 0.5 * mass * velocity**2
 
@@ -131,6 +127,7 @@ class TestOntology(unittest.TestCase):
             self.assertEqual(
                 len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
             )
+
 
 if __name__ == "__main__":
     unittest.main()
