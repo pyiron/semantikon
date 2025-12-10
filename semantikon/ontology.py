@@ -174,6 +174,27 @@ def get_knowledge_graph(
     return graph
 
 
+def _node_to_graph(node_name: str, kg_node: URIRef, G: nx.DiGraph, t_box: bool) -> Graph:
+    g = Graph()
+    if t_box:
+        g_rest = Graph()
+        for inp in G.predecessors(node_name):
+            g_rest += _to_owl_restriction(SNS.has_part, BASE[inp])
+        for out in G.successors(node_name):
+            g_rest += _to_owl_restriction(SNS.has_part, BASE[out])
+        for nn in _bundle_restrictions(g_rest):
+            g.add((kg_node, RDFS.subClassOf, nn))
+        g.add((kg_node, RDFS.subClassOf, SNS.process))
+        g += g_rest
+    else:
+        g.add((kg_node, RDF.type, SNS.process))
+        for inp in G.predecessors(node_name):
+            g.add((kg_node, SNS.has_part, BASE[inp]))
+        for out in G.successors(node_name):
+            g.add((kg_node, SNS.has_part, BASE[out]))
+    return g
+
+
 def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
     g = Graph()
     g.bind("qudt", str(QUDT))
@@ -195,22 +216,7 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
         if t_box:
             g.add((node, RDF.type, OWL.Class))
         if step == "node":
-            if t_box:
-                g_rest = Graph()
-                for inp in G.predecessors(comp[0]):
-                    g_rest += _to_owl_restriction(SNS.has_part, BASE[inp])
-                for out in G.successors(comp[0]):
-                    g_rest += _to_owl_restriction(SNS.has_part, BASE[out])
-                for nn in _bundle_restrictions(g_rest):
-                    g.add((node, RDFS.subClassOf, nn))
-                g.add((node, RDFS.subClassOf, SNS.process))
-                g += g_rest
-            else:
-                g.add((node, RDF.type, SNS.process))
-                for inp in G.predecessors(comp[0]):
-                    g.add((node, SNS.has_part, BASE[inp]))
-                for out in G.successors(comp[0]):
-                    g.add((node, SNS.has_part, BASE[out]))
+            g += _node_to_graph(comp[0], node, G, t_box)
         elif step == "inputs":
             if data.get("label") is not None:
                 g.add(node, RDFS.label, Literal(data["label"]))
