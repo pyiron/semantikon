@@ -210,7 +210,7 @@ def _wf_io_to_graph(
         g.add(node, RDFS.label, Literal(data["label"]))
     if t_box:
         data_class = SNS.continuant if "uri" not in data else data["uri"]
-        data_node = BNode(node)
+        data_node = BNode(node + "_data")
         io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
         has_specified_io = (
             SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
