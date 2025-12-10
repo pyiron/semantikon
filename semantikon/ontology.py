@@ -209,10 +209,10 @@ def _wf_io_to_graph(
     if data.get("label") is not None:
         g.add(node, RDFS.label, Literal(data["label"]))
     if t_box:
+        data_class = SNS.continuant if "uri" not in data else data["uri"]
+        data_node = BNode()
         if step == "inputs":
             out = list(G.predecessors(node_name))
-            data_class = SNS.continuant if "uri" not in data else data["uri"]
-            data_node = BNode()
             g_rest = _to_owl_restriction(SNS.has_specified_input, data_node)
             rest = _bundle_restrictions(g_rest)
             g += g_rest
@@ -242,8 +242,6 @@ def _wf_io_to_graph(
             else:
                 raise AssertionError
         elif step == "outputs":
-            data_class = SNS.continuant if "uri" not in data else data["uri"]
-            data_node = BNode()
             g_rest = _to_owl_restriction(SNS.has_specified_output, data_node)
             rest = _bundle_restrictions(g_rest)
             g += g_rest
