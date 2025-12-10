@@ -211,12 +211,16 @@ def _wf_io_to_graph(
     if t_box:
         data_class = SNS.continuant if "uri" not in data else data["uri"]
         data_node = BNode()
+        io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
+        has_specified_io = (
+            SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
+        )
+        g_rest = _to_owl_restriction(has_specified_io, data_node)
+        rest = _bundle_restrictions(g_rest)
+        g += g_rest
+        g += _to_intersection(node, [io_assignment] + rest)
         if step == "inputs":
             out = list(G.predecessors(node_name))
-            g_rest = _to_owl_restriction(SNS.has_specified_input, data_node)
-            rest = _bundle_restrictions(g_rest)
-            g += g_rest
-            g += _to_intersection(node, [SNS.input_assignment] + rest)
             if len(out) == 1:
                 g_rest = _to_owl_restriction(SNS.is_specified_output_of, BASE[out[0]])
                 if data.get("units") is not None:
@@ -242,10 +246,6 @@ def _wf_io_to_graph(
             else:
                 raise AssertionError
         elif step == "outputs":
-            g_rest = _to_owl_restriction(SNS.has_specified_output, data_node)
-            rest = _bundle_restrictions(g_rest)
-            g += g_rest
-            g += _to_intersection(node, [SNS.output_assignment] + rest)
             g_rest = _to_owl_restriction(SNS.specifies_value_of, data_class)
             if data.get("units") is not None:
                 g_rest += _to_owl_restriction(
