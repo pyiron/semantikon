@@ -19,6 +19,7 @@ OBI: Namespace = Namespace("http://purl.obolibrary.org/obo/OBI_")
 PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
 SCHEMA: Namespace = Namespace("http://schema.org/")
 STATO: Namespace = Namespace("http://purl.obolibrary.org/obo/STATO_")
+SWO: Namespace = Namespace("http://www.ebi.ac.uk/swo/SWO_")
 BASE: Namespace = Namespace("http://pyiron.org/ontology/")
 
 
@@ -41,6 +42,7 @@ class SNS:
     continuant: URIRef = BFO["0000002"]
     value_specification: URIRef = OBI["0001933"]
     specifies_value_of: URIRef = OBI["0001927"]
+    software: URIRef = SWO["0000001"]
 
 
 class NS:
