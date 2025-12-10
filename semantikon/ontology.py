@@ -197,7 +197,8 @@ def _wf_node_to_graph(
     return g
 
 
-def _wf_input_to_graph(
+def _wf_io_to_graph(
+    step: str,
     node_name: str,
     node: URIRef,
     data: dict,
@@ -205,28 +206,51 @@ def _wf_input_to_graph(
     t_box: bool,
 ) -> Graph:
     g = Graph()
-    if data.get("label") is not None:
-        g.add(node, RDFS.label, Literal(data["label"]))
-    if t_box:
-        out = list(G.predecessors(node_name))
-        data_class = SNS.continuant if "uri" not in data else data["uri"]
-        data_node = BNode()
-        g_rest = _to_owl_restriction(SNS.has_specified_input, data_node)
-        rest = _bundle_restrictions(g_rest)
-        g += g_rest
-        g += _to_intersection(node, [SNS.input_assignment] + rest)
-        if len(out) == 1:
-            g_rest = _to_owl_restriction(SNS.is_specified_output_of, BASE[out[0]])
-            if data.get("units") is not None:
-                g_rest += _to_owl_restriction(
-                    SNS.has_unit,
-                    _units_to_uri(data["units"]),
-                    OWL.hasValue,
-                )
+    if step == "inputs":
+        if data.get("label") is not None:
+            g.add(node, RDFS.label, Literal(data["label"]))
+        if t_box:
+            out = list(G.predecessors(node_name))
+            data_class = SNS.continuant if "uri" not in data else data["uri"]
+            data_node = BNode()
+            g_rest = _to_owl_restriction(SNS.has_specified_input, data_node)
             rest = _bundle_restrictions(g_rest)
             g += g_rest
-            g += _to_intersection(data_node, [data_class] + rest)
-        elif len(out) == 0:
+            g += _to_intersection(node, [SNS.input_assignment] + rest)
+            if len(out) == 1:
+                g_rest = _to_owl_restriction(SNS.is_specified_output_of, BASE[out[0]])
+                if data.get("units") is not None:
+                    g_rest += _to_owl_restriction(
+                        SNS.has_unit,
+                        _units_to_uri(data["units"]),
+                        OWL.hasValue,
+                    )
+                rest = _bundle_restrictions(g_rest)
+                g += g_rest
+                g += _to_intersection(data_node, [data_class] + rest)
+            elif len(out) == 0:
+                g_rest = _to_owl_restriction(SNS.specifies_value_of, data_class)
+                if data.get("units") is not None:
+                    g_rest += _to_owl_restriction(
+                        SNS.has_unit,
+                        _units_to_uri(data["units"]),
+                        OWL.hasValue,
+                    )
+                rest = _bundle_restrictions(g_rest)
+                g += g_rest
+                g += _to_intersection(data_node, [SNS.value_specification] + rest)
+            else:
+                raise AssertionError
+        else:
+            g.add((node, RDF.type, SNS.input_assignment))
+    elif step == "outputs":
+        if t_box:
+            data_class = SNS.continuant if "uri" not in data else data["uri"]
+            data_node = BNode()
+            g_rest = _to_owl_restriction(SNS.has_specified_output, data_node)
+            rest = _bundle_restrictions(g_rest)
+            g += g_rest
+            g += _to_intersection(node, [SNS.output_assignment] + rest)
             g_rest = _to_owl_restriction(SNS.specifies_value_of, data_class)
             if data.get("units") is not None:
                 g_rest += _to_owl_restriction(
@@ -238,9 +262,7 @@ def _wf_input_to_graph(
             g += g_rest
             g += _to_intersection(data_node, [SNS.value_specification] + rest)
         else:
-            raise AssertionError
-    else:
-        g.add((node, RDF.type, SNS.input_assignment))
+            g.add((node, RDF.type, SNS.output_assignment))
     return g
 
 
@@ -266,28 +288,10 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
             g.add((node, RDF.type, OWL.Class))
         if step == "node":
             g += _wf_node_to_graph(comp[0], node, G, t_box)
-        elif step == "inputs":
-            g += _wf_input_to_graph(comp[0], node, data, G, t_box)
-        elif step == "outputs":
-            if t_box:
-                data_class = SNS.continuant if "uri" not in data else data["uri"]
-                data_node = BNode()
-                g_rest = _to_owl_restriction(SNS.has_specified_output, data_node)
-                rest = _bundle_restrictions(g_rest)
-                g += g_rest
-                g += _to_intersection(node, [SNS.output_assignment] + rest)
-                g_rest = _to_owl_restriction(SNS.specifies_value_of, data_class)
-                if data.get("units") is not None:
-                    g_rest += _to_owl_restriction(
-                        SNS.has_unit,
-                        _units_to_uri(data["units"]),
-                        OWL.hasValue,
-                    )
-                rest = _bundle_restrictions(g_rest)
-                g += g_rest
-                g += _to_intersection(data_node, [SNS.value_specification] + rest)
-            else:
-                g.add((node, RDF.type, SNS.output_assignment))
+        elif step in ["inputs", "outputs"]:
+            g += _wf_io_to_graph(
+                step=step, node_name=comp[0], node=node, data=data, G=G, t_box=t_box
+            )
         else:
             raise AssertionError
 
