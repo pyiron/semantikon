@@ -206,10 +206,10 @@ def _wf_io_to_graph(
     t_box: bool,
 ) -> Graph:
     g = Graph()
-    if step == "inputs":
-        if data.get("label") is not None:
-            g.add(node, RDFS.label, Literal(data["label"]))
-        if t_box:
+    if data.get("label") is not None:
+        g.add(node, RDFS.label, Literal(data["label"]))
+    if t_box:
+        if step == "inputs":
             out = list(G.predecessors(node_name))
             data_class = SNS.continuant if "uri" not in data else data["uri"]
             data_node = BNode()
@@ -241,10 +241,7 @@ def _wf_io_to_graph(
                 g += _to_intersection(data_node, [SNS.value_specification] + rest)
             else:
                 raise AssertionError
-        else:
-            g.add((node, RDF.type, SNS.input_assignment))
-    elif step == "outputs":
-        if t_box:
+        elif step == "outputs":
             data_class = SNS.continuant if "uri" not in data else data["uri"]
             data_node = BNode()
             g_rest = _to_owl_restriction(SNS.has_specified_output, data_node)
@@ -261,7 +258,10 @@ def _wf_io_to_graph(
             rest = _bundle_restrictions(g_rest)
             g += g_rest
             g += _to_intersection(data_node, [SNS.value_specification] + rest)
-        else:
+    else:
+        if step == "inputs":
+            g.add((node, RDF.type, SNS.input_assignment))
+        elif step == "outputs":
             g.add((node, RDF.type, SNS.output_assignment))
     return g
 
