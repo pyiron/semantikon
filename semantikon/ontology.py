@@ -174,7 +174,7 @@ def get_knowledge_graph(
     return graph
 
 
-def _node_to_graph(node_name: str, kg_node: URIRef, G: nx.DiGraph, t_box: bool) -> Graph:
+def _wf_node_to_graph(node_name: str, kg_node: URIRef, G: nx.DiGraph, t_box: bool) -> Graph:
     g = Graph()
     if t_box:
         g_rest = Graph()
@@ -216,7 +216,7 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
         if t_box:
             g.add((node, RDF.type, OWL.Class))
         if step == "node":
-            g += _node_to_graph(comp[0], node, G, t_box)
+            g += _wf_node_to_graph(comp[0], node, G, t_box)
         elif step == "inputs":
             if data.get("label") is not None:
                 g.add(node, RDFS.label, Literal(data["label"]))
