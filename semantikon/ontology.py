@@ -218,7 +218,8 @@ def _wf_io_to_graph(
         g_rest = _to_owl_restriction(has_specified_io, data_node)
         rest = _bundle_restrictions(g_rest)
         g += g_rest
-        g += _to_intersection(node, [io_assignment] + rest)
+        for nn in [io_assignment] + rest:
+            g.add((node, RDFS.subClassOf, nn))
         if data.get("units") is not None:
             g_units = _to_owl_restriction(
                 SNS.has_unit, _units_to_uri(data["units"]), OWL.hasValue,
