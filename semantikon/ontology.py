@@ -2,10 +2,10 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, TypeAlias
 
-from flowrep.tools import get_function_metadata
 import networkx as nx
+from flowrep.tools import get_function_metadata
 from owlrl import DeductiveClosure, OWLRL_Semantics
-from rdflib import OWL, PROV, RDF, RDFS, BNode, Graph, Namespace, URIRef, Literal
+from rdflib import OWL, PROV, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.collection import Collection
 from rdflib.term import IdentifiedNode
 
