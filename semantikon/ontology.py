@@ -233,13 +233,15 @@ def _wf_io_to_graph(
                 g_rest += g_units
                 rest = _bundle_restrictions(g_rest)
                 g += g_rest
-                g += _to_intersection(data_node, [data_class] + rest)
+                for nn in [data_class] + rest:
+                    g.add((data_node, RDFS.subClassOf, nn))
             elif len(out) == 0:
                 g_rest = _to_owl_restriction(SNS.specifies_value_of, data_class)
                 g_rest += g_units
                 rest = _bundle_restrictions(g_rest)
                 g += g_rest
-                g += _to_intersection(data_node, [SNS.value_specification] + rest)
+                for nn in [SNS.value_specification] + rest:
+                    g.add((data_node, RDFS.subClassOf, nn))
             else:
                 raise AssertionError
         elif step == "outputs":
@@ -247,7 +249,8 @@ def _wf_io_to_graph(
             g_rest += g_units
             rest = _bundle_restrictions(g_rest)
             g += g_rest
-            g += _to_intersection(data_node, [SNS.value_specification] + rest)
+            for nn in [SNS.value_specification] + rest:
+                g.add((data_node, RDFS.subClassOf, nn))
     else:
         if step == "inputs":
             g.add((node, RDF.type, SNS.input_assignment))
@@ -299,7 +302,8 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
                     g_rest += _to_owl_restriction(SNS.precedes, BASE[succ])
                 g_all_nodes += g_rest
                 rest = _bundle_restrictions(g_rest)
-                g_all_nodes += _to_intersection(node_tmp, [BASE[node[0]]] + rest)
+                for nn in [BASE[node[0]]] + rest:
+                    g_all_nodes.add((node_tmp, RDFS.subClassOf, nn))
                 g_all_nodes += _to_owl_restriction(SNS.has_part, node_tmp)
     for nn in _bundle_restrictions(g_all_nodes):
         g.add((BASE[workflow_name], OWL.equivalentClass, nn))
@@ -446,14 +450,5 @@ def _to_owl_restriction(
     g.add((restriction_node, RDF.type, OWL.Restriction))
     g.add((restriction_node, OWL.onProperty, pred))
     g.add((restriction_node, restriction_type, target_class))
-
-    return g
-
-
-def _to_intersection(source_class: URIRef, list_items: list[URIRef]) -> Graph:
-    g = Graph()
-
-    for item in list_items:
-        g.add((source_class, RDFS.subClassOf, item))
 
     return g

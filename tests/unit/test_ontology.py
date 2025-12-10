@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 from textwrap import dedent
 
-from rdflib import OWL, Graph, Namespace
+from rdflib import OWL, RDFS, Graph, Namespace
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
@@ -76,7 +76,8 @@ class TestOntology(unittest.TestCase):
         with self.subTest("Single target class as list"):
             g = onto._to_owl_restriction(EX["some_predicate"], EX["destination"])
             restrictions = onto._bundle_restrictions(g)
-            g += onto._to_intersection(EX["origin"], [EX["my_class"]] + restrictions)
+            for nn in [EX["my_class"]] + restrictions:
+                g.add((EX["origin"], RDFS.subClassOf, nn))
             _, in_first, in_second = graph_diff(g, g_ref_single)
             self.assertEqual(
                 len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
@@ -105,9 +106,8 @@ class TestOntology(unittest.TestCase):
             g = Graph()
             for cl in [EX["dest1"], EX["dest2"]]:
                 g += onto._to_owl_restriction(EX["some_predicate"], cl)
-            g += onto._to_intersection(
-                EX["origin"], [EX["my_class"]] + onto._bundle_restrictions(g)
-            )
+            for nn in [EX["my_class"]] + onto._bundle_restrictions(g):
+                g.add((EX["origin"], RDFS.subClassOf, nn))
             _, in_first, in_second = graph_diff(g, g_ref)
             self.assertEqual(
                 len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
@@ -134,7 +134,8 @@ class TestOntology(unittest.TestCase):
                 EX["some_predicate"], EX["destination"], OWL.hasValue
             )
             restrictions = onto._bundle_restrictions(g)
-            g += onto._to_intersection(EX["origin"], [EX["my_class"]] + restrictions)
+            for nn in [EX["my_class"]] + restrictions:
+                g.add((EX["origin"], RDFS.subClassOf, nn))
             _, in_first, in_second = graph_diff(g, g_ref)
             self.assertEqual(
                 len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
