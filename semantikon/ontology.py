@@ -451,12 +451,8 @@ def _to_owl_restriction(
 
 def _to_intersection(source_class: URIRef, list_items: list[URIRef]) -> Graph:
     g = Graph()
-    intersection_node = BNode()
-    list_head = BNode()
-    g.add((intersection_node, RDF.type, OWL.Class))
-    Collection(g, list_head, list_items)
-    g.add((intersection_node, OWL.intersectionOf, list_head))
 
-    g.add((source_class, RDFS.subClassOf, intersection_node))
+    for item in list_items:
+        g.add((source_class, RDFS.subClassOf, item))
 
     return g

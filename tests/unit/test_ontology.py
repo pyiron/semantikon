@@ -60,15 +60,14 @@ class TestOntology(unittest.TestCase):
     def test_to_restrictions(self):
         # Common reference graph for single target class
         single_target_text = dedent(
-            """\
+        """\
         @prefix owl: <http://www.w3.org/2002/07/owl#> .
-        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
         @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-
-        <http://example.org/origin> rdfs:subClassOf [ a owl:Class ;
-                    owl:intersectionOf ( <http://example.org/my_class> [ a owl:Restriction ;
-                                owl:onProperty <http://example.org/some_predicate> ;
-                                owl:someValuesFrom <http://example.org/destination> ] ) ] .
+        
+        <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
+                    owl:onProperty <http://example.org/some_predicate> ;
+                    owl:someValuesFrom <http://example.org/destination> ],
+                <http://example.org/my_class> .
         """
         )
         g_ref_single = Graph()
@@ -90,15 +89,15 @@ class TestOntology(unittest.TestCase):
             text = dedent(
                 """\
             @prefix owl: <http://www.w3.org/2002/07/owl#> .
-            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
             @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-
-            <http://example.org/origin> rdfs:subClassOf [ a owl:Class ;
-                        owl:intersectionOf ( <http://example.org/my_class> [ a owl:Restriction ;
-                                    owl:onProperty <http://example.org/some_predicate> ;
-                                    owl:someValuesFrom <http://example.org/dest1> ] [ a owl:Restriction ;
-                                    owl:onProperty <http://example.org/some_predicate> ;
-                                    owl:someValuesFrom <http://example.org/dest2> ] ) ] .
+            
+            <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
+                        owl:onProperty <http://example.org/some_predicate> ;
+                        owl:someValuesFrom <http://example.org/dest1> ],
+                    [ a owl:Restriction ;
+                        owl:onProperty <http://example.org/some_predicate> ;
+                        owl:someValuesFrom <http://example.org/dest2> ],
+                    <http://example.org/my_class> .
             """
             )
             g_ref = Graph()
@@ -119,15 +118,14 @@ class TestOntology(unittest.TestCase):
 
         with self.subTest("owl:hasValue instead of owl:someValuesFrom"):
             text = dedent(
-                """\
+            """\
             @prefix owl: <http://www.w3.org/2002/07/owl#> .
-            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
             @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-
-            <http://example.org/origin> rdfs:subClassOf [ a owl:Class ;
-                        owl:intersectionOf ( <http://example.org/my_class> [ a owl:Restriction ;
-                                    owl:onProperty <http://example.org/some_predicate> ;
-                                    owl:hasValue <http://example.org/destination> ] ) ] .
+            
+            <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
+                        owl:hasValue <http://example.org/destination> ;
+                        owl:onProperty <http://example.org/some_predicate> ],
+                    <http://example.org/my_class> .
             """
             )
             g_ref = Graph()
