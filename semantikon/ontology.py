@@ -5,7 +5,7 @@ from typing import Any, TypeAlias
 from flowrep.tools import get_function_metadata
 import networkx as nx
 from owlrl import DeductiveClosure, OWLRL_Semantics
-from rdflib import OWL, PROV, RDF, RDFS, BNode, Graph, Namespace, URIRef
+from rdflib import OWL, PROV, RDF, RDFS, BNode, Graph, Namespace, URIRef, Literal
 from rdflib.collection import Collection
 from rdflib.term import IdentifiedNode
 
@@ -223,7 +223,9 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
                 g += g_rest
                 g += _to_intersection(node, [SNS.input_assignment] + rest)
                 if len(out) == 1:
-                    g_rest = _to_owl_restriction(SNS.is_specified_output_of, BASE[out[0]])
+                    g_rest = _to_owl_restriction(
+                        SNS.is_specified_output_of, BASE[out[0]]
+                    )
                     if data.get("units") is not None:
                         g_rest += _to_owl_restriction(
                             SNS.has_unit,
