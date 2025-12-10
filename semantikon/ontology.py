@@ -219,27 +219,23 @@ def _wf_io_to_graph(
         rest = _bundle_restrictions(g_rest)
         g += g_rest
         g += _to_intersection(node, [io_assignment] + rest)
+        if data.get("units") is not None:
+            g_units = _to_owl_restriction(
+                SNS.has_unit, _units_to_uri(data["units"]), OWL.hasValue,
+            )
+        else:
+            g_units = Graph()
         if step == "inputs":
             out = list(G.predecessors(node_name))
             if len(out) == 1:
                 g_rest = _to_owl_restriction(SNS.is_specified_output_of, BASE[out[0]])
-                if data.get("units") is not None:
-                    g_rest += _to_owl_restriction(
-                        SNS.has_unit,
-                        _units_to_uri(data["units"]),
-                        OWL.hasValue,
-                    )
+                g_rest += g_units
                 rest = _bundle_restrictions(g_rest)
                 g += g_rest
                 g += _to_intersection(data_node, [data_class] + rest)
             elif len(out) == 0:
                 g_rest = _to_owl_restriction(SNS.specifies_value_of, data_class)
-                if data.get("units") is not None:
-                    g_rest += _to_owl_restriction(
-                        SNS.has_unit,
-                        _units_to_uri(data["units"]),
-                        OWL.hasValue,
-                    )
+                g_rest += g_units
                 rest = _bundle_restrictions(g_rest)
                 g += g_rest
                 g += _to_intersection(data_node, [SNS.value_specification] + rest)
@@ -247,12 +243,7 @@ def _wf_io_to_graph(
                 raise AssertionError
         elif step == "outputs":
             g_rest = _to_owl_restriction(SNS.specifies_value_of, data_class)
-            if data.get("units") is not None:
-                g_rest += _to_owl_restriction(
-                    SNS.has_unit,
-                    _units_to_uri(data["units"]),
-                    OWL.hasValue,
-                )
+            g_rest += g_units
             rest = _bundle_restrictions(g_rest)
             g += g_rest
             g += _to_intersection(data_node, [SNS.value_specification] + rest)
