@@ -131,7 +131,7 @@ class TestOntology(unittest.TestCase):
             g_ref = Graph()
             g_ref.parse(data=text, format="turtle")
             g = onto._to_owl_restriction(
-                EX["some_predicate"], EX["destination"], OWL.hasValue
+                EX["some_predicate"], EX["destination"], restriction_type=OWL.hasValue
             )
             restrictions = onto._bundle_restrictions(g)
             for nn in [EX["my_class"]] + restrictions:

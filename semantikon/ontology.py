@@ -222,7 +222,7 @@ def _wf_io_to_graph(
             g.add((node, RDFS.subClassOf, nn))
         if data.get("units") is not None:
             g_rest = _to_owl_restriction(
-                SNS.has_unit, _units_to_uri(data["units"]), OWL.hasValue,
+                SNS.has_unit, _units_to_uri(data["units"]), restriction_type=OWL.hasValue,
             )
         else:
             g_rest = Graph()
@@ -434,16 +434,18 @@ def _bundle_restrictions(g: Graph, only_dangling=True) -> list[BNode]:
 
 
 def _to_owl_restriction(
-    pred: URIRef,
+    on_property: URIRef,
     target_class: URIRef,
+    restriction_node: BNode | URIRef | None = None,
     restriction_type: URIRef = OWL.someValuesFrom,
 ) -> Graph:
     g = Graph()
-    restriction_node = BNode()
+    if restriction_node is None:
+        restriction_node = BNode()
 
     # Build the restriction
     g.add((restriction_node, RDF.type, OWL.Restriction))
-    g.add((restriction_node, OWL.onProperty, pred))
+    g.add((restriction_node, OWL.onProperty, on_property))
     g.add((restriction_node, restriction_type, target_class))
 
     return g
