@@ -215,9 +215,7 @@ def _wf_io_to_graph(
         has_specified_io = (
             SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
         )
-        r_node = BNode()
-        g += _to_owl_restriction(has_specified_io, data_node, restriction_node=r_node)
-        g.add((node, RDFS.subClassOf, r_node))
+        g += _to_owl_restriction(has_specified_io, data_node, base_node=node)
         g.add((node, RDFS.subClassOf, io_assignment))
         if "units" in data:
             r_node = BNode()
@@ -440,6 +438,7 @@ def _to_owl_restriction(
     target_class: URIRef,
     restriction_node: BNode | URIRef | None = None,
     restriction_type: URIRef = OWL.someValuesFrom,
+    base_node: URIRef | None = None,
 ) -> Graph:
     g = Graph()
     if restriction_node is None:
@@ -449,5 +448,7 @@ def _to_owl_restriction(
     g.add((restriction_node, RDF.type, OWL.Restriction))
     g.add((restriction_node, OWL.onProperty, on_property))
     g.add((restriction_node, restriction_type, target_class))
+    if base_node is not None:
+        g.add((base_node, RDFS.subClassOf, restriction_node))
 
     return g
