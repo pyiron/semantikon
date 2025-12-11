@@ -2,49 +2,28 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow> a owl:Class ;
-    rdfs:subClassOf
-        [ a owl:Restriction ;
-          owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000299> ;
-          owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-mass>
-        ],
-        [ a owl:Restriction ;
-          owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
-          owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-time>
-        ],
-        [ a owl:Restriction ;
-          owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
-          owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-mass>
-        ],
-        [ a owl:Restriction ;
-          owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
-          owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-distance>
-        ],
-        <http://purl.obolibrary.org/obo/BFO_0000015> ,
-        [ a owl:Restriction ;
-          owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
-          owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0>
-        ] ,
-        [ a owl:Restriction ;
-          owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
-          owl:someValuesFrom
-            [ rdfs:subClassOf
-                [ a owl:Restriction ;
-                  owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000063> ;
-                  owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0>
-                ] ;
-              rdfs:subClassOf <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0>
-            ]
-        ] .
-
-
-<http://pyiron.org/ontology/my_kinetic_energy_workflow-outputs-kinetic_energy> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
-            owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000299> ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
             owl:someValuesFrom [ rdfs:subClassOf [ a owl:Restriction ;
-                            owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001927> ;
-                            owl:someValuesFrom <http://purl.obolibrary.org/obo/BFO_0000002> ],
-                        <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
-        <https://w3id.org/pmd/co/PMD_0000067> .
+                            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000063> ;
+                            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0> ],
+                        <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0> ] ],
+        [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-time> ],
+        [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-distance> ],
+        [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000299> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-outputs-kinetic_energy> ],
+        [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-mass> ],
+        [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0> ],
+        <http://purl.obolibrary.org/obo/BFO_0000015> .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-mass> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
@@ -62,11 +41,11 @@
     rdfs:subClassOf [ a owl:Restriction ;
             owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
             owl:someValuesFrom [ rdfs:subClassOf [ a owl:Restriction ;
-                            owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000312> ;
-                            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-outputs-speed> ],
-                        [ a owl:Restriction ;
                             owl:hasValue <http://qudt.org/vocab/unit/M-PER-SEC> ;
                             owl:onProperty <http://qudt.org/schema/qudt/hasUnit> ],
+                        [ a owl:Restriction ;
+                            owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000312> ;
+                            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-outputs-speed> ],
                         <http://purl.obolibrary.org/obo/BFO_0000002> ] ],
         <https://w3id.org/pmd/co/PMD_0000066> .
 
@@ -88,10 +67,10 @@
             owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-inputs-distance> ],
         [ a owl:Restriction ;
             owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
-            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-outputs-speed> ],
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-inputs-time> ],
         [ a owl:Restriction ;
             owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
-            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-inputs-time> ],
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-outputs-speed> ],
         <http://purl.obolibrary.org/obo/BFO_0000015> .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-inputs-distance> a owl:Class ;
@@ -118,16 +97,25 @@
                         <http://purl.obolibrary.org/obo/BFO_0000002> ] ],
         <https://w3id.org/pmd/co/PMD_0000066> .
 
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-outputs-kinetic_energy> a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000299> ;
+            owl:someValuesFrom [ rdfs:subClassOf [ a owl:Restriction ;
+                            owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001927> ;
+                            owl:someValuesFrom <http://purl.obolibrary.org/obo/BFO_0000002> ],
+                        <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
+        <https://w3id.org/pmd/co/PMD_0000067> .
+
 <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
+            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity> ],
+        [ a owl:Restriction ;
             owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
             owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output> ],
         [ a owl:Restriction ;
             owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
             owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-mass> ],
-        [ a owl:Restriction ;
-            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
-            owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity> ],
         <http://purl.obolibrary.org/obo/BFO_0000015> .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-outputs-speed> a owl:Class ;
@@ -151,7 +139,7 @@
                         <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
         <https://w3id.org/pmd/co/PMD_0000066> .
 
-<http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-time> a owl:Class ;
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-mass> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
             owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
             owl:someValuesFrom [ rdfs:subClassOf [ a owl:Restriction ;
@@ -160,7 +148,7 @@
                         <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
         <https://w3id.org/pmd/co/PMD_0000066> .
 
-<http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-mass> a owl:Class ;
+<http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-time> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
             owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
             owl:someValuesFrom [ rdfs:subClassOf [ a owl:Restriction ;
