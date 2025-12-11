@@ -301,7 +301,7 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
                     g_all_nodes.add((node_tmp, RDFS.subClassOf, nn))
                 g_all_nodes += _to_owl_restriction(SNS.has_part, node_tmp)
     for nn in _bundle_restrictions(g_all_nodes):
-        g.add((BASE[workflow_name], OWL.equivalentClass, nn))
+        g.add((BASE[workflow_name], RDFS.subClassOf, nn))
     g += g_all_nodes
 
     global_inputs = [
