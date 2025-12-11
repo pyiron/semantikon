@@ -231,13 +231,11 @@ def _wf_io_to_graph(
             if len(out) == 1:
                 g_rest += _to_owl_restriction(SNS.is_specified_output_of, BASE[out[0]])
                 rest = _bundle_restrictions(g_rest)
-                g += g_rest
                 for nn in [data_class] + rest:
                     g.add((data_node, RDFS.subClassOf, nn))
             elif len(out) == 0:
                 g_rest += _to_owl_restriction(SNS.specifies_value_of, data_class)
                 rest = _bundle_restrictions(g_rest)
-                g += g_rest
                 for nn in [SNS.value_specification] + rest:
                     g.add((data_node, RDFS.subClassOf, nn))
             else:
@@ -245,9 +243,9 @@ def _wf_io_to_graph(
         elif step == "outputs":
             g_rest += _to_owl_restriction(SNS.specifies_value_of, data_class)
             rest = _bundle_restrictions(g_rest)
-            g += g_rest
             for nn in [SNS.value_specification] + rest:
                 g.add((data_node, RDFS.subClassOf, nn))
+        g += g_rest
     else:
         if step == "inputs":
             g.add((node, RDF.type, SNS.input_assignment))
