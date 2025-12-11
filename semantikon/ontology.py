@@ -6,7 +6,6 @@ import networkx as nx
 from flowrep.tools import get_function_metadata
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
-from rdflib.collection import Collection
 from rdflib.term import IdentifiedNode
 
 from semantikon.qudt import UnitsDict
@@ -287,7 +286,6 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
         else:
             raise AssertionError
 
-    g_all_nodes = Graph()
     g.add((BASE[workflow_name], RDF.type, OWL.Class))
     for node in G.nodes.data():
         if node[1]["step"] == "node":
