@@ -179,15 +179,14 @@ def _wf_node_to_graph(
 ) -> Graph:
     g = Graph()
     if t_box:
-        g_rest = Graph()
-        for inp in G.predecessors(node_name):
-            g_rest += _to_owl_restriction(SNS.has_part, BASE[inp])
-        for out in G.successors(node_name):
-            g_rest += _to_owl_restriction(SNS.has_part, BASE[out])
-        for nn in _bundle_restrictions(g_rest):
-            g.add((kg_node, RDFS.subClassOf, nn))
+        for io in [G.predecessors(node_name), G.successors(node_name)]:
+            for item in io:
+                g += _to_owl_restriction(
+                    on_property=SNS.has_part,
+                    target_class=BASE[item],
+                    base_node=kg_node,
+                )
         g.add((kg_node, RDFS.subClassOf, SNS.process))
-        g += g_rest
     else:
         g.add((kg_node, RDF.type, SNS.process))
         for inp in G.predecessors(node_name):
@@ -315,14 +314,16 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
         for n in G.nodes.data()
         if G.out_degree(n[0]) == 0 and n[1]["step"] == "outputs"
     ]
-    g_io_nodes = Graph()
-    for inp in global_inputs:
-        g_io_nodes += _to_owl_restriction(SNS.has_specified_input, BASE[inp[0]])
-    for out in global_outputs:
-        g_io_nodes += _to_owl_restriction(SNS.has_specified_output, BASE[out[0]])
-    g += g_io_nodes
-    for nn in _bundle_restrictions(g_io_nodes):
-        g.add((BASE[workflow_name], RDFS.subClassOf, nn))
+    for on_property, global_io in zip(
+        [SNS.has_specified_input, SNS.has_specified_output],
+        [global_inputs, global_outputs]
+    ):
+        for io in global_io:
+            g += _to_owl_restriction(
+                on_property=on_property,
+                target_class=BASE[io[0]],
+                base_node=BASE[workflow_name]
+            )
     g.add((BASE[workflow_name], RDFS.subClassOf, SNS.process))
     return g
 
