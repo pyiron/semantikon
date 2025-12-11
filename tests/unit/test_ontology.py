@@ -60,7 +60,7 @@ class TestOntology(unittest.TestCase):
     def test_to_restrictions(self):
         # Common reference graph for single target class
         single_target_text = dedent(
-        """\
+            """\
         @prefix owl: <http://www.w3.org/2002/07/owl#> .
         @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
         
@@ -105,7 +105,9 @@ class TestOntology(unittest.TestCase):
             g_ref.parse(data=text, format="turtle")
             g = Graph()
             for cl in [EX["dest1"], EX["dest2"]]:
-                g += onto._to_owl_restriction(EX["some_predicate"], cl, base_node=EX["origin"])
+                g += onto._to_owl_restriction(
+                    EX["some_predicate"], cl, base_node=EX["origin"]
+                )
             g.add((EX["origin"], RDFS.subClassOf, EX["my_class"]))
             _, in_first, in_second = graph_diff(g, g_ref)
             self.assertEqual(
@@ -117,7 +119,7 @@ class TestOntology(unittest.TestCase):
 
         with self.subTest("owl:hasValue instead of owl:someValuesFrom"):
             text = dedent(
-            """\
+                """\
             @prefix owl: <http://www.w3.org/2002/07/owl#> .
             @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
             

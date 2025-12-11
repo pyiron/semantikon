@@ -210,7 +210,9 @@ def _wf_io_to_graph(
     if t_box:
         data_class = SNS.continuant if "uri" not in data else data["uri"]
         data_node = BNode(node + "_data")
-        io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
+        io_assignment = (
+            SNS.input_assignment if step == "inputs" else SNS.output_assignment
+        )
         has_specified_io = (
             SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
         )
@@ -294,7 +296,7 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
                 g += _to_owl_restriction(
                     on_property=SNS.has_part,
                     target_class=BASE[node[0]],
-                    base_node=BASE[workflow_name]
+                    base_node=BASE[workflow_name],
                 )
             else:
                 node_tmp = BNode()
@@ -302,13 +304,13 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
                     g += _to_owl_restriction(
                         on_property=SNS.precedes,
                         target_class=BASE[succ],
-                        base_node=node_tmp
+                        base_node=node_tmp,
                     )
                 g.add((node_tmp, RDFS.subClassOf, BASE[node[0]]))
                 g += _to_owl_restriction(
                     on_property=SNS.has_part,
                     target_class=node_tmp,
-                    base_node=BASE[workflow_name]
+                    base_node=BASE[workflow_name],
                 )
 
     global_inputs = [
@@ -321,13 +323,13 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
     ]
     for on_property, global_io in zip(
         [SNS.has_specified_input, SNS.has_specified_output],
-        [global_inputs, global_outputs]
+        [global_inputs, global_outputs],
     ):
         for io in global_io:
             g += _to_owl_restriction(
                 on_property=on_property,
                 target_class=BASE[io[0]],
-                base_node=BASE[workflow_name]
+                base_node=BASE[workflow_name],
             )
     g.add((BASE[workflow_name], RDFS.subClassOf, SNS.process))
     return g
