@@ -216,33 +216,34 @@ def _wf_io_to_graph(
             SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
         )
         r_node = BNode()
-        g_rest = _to_owl_restriction(has_specified_io, data_node, restriction_node=r_node)
+        g += _to_owl_restriction(has_specified_io, data_node, restriction_node=r_node)
         g.add((node, RDFS.subClassOf, r_node))
-        g += g_rest
-        for nn in [io_assignment] + rest:
-            g.add((node, RDFS.subClassOf, nn))
-        if data.get("units") is not None:
-            g_rest = _to_owl_restriction(
-                SNS.has_unit, _units_to_uri(data["units"]), restriction_type=OWL.hasValue,
+        g.add((node, RDFS.subClassOf, io_assignment))
+        if "units" in data:
+            r_node = BNode()
+            g += _to_owl_restriction(
+                on_property=SNS.has_unit,
+                target_class=_units_to_uri(data["units"]),
+                restriction_node=r_node,
+                restriction_type=OWL.hasValue,
             )
-        else:
-            g_rest = Graph()
+            g.add((data_node, RDFS.subClassOf, r_node))
         if step == "inputs":
             out = list(G.predecessors(node_name))
             if len(out) == 1:
-                g_rest += _to_owl_restriction(SNS.is_specified_output_of, BASE[out[0]])
+                g_rest = _to_owl_restriction(SNS.is_specified_output_of, BASE[out[0]])
                 rest = _bundle_restrictions(g_rest)
                 for nn in [data_class] + rest:
                     g.add((data_node, RDFS.subClassOf, nn))
             elif len(out) == 0:
-                g_rest += _to_owl_restriction(SNS.specifies_value_of, data_class)
+                g_rest = _to_owl_restriction(SNS.specifies_value_of, data_class)
                 rest = _bundle_restrictions(g_rest)
                 for nn in [SNS.value_specification] + rest:
                     g.add((data_node, RDFS.subClassOf, nn))
             else:
                 raise AssertionError
         elif step == "outputs":
-            g_rest += _to_owl_restriction(SNS.specifies_value_of, data_class)
+            g_rest = _to_owl_restriction(SNS.specifies_value_of, data_class)
             rest = _bundle_restrictions(g_rest)
             for nn in [SNS.value_specification] + rest:
                 g.add((data_node, RDFS.subClassOf, nn))
