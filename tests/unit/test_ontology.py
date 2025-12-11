@@ -74,10 +74,10 @@ class TestOntology(unittest.TestCase):
         g_ref_single.parse(data=single_target_text, format="turtle")
 
         with self.subTest("Single target class as list"):
-            g = onto._to_owl_restriction(EX["some_predicate"], EX["destination"])
-            restrictions = onto._bundle_restrictions(g)
-            for nn in [EX["my_class"]] + restrictions:
-                g.add((EX["origin"], RDFS.subClassOf, nn))
+            g = onto._to_owl_restriction(
+                EX["some_predicate"], EX["destination"], base_node=EX["origin"]
+            )
+            g.add((EX["origin"], RDFS.subClassOf, EX["my_class"]))
             _, in_first, in_second = graph_diff(g, g_ref_single)
             self.assertEqual(
                 len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
@@ -105,9 +105,8 @@ class TestOntology(unittest.TestCase):
             g_ref.parse(data=text, format="turtle")
             g = Graph()
             for cl in [EX["dest1"], EX["dest2"]]:
-                g += onto._to_owl_restriction(EX["some_predicate"], cl)
-            for nn in [EX["my_class"]] + onto._bundle_restrictions(g):
-                g.add((EX["origin"], RDFS.subClassOf, nn))
+                g += onto._to_owl_restriction(EX["some_predicate"], cl, base_node=EX["origin"])
+            g.add((EX["origin"], RDFS.subClassOf, EX["my_class"]))
             _, in_first, in_second = graph_diff(g, g_ref)
             self.assertEqual(
                 len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
@@ -131,11 +130,12 @@ class TestOntology(unittest.TestCase):
             g_ref = Graph()
             g_ref.parse(data=text, format="turtle")
             g = onto._to_owl_restriction(
-                EX["some_predicate"], EX["destination"], restriction_type=OWL.hasValue
+                EX["some_predicate"],
+                EX["destination"],
+                base_node=EX["origin"],
+                restriction_type=OWL.hasValue,
             )
-            restrictions = onto._bundle_restrictions(g)
-            for nn in [EX["my_class"]] + restrictions:
-                g.add((EX["origin"], RDFS.subClassOf, nn))
+            g.add((EX["origin"], RDFS.subClassOf, EX["my_class"]))
             _, in_first, in_second = graph_diff(g, g_ref)
             self.assertEqual(
                 len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"

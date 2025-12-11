@@ -291,20 +291,25 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
         if node[1]["step"] == "node":
             successors = list(_get_successor_nodes(G, node[0]))
             if len(successors) == 0:
-                g_all_nodes += _to_owl_restriction(SNS.has_part, BASE[node[0]])
+                g += _to_owl_restriction(
+                    on_property=SNS.has_part,
+                    target_class=BASE[node[0]],
+                    base_node=BASE[workflow_name]
+                )
             else:
-                g_rest = Graph()
                 node_tmp = BNode()
                 for succ in successors:
-                    g_rest += _to_owl_restriction(SNS.precedes, BASE[succ])
-                g_all_nodes += g_rest
-                rest = _bundle_restrictions(g_rest)
-                for nn in [BASE[node[0]]] + rest:
-                    g_all_nodes.add((node_tmp, RDFS.subClassOf, nn))
-                g_all_nodes += _to_owl_restriction(SNS.has_part, node_tmp)
-    for nn in _bundle_restrictions(g_all_nodes):
-        g.add((BASE[workflow_name], RDFS.subClassOf, nn))
-    g += g_all_nodes
+                    g += _to_owl_restriction(
+                        on_property=SNS.precedes,
+                        target_class=BASE[succ],
+                        base_node=node_tmp
+                    )
+                g.add((node_tmp, RDFS.subClassOf, BASE[node[0]]))
+                g += _to_owl_restriction(
+                    on_property=SNS.has_part,
+                    target_class=node_tmp,
+                    base_node=BASE[workflow_name]
+                )
 
     global_inputs = [
         n for n in G.nodes.data() if G.in_degree(n[0]) == 0 and n[1]["step"] == "inputs"
@@ -418,23 +423,6 @@ def _wf_data_to_networkx(node_dict, channel_dict, edge_list):
         G.add_edge(*edge)
     mapping = {n: n.replace(".", "-") for n in G.nodes()}
     return nx.relabel_nodes(G, mapping, copy=True)
-
-
-def _bundle_restrictions(g: Graph, only_dangling=True) -> list[BNode]:
-    """
-    Extract all OWL restriction BNodes from a graph.
-
-    Args:
-        g (Graph): RDF graph to search for restrictions
-
-    Returns:
-        (list[BNode]): list of BNodes that are OWL restrictions
-    """
-    return [
-        r
-        for r in g.subjects(RDF.type, OWL.Restriction)
-        if len(list(g.subjects(None, r))) == 0 or not only_dangling
-    ]
 
 
 def _to_owl_restriction(
