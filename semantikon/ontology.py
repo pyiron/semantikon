@@ -221,23 +221,21 @@ def _wf_io_to_graph(
         for nn in [io_assignment] + rest:
             g.add((node, RDFS.subClassOf, nn))
         if data.get("units") is not None:
-            g_units = _to_owl_restriction(
+            g_rest = _to_owl_restriction(
                 SNS.has_unit, _units_to_uri(data["units"]), OWL.hasValue,
             )
         else:
-            g_units = Graph()
+            g_rest = Graph()
         if step == "inputs":
             out = list(G.predecessors(node_name))
             if len(out) == 1:
-                g_rest = _to_owl_restriction(SNS.is_specified_output_of, BASE[out[0]])
-                g_rest += g_units
+                g_rest += _to_owl_restriction(SNS.is_specified_output_of, BASE[out[0]])
                 rest = _bundle_restrictions(g_rest)
                 g += g_rest
                 for nn in [data_class] + rest:
                     g.add((data_node, RDFS.subClassOf, nn))
             elif len(out) == 0:
-                g_rest = _to_owl_restriction(SNS.specifies_value_of, data_class)
-                g_rest += g_units
+                g_rest += _to_owl_restriction(SNS.specifies_value_of, data_class)
                 rest = _bundle_restrictions(g_rest)
                 g += g_rest
                 for nn in [SNS.value_specification] + rest:
@@ -245,8 +243,7 @@ def _wf_io_to_graph(
             else:
                 raise AssertionError
         elif step == "outputs":
-            g_rest = _to_owl_restriction(SNS.specifies_value_of, data_class)
-            g_rest += g_units
+            g_rest += _to_owl_restriction(SNS.specifies_value_of, data_class)
             rest = _bundle_restrictions(g_rest)
             g += g_rest
             for nn in [SNS.value_specification] + rest:
