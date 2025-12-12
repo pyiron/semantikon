@@ -466,4 +466,4 @@ def _get_graph_hash(G: nx.DiGraph) -> str:
                 del G_tmp.nodes[node]["value"]
         if "dtype" in G_tmp.nodes[node]:
             del G_tmp.nodes[node]["dtype"]
-    return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(G)
+    return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(G_tmp)

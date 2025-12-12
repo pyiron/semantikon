@@ -151,6 +151,7 @@ class TestOntology(unittest.TestCase):
         G = onto._wf_data_to_networkx(*onto.serialize_data(wf_dict))
         self.assertIsInstance(onto._get_graph_hash(G), str)
         self.assertEqual(len(onto._get_graph_hash(G)), 32)
+        self.assertEqual(onto._get_graph_hash(G), "ca1e5a0ec85b1b83dc7061a9cc1f4113")
         self.assertIn(
             "dtype",
             G.nodes["my_kinetic_energy_workflow-get_speed_0-inputs-distance"],
