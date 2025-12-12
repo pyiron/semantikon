@@ -453,8 +453,8 @@ def _get_graph_hash(G: nx.DiGraph) -> str:
     G_tmp = G.copy()
     for node in G_tmp.nodes:
         if G_tmp.in_degree(node) > 0:
-            if 'value' in G_tmp.nodes[node]:
-                del G_tmp.nodes[node]['value']
+            if "value" in G_tmp.nodes[node]:
+                del G_tmp.nodes[node]["value"]
         if "dtype" in G_tmp.nodes[node]:
             del G_tmp.nodes[node]["dtype"]
     return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(G)
