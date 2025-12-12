@@ -248,7 +248,7 @@ def _wf_io_to_graph(
     return g
 
 
-def _parse_precedes(G: nx.DiGraph, workflow_node: URIRef) -> None:
+def _parse_precedes(G: nx.DiGraph, workflow_node: URIRef) -> Graph:
     g = Graph()
     for node in G.nodes.data():
         if node[1]["step"] == "node":
