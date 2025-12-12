@@ -1,4 +1,3 @@
-import uuid
 from dataclasses import dataclass
 from typing import Any, TypeAlias
 
@@ -140,11 +139,6 @@ def extract_dataclass(
 def get_knowledge_graph(
     wf_dict: dict,
     t_box: bool = False,
-    graph: Graph | None = None,
-    inherit_properties: bool = True,
-    ontology=SNS,
-    append_missing_items: bool = True,
-    use_uuid: bool = False,
     namespace: Namespace | None = None,
 ) -> Graph:
     """
@@ -153,28 +147,25 @@ def get_knowledge_graph(
     Args:
         wf_dict (dict): dictionary containing workflow information
         t_box (bool): if True, generate T-Box graph, otherwise A-Box graph
-        graph (rdflib.Graph): graph to be updated
-        inherit_properties (bool): if True, properties are inherited
-        ontology (Namespace): ontology to be used
-        append_missing_items (bool): if True, append missing items for the
-            OWL restrictions
-        use_uuid (bool): if True, use UUIDs for node labels
+        namespace (Namespace): namespace to be used for the graph
 
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
-    if graph is None:
-        graph = Graph()
-    node_dict, channel_dict, edge_list = serialize_data(wf_dict, use_uuid=use_uuid)
+    node_dict, channel_dict, edge_list = serialize_data(wf_dict)
     G = _wf_data_to_networkx(node_dict, channel_dict, edge_list)
-    graph += _nx_to_kg(G, t_box=t_box)
+    graph = _nx_to_kg(G, t_box=t_box, namespace=namespace)
     if namespace is not None:
         graph.bind("ns", str(namespace))
     return graph
 
 
 def _wf_node_to_graph(
-    node_name: str, kg_node: URIRef, G: nx.DiGraph, t_box: bool
+    node_name: str,
+    kg_node: URIRef,
+    G: nx.DiGraph,
+    t_box: bool,
+    namespace: Namespace | None = None,
 ) -> Graph:
     g = Graph()
     if t_box:
@@ -182,16 +173,16 @@ def _wf_node_to_graph(
             for item in io:
                 g += _to_owl_restriction(
                     on_property=SNS.has_part,
-                    target_class=BASE[item],
+                    target_class=namespace[item],
                     base_node=kg_node,
                 )
         g.add((kg_node, RDFS.subClassOf, SNS.process))
     else:
         g.add((kg_node, RDF.type, SNS.process))
         for inp in G.predecessors(node_name):
-            g.add((kg_node, SNS.has_part, BASE[inp]))
+            g.add((kg_node, SNS.has_part, namespace[inp]))
         for out in G.successors(node_name):
-            g.add((kg_node, SNS.has_part, BASE[out]))
+            g.add((kg_node, SNS.has_part, namespace[out]))
     return g
 
 
@@ -202,8 +193,11 @@ def _wf_io_to_graph(
     data: dict,
     G: nx.DiGraph,
     t_box: bool,
+    namespace: Namespace | None = None,
 ) -> Graph:
     g = Graph()
+    if namespace is None:
+        namespace = BASE
     if data.get("label") is not None:
         g.add(node, RDFS.label, Literal(data["label"]))
     io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
@@ -227,13 +221,13 @@ def _wf_io_to_graph(
             if len(out) == 1:
                 assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
                 if G.nodes[out[0]]["step"] == "outputs":
-                    target_class = BASE[out[0]]
+                    target_class = namespace[out[0]]
                 else:
                     target_class = None
                 if target_class is not None:
                     g += _to_owl_restriction(
                         on_property=SNS.is_specified_output_of,
-                        target_class=BASE[out[0]],
+                        target_class=namespace[out[0]],
                         base_node=data_node,
                     )
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
@@ -248,15 +242,21 @@ def _wf_io_to_graph(
     return g
 
 
-def _parse_precedes(G: nx.DiGraph, workflow_node: URIRef) -> Graph:
+def _parse_precedes(
+    G: nx.DiGraph,
+    workflow_node: URIRef,
+    namespace: Namespace | None = None,
+) -> Graph:
     g = Graph()
+    if namespace is None:
+        namespace = BASE
     for node in G.nodes.data():
         if node[1]["step"] == "node":
             successors = list(_get_successor_nodes(G, node[0]))
             if len(successors) == 0:
                 g += _to_owl_restriction(
                     on_property=SNS.has_part,
-                    target_class=BASE[node[0]],
+                    target_class=namespace[node[0]],
                     base_node=workflow_node,
                 )
             else:
@@ -264,10 +264,10 @@ def _parse_precedes(G: nx.DiGraph, workflow_node: URIRef) -> Graph:
                 for succ in successors:
                     g += _to_owl_restriction(
                         on_property=SNS.precedes,
-                        target_class=BASE[succ],
+                        target_class=namespace[succ],
                         base_node=node_tmp,
                     )
-                g.add((node_tmp, RDFS.subClassOf, BASE[node[0]]))
+                g.add((node_tmp, RDFS.subClassOf, namespace[node[0]]))
                 g += _to_owl_restriction(
                     on_property=SNS.has_part,
                     target_class=node_tmp,
@@ -276,8 +276,14 @@ def _parse_precedes(G: nx.DiGraph, workflow_node: URIRef) -> Graph:
     return g
 
 
-def _parse_global_io(G: nx.DiGraph, workflow_node: URIRef) -> Graph:
+def _parse_global_io(
+    G: nx.DiGraph,
+    workflow_node: URIRef,
+    namespace: Namespace | None = None,
+) -> Graph:
     g = Graph()
+    if namespace is None:
+        namespace = BASE
     global_inputs = [
         n for n in G.nodes.data() if G.in_degree(n[0]) == 0 and n[1]["step"] == "inputs"
     ]
@@ -293,13 +299,13 @@ def _parse_global_io(G: nx.DiGraph, workflow_node: URIRef) -> Graph:
         for io in global_io:
             g += _to_owl_restriction(
                 on_property=on_property,
-                target_class=BASE[io[0]],
+                target_class=namespace[io[0]],
                 base_node=workflow_node,
             )
     return g
 
 
-def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
+def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) -> Graph:
     g = Graph()
     g.bind("qudt", str(QUDT))
     g.bind("unit", "http://qudt.org/vocab/unit/")
@@ -312,25 +318,33 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
     g.bind("pmdco", str(PMD))
     g.bind("schema", str(SCHEMA))
     g.bind("stato", str(STATO))
-    workflow_node = BASE[G.name]
+    if namespace is None:
+        namespace = BASE
+    workflow_node = namespace[G.name]
     for comp in G.nodes.data():
         data = comp[1].copy()
         step = data.pop("step")
-        node = BASE[comp[0]]
+        node = namespace[comp[0]]
         if t_box:
             g.add((node, RDF.type, OWL.Class))
         assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
         if step == "node":
-            g += _wf_node_to_graph(comp[0], node, G, t_box)
+            g += _wf_node_to_graph(comp[0], node, G, t_box, namespace=namespace)
         else:
             g += _wf_io_to_graph(
-                step=step, node_name=comp[0], node=node, data=data, G=G, t_box=t_box
+                step=step,
+                node_name=comp[0],
+                node=node,
+                data=data,
+                G=G,
+                t_box=t_box,
+                namespace=namespace,
             )
 
     g.add((workflow_node, RDF.type, OWL.Class))
     g.add((workflow_node, RDFS.subClassOf, SNS.process))
-    g += _parse_precedes(G, workflow_node)
-    g += _parse_global_io(G, workflow_node)
+    g += _parse_precedes(G, workflow_node, namespace=namespace)
+    g += _parse_global_io(G, workflow_node, namespace=namespace)
     return g
 
 
@@ -341,9 +355,7 @@ def _get_successor_nodes(G, node_name):
                 yield node
 
 
-def serialize_data(
-    wf_dict: dict, prefix: str | None = None, use_uuid: bool = False
-) -> tuple[dict, dict, list]:
+def serialize_data(wf_dict: dict, prefix: str | None = None) -> tuple[dict, dict, list]:
     """
     Serialize a nested workflow dictionary into a knowledge graph
 
@@ -358,8 +370,6 @@ def serialize_data(
     channel_dict = {}
     if prefix is None:
         prefix = wf_dict["label"]
-        if use_uuid:
-            prefix = f"{prefix}-{uuid.uuid4()}"
     node_dict = {
         prefix: {
             key: value
