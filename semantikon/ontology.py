@@ -248,36 +248,8 @@ def _wf_io_to_graph(
     return g
 
 
-def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
+def _parse_precedes(G: nx.DiGraph, workflow_node: URIRef) -> None:
     g = Graph()
-    g.bind("qudt", str(QUDT))
-    g.bind("unit", "http://qudt.org/vocab/unit/")
-    g.bind("sns", str(BASE))
-    g.bind("prov", str(PROV))
-    g.bind("iao", str(IAO))
-    g.bind("bfo", str(BFO))
-    g.bind("obi", str(OBI))
-    g.bind("ro", str(RO))
-    g.bind("pmdco", str(PMD))
-    g.bind("schema", str(SCHEMA))
-    g.bind("stato", str(STATO))
-    workflow_name = G.name
-    for comp in G.nodes.data():
-        data = comp[1].copy()
-        step = data.pop("step")
-        node = BASE[comp[0]]
-        if t_box:
-            g.add((node, RDF.type, OWL.Class))
-        if step == "node":
-            g += _wf_node_to_graph(comp[0], node, G, t_box)
-        elif step in ["inputs", "outputs"]:
-            g += _wf_io_to_graph(
-                step=step, node_name=comp[0], node=node, data=data, G=G, t_box=t_box
-            )
-        else:
-            raise AssertionError
-
-    g.add((BASE[workflow_name], RDF.type, OWL.Class))
     for node in G.nodes.data():
         if node[1]["step"] == "node":
             successors = list(_get_successor_nodes(G, node[0]))
@@ -285,7 +257,7 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
                 g += _to_owl_restriction(
                     on_property=SNS.has_part,
                     target_class=BASE[node[0]],
-                    base_node=BASE[workflow_name],
+                    base_node=workflow_node,
                 )
             else:
                 node_tmp = BNode()
@@ -299,9 +271,13 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
                 g += _to_owl_restriction(
                     on_property=SNS.has_part,
                     target_class=node_tmp,
-                    base_node=BASE[workflow_name],
+                    base_node=workflow_node,
                 )
+    return g
 
+
+def _parse_global_io(G: nx.DiGraph, workflow_node: URIRef) -> Graph:
+    g = Graph()
     global_inputs = [
         n for n in G.nodes.data() if G.in_degree(n[0]) == 0 and n[1]["step"] == "inputs"
     ]
@@ -318,9 +294,43 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
             g += _to_owl_restriction(
                 on_property=on_property,
                 target_class=BASE[io[0]],
-                base_node=BASE[workflow_name],
+                base_node=workflow_node,
             )
-    g.add((BASE[workflow_name], RDFS.subClassOf, SNS.process))
+    return g
+
+
+def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
+    g = Graph()
+    g.bind("qudt", str(QUDT))
+    g.bind("unit", "http://qudt.org/vocab/unit/")
+    g.bind("sns", str(BASE))
+    g.bind("prov", str(PROV))
+    g.bind("iao", str(IAO))
+    g.bind("bfo", str(BFO))
+    g.bind("obi", str(OBI))
+    g.bind("ro", str(RO))
+    g.bind("pmdco", str(PMD))
+    g.bind("schema", str(SCHEMA))
+    g.bind("stato", str(STATO))
+    workflow_node = BASE[G.name]
+    for comp in G.nodes.data():
+        data = comp[1].copy()
+        step = data.pop("step")
+        node = BASE[comp[0]]
+        if t_box:
+            g.add((node, RDF.type, OWL.Class))
+        assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
+        if step == "node":
+            g += _wf_node_to_graph(comp[0], node, G, t_box)
+        else:
+            g += _wf_io_to_graph(
+                step=step, node_name=comp[0], node=node, data=data, G=G, t_box=t_box
+            )
+
+    g.add((workflow_node, RDF.type, OWL.Class))
+    g.add((workflow_node, RDFS.subClassOf, SNS.process))
+    g += _parse_precedes(G, workflow_node)
+    g += _parse_global_io(G, workflow_node)
     return g
 
 
