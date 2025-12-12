@@ -206,9 +206,7 @@ def _wf_io_to_graph(
     g = Graph()
     if data.get("label") is not None:
         g.add(node, RDFS.label, Literal(data["label"]))
-    io_assignment = (
-        SNS.input_assignment if step == "inputs" else SNS.output_assignment
-    )
+    io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
     if t_box:
         data_class = SNS.continuant if "uri" not in data else data["uri"]
         data_node = BNode(node + "_data")
