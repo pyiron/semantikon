@@ -165,7 +165,7 @@ def _wf_node_to_graph(
     kg_node: URIRef,
     G: nx.DiGraph,
     t_box: bool,
-    namespace: Namespace | None = None,
+    namespace: Namespace,
 ) -> Graph:
     g = Graph()
     if t_box:
@@ -193,11 +193,9 @@ def _wf_io_to_graph(
     data: dict,
     G: nx.DiGraph,
     t_box: bool,
-    namespace: Namespace | None = None,
+    namespace: Namespace,
 ) -> Graph:
     g = Graph()
-    if namespace is None:
-        namespace = BASE
     if data.get("label") is not None:
         g.add(node, RDFS.label, Literal(data["label"]))
     io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
@@ -245,11 +243,9 @@ def _wf_io_to_graph(
 def _parse_precedes(
     G: nx.DiGraph,
     workflow_node: URIRef,
-    namespace: Namespace | None = None,
+    namespace: Namespace,
 ) -> Graph:
     g = Graph()
-    if namespace is None:
-        namespace = BASE
     for node in G.nodes.data():
         if node[1]["step"] == "node":
             successors = list(_get_successor_nodes(G, node[0]))
@@ -279,11 +275,9 @@ def _parse_precedes(
 def _parse_global_io(
     G: nx.DiGraph,
     workflow_node: URIRef,
-    namespace: Namespace | None = None,
+    namespace: Namespace,
 ) -> Graph:
     g = Graph()
-    if namespace is None:
-        namespace = BASE
     global_inputs = [
         n for n in G.nodes.data() if G.in_degree(n[0]) == 0 and n[1]["step"] == "inputs"
     ]
