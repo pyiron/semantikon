@@ -448,6 +448,17 @@ def _to_owl_restriction(
 
 
 def _get_graph_hash(G: nx.DiGraph) -> str:
+    """
+    Generate a hash for a NetworkX graph, making sure that data types and
+    values (except for the global ones) because they can often not be
+    serialized.
+
+    Args:
+        G (nx.DiGraph): input graph
+
+    Returns:
+        (str): hash of the graph
+    """
     G_tmp = G.copy()
     for node in G_tmp.nodes:
         if G_tmp.in_degree(node) > 0:
