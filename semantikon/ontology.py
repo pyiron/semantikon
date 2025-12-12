@@ -232,23 +232,13 @@ def _wf_io_to_graph(
                     target_class=BASE[out[0]],
                     base_node=data_node,
                 )
-                g.add((data_node, RDFS.subClassOf, data_class))
-            elif len(out) == 0:
-                g += _to_owl_restriction(
-                    on_property=SNS.specifies_value_of,
-                    target_class=data_class,
-                    base_node=data_node,
-                )
-                g.add((data_node, RDFS.subClassOf, SNS.value_specification))
-            else:
-                raise AssertionError
-        elif step == "outputs":
+        g.add((data_node, RDFS.subClassOf, SNS.value_specification))
+        if "uri" in data:
             g += _to_owl_restriction(
                 on_property=SNS.specifies_value_of,
-                target_class=data_class,
+                target_class=data["uri"],
                 base_node=data_node,
             )
-            g.add((data_node, RDFS.subClassOf, SNS.value_specification))
     else:
         if step == "inputs":
             g.add((node, RDF.type, SNS.input_assignment))
