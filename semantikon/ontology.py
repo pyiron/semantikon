@@ -206,12 +206,12 @@ def _wf_io_to_graph(
     g = Graph()
     if data.get("label") is not None:
         g.add(node, RDFS.label, Literal(data["label"]))
+    io_assignment = (
+        SNS.input_assignment if step == "inputs" else SNS.output_assignment
+    )
     if t_box:
         data_class = SNS.continuant if "uri" not in data else data["uri"]
         data_node = BNode(node + "_data")
-        io_assignment = (
-            SNS.input_assignment if step == "inputs" else SNS.output_assignment
-        )
         has_specified_io = (
             SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
         )
@@ -226,12 +226,19 @@ def _wf_io_to_graph(
             )
         if step == "inputs":
             out = list(G.predecessors(node_name))
+            assert len(out) <= 1
             if len(out) == 1:
-                g += _to_owl_restriction(
-                    on_property=SNS.is_specified_output_of,
-                    target_class=BASE[out[0]],
-                    base_node=data_node,
-                )
+                assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
+                if G.nodes[out[0]]["step"] == "outputs":
+                    target_class = BASE[out[0]]
+                else:
+                    target_class = None
+                if target_class is not None:
+                    g += _to_owl_restriction(
+                        on_property=SNS.is_specified_output_of,
+                        target_class=BASE[out[0]],
+                        base_node=data_node,
+                    )
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
         if "uri" in data:
             g += _to_owl_restriction(
@@ -240,10 +247,7 @@ def _wf_io_to_graph(
                 base_node=data_node,
             )
     else:
-        if step == "inputs":
-            g.add((node, RDF.type, SNS.input_assignment))
-        elif step == "outputs":
-            g.add((node, RDF.type, SNS.output_assignment))
+        g.add((node, RDF.type, io_assignment))
     return g
 
 
