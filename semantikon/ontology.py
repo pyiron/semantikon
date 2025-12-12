@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from typing import Any, TypeAlias
 
@@ -451,7 +452,7 @@ def _to_owl_restriction(
     return g
 
 
-def _get_graph_hash(G: nx.DiGraph) -> str:
+def _get_graph_hash(G: nx.DiGraph, with_global_inputs: bool = True) -> str:
     """
     Generate a hash for a NetworkX graph, making sure that data types and
     values (except for the global ones) because they can often not be
@@ -459,15 +460,22 @@ def _get_graph_hash(G: nx.DiGraph) -> str:
 
     Args:
         G (nx.DiGraph): input graph
+        with_global_inputs (bool): if True, keep values for global inputs
 
     Returns:
         (str): hash of the graph
     """
     G_tmp = G.copy()
     for node in G_tmp.nodes:
-        if G_tmp.in_degree(node) > 0:
+        if G_tmp.in_degree(node) > 0 or not with_global_inputs:
             if "value" in G_tmp.nodes[node]:
                 del G_tmp.nodes[node]["value"]
         if "dtype" in G_tmp.nodes[node]:
             del G_tmp.nodes[node]["dtype"]
-    return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(G_tmp)
+
+    for n, attrs in G_tmp.nodes(data=True):
+        attrs["canon"] = json.dumps(attrs, sort_keys=True)
+
+    return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(
+        G_tmp, node_attr="canon"
+    )

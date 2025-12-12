@@ -156,6 +156,16 @@ class TestOntology(unittest.TestCase):
             G.nodes["my_kinetic_energy_workflow-get_speed_0-inputs-distance"],
             msg="dtype should not be deleted after hashing",
         )
+        wf_dict = my_kinetic_energy_workflow.run(1, 2, 3)
+        G_run = onto._wf_data_to_networkx(*onto.serialize_data(wf_dict))
+        self.assertEqual(
+            onto._get_graph_hash(G),
+            onto._get_graph_hash(G_run, with_global_inputs=False),
+        )
+        self.assertNotEqual(
+            onto._get_graph_hash(G),
+            onto._get_graph_hash(G_run, with_global_inputs=True),
+        )
 
 
 if __name__ == "__main__":
