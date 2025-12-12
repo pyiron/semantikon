@@ -146,6 +146,19 @@ class TestOntology(unittest.TestCase):
                 len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
             )
 
+    def test_hash(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        G = onto._wf_data_to_networkx(*onto.serialize_data(wf_dict))
+        self.assertEqual(
+            onto._get_graph_hash(G),
+            "ca1e5a0ec85b1b83dc7061a9cc1f4113"
+        )
+        self.assertIn(
+            "dtype",
+            G.nodes["my_kinetic_energy_workflow-get_speed_0-inputs-distance"],
+            msg="dtype should not be deleted after hashing",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
