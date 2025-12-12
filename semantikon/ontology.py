@@ -168,6 +168,8 @@ def _wf_node_to_graph(
     namespace: Namespace | None = None,
 ) -> Graph:
     g = Graph()
+    if namespace is None:
+        namespace = BASE
     if t_box:
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
