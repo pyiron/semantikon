@@ -473,7 +473,7 @@ def _get_graph_hash(G: nx.DiGraph, with_global_inputs: bool = True) -> str:
         if "dtype" in G_tmp.nodes[node]:
             del G_tmp.nodes[node]["dtype"]
 
-    for n, attrs in G_tmp.nodes(data=True):
+    for _, attrs in G_tmp.nodes(data=True):
         attrs["canon"] = json.dumps(attrs, sort_keys=True)
 
     return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(
