@@ -228,6 +228,8 @@ def _wf_io_to_graph(
                         target_class=namespace[out[0]],
                         base_node=data_node,
                     )
+        if "derived_from" in data:
+            assert step == "outputs", "derived_from only valid for outputs"
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
         if "uri" in data:
             g += _to_owl_restriction(
