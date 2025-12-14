@@ -219,10 +219,6 @@ def _wf_io_to_graph(
             if len(out) == 1:
                 assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
                 if G.nodes[out[0]]["step"] == "outputs":
-                    target_class = namespace[out[0]]
-                else:
-                    target_class = None
-                if target_class is not None:
                     g += _to_owl_restriction(
                         on_property=SNS.is_specified_output_of,
                         target_class=namespace[out[0]],
