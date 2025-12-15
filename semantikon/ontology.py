@@ -219,10 +219,6 @@ def _wf_io_to_graph(
             if len(out) == 1:
                 assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
                 if G.nodes[out[0]]["step"] == "outputs":
-                    target_class = namespace[out[0]]
-                else:
-                    target_class = None
-                if target_class is not None:
                     g += _to_owl_restriction(
                         on_property=SNS.is_specified_output_of,
                         target_class=namespace[out[0]],
@@ -396,12 +392,8 @@ def serialize_data(wf_dict: dict, prefix: str | None = None) -> tuple[dict, dict
     for io_ in ["inputs", "outputs"]:
         for key, channel in wf_dict[io_].items():
             channel_label = _remove_us(prefix, io_, key)
-            assert NS.PREFIX not in channel, f"{NS.PREFIX} already set"
-            assert NS.TYPE not in channel, f"{NS.TYPE} already set"
-            channel_dict[channel_label] = channel | {
-                NS.PREFIX: prefix,
-                NS.TYPE: io_,
-            }
+            assert "semantikon_type" not in channel, "semantikon_type already set"
+            channel_dict[channel_label] = channel | {"semantikon_type": io_}
     for key, node in wf_dict.get("nodes", {}).items():
         child_node, child_channel, child_edges = serialize_data(
             node, prefix=_dot(prefix, key)
