@@ -41,11 +41,6 @@ class SNS:
     specifies_value_of: URIRef = OBI["0001927"]
 
 
-class NS:
-    PREFIX = "semantikon_parent_prefix"
-    TYPE = "semantikon_type"
-
-
 ud = UnitsDict()
 
 _triple_type: TypeAlias = list[
