@@ -39,10 +39,7 @@ class TestParser(unittest.TestCase):
         self.assertEqual(input_args["time"]["default"], 1.0)
         self.assertEqual(input_args["time"]["units"], "second")
         output_args = parse_output_args(get_speed)
-        for key in [
-            "units",
-            "dtype",
-        ]:
+        for key in ["units", "dtype"]:
             self.assertIn(key, output_args)
         self.assertEqual(output_args["units"], "meter/second")
         self.assertEqual(output_args["label"], "speed")
