@@ -171,8 +171,7 @@ def _get_node_dict(
         "function": function,
         "type": type_,
     }
-    if hasattr(function, "_semantikon_metadata"):
-        data.update(function._semantikon_metadata)
+    data.update(getattr(function, "__metadata__", {}))
     return data
 
 
@@ -279,7 +278,7 @@ def get_ports(
 
 def get_node(func: Callable, label: str | None = None) -> Function | Workflow:
     metadata_dict = (
-        func._semantikon_metadata if hasattr(func, "_semantikon_metadata") else MISSING
+        func.__metadata__ if hasattr(func, "__metadata__") else MISSING
     )
     metadata = (
         metadata_dict

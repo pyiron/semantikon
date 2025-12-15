@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from rdflib import BNode, URIRef
 
-from semantikon.converter import FunctionWithMetadata, parse_metadata
+from semantikon.converter import parse_metadata
 from semantikon.datastructure import (
     MISSING,
     FunctionMetadata,
@@ -74,13 +74,10 @@ def meta(
     used: str | URIRef | Missing = MISSING,
 ):
     def decorator(func: Callable):
-        if not callable(func):
-            raise TypeError(f"Expected a callable, got {type(func)}")
-        return FunctionWithMetadata(
-            func,
-            FunctionMetadata(triples=triples, uri=uri, used=used).to_dictionary(),
-        )
-
+        func.__metadata__ = FunctionMetadata(
+            triples=triples, uri=uri, used=used
+        ).to_dictionary()
+        return func
     return decorator
 
 

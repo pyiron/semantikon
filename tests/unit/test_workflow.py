@@ -448,9 +448,9 @@ class TestWorkflow(unittest.TestCase):
             with self.subTest(fnc=fnc, msg=fnc.__name__):
                 entry = swf._get_node_dict(fnc)
                 # Cheat and modify the entry to resemble the node structure
-                if hasattr(fnc, "_semantikon_metadata"):
+                if hasattr(fnc, "__metadata__"):
                     # Nest the metadata in the entry
-                    metadata = fnc._semantikon_metadata
+                    metadata = fnc.__metadata__
                     for k in metadata.keys():
                         entry.pop(k)
                     entry["metadata"] = metadata

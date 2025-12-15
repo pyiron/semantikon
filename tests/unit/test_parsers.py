@@ -43,7 +43,7 @@ class TestParser(unittest.TestCase):
             self.assertIn(key, output_args)
         self.assertEqual(output_args["units"], "meter/second")
         self.assertEqual(output_args["label"], "speed")
-        self.assertEqual(get_speed._semantikon_metadata["uri"], "abc")
+        self.assertEqual(get_speed.__metadata__["uri"], "abc")
         self.assertRaises(TypeError, u, "abc")
         f_dict = get_function_dict(get_speed)
         self.assertEqual(f_dict["uri"], "abc")
