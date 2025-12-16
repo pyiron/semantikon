@@ -227,6 +227,20 @@ def _wf_io_to_graph(
                         target_class=namespace[out[0]],
                         base_node=data_node,
                     )
+        if "derived_from" in data:
+            assert step == "outputs", "derived_from only valid for outputs"
+            for inp in G.predecessors(node_name.split("-outputs-")[0]):
+                if inp.endswith(data["derived_from"].replace(".", "-")):
+                    g += _to_owl_restriction(
+                        on_property=PROV.wasDerivedFrom,
+                        target_class=BNode(namespace[f"{inp}_data"]),
+                        base_node=data_node,
+                    )
+                    break
+            else:
+                raise ValueError(
+                    f"derived_from {data['derived_from']} not found in predecessors"
+                )
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
         if "uri" in data:
             g += _to_owl_restriction(
