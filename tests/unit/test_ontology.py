@@ -177,6 +177,10 @@ class TestOntology(unittest.TestCase):
             ),
         )
 
+    def test_value(self):
+        wf_dict = my_kinetic_energy_workflow.run(distance=1., time=2., mass=3.)
+        g = onto.get_knowledge_graph(wf_dict, t_box=False)
+
 
 if __name__ == "__main__":
     unittest.main()
