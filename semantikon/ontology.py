@@ -225,7 +225,7 @@ def _wf_io_to_graph(
                 if inp.endswith(data["derived_from"].replace(".", "-")):
                     g += _to_owl_restriction(
                         on_property=PROV.wasDerivedFrom,
-                        target_class=namespace[f"{inp}_data"],
+                        target_class=BNode(namespace[f"{inp}_data"]),
                         base_node=data_node,
                     )
                     break
