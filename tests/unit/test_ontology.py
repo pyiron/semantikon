@@ -35,6 +35,16 @@ def my_kinetic_energy_workflow(distance: u(float, uri=PMD["0040001"]), time, mas
     return kinetic_energy
 
 
+def a_to_a(a: float) -> u(float, derived_from="inputs.a"):
+    return a
+
+
+@workflow
+def df_workflow(a):
+    a = a_to_a(a)
+    return a
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
