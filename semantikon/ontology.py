@@ -185,7 +185,7 @@ def _get_data_node(io: str, G: nx.DiGraph, t_box: bool = False) -> BNode:
     candidate = list(G.predecessors(io))
     assert len(candidate) <= 1
     if len(candidate) == 0 or G.nodes[candidate[0]]["step"] == "node" or t_box:
-        return BNode(f"{io}_data")
+        return f"{io}_data"
     return _get_data_node(candidate[0], G)
 
 
@@ -202,7 +202,7 @@ def _wf_io_to_graph(
     if data.get("label") is not None:
         g.add(node, RDFS.label, Literal(data["label"]))
     io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
-    data_node = _get_data_node(io=node_name, G=G, t_box=t_box)
+    data_node = BNode(namespace[_get_data_node(io=node_name, G=G, t_box=t_box)])
     has_specified_io = (
         SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
     )
@@ -253,6 +253,14 @@ def _wf_io_to_graph(
                         on_property=PROV.wasDerivedFrom,
                         target_class=BNode(namespace[f"{inp}_data"]),
                         base_node=data_node,
+                    )
+                else:
+                    g.add(
+                        (
+                            data_node,
+                            PROV.wasDerivedFrom,
+                            BNode(namespace[f"{inp}_data"]),
+                        )
                     )
                 break
         else:
