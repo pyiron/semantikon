@@ -157,6 +157,26 @@ class TestOntology(unittest.TestCase):
             msg="dtype should not be deleted after hashing",
         )
 
+    def test_hash(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        G = onto._wf_data_to_networkx(*onto.serialize_data(wf_dict))
+        self.assertEqual(
+            onto._get_data_node(
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity", G
+            ),
+            onto._get_data_node(
+                "my_kinetic_energy_workflow-get_speed_0-outputs-speed", G
+            ),
+        )
+        self.assertNotEqual(
+            onto._get_data_node(
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity", G
+            ),
+            onto._get_data_node(
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output", G
+            ),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
