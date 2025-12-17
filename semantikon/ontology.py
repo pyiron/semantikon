@@ -150,8 +150,6 @@ def get_knowledge_graph(
     node_dict, channel_dict, edge_list = serialize_data(wf_dict)
     G = _wf_data_to_networkx(node_dict, channel_dict, edge_list)
     graph = _nx_to_kg(G, t_box=t_box, namespace=namespace)
-    if namespace is not None:
-        graph.bind("ns", str(namespace))
     return graph
 
 
@@ -355,6 +353,8 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) ->
     g.bind("pmdco", str(PMD))
     g.bind("schema", str(SCHEMA))
     g.bind("stato", str(STATO))
+    if namespace is not None:
+        graph.bind("ns", str(namespace))
     if namespace is None:
         namespace = BASE
     workflow_node = namespace[G.name]
