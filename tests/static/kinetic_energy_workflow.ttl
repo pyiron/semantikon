@@ -71,7 +71,7 @@
         [ a owl:Restriction ;
             owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
             owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-outputs-speed> ],
-	[ a owl:Restriction ;
+        [ a owl:Restriction ;
             owl:onProperty <http://purl.obolibrary.org/obo/RO_0000057> ;
             owl:someValuesFrom <http://pyiron.org/ontology/__main__-get_speed-not_defined> ],
         <http://purl.obolibrary.org/obo/BFO_0000015> .
@@ -134,7 +134,7 @@
         [ a owl:Restriction ;
             owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000051> ;
             owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity> ],
-	[ a owl:Restriction ;
+        [ a owl:Restriction ;
             owl:onProperty <http://purl.obolibrary.org/obo/RO_0000057> ;
             owl:someValuesFrom <http://pyiron.org/ontology/__main__-get_kinetic_energy-not_defined> ],
         <http://purl.obolibrary.org/obo/BFO_0000015> .
