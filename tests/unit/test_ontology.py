@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 from textwrap import dedent
 
-from rdflib import OWL, Graph, Namespace
+from rdflib import OWL, RDFS, Graph, Namespace
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
@@ -62,22 +62,22 @@ class TestOntology(unittest.TestCase):
         single_target_text = dedent(
             """\
         @prefix owl: <http://www.w3.org/2002/07/owl#> .
-        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
         @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-
-        <http://example.org/origin> rdfs:subClassOf [ a owl:Class ;
-                    owl:intersectionOf ( <http://example.org/my_class> [ a owl:Restriction ;
-                                owl:onProperty <http://example.org/some_predicate> ;
-                                owl:someValuesFrom <http://example.org/destination> ] ) ] .
+        
+        <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
+                    owl:onProperty <http://example.org/some_predicate> ;
+                    owl:someValuesFrom <http://example.org/destination> ],
+                <http://example.org/my_class> .
         """
         )
         g_ref_single = Graph()
         g_ref_single.parse(data=single_target_text, format="turtle")
 
         with self.subTest("Single target class as list"):
-            g = onto._to_owl_restriction(EX["some_predicate"], EX["destination"])
-            restrictions = onto._bundle_restrictions(g)
-            g += onto._to_intersection(EX["origin"], [EX["my_class"]] + restrictions)
+            g = onto._to_owl_restriction(
+                EX["some_predicate"], EX["destination"], base_node=EX["origin"]
+            )
+            g.add((EX["origin"], RDFS.subClassOf, EX["my_class"]))
             _, in_first, in_second = graph_diff(g, g_ref_single)
             self.assertEqual(
                 len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
@@ -90,25 +90,25 @@ class TestOntology(unittest.TestCase):
             text = dedent(
                 """\
             @prefix owl: <http://www.w3.org/2002/07/owl#> .
-            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
             @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-
-            <http://example.org/origin> rdfs:subClassOf [ a owl:Class ;
-                        owl:intersectionOf ( <http://example.org/my_class> [ a owl:Restriction ;
-                                    owl:onProperty <http://example.org/some_predicate> ;
-                                    owl:someValuesFrom <http://example.org/dest1> ] [ a owl:Restriction ;
-                                    owl:onProperty <http://example.org/some_predicate> ;
-                                    owl:someValuesFrom <http://example.org/dest2> ] ) ] .
+            
+            <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
+                        owl:onProperty <http://example.org/some_predicate> ;
+                        owl:someValuesFrom <http://example.org/dest1> ],
+                    [ a owl:Restriction ;
+                        owl:onProperty <http://example.org/some_predicate> ;
+                        owl:someValuesFrom <http://example.org/dest2> ],
+                    <http://example.org/my_class> .
             """
             )
             g_ref = Graph()
             g_ref.parse(data=text, format="turtle")
             g = Graph()
             for cl in [EX["dest1"], EX["dest2"]]:
-                g += onto._to_owl_restriction(EX["some_predicate"], cl)
-            g += onto._to_intersection(
-                EX["origin"], [EX["my_class"]] + onto._bundle_restrictions(g)
-            )
+                g += onto._to_owl_restriction(
+                    EX["some_predicate"], cl, base_node=EX["origin"]
+                )
+            g.add((EX["origin"], RDFS.subClassOf, EX["my_class"]))
             _, in_first, in_second = graph_diff(g, g_ref)
             self.assertEqual(
                 len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
@@ -121,22 +121,23 @@ class TestOntology(unittest.TestCase):
             text = dedent(
                 """\
             @prefix owl: <http://www.w3.org/2002/07/owl#> .
-            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
             @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-
-            <http://example.org/origin> rdfs:subClassOf [ a owl:Class ;
-                        owl:intersectionOf ( <http://example.org/my_class> [ a owl:Restriction ;
-                                    owl:onProperty <http://example.org/some_predicate> ;
-                                    owl:hasValue <http://example.org/destination> ] ) ] .
+            
+            <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
+                        owl:hasValue <http://example.org/destination> ;
+                        owl:onProperty <http://example.org/some_predicate> ],
+                    <http://example.org/my_class> .
             """
             )
             g_ref = Graph()
             g_ref.parse(data=text, format="turtle")
             g = onto._to_owl_restriction(
-                EX["some_predicate"], EX["destination"], OWL.hasValue
+                EX["some_predicate"],
+                EX["destination"],
+                base_node=EX["origin"],
+                restriction_type=OWL.hasValue,
             )
-            restrictions = onto._bundle_restrictions(g)
-            g += onto._to_intersection(EX["origin"], [EX["my_class"]] + restrictions)
+            g.add((EX["origin"], RDFS.subClassOf, EX["my_class"]))
             _, in_first, in_second = graph_diff(g, g_ref)
             self.assertEqual(
                 len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
