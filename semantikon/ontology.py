@@ -161,11 +161,14 @@ def get_knowledge_graph(
 def _wf_node_to_graph(
     node_name: str,
     kg_node: URIRef,
+    data: dict,
     G: nx.DiGraph,
     t_box: bool,
     namespace: Namespace,
 ) -> Graph:
     g = Graph()
+    f_node = namespace[data["function"]["identifier"].replace(".", "-")]
+    g.add((f_node, RDF.type, SNS.software_method))
     if t_box:
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
@@ -175,12 +178,18 @@ def _wf_node_to_graph(
                     base_node=kg_node,
                 )
         g.add((kg_node, RDFS.subClassOf, SNS.process))
+        g += _to_owl_restriction(
+            on_property=SNS.has_participant,
+            target_class=f_node,
+            base_node=kg_node,
+        )
     else:
         g.add((kg_node, RDF.type, SNS.process))
         for inp in G.predecessors(node_name):
             g.add((kg_node, SNS.has_part, namespace[inp]))
         for out in G.successors(node_name):
             g.add((kg_node, SNS.has_part, namespace[out]))
+        g.add((kg_node, SNS.has_participant, f_node))
     return g
 
 
@@ -317,7 +326,14 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) ->
             g.add((node, RDF.type, OWL.Class))
         assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
         if step == "node":
-            g += _wf_node_to_graph(comp[0], node, G, t_box, namespace=namespace)
+            g += _wf_node_to_graph(
+                node_name=comp[0],
+                kg_node=node,
+                data=data,
+                G=G,
+                t_box=t_box,
+                namespace=namespace,
+            )
         else:
             g += _wf_io_to_graph(
                 step=step,
