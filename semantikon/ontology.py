@@ -18,7 +18,6 @@ OBI: Namespace = Namespace("http://purl.obolibrary.org/obo/OBI_")
 PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
 SCHEMA: Namespace = Namespace("http://schema.org/")
 STATO: Namespace = Namespace("http://purl.obolibrary.org/obo/STATO_")
-SWO: Namespace = Namespace("http://www.ebi.ac.uk/swo/SWO_")
 BASE: Namespace = Namespace("http://pyiron.org/ontology/")
 
 
