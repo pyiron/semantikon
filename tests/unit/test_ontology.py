@@ -45,10 +45,7 @@ class TestOntology(unittest.TestCase):
     def test_full_ontology(self):
         g_ref = Graph()
         with open(self.static_dir / "kinetic_energy_workflow.ttl", "r") as f:
-            g_ref.parse(
-                data=f.read().replace("__main__", __name__),
-                format="turtle"
-            )
+            g_ref.parse(data=f.read().replace("__main__", __name__), format="turtle")
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
         g = onto.get_knowledge_graph(wf_dict, t_box=True)
         _, in_first, in_second = graph_diff(g, g_ref)
