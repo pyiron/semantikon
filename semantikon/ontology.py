@@ -5,6 +5,7 @@ import networkx as nx
 from flowrep.tools import get_function_metadata
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
+from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
 from semantikon.qudt import UnitsDict
@@ -449,5 +450,36 @@ def _to_owl_restriction(
     g.add((restriction_node, restriction_type, target_class))
     if base_node is not None:
         g.add((base_node, RDFS.subClassOf, restriction_node))
+
+    return g
+
+
+def _to_shacl_shape(
+    on_property: URIRef,
+    target_class: URIRef,
+    shape_node: BNode | URIRef | None = None,
+    base_node: URIRef | None = None,
+    min_count: int | None = 1,
+) -> Graph:
+    g = Graph()
+
+    if shape_node is None:
+        shape_node = BNode()
+
+    # Declare PropertyShape
+    g.add((shape_node, RDF.type, SH.PropertyShape))
+    g.add((shape_node, SH.path, on_property))
+    g.add((shape_node, SH["class"], target_class))
+
+    # Existential semantics (OWL someValuesFrom analogue)
+    if min_count is not None:
+        g.add((shape_node, SH.minCount, Literal(min_count)))
+
+    # Attach to a NodeShape via targetClass
+    if base_node is not None:
+        node_shape = BNode()
+        g.add((node_shape, RDF.type, SH.NodeShape))
+        g.add((node_shape, SH.targetClass, base_node))
+        g.add((node_shape, SH.property, shape_node))
 
     return g
