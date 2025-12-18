@@ -6,6 +6,7 @@ import networkx as nx
 from flowrep.tools import get_function_metadata
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
+from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
 from semantikon.qudt import UnitsDict
@@ -40,11 +41,6 @@ class SNS:
     continuant: URIRef = BFO["0000002"]
     value_specification: URIRef = OBI["0001933"]
     specifies_value_of: URIRef = OBI["0001927"]
-
-
-class NS:
-    PREFIX = "semantikon_parent_prefix"
-    TYPE = "semantikon_type"
 
 
 ud = UnitsDict()
@@ -220,10 +216,6 @@ def _wf_io_to_graph(
             if len(out) == 1:
                 assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
                 if G.nodes[out[0]]["step"] == "outputs":
-                    target_class = namespace[out[0]]
-                else:
-                    target_class = None
-                if target_class is not None:
                     g += _to_owl_restriction(
                         on_property=SNS.is_specified_output_of,
                         target_class=namespace[out[0]],
@@ -383,12 +375,8 @@ def serialize_data(wf_dict: dict, prefix: str | None = None) -> tuple[dict, dict
     for io_ in ["inputs", "outputs"]:
         for key, channel in wf_dict[io_].items():
             channel_label = _remove_us(prefix, io_, key)
-            assert NS.PREFIX not in channel, f"{NS.PREFIX} already set"
-            assert NS.TYPE not in channel, f"{NS.TYPE} already set"
-            channel_dict[channel_label] = channel | {
-                NS.PREFIX: prefix,
-                NS.TYPE: io_,
-            }
+            assert "semantikon_type" not in channel, "semantikon_type already set"
+            channel_dict[channel_label] = channel | {"semantikon_type": io_}
     for key, node in wf_dict.get("nodes", {}).items():
         child_node, child_channel, child_edges = serialize_data(
             node, prefix=_dot(prefix, key)
@@ -479,3 +467,34 @@ def _get_graph_hash(G: nx.DiGraph, with_global_inputs: bool = True) -> str:
     return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(
         G_tmp, node_attr="canon"
     )
+
+
+def _to_shacl_shape(
+    on_property: URIRef,
+    target_class: URIRef,
+    shape_node: BNode | URIRef | None = None,
+    base_node: URIRef | None = None,
+    min_count: int | None = 1,
+) -> Graph:
+    g = Graph()
+
+    if shape_node is None:
+        shape_node = BNode()
+
+    # Declare PropertyShape
+    g.add((shape_node, RDF.type, SH.PropertyShape))
+    g.add((shape_node, SH.path, on_property))
+    g.add((shape_node, SH["class"], target_class))
+
+    # Existential semantics (OWL someValuesFrom analogue)
+    if min_count is not None:
+        g.add((shape_node, SH.minCount, Literal(min_count)))
+
+    # Attach to a NodeShape via targetClass
+    if base_node is not None:
+        node_shape = BNode()
+        g.add((node_shape, RDF.type, SH.NodeShape))
+        g.add((node_shape, SH.targetClass, base_node))
+        g.add((node_shape, SH.property, shape_node))
+
+    return g
