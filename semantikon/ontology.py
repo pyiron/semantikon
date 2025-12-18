@@ -4,7 +4,7 @@ from typing import Any, TypeAlias
 import networkx as nx
 from flowrep.tools import get_function_metadata
 from owlrl import DeductiveClosure, OWLRL_Semantics
-from rdflib import OWL, PROV, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
+from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.term import IdentifiedNode
 
 from semantikon.qudt import UnitsDict
@@ -39,6 +39,7 @@ class SNS:
     continuant: URIRef = BFO["0000002"]
     value_specification: URIRef = OBI["0001933"]
     specifies_value_of: URIRef = OBI["0001927"]
+    derives_from: URIRef = RO["0001000"]
 
 
 ud = UnitsDict()
@@ -234,7 +235,7 @@ def _wf_io_to_graph(
             if inp.endswith(data["derived_from"].replace(".", "-")):
                 if t_box:
                     g += _to_owl_restriction(
-                        on_property=PROV.wasDerivedFrom,
+                        on_property=SNS.derives_from,
                         target_class=BNode(namespace[f"{inp}_data"]),
                         base_node=data_node,
                     )
@@ -310,7 +311,6 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) ->
     g.bind("qudt", str(QUDT))
     g.bind("unit", "http://qudt.org/vocab/unit/")
     g.bind("sns", str(BASE))
-    g.bind("prov", str(PROV))
     g.bind("iao", str(IAO))
     g.bind("bfo", str(BFO))
     g.bind("obi", str(OBI))
