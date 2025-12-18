@@ -41,7 +41,7 @@ class SNS:
     continuant: URIRef = BFO["0000002"]
     value_specification: URIRef = OBI["0001933"]
     specifies_value_of: URIRef = OBI["0001927"]
-    software: URIRef = SWO["0000001"]
+    software_method: URIRef = IAO["0000591"]
 
 
 ud = UnitsDict()
