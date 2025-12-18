@@ -3,7 +3,7 @@ from pathlib import Path
 from textwrap import dedent
 
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, URIRef, Graph, Namespace
+from rdflib import OWL, RDF, RDFS, Graph, Namespace, URIRef
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
