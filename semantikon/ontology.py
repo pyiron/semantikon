@@ -5,6 +5,7 @@ import networkx as nx
 from flowrep.tools import get_function_metadata
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import OWL, PROV, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
+from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
 from semantikon.qudt import UnitsDict
@@ -39,6 +40,7 @@ class SNS:
     continuant: URIRef = BFO["0000002"]
     value_specification: URIRef = OBI["0001933"]
     specifies_value_of: URIRef = OBI["0001927"]
+    software_method: URIRef = IAO["0000591"]
 
 
 ud = UnitsDict()
@@ -156,11 +158,14 @@ def get_knowledge_graph(
 def _wf_node_to_graph(
     node_name: str,
     kg_node: URIRef,
+    data: dict,
     G: nx.DiGraph,
     t_box: bool,
     namespace: Namespace,
 ) -> Graph:
     g = Graph()
+    f_node = namespace[data["function"]["identifier"].replace(".", "-")]
+    g.add((f_node, RDF.type, SNS.software_method))
     if t_box:
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
@@ -170,12 +175,18 @@ def _wf_node_to_graph(
                     base_node=kg_node,
                 )
         g.add((kg_node, RDFS.subClassOf, SNS.process))
+        g += _to_owl_restriction(
+            on_property=SNS.has_participant,
+            target_class=f_node,
+            base_node=kg_node,
+        )
     else:
         g.add((kg_node, RDF.type, SNS.process))
         for inp in G.predecessors(node_name):
             g.add((kg_node, SNS.has_part, namespace[inp]))
         for out in G.successors(node_name):
             g.add((kg_node, SNS.has_part, namespace[out]))
+        g.add((kg_node, SNS.has_participant, f_node))
     return g
 
 
@@ -366,7 +377,14 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) ->
             g.add((node, RDF.type, OWL.Class))
         assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
         if step == "node":
-            g += _wf_node_to_graph(comp[0], node, G, t_box, namespace=namespace)
+            g += _wf_node_to_graph(
+                node_name=comp[0],
+                kg_node=node,
+                data=data,
+                G=G,
+                t_box=t_box,
+                namespace=namespace,
+            )
         else:
             g += _wf_io_to_graph(
                 step=step,
@@ -514,3 +532,33 @@ def _get_graph_hash(G: nx.DiGraph) -> str:
         if "dtype" in G_tmp.nodes[node]:
             del G_tmp.nodes[node]["dtype"]
     return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(G_tmp)
+
+def _to_shacl_shape(
+    on_property: URIRef,
+    target_class: URIRef,
+    shape_node: BNode | URIRef | None = None,
+    base_node: URIRef | None = None,
+    min_count: int | None = 1,
+) -> Graph:
+    g = Graph()
+
+    if shape_node is None:
+        shape_node = BNode()
+
+    # Declare PropertyShape
+    g.add((shape_node, RDF.type, SH.PropertyShape))
+    g.add((shape_node, SH.path, on_property))
+    g.add((shape_node, SH["class"], target_class))
+
+    # Existential semantics (OWL someValuesFrom analogue)
+    if min_count is not None:
+        g.add((shape_node, SH.minCount, Literal(min_count)))
+
+    # Attach to a NodeShape via targetClass
+    if base_node is not None:
+        node_shape = BNode()
+        g.add((node_shape, RDF.type, SH.NodeShape))
+        g.add((node_shape, SH.targetClass, base_node))
+        g.add((node_shape, SH.property, shape_node))
+
+    return g

@@ -2,7 +2,8 @@ import unittest
 from pathlib import Path
 from textwrap import dedent
 
-from rdflib import OWL, RDFS, Graph, Namespace
+from pyshacl import validate
+from rdflib import OWL, RDF, RDFS, Graph, Namespace, URIRef
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
@@ -54,7 +55,10 @@ class TestOntology(unittest.TestCase):
     def test_full_ontology(self):
         g_ref = Graph()
         with open(self.static_dir / "kinetic_energy_workflow.ttl", "r") as f:
-            g_ref.parse(data=f.read(), format="turtle")
+            g_ref.parse(
+                data=f.read().replace("__main__", __name__.replace(".", "-")),
+                format="turtle",
+            )
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
         g = onto.get_knowledge_graph(wf_dict, t_box=True)
         _, in_first, in_second = graph_diff(g, g_ref)
@@ -190,6 +194,89 @@ class TestOntology(unittest.TestCase):
     def test_value(self):
         wf_dict = my_kinetic_energy_workflow.run(distance=1.0, time=2.0, mass=3.0)
         g = onto.get_knowledge_graph(wf_dict, t_box=False)
+
+    def test_shacl_validation(self):
+        Person = URIRef(EX + "Person")
+        Email = URIRef(EX + "Email")
+        hasEmail = URIRef(EX + "hasEmail")
+
+        alice = URIRef(EX + "alice")
+        bob = URIRef(EX + "bob")
+        email1 = URIRef(EX + "email1")
+
+        with self.subTest("Data conforms with valid property"):
+            data = Graph()
+            data.add((alice, RDF.type, Person))
+            data.add((alice, hasEmail, email1))
+            data.add((email1, RDF.type, Email))
+
+            shapes = onto._to_shacl_shape(
+                on_property=hasEmail,
+                target_class=Email,
+                base_node=Person,
+            )
+
+            conforms, _, _ = validate(
+                data_graph=data,
+                shacl_graph=shapes,
+            )
+
+            self.assertTrue(conforms)
+
+        with self.subTest("Data fails when property is missing"):
+            data = Graph()
+            data.add((alice, RDF.type, Person))
+
+            shapes = onto._to_shacl_shape(
+                on_property=hasEmail,
+                target_class=Email,
+                base_node=Person,
+            )
+
+            conforms, _, report = validate(
+                data_graph=data,
+                shacl_graph=shapes,
+            )
+
+            self.assertFalse(conforms)
+            self.assertIn("minCount", report)
+
+        with self.subTest("Data fails when property value is wrong class"):
+            data = Graph()
+            data.add((alice, RDF.type, Person))
+            data.add((alice, hasEmail, bob))  # bob not typed as Email
+
+            shapes = onto._to_shacl_shape(
+                on_property=hasEmail,
+                target_class=Email,
+                base_node=Person,
+            )
+
+            conforms, _, report = validate(
+                data_graph=data,
+                shacl_graph=shapes,
+            )
+
+            self.assertFalse(conforms)
+            self.assertIn("class", report)
+
+        with self.subTest("Non-target nodes are ignored"):
+            data = Graph()
+            data.add((bob, hasEmail, email1))
+            data.add((email1, RDF.type, Email))
+
+            shapes = onto._to_shacl_shape(
+                on_property=hasEmail,
+                target_class=Email,
+                base_node=Person,
+            )
+
+            conforms, _, _ = validate(
+                data_graph=data,
+                shacl_graph=shapes,
+            )
+
+            self.assertTrue(conforms)
 
 
 if __name__ == "__main__":
