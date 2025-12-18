@@ -3,7 +3,7 @@ from pathlib import Path
 from textwrap import dedent
 
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, URIRef, Graph, Namespace
+from rdflib import OWL, RDF, RDFS, Graph, Namespace, URIRef
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
@@ -45,7 +45,10 @@ class TestOntology(unittest.TestCase):
     def test_full_ontology(self):
         g_ref = Graph()
         with open(self.static_dir / "kinetic_energy_workflow.ttl", "r") as f:
-            g_ref.parse(data=f.read(), format="turtle")
+            g_ref.parse(
+                data=f.read().replace("__main__", __name__),
+                format="turtle"
+            )
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
         g = onto.get_knowledge_graph(wf_dict, t_box=True)
         _, in_first, in_second = graph_diff(g, g_ref)
