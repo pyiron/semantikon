@@ -332,17 +332,20 @@ def _get_successor_nodes(G, node_name):
                 yield node
 
 
-def serialize_and_convert_to_networkx(wf_dict: dict, prefix: str | None = None) -> nx.DiGraph:
+def serialize_and_convert_to_networkx(
+    wf_dict: dict, prefix: str | None = None
+) -> nx.DiGraph:
     """
     Serializes a workflow dictionary and converts it into a NetworkX directed graph.
-    
+
     Args:
         wf_dict (dict): The workflow dictionary to process.
         prefix (str | None): Optional prefix for node names.
-    
+
     Returns:
         nx.DiGraph: A directed graph representation of the workflow.
     """
+
     def _remove_us(*args) -> str:
         """Remove underscores from the components of a dotted string."""
         s = ".".join(args)
@@ -387,7 +390,9 @@ def serialize_and_convert_to_networkx(wf_dict: dict, prefix: str | None = None) 
             edge_list.append([_remove_us(prefix, a) for a in args])
         return node_dict, channel_dict, edge_list
 
-    def _build_graph(node_dict: dict, channel_dict: dict, edge_list: list) -> nx.DiGraph:
+    def _build_graph(
+        node_dict: dict, channel_dict: dict, edge_list: list
+    ) -> nx.DiGraph:
         """Build a NetworkX directed graph from node, channel, and edge data."""
         G = nx.DiGraph()
 
