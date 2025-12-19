@@ -353,7 +353,7 @@ def serialize_and_convert_to_networkx(
 
     def _dot(*args) -> str:
         """Join components with a dot, ignoring None values."""
-        return ".".join(filter(None, args))
+        return ".".join([a for a in args if a is not None])
 
     def _serialize_workflow(wf_dict: dict, prefix: str) -> tuple[dict, dict, list]:
         """Serialize the workflow dictionary into node, channel, and edge data."""
