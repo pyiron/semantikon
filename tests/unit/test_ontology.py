@@ -152,7 +152,7 @@ class TestOntology(unittest.TestCase):
 
     def test_hash(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        G = onto._wf_data_to_networkx(*onto.serialize_data(wf_dict))
+        G = onto.serialize_and_convert_to_networkx(wf_dict)
         self.assertIsInstance(onto._get_graph_hash(G), str)
         self.assertEqual(len(onto._get_graph_hash(G)), 32)
         self.assertIn(
@@ -161,7 +161,7 @@ class TestOntology(unittest.TestCase):
             msg="dtype should not be deleted after hashing",
         )
         wf_dict = my_kinetic_energy_workflow.run(1, 2, 3)
-        G_run = onto._wf_data_to_networkx(*onto.serialize_data(wf_dict))
+        G_run = onto.serialize_and_convert_to_networkx(wf_dict)
         self.assertEqual(
             onto._get_graph_hash(G),
             onto._get_graph_hash(G_run, with_global_inputs=False),
