@@ -167,7 +167,9 @@ def _wf_node_to_graph(
 ) -> Graph:
     g = Graph()
     f_node = namespace[data["function"]["identifier"].replace(".", "-")]
-    g.add((f_node, RDF.type, SNS.software_method))
+    if len(g.triples((f_node, None, None))) == 0:
+        g.add((f_node, RDF.type, SNS.software_method))
+        g.add((f_node, RDFS.label, Literal(data["function"]["qualname"])))
     if t_box:
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
