@@ -201,7 +201,6 @@ class TestOntology(unittest.TestCase):
             onto._get_graph_hash(G_run, with_global_inputs=True),
         )
 
-
     def test_shacl_validation(self):
         Person = URIRef(EX + "Person")
         Email = URIRef(EX + "Email")

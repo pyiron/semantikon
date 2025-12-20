@@ -356,7 +356,7 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) ->
     g.bind("schema", str(SCHEMA))
     g.bind("stato", str(STATO))
     if namespace is not None:
-        graph.bind("ns", str(namespace))
+        g.bind("ns", str(namespace))
     if namespace is None:
         namespace = BASE
     workflow_node = namespace[G.name]
