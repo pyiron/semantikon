@@ -190,6 +190,32 @@ def _get_data_node(io: str, G: nx.DiGraph, t_box: bool = False) -> BNode:
     return _get_data_node(candidate[0], G)
 
 
+def _translate_derives_from(
+    data: dict,
+    node_name: str,
+    data_node: BNode,
+    G: nx.DiGraph,
+    t_box: bool,
+    namespace: Namespace
+) -> Graph:
+    g = Graph()
+    for inp in G.predecessors(node_name.split("-outputs-")[0]):
+        if inp.endswith(data["derived_from"].replace(".", "-")):
+            target_class = BNode(namespace[_get_data_node(io=inp, G=G, t_box=t_box)])
+            if t_box:
+                g += _to_owl_restriction(
+                    on_property=SNS.derives_from,
+                    target_class=target_class,
+                    base_node=data_node,
+                )
+            else:
+                g.add((data_node, SNS.derives_from, target_class))
+            return g
+    raise ValueError(
+        f"derived_from {data['derived_from']} not found in predecessors"
+    )
+
+
 def _wf_io_to_graph(
     step: str,
     node_name: str,
@@ -247,27 +273,14 @@ def _wf_io_to_graph(
         g.add((data_node, SNS.specifies_value_of, SNS.value_specification))
     if "derived_from" in data:
         assert step == "outputs", "derived_from only valid for outputs"
-        for inp in G.predecessors(node_name.split("-outputs-")[0]):
-            if inp.endswith(data["derived_from"].replace(".", "-")):
-                if t_box:
-                    g += _to_owl_restriction(
-                        on_property=SNS.derives_from,
-                        target_class=BNode(namespace[f"{inp}_data"]),
-                        base_node=data_node,
-                    )
-                else:
-                    g.add(
-                        (
-                            data_node,
-                            PROV.wasDerivedFrom,
-                            BNode(namespace[f"{inp}_data"]),
-                        )
-                    )
-                break
-        else:
-            raise ValueError(
-                f"derived_from {data['derived_from']} not found in predecessors"
-            )
+        g += _translate_derives_from(
+            data=data,
+            node_name=node_name,
+            data_node=data_node,
+            G=G,
+            t_box=t_box,
+            namespace=namespace
+        )
     return g
 
 
