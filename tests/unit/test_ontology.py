@@ -157,6 +157,27 @@ class TestOntology(unittest.TestCase):
                 len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
             )
 
+    def test_hash(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        G = onto.serialize_and_convert_to_networkx(wf_dict)
+        self.assertIsInstance(onto._get_graph_hash(G), str)
+        self.assertEqual(len(onto._get_graph_hash(G)), 32)
+        self.assertIn(
+            "dtype",
+            G.nodes["my_kinetic_energy_workflow-get_speed_0-inputs-distance"],
+            msg="dtype should not be deleted after hashing",
+        )
+        wf_dict = my_kinetic_energy_workflow.run(1, 2, 3)
+        G_run = onto.serialize_and_convert_to_networkx(wf_dict)
+        self.assertEqual(
+            onto._get_graph_hash(G),
+            onto._get_graph_hash(G_run, with_global_inputs=False),
+        )
+        self.assertNotEqual(
+            onto._get_graph_hash(G),
+            onto._get_graph_hash(G_run, with_global_inputs=True),
+        )
+
     def test_shacl_validation(self):
         Person = URIRef(EX + "Person")
         Email = URIRef(EX + "Email")
