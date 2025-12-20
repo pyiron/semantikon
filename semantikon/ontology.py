@@ -392,7 +392,9 @@ def serialize_and_convert_to_networkx(
                 if key not in ["nodes", "edges"]
             }
         }
-        node_dict[prefix]["function"] = get_function_metadata(wf_dict["function"])
+        node_dict[prefix]["function"] = get_function_metadata(
+            wf_dict["function"], full_metadata=True
+        )
         node_dict[prefix]["function"]["identifier"] = ".".join(
             (
                 node_dict[prefix]["function"]["module"],

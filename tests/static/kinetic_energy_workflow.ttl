@@ -1,5 +1,6 @@
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
@@ -153,3 +154,8 @@
 
 <http://pyiron.org/ontology/__main__-get_speed-not_defined> a <http://purl.obolibrary.org/obo/IAO_0000591> ;
     rdfs:label "get_speed" .
+
+
+[] a <http://purl.obolibrary.org/obo/IAO_0000300> ;
+    <http://purl.obolibrary.org/obo/IAO_0000219> <http://pyiron.org/ontology/__main__-get_speed-not_defined> ;
+    rdf:value "some random docstring" .
