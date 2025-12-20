@@ -18,6 +18,7 @@ def get_speed(
     distance: u(float, uri=PMD["0040001"], units="meter"),
     time: u(float, units="second"),
 ) -> u(float, units="meter/second"):
+    """some random docstring"""
     speed = distance / time
     return speed
 
