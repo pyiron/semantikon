@@ -36,6 +36,16 @@ def my_kinetic_energy_workflow(distance: u(float, uri=PMD["0040001"]), time, mas
     return kinetic_energy
 
 
+def a_to_a(a: float) -> u(float, derived_from="inputs.a"):
+    return a
+
+
+@workflow
+def df_workflow(a):
+    a = a_to_a(a)
+    return a
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -45,7 +55,10 @@ class TestOntology(unittest.TestCase):
     def test_full_ontology(self):
         g_ref = Graph()
         with open(self.static_dir / "kinetic_energy_workflow.ttl", "r") as f:
-            g_ref.parse(data=f.read(), format="turtle")
+            g_ref.parse(
+                data=f.read().replace("__main__", __name__.replace(".", "-")),
+                format="turtle",
+            )
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
         g = onto.get_knowledge_graph(wf_dict, t_box=True)
         _, in_first, in_second = graph_diff(g, g_ref)
@@ -157,6 +170,26 @@ class TestOntology(unittest.TestCase):
             G.nodes["my_kinetic_energy_workflow-get_speed_0-inputs-distance"],
             msg="dtype should not be deleted after hashing",
         )
+        self.assertEqual(
+            onto._get_data_node(
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity", G
+            ),
+            onto._get_data_node(
+                "my_kinetic_energy_workflow-get_speed_0-outputs-speed", G
+            ),
+        )
+        self.assertNotEqual(
+            onto._get_data_node(
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity", G
+            ),
+            onto._get_data_node(
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output", G
+            ),
+        )
+
+    def test_value(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        G = onto.serialize_and_convert_to_networkx(wf_dict)
         wf_dict = my_kinetic_energy_workflow.run(1, 2, 3)
         G_run = onto.serialize_and_convert_to_networkx(wf_dict)
         self.assertEqual(
