@@ -162,7 +162,7 @@ class TestOntology(unittest.TestCase):
 
     def test_hash(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        G = onto._wf_data_to_networkx(*onto.serialize_data(wf_dict))
+        G = onto.serialize_and_convert_to_networkx(wf_dict)
         self.assertIsInstance(onto._get_graph_hash(G), str)
         self.assertEqual(len(onto._get_graph_hash(G)), 32)
         self.assertIn(
@@ -170,10 +170,6 @@ class TestOntology(unittest.TestCase):
             G.nodes["my_kinetic_energy_workflow-get_speed_0-inputs-distance"],
             msg="dtype should not be deleted after hashing",
         )
-
-    def test_hash(self):
-        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        G = onto._wf_data_to_networkx(*onto.serialize_data(wf_dict))
         self.assertEqual(
             onto._get_data_node(
                 "my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity", G
@@ -192,8 +188,19 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_value(self):
-        wf_dict = my_kinetic_energy_workflow.run(distance=1.0, time=2.0, mass=3.0)
-        g = onto.get_knowledge_graph(wf_dict, t_box=False)
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        G = onto.serialize_and_convert_to_networkx(wf_dict)
+        wf_dict = my_kinetic_energy_workflow.run(1, 2, 3)
+        G_run = onto.serialize_and_convert_to_networkx(wf_dict)
+        self.assertEqual(
+            onto._get_graph_hash(G),
+            onto._get_graph_hash(G_run, with_global_inputs=False),
+        )
+        self.assertNotEqual(
+            onto._get_graph_hash(G),
+            onto._get_graph_hash(G_run, with_global_inputs=True),
+        )
+
 
     def test_shacl_validation(self):
         Person = URIRef(EX + "Person")
