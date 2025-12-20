@@ -42,6 +42,8 @@ class SNS:
     value_specification: URIRef = OBI["0001933"]
     specifies_value_of: URIRef = OBI["0001927"]
     software_method: URIRef = IAO["0000591"]
+    textual_entity: URIRef = IAO["0000300"]
+    denotes: URIRef = IAO["0000219"]
 
 
 ud = UnitsDict()
@@ -158,9 +160,14 @@ def _wf_node_to_graph(
 ) -> Graph:
     g = Graph()
     f_node = namespace[data["function"]["identifier"].replace(".", "-")]
-    if len(g.triples((f_node, None, None))) == 0:
+    if list(g.triples((f_node, None, None))) == []:
         g.add((f_node, RDF.type, SNS.software_method))
         g.add((f_node, RDFS.label, Literal(data["function"]["qualname"])))
+        if data["function"].get("docstring", "") != "":
+            docstring = BNode(f_node + "_docstring")
+            g.add((docstring, RDF.type, SNS.textual_entity))
+            g.add((docstring, RDF.value, Literal(data["function"]["docstring"])))
+            g.add((docstring, SNS.denotes, f_node))
     if t_box:
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
