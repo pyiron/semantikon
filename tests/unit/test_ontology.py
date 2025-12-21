@@ -36,19 +36,9 @@ def my_kinetic_energy_workflow(distance: u(float, uri=PMD["0040001"]), time, mas
     return kinetic_energy
 
 
-def a_to_a(a: float) -> u(float, derived_from="inputs.a"):
-    return a
-
-
-@workflow
-def df_workflow(a):
-    a = a_to_a(a)
-    return a
-
-
 def f_triples(
     a: float, b: u(float, triples=("self", EX.relatedTo, "inputs.a"))
-) -> u(float, triples=((EX.hasSomeRelation, "inputs.a"))):
+) -> u(float, triples=((EX.hasSomeRelation, "inputs.b")), derived_from="inputs.a"):
     return a
 
 
@@ -297,7 +287,7 @@ class TestOntology(unittest.TestCase):
             self.assertTrue(conforms)
 
     def test_derives_from(self):
-        wf_dict = df_workflow.serialize_workflow()
+        wf_dict = wf_triples.serialize_workflow()
         g = onto.get_knowledge_graph(wf_dict, t_box=True)
         query = dedent(
             """\
@@ -314,13 +304,13 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(len(g.query(query)), 1)
         self.assertEqual(
             list(g.query(query))[0]["main_class"],
-            BNode(onto.BASE["df_workflow-a_to_a_0-outputs-a_data"]),
+            BNode(onto.BASE["wf_triples-f_triples_0-outputs-a_data"]),
         )
         g = onto.get_knowledge_graph(wf_dict, t_box=False)
         result = list(
             g.predicates(
-                (BNode(onto.BASE["df_workflow-a_to_a_0-outputs-a_data"])),
-                BNode(onto.BASE["df_workflow-inputs-a_data"]),
+                BNode(onto.BASE["wf_triples-f_triples_0-outputs-a_data"]),
+                BNode(onto.BASE["wf_triples-inputs-a_data"]),
             )
         )
         self.assertEqual(len(result), 1)
