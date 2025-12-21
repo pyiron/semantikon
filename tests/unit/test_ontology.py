@@ -292,7 +292,6 @@ class TestOntology(unittest.TestCase):
         query = dedent(
             """\
         PREFIX ro: <http://purl.obolibrary.org/obo/RO_>
-        PREFIX owl: <http://www.w3.org/2002/07/owl#>
         SELECT ?main_class WHERE {
             ?derivedFrom owl:someValuesFrom ?input_class .
             ?derivedFrom owl:onProperty ro:0001000 .
