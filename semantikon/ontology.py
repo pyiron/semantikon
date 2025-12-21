@@ -209,13 +209,13 @@ def _translate_triples(
     t_box: bool,
     namespace: Namespace,
 ) -> Graph:
-    def _local_str_to_uriref(s: str | None) -> IdentifiedNode | BNode:
-        if s == "self" or s is None:
+    def _local_str_to_uriref(t: str | None) -> IdentifiedNode | BNode:
+        if t == "self" or t is None:
             return data_node
-        elif isinstance(s, str) and (s.startswith("inputs") or s.startswith("outputs")):
-            return BNode(namespace[_detect_io_from_str(G=G, seeked_io=s, ref_io=node_name)])
+        elif isinstance(t, str) and (t.startswith("inputs") or t.startswith("outputs")):
+            return BNode(namespace[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)])
         else:
-            raise ValueError(f"{s} not recognized")
+            raise ValueError(f"{t} not recognized")
 
     g = Graph()
     for triple in triples:
@@ -293,6 +293,8 @@ def _wf_io_to_graph(
             g.add((data_node, RDF.type, data["uri"]))
         g.add((data_node, SNS.specifies_value_of, SNS.value_specification))
     triples = data.get("triples", [])
+    if triples != [] and not isinstance(triples[0], list | tuple):
+        triples = [triples]
     if "derived_from" in data:
         assert step == "outputs", "derived_from only valid for outputs"
         triples.append(("self", SNS.derives_from, data["derived_from"]))
