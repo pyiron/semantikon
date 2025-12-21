@@ -32,7 +32,6 @@ class SNS:
     is_specified_input_of: URIRef = OBI["0000295"]
     has_specified_output: URIRef = OBI["0000299"]
     is_specified_output_of: URIRef = OBI["0000312"]
-    has_unit: URIRef = QUDT["hasUnit"]
     input_assignment: URIRef = PMD["0000066"]
     executes: URIRef = STATO["0000102"]
     output_assignment: URIRef = PMD["0000067"]
@@ -265,7 +264,7 @@ def _wf_io_to_graph(
         g.add((node, RDFS.subClassOf, io_assignment))
         if "units" in data:
             g += _to_owl_restriction(
-                on_property=SNS.has_unit,
+                on_property=QUDT.hasUnit,
                 target_class=_units_to_uri(data["units"]),
                 restriction_type=OWL.hasValue,
                 base_node=data_node,
@@ -294,7 +293,7 @@ def _wf_io_to_graph(
         if "value" in data and list(g.objects(data_node, RDF.value)) == []:
             g.add((data_node, RDF.value, Literal(data["value"])))
         if "units" in data:
-            g.add((data_node, OWL.hasValue, _units_to_uri(data["units"])))
+            g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
         if "uri" in data:
             g.add((data_node, RDF.type, data["uri"]))
         g.add((data_node, SNS.specifies_value_of, SNS.value_specification))

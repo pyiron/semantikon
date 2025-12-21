@@ -72,6 +72,14 @@ class TestOntology(unittest.TestCase):
             self.assertEqual(
                 len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
             )
+        g = onto.get_knowledge_graph(wf_dict, t_box=False)
+        self.assertIn(
+            (
+                BNode(onto.BASE["my_kinetic_energy_workflow-inputs-distance_data"]),
+                URIRef("http://qudt.org/vocab/unit/M"),
+            ),
+            list(g.subject_objects(onto.QUDT.hasUnit)),
+        )
 
     def test_to_restrictions(self):
         # Common reference graph for single target class
