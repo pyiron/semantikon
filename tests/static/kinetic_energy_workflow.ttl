@@ -35,7 +35,8 @@
                             owl:hasValue <http://qudt.org/vocab/unit/KiloGM> ;
                             owl:onProperty <http://qudt.org/schema/qudt/hasUnit> ],
                         <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
-        <https://w3id.org/pmd/co/PMD_0000066> .
+        <https://w3id.org/pmd/co/PMD_0000066> ;
+    rdfs:label "mass" .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
@@ -47,7 +48,8 @@
                             owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000312> ;
                             owl:someValuesFrom <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-outputs-speed> ],
                         <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
-        <https://w3id.org/pmd/co/PMD_0000066> .
+        <https://w3id.org/pmd/co/PMD_0000066> ;
+    rdfs:label "velocity" .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
@@ -59,7 +61,8 @@
                             owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001927> ;
                             owl:someValuesFrom <https://w3id.org/pmd/co/PMD_0020142> ],
                         <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
-        <https://w3id.org/pmd/co/PMD_0000067> .
+        <https://w3id.org/pmd/co/PMD_0000067> ;
+    rdfs:label "output" .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
@@ -86,7 +89,8 @@
                             owl:hasValue <http://qudt.org/vocab/unit/M> ;
                             owl:onProperty <http://qudt.org/schema/qudt/hasUnit> ],
                         <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
-        <https://w3id.org/pmd/co/PMD_0000066> .
+        <https://w3id.org/pmd/co/PMD_0000066> ;
+    rdfs:label "distance" .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-inputs-time> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
@@ -95,7 +99,8 @@
                             owl:hasValue <http://qudt.org/vocab/unit/SEC> ;
                             owl:onProperty <http://qudt.org/schema/qudt/hasUnit> ],
                         <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
-        <https://w3id.org/pmd/co/PMD_0000066> .
+        <https://w3id.org/pmd/co/PMD_0000066> ;
+    rdfs:label "time" .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-distance> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
@@ -104,25 +109,29 @@
                             owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001927> ;
                             owl:someValuesFrom <https://w3id.org/pmd/co/PMD_0040001> ],
                         <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
-        <https://w3id.org/pmd/co/PMD_0000066> .
+        <https://w3id.org/pmd/co/PMD_0000066> ;
+    rdfs:label "distance" .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-mass> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
             owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
             owl:someValuesFrom [ rdfs:subClassOf <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
-        <https://w3id.org/pmd/co/PMD_0000066> .
+        <https://w3id.org/pmd/co/PMD_0000066> ;
+    rdfs:label "mass" .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow-inputs-time> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
             owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000293> ;
             owl:someValuesFrom [ rdfs:subClassOf <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
-        <https://w3id.org/pmd/co/PMD_0000066> .
+        <https://w3id.org/pmd/co/PMD_0000066> ;
+    rdfs:label "time" .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow-outputs-kinetic_energy> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
             owl:onProperty <http://purl.obolibrary.org/obo/OBI_0000299> ;
             owl:someValuesFrom [ rdfs:subClassOf <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
-        <https://w3id.org/pmd/co/PMD_0000067> .
+        <https://w3id.org/pmd/co/PMD_0000067> ;
+    rdfs:label "kinetic_energy" .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_kinetic_energy_0> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;
@@ -146,7 +155,8 @@
                             owl:hasValue <http://qudt.org/vocab/unit/M-PER-SEC> ;
                             owl:onProperty <http://qudt.org/schema/qudt/hasUnit> ],
                         <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
-        <https://w3id.org/pmd/co/PMD_0000067> .
+        <https://w3id.org/pmd/co/PMD_0000067> ;
+    rdfs:label "speed" .
 
 <http://pyiron.org/ontology/__main__-get_kinetic_energy-not_defined> a <http://purl.obolibrary.org/obo/IAO_0000591> .
 
