@@ -90,7 +90,7 @@
                             owl:onProperty <http://qudt.org/schema/qudt/hasUnit> ],
                         <http://purl.obolibrary.org/obo/OBI_0001933> ] ],
         <https://w3id.org/pmd/co/PMD_0000066> ;
-    rdfs:label "distance" .
+    rdfs:label "Distance" .
 
 <http://pyiron.org/ontology/my_kinetic_energy_workflow-get_speed_0-inputs-time> a owl:Class ;
     rdfs:subClassOf [ a owl:Restriction ;

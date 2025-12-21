@@ -15,7 +15,7 @@ PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
 
 
 def get_speed(
-    distance: u(float, uri=PMD["0040001"], units="meter"),
+    distance: u(float, uri=PMD["0040001"], units="meter", label="Distance"),
     time: u(float, units="second"),
 ) -> u(float, units="meter/second"):
     speed = distance / time
