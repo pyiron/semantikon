@@ -200,7 +200,9 @@ def _wf_io_to_graph(
 ) -> Graph:
     g = Graph()
     if data.get("label") is not None:
-        g.add(node, RDFS.label, Literal(data["label"]))
+        g.add((node, RDFS.label, Literal(data["label"])))
+    else:
+        g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
     io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
     data_node = BNode(namespace[_get_data_node(io=node_name, G=G, t_box=t_box)])
     has_specified_io = (
