@@ -3,7 +3,7 @@ from pathlib import Path
 from textwrap import dedent
 
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, BNode, Graph, Namespace, URIRef
+from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
@@ -318,6 +318,37 @@ class TestOntology(unittest.TestCase):
     def test_triples(self):
         wf_dict = wf_triples.serialize_workflow()
         g = onto.get_knowledge_graph(wf_dict, t_box=True)
+        query = dedent(
+            """\
+        PREFIX ro: <http://purl.obolibrary.org/obo/RO_>
+        PREFIX ex: <http://example.org/>
+        PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
+        SELECT ?input_label ?output_label WHERE {
+            ?input_data_class rdfs:label ?input_label .
+            ?input_data_class rdfs:subClassOf ?input_data_node .
+            ?input_data_node owl:onProperty obi:0000293 .
+            ?input_data_node owl:someValuesFrom ?input_b .
+            ?has_some_relation owl:someValuesFrom ?input_b .
+            ?has_some_relation owl:onProperty ex:hasSomeRelation .
+            ?data_class_node rdfs:subClassOf ?has_some_relation .
+            ?data_class owl:someValuesFrom ?data_class_node .
+            ?data_class owl:onProperty obi:0000299 .
+            ?output_class rdfs:subClassOf ?data_class .
+            ?output_class rdfs:label ?output_label
+        }
+        """
+        )
+        self.assertEqual(list(g.query(query)), [(Literal("b"), Literal("a"))])
+        g = onto.get_knowledge_graph(wf_dict, t_box=False)
+        self.assertEqual(
+            list(g.subject_objects(EX.relatedTo)),
+            [
+                (
+                    BNode(onto.BASE["wf_triples-f_triples_0-inputs-b_data"]),
+                    BNode(onto.BASE["wf_triples-inputs-a_data"]),
+                )
+            ],
+        )
 
 
 if __name__ == "__main__":
