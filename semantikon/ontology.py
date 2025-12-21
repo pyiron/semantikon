@@ -5,7 +5,7 @@ from typing import Any, TypeAlias
 import networkx as nx
 from flowrep.tools import get_function_metadata
 from owlrl import DeductiveClosure, OWLRL_Semantics
-from rdflib import OWL, PROV, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
+from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
@@ -41,6 +41,7 @@ class SNS:
     continuant: URIRef = BFO["0000002"]
     value_specification: URIRef = OBI["0001933"]
     specifies_value_of: URIRef = OBI["0001927"]
+    derives_from: URIRef = RO["0001000"]
     software_method: URIRef = IAO["0000591"]
     textual_entity: URIRef = IAO["0000300"]
     denotes: URIRef = IAO["0000219"]
@@ -145,8 +146,6 @@ def get_knowledge_graph(
     """
     G = serialize_and_convert_to_networkx(wf_dict)
     graph = _nx_to_kg(G, t_box=t_box, namespace=namespace)
-    if namespace is not None:
-        graph.bind("ns", str(namespace))
     return graph
 
 
@@ -192,6 +191,65 @@ def _wf_node_to_graph(
     return g
 
 
+def _get_data_node(io: str, G: nx.DiGraph, t_box: bool = False) -> BNode:
+    candidate = list(G.predecessors(io))
+    assert len(candidate) <= 1
+    if len(candidate) == 0 or G.nodes[candidate[0]]["step"] == "node" or t_box:
+        return f"{io}_data"
+    return _get_data_node(candidate[0], G)
+
+
+def _detect_io_from_str(G: nx.DiGraph, seeked_io: str, ref_io: str) -> str:
+    main_node = ref_io.replace(".", "-").split("-outputs-")[0].split("-inputs-")[0]
+    candidate = (
+        G.predecessors(main_node) if "inputs" in seeked_io else G.successors(main_node)
+    )
+    for io in candidate:
+        if io.endswith(seeked_io.replace(".", "-")):
+            return _get_data_node(io=io, G=G)
+    raise ValueError(f"IO {seeked_io} not found in graph")
+
+
+def _translate_triples(
+    triples: _triple_type,
+    node_name: str,
+    data_node: BNode,
+    G: nx.DiGraph,
+    t_box: bool,
+    namespace: Namespace,
+) -> Graph:
+    def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode | BNode:
+        if isinstance(t, (URIRef, BNode)):
+            return t
+        elif t == "self" or t is None:
+            return data_node
+        elif isinstance(t, str) and (t.startswith("inputs") or t.startswith("outputs")):
+            return BNode(
+                namespace[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)]
+            )
+        else:
+            raise ValueError(f"{t} not recognized")
+
+    g = Graph()
+    for triple in triples:
+        if len(triple) == 2:
+            s = data_node
+            p, o = triple
+        else:
+            s, p, o = triple
+        s = _local_str_to_uriref(s)
+        o = _local_str_to_uriref(o)
+        if t_box:
+            g += _to_owl_restriction(
+                on_property=p,
+                target_class=o,
+                base_node=s,
+            )
+        else:
+            g.add((s, p, o))
+    return g
+
+
 def _wf_io_to_graph(
     step: str,
     node_name: str,
@@ -203,13 +261,15 @@ def _wf_io_to_graph(
 ) -> Graph:
     g = Graph()
     if data.get("label") is not None:
-        g.add(node, RDFS.label, Literal(data["label"]))
+        g.add((node, RDFS.label, Literal(data["label"])))
+    else:
+        g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
     io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
+    data_node = BNode(namespace[_get_data_node(io=node_name, G=G, t_box=t_box)])
+    has_specified_io = (
+        SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
+    )
     if t_box:
-        data_node = BNode(node + "_data")
-        has_specified_io = (
-            SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
-        )
         g += _to_owl_restriction(has_specified_io, data_node, base_node=node)
         g.add((node, RDFS.subClassOf, io_assignment))
         if "units" in data:
@@ -239,12 +299,36 @@ def _wf_io_to_graph(
             )
     else:
         g.add((node, RDF.type, io_assignment))
+        g.add((node, has_specified_io, data_node))
+        if "value" in data and list(g.objects(data_node, RDF.value)) == []:
+            g.add((data_node, RDF.value, Literal(data["value"])))
+        if "units" in data:
+            g.add((data_node, OWL.hasValue, _units_to_uri(data["units"])))
+        if "uri" in data:
+            g.add((data_node, RDF.type, data["uri"]))
+        g.add((data_node, SNS.specifies_value_of, SNS.value_specification))
+    triples = data.get("triples", [])
+    if triples != [] and not isinstance(triples[0], list | tuple):
+        triples = [triples]
+    if "derived_from" in data:
+        assert step == "outputs", "derived_from only valid for outputs"
+        triples.append(("self", SNS.derives_from, data["derived_from"]))
+    if len(triples) > 0:
+        g += _translate_triples(
+            triples=triples,
+            node_name=node_name,
+            data_node=data_node,
+            G=G,
+            t_box=t_box,
+            namespace=namespace,
+        )
     return g
 
 
 def _parse_precedes(
     G: nx.DiGraph,
     workflow_node: URIRef,
+    t_box: bool,
     namespace: Namespace,
 ) -> Graph:
     g = Graph()
@@ -252,31 +336,40 @@ def _parse_precedes(
         if node[1]["step"] == "node":
             successors = list(_get_successor_nodes(G, node[0]))
             if len(successors) == 0:
-                g += _to_owl_restriction(
-                    on_property=SNS.has_part,
-                    target_class=namespace[node[0]],
-                    base_node=workflow_node,
-                )
-            else:
-                node_tmp = BNode()
-                for succ in successors:
+                if t_box:
                     g += _to_owl_restriction(
-                        on_property=SNS.precedes,
-                        target_class=namespace[succ],
-                        base_node=node_tmp,
+                        on_property=SNS.has_part,
+                        target_class=namespace[node[0]],
+                        base_node=workflow_node,
                     )
-                g.add((node_tmp, RDFS.subClassOf, namespace[node[0]]))
-                g += _to_owl_restriction(
-                    on_property=SNS.has_part,
-                    target_class=node_tmp,
-                    base_node=workflow_node,
-                )
+                else:
+                    g.add((workflow_node, SNS.has_part, namespace[node[0]]))
+            else:
+                if t_box:
+                    node_tmp = BNode()
+                    for succ in successors:
+                        g += _to_owl_restriction(
+                            on_property=SNS.precedes,
+                            target_class=namespace[succ],
+                            base_node=node_tmp,
+                        )
+                    g.add((node_tmp, RDFS.subClassOf, namespace[node[0]]))
+                    g += _to_owl_restriction(
+                        on_property=SNS.has_part,
+                        target_class=node_tmp,
+                        base_node=workflow_node,
+                    )
+                else:
+                    for succ in successors:
+                        g.add((namespace[node[0]], SNS.precedes, namespace[succ]))
+                    g.add((workflow_node, SNS.has_part, namespace[node[0]]))
     return g
 
 
 def _parse_global_io(
     G: nx.DiGraph,
     workflow_node: URIRef,
+    t_box: bool,
     namespace: Namespace,
 ) -> Graph:
     g = Graph()
@@ -293,11 +386,14 @@ def _parse_global_io(
         [global_inputs, global_outputs],
     ):
         for io in global_io:
-            g += _to_owl_restriction(
-                on_property=on_property,
-                target_class=namespace[io[0]],
-                base_node=workflow_node,
-            )
+            if t_box:
+                g += _to_owl_restriction(
+                    on_property=on_property,
+                    target_class=namespace[io[0]],
+                    base_node=workflow_node,
+                )
+            else:
+                g.add((workflow_node, on_property, namespace[io[0]]))
     return g
 
 
@@ -306,7 +402,6 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) ->
     g.bind("qudt", str(QUDT))
     g.bind("unit", "http://qudt.org/vocab/unit/")
     g.bind("sns", str(BASE))
-    g.bind("prov", str(PROV))
     g.bind("iao", str(IAO))
     g.bind("bfo", str(BFO))
     g.bind("obi", str(OBI))
@@ -314,6 +409,8 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) ->
     g.bind("pmdco", str(PMD))
     g.bind("schema", str(SCHEMA))
     g.bind("stato", str(STATO))
+    if namespace is not None:
+        g.bind("ns", str(namespace))
     if namespace is None:
         namespace = BASE
     workflow_node = namespace[G.name]
@@ -346,8 +443,12 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) ->
 
     g.add((workflow_node, RDF.type, OWL.Class))
     g.add((workflow_node, RDFS.subClassOf, SNS.process))
-    g += _parse_precedes(G, workflow_node, namespace=namespace)
-    g += _parse_global_io(G, workflow_node, namespace=namespace)
+    g += _parse_precedes(
+        G=G, workflow_node=workflow_node, t_box=t_box, namespace=namespace
+    )
+    g += _parse_global_io(
+        G=G, workflow_node=workflow_node, t_box=t_box, namespace=namespace
+    )
     return g
 
 
