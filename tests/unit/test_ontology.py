@@ -46,6 +46,15 @@ def df_workflow(a):
     return a
 
 
+def f_triples(a: float, b: u(float, triples=("self", EX.relatedTo, "inputs.a"))) -> u(float, triples=((EX.hasSomeRelation, "inputs.a"))):
+    return a
+
+@workflow
+def wf_triples(a):
+    a = f_triples(a)
+    return a
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -313,6 +322,10 @@ class TestOntology(unittest.TestCase):
         )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0], onto.SNS.derives_from)
+
+    def test_triples(self):
+        wf_dict = wf_triples.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict, t_box=True)
 
 
 if __name__ == "__main__":
