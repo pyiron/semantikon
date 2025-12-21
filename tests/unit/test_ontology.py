@@ -3,7 +3,7 @@ from pathlib import Path
 from textwrap import dedent
 
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, Graph, Namespace, URIRef
+from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
@@ -36,13 +36,15 @@ def my_kinetic_energy_workflow(distance: u(float, uri=PMD["0040001"]), time, mas
     return kinetic_energy
 
 
-def a_to_a(a: float) -> u(float, derived_from="inputs.a"):
+def f_triples(
+    a: float, b: u(float, triples=("self", EX.relatedTo, "inputs.a"))
+) -> u(float, triples=((EX.hasSomeRelation, "inputs.b")), derived_from="inputs.a"):
     return a
 
 
 @workflow
-def df_workflow(a):
-    a = a_to_a(a)
+def wf_triples(a):
+    a = f_triples(a)
     return a
 
 
@@ -283,6 +285,70 @@ class TestOntology(unittest.TestCase):
             )
 
             self.assertTrue(conforms)
+
+    def test_derives_from(self):
+        wf_dict = wf_triples.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict, t_box=True)
+        query = dedent(
+            """\
+        PREFIX ro: <http://purl.obolibrary.org/obo/RO_>
+        SELECT ?main_class WHERE {
+            ?derivedFrom owl:someValuesFrom ?input_class .
+            ?derivedFrom owl:onProperty ro:0001000 .
+            ?main_class rdfs:subClassOf ?derivedFrom .
+            ?input_class rdfs:subClassOf obi:0001933 .
+        }
+        """
+        )
+        self.assertEqual(len(g.query(query)), 1)
+        self.assertEqual(
+            list(g.query(query))[0]["main_class"],
+            BNode(onto.BASE["wf_triples-f_triples_0-outputs-a_data"]),
+        )
+        g = onto.get_knowledge_graph(wf_dict, t_box=False)
+        result = list(
+            g.predicates(
+                BNode(onto.BASE["wf_triples-f_triples_0-outputs-a_data"]),
+                BNode(onto.BASE["wf_triples-inputs-a_data"]),
+            )
+        )
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], onto.SNS.derives_from)
+
+    def test_triples(self):
+        wf_dict = wf_triples.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict, t_box=True)
+        query = dedent(
+            """\
+        PREFIX ro: <http://purl.obolibrary.org/obo/RO_>
+        PREFIX ex: <http://example.org/>
+        PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
+        SELECT ?input_label ?output_label WHERE {
+            ?input_data_class rdfs:label ?input_label .
+            ?input_data_class rdfs:subClassOf ?input_data_node .
+            ?input_data_node owl:onProperty obi:0000293 .
+            ?input_data_node owl:someValuesFrom ?input_b .
+            ?has_some_relation owl:someValuesFrom ?input_b .
+            ?has_some_relation owl:onProperty ex:hasSomeRelation .
+            ?data_class_node rdfs:subClassOf ?has_some_relation .
+            ?data_class owl:someValuesFrom ?data_class_node .
+            ?data_class owl:onProperty obi:0000299 .
+            ?output_class rdfs:subClassOf ?data_class .
+            ?output_class rdfs:label ?output_label
+        }
+        """
+        )
+        self.assertEqual(list(g.query(query)), [(Literal("b"), Literal("a"))])
+        g = onto.get_knowledge_graph(wf_dict, t_box=False)
+        self.assertEqual(
+            list(g.subject_objects(EX.relatedTo)),
+            [
+                (
+                    BNode(onto.BASE["wf_triples-f_triples_0-inputs-b_data"]),
+                    BNode(onto.BASE["wf_triples-inputs-a_data"]),
+                )
+            ],
+        )
 
 
 if __name__ == "__main__":

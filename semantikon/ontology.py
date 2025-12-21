@@ -5,7 +5,7 @@ from typing import Any, TypeAlias
 import networkx as nx
 from flowrep.tools import get_function_metadata
 from owlrl import DeductiveClosure, OWLRL_Semantics
-from rdflib import OWL, PROV, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
+from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
@@ -41,6 +41,7 @@ class SNS:
     continuant: URIRef = BFO["0000002"]
     value_specification: URIRef = OBI["0001933"]
     specifies_value_of: URIRef = OBI["0001927"]
+    derives_from: URIRef = RO["0001000"]
     software_method: URIRef = IAO["0000591"]
 
 
@@ -189,6 +190,57 @@ def _get_data_node(io: str, G: nx.DiGraph, t_box: bool = False) -> BNode:
     return _get_data_node(candidate[0], G)
 
 
+def _detect_io_from_str(G: nx.DiGraph, seeked_io: str, ref_io: str) -> str:
+    main_node = ref_io.replace(".", "-").split("-outputs-")[0].split("-inputs-")[0]
+    candidate = (
+        G.predecessors(main_node) if "inputs" in seeked_io else G.successors(main_node)
+    )
+    for io in candidate:
+        if io.endswith(seeked_io.replace(".", "-")):
+            return _get_data_node(io=io, G=G)
+    raise ValueError(f"IO {seeked_io} not found in graph")
+
+
+def _translate_triples(
+    triples: _triple_type,
+    node_name: str,
+    data_node: BNode,
+    G: nx.DiGraph,
+    t_box: bool,
+    namespace: Namespace,
+) -> Graph:
+    def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode | BNode:
+        if isinstance(t, (URIRef, BNode)):
+            return t
+        elif t == "self" or t is None:
+            return data_node
+        elif isinstance(t, str) and (t.startswith("inputs") or t.startswith("outputs")):
+            return BNode(
+                namespace[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)]
+            )
+        else:
+            raise ValueError(f"{t} not recognized")
+
+    g = Graph()
+    for triple in triples:
+        if len(triple) == 2:
+            s = data_node
+            p, o = triple
+        else:
+            s, p, o = triple
+        s = _local_str_to_uriref(s)
+        o = _local_str_to_uriref(o)
+        if t_box:
+            g += _to_owl_restriction(
+                on_property=p,
+                target_class=o,
+                base_node=s,
+            )
+        else:
+            g.add((s, p, o))
+    return g
+
+
 def _wf_io_to_graph(
     step: str,
     node_name: str,
@@ -246,29 +298,21 @@ def _wf_io_to_graph(
         if "uri" in data:
             g.add((data_node, RDF.type, data["uri"]))
         g.add((data_node, SNS.specifies_value_of, SNS.value_specification))
+    triples = data.get("triples", [])
+    if triples != [] and not isinstance(triples[0], list | tuple):
+        triples = [triples]
     if "derived_from" in data:
         assert step == "outputs", "derived_from only valid for outputs"
-        for inp in G.predecessors(node_name.split("-outputs-")[0]):
-            if inp.endswith(data["derived_from"].replace(".", "-")):
-                if t_box:
-                    g += _to_owl_restriction(
-                        on_property=PROV.wasDerivedFrom,
-                        target_class=BNode(namespace[f"{inp}_data"]),
-                        base_node=data_node,
-                    )
-                else:
-                    g.add(
-                        (
-                            data_node,
-                            PROV.wasDerivedFrom,
-                            BNode(namespace[f"{inp}_data"]),
-                        )
-                    )
-                break
-        else:
-            raise ValueError(
-                f"derived_from {data['derived_from']} not found in predecessors"
-            )
+        triples.append(("self", SNS.derives_from, data["derived_from"]))
+    if len(triples) > 0:
+        g += _translate_triples(
+            triples=triples,
+            node_name=node_name,
+            data_node=data_node,
+            G=G,
+            t_box=t_box,
+            namespace=namespace,
+        )
     return g
 
 
@@ -349,7 +393,6 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) ->
     g.bind("qudt", str(QUDT))
     g.bind("unit", "http://qudt.org/vocab/unit/")
     g.bind("sns", str(BASE))
-    g.bind("prov", str(PROV))
     g.bind("iao", str(IAO))
     g.bind("bfo", str(BFO))
     g.bind("obi", str(OBI))
