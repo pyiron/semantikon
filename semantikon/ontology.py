@@ -190,28 +190,51 @@ def _get_data_node(io: str, G: nx.DiGraph, t_box: bool = False) -> BNode:
     return _get_data_node(candidate[0], G)
 
 
-def _translate_derives_from(
-    data: dict,
+def _detect_io_from_str(G: nx.DiGraph, seeked_io: str, ref_io: str) -> str:
+    main_node = ref_io.replace(".", "-").split("-outputs-")[0].split("-inputs-")[0]
+    candidate = (
+        G.predecessors(main_node) if "inputs" in seeked_io else G.successors(main_node)
+    )
+    for io in candidate:
+        if io.endswith(seeked_io.replace(".", "-")):
+            return _get_data_node(io=io, G=G)
+    raise ValueError(f"IO {seeked_io} not found in graph")
+
+
+def _translate_triples(
+    triples: _triple_type,
     node_name: str,
     data_node: BNode,
     G: nx.DiGraph,
     t_box: bool,
     namespace: Namespace,
 ) -> Graph:
+    def _local_str_to_uriref(s: str | None) -> IdentifiedNode | BNode:
+        if s == "self" or s is None:
+            return data_node
+        elif isinstance(s, str) and (s.startswith("inputs") or s.startswith("outputs")):
+            return BNode(namespace[_detect_io_from_str(G=G, seeked_io=s, ref_io=node_name)])
+        else:
+            raise ValueError(f"{s} not recognized")
+
     g = Graph()
-    for inp in G.predecessors(node_name.split("-outputs-")[0]):
-        if inp.endswith(data["derived_from"].replace(".", "-")):
-            target_class = BNode(namespace[_get_data_node(io=inp, G=G, t_box=t_box)])
-            if t_box:
-                g += _to_owl_restriction(
-                    on_property=SNS.derives_from,
-                    target_class=target_class,
-                    base_node=data_node,
-                )
-            else:
-                g.add((data_node, SNS.derives_from, target_class))
-            return g
-    raise ValueError(f"derived_from {data['derived_from']} not found in predecessors")
+    for triple in triples:
+        if len(triple) == 2:
+            s = data_node
+            p, o = triple
+        else:
+            s, p, o = triple
+        s = _local_str_to_uriref(s)
+        o = _local_str_to_uriref(o)
+        if t_box:
+            g += _to_owl_restriction(
+                on_property=p,
+                target_class=o,
+                base_node=s,
+            )
+        else:
+            g.add((s, p, o))
+    return g
 
 
 def _wf_io_to_graph(
@@ -269,10 +292,13 @@ def _wf_io_to_graph(
         if "uri" in data:
             g.add((data_node, RDF.type, data["uri"]))
         g.add((data_node, SNS.specifies_value_of, SNS.value_specification))
+    triples = data.get("triples", [])
     if "derived_from" in data:
         assert step == "outputs", "derived_from only valid for outputs"
-        g += _translate_derives_from(
-            data=data,
+        triples.append(("self", SNS.derives_from, data["derived_from"]))
+    if len(triples) > 0:
+        g += _translate_triples(
+            triples=triples,
             node_name=node_name,
             data_node=data_node,
             G=G,
