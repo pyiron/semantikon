@@ -196,7 +196,7 @@ def _translate_derives_from(
     data_node: BNode,
     G: nx.DiGraph,
     t_box: bool,
-    namespace: Namespace
+    namespace: Namespace,
 ) -> Graph:
     g = Graph()
     for inp in G.predecessors(node_name.split("-outputs-")[0]):
@@ -211,9 +211,7 @@ def _translate_derives_from(
             else:
                 g.add((data_node, SNS.derives_from, target_class))
             return g
-    raise ValueError(
-        f"derived_from {data['derived_from']} not found in predecessors"
-    )
+    raise ValueError(f"derived_from {data['derived_from']} not found in predecessors")
 
 
 def _wf_io_to_graph(
@@ -279,7 +277,7 @@ def _wf_io_to_graph(
             data_node=data_node,
             G=G,
             t_box=t_box,
-            namespace=namespace
+            namespace=namespace,
         )
     return g
 

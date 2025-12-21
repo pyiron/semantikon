@@ -3,7 +3,7 @@ from pathlib import Path
 from textwrap import dedent
 
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, Graph, Namespace, URIRef
+from rdflib import OWL, RDF, RDFS, BNode, Graph, Namespace, URIRef
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
@@ -283,6 +283,36 @@ class TestOntology(unittest.TestCase):
             )
 
             self.assertTrue(conforms)
+
+    def test_derives_from(self):
+        wf_dict = df_workflow.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict, t_box=True)
+        query = dedent(
+            """\
+        PREFIX ro: <http://purl.obolibrary.org/obo/RO_>
+        PREFIX owl: <http://www.w3.org/2002/07/owl#>
+        SELECT ?main_class WHERE {
+            ?derivedFrom owl:someValuesFrom ?input_class .
+            ?derivedFrom owl:onProperty ro:0001000 .
+            ?main_class rdfs:subClassOf ?derivedFrom .
+            ?input_class rdfs:subClassOf obi:0001933 .
+        }
+        """
+        )
+        self.assertEqual(len(g.query(query)), 1)
+        self.assertEqual(
+            list(g.query(query))[0]["main_class"],
+            BNode(onto.BASE["df_workflow-a_to_a_0-outputs-a_data"]),
+        )
+        g = onto.get_knowledge_graph(wf_dict, t_box=False)
+        result = list(
+            g.predicates(
+                (BNode(onto.BASE["df_workflow-a_to_a_0-outputs-a_data"])),
+                BNode(onto.BASE["df_workflow-inputs-a_data"]),
+            )
+        )
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], onto.SNS.derives_from)
 
 
 if __name__ == "__main__":
