@@ -215,7 +215,9 @@ def _translate_triples(
         elif t == "self" or t is None:
             return data_node
         elif isinstance(t, str) and (t.startswith("inputs") or t.startswith("outputs")):
-            return BNode(namespace[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)])
+            return BNode(
+                namespace[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)]
+            )
         else:
             raise ValueError(f"{t} not recognized")
 

@@ -46,8 +46,11 @@ def df_workflow(a):
     return a
 
 
-def f_triples(a: float, b: u(float, triples=("self", EX.relatedTo, "inputs.a"))) -> u(float, triples=((EX.hasSomeRelation, "inputs.a"))):
+def f_triples(
+    a: float, b: u(float, triples=("self", EX.relatedTo, "inputs.a"))
+) -> u(float, triples=((EX.hasSomeRelation, "inputs.a"))):
     return a
+
 
 @workflow
 def wf_triples(a):
