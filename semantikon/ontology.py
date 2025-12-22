@@ -630,3 +630,53 @@ def _to_shacl_shape(
         g.add((node_shape, SH.property, shape_node))
 
     return g
+
+
+def owl_restrictions_to_shacl(owl_graph: Graph) -> Graph:
+    def iter_supported_restrictions(g: Graph):
+        """
+        Yield (base_class, restriction_node, property, restriction_type, value)
+        for supported OWL restrictions.
+        """
+        for r in g.subjects(RDF.type, OWL.Restriction):
+            prop = g.value(r, OWL.onProperty)
+            if prop is None:
+                continue
+
+            for restriction_type in (OWL.someValuesFrom, OWL.hasValue):
+                value = g.value(r, restriction_type)
+                if value is None:
+                    continue
+
+                for base_cls in g.subjects(RDFS.subClassOf, r):
+                    yield base_cls, r, prop, restriction_type, value
+
+    shacl_graph = Graph()
+
+    node_shapes = {}
+
+    for base_cls, r, prop, rtype, value in iter_supported_restrictions(owl_graph):
+
+        # One NodeShape per base class
+        if base_cls not in node_shapes:
+            ns = BNode()
+            node_shapes[base_cls] = ns
+            shacl_graph.add((ns, RDF.type, SH.NodeShape))
+            shacl_graph.add((ns, SH.targetClass, base_cls))
+        else:
+            ns = node_shapes[base_cls]
+
+        ps = BNode()
+        shacl_graph.add((ps, RDF.type, SH.PropertyShape))
+        shacl_graph.add((ps, SH.path, prop))
+
+        if rtype == OWL.someValuesFrom:
+            shacl_graph.add((ps, SH["class"], value))
+            shacl_graph.add((ps, SH.minCount, Literal(1)))
+
+        elif rtype == OWL.hasValue:
+            shacl_graph.add((ps, SH.hasValue, value))
+
+        shacl_graph.add((ns, SH.property, ps))
+
+    return shacl_graph
