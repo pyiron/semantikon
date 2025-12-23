@@ -389,7 +389,8 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
         namespace = BASE
     else:
         unique_hash = _get_graph_hash(G, with_global_inputs=True)
-        namespace = Namespace(f"{BASE}{unique_hash}_")
+        # namespace = Namespace(f"{BASE}{unique_hash}_")
+        namespace = BASE
     workflow_node = namespace[G.name]
     if not t_box:
         g.add((workflow_node, RDF.type, BASE[G.name]))
