@@ -554,13 +554,11 @@ def serialize_and_convert_to_networkx(
 def _to_owl_restriction(
     on_property: URIRef,
     target_class: URIRef,
-    restriction_node: BNode | URIRef | None = None,
     restriction_type: URIRef = OWL.someValuesFrom,
     base_node: URIRef | None = None,
 ) -> Graph:
     g = Graph()
-    if restriction_node is None:
-        restriction_node = BNode()
+    restriction_node = BNode()
 
     # Build the restriction
     g.add((restriction_node, RDF.type, OWL.Restriction))
