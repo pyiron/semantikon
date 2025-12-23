@@ -128,7 +128,6 @@ def extract_dataclass(
 def get_knowledge_graph(
     wf_dict: dict,
     t_box: bool = False,
-    namespace: Namespace | None = None,
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
@@ -136,13 +135,12 @@ def get_knowledge_graph(
     Args:
         wf_dict (dict): dictionary containing workflow information
         t_box (bool): if True, generate T-Box graph, otherwise A-Box graph
-        namespace (Namespace): namespace to be used for the graph
 
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
     G = serialize_and_convert_to_networkx(wf_dict)
-    graph = _nx_to_kg(G, t_box=t_box, namespace=namespace)
+    graph = _nx_to_kg(G, t_box=t_box)
     return graph
 
 
@@ -387,7 +385,7 @@ def _parse_global_io(
     return g
 
 
-def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) -> Graph:
+def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
     g = Graph()
     g.bind("qudt", str(QUDT))
     g.bind("unit", "http://qudt.org/vocab/unit/")
@@ -399,10 +397,7 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) ->
     g.bind("pmdco", str(PMD))
     g.bind("schema", str(SCHEMA))
     g.bind("stato", str(STATO))
-    if namespace is not None:
-        g.bind("ns", str(namespace))
-    if namespace is None:
-        namespace = BASE
+    namespace = BASE
     workflow_node = namespace[G.name]
     for comp in G.nodes.data():
         data = comp[1].copy()
