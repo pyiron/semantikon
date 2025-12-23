@@ -161,15 +161,15 @@ def _wf_node_to_graph(
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
                 g += _to_owl_restriction(
+                    base_node=kg_node,
                     on_property=SNS.has_part,
                     target_class=namespace[item],
-                    base_node=kg_node,
                 )
         g.add((kg_node, RDFS.subClassOf, SNS.process))
         g += _to_owl_restriction(
+            base_node=kg_node,
             on_property=SNS.has_participant,
             target_class=f_node,
-            base_node=kg_node,
         )
     else:
         g.add((kg_node, RDF.type, SNS.process))
@@ -231,9 +231,9 @@ def _translate_triples(
         o = _local_str_to_uriref(o)
         if t_box:
             g += _to_owl_restriction(
+                base_node=s,
                 on_property=p,
                 target_class=o,
-                base_node=s,
             )
         else:
             g.add((s, p, o))
@@ -260,14 +260,14 @@ def _wf_io_to_graph(
         SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
     )
     if t_box:
-        g += _to_owl_restriction(has_specified_io, data_node, base_node=node)
+        g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.subClassOf, io_assignment))
         if "units" in data:
             g += _to_owl_restriction(
+                base_node=data_node,
                 on_property=QUDT.hasUnit,
                 target_class=_units_to_uri(data["units"]),
                 restriction_type=OWL.hasValue,
-                base_node=data_node,
             )
         if step == "inputs":
             out = list(G.predecessors(node_name))
@@ -276,16 +276,16 @@ def _wf_io_to_graph(
                 assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
                 if G.nodes[out[0]]["step"] == "outputs":
                     g += _to_owl_restriction(
+                        base_node=data_node,
                         on_property=SNS.is_specified_output_of,
                         target_class=namespace[out[0]],
-                        base_node=data_node,
                     )
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
         if "uri" in data:
             g += _to_owl_restriction(
+                base_node=data_node,
                 on_property=SNS.specifies_value_of,
                 target_class=data["uri"],
-                base_node=data_node,
             )
     else:
         g.add((node, RDF.type, io_assignment))
@@ -328,9 +328,9 @@ def _parse_precedes(
             if len(successors) == 0:
                 if t_box:
                     g += _to_owl_restriction(
+                        base_node=workflow_node,
                         on_property=SNS.has_part,
                         target_class=namespace[node[0]],
-                        base_node=workflow_node,
                     )
                 else:
                     g.add((workflow_node, SNS.has_part, namespace[node[0]]))
@@ -339,15 +339,15 @@ def _parse_precedes(
                     node_tmp = BNode()
                     for succ in successors:
                         g += _to_owl_restriction(
+                            base_node=node_tmp,
                             on_property=SNS.precedes,
                             target_class=namespace[succ],
-                            base_node=node_tmp,
                         )
                     g.add((node_tmp, RDFS.subClassOf, namespace[node[0]]))
                     g += _to_owl_restriction(
+                        base_node=workflow_node,
                         on_property=SNS.has_part,
                         target_class=node_tmp,
-                        base_node=workflow_node,
                     )
                 else:
                     for succ in successors:
@@ -378,9 +378,9 @@ def _parse_global_io(
         for io in global_io:
             if t_box:
                 g += _to_owl_restriction(
+                    base_node=workflow_node,
                     on_property=on_property,
                     target_class=namespace[io[0]],
-                    base_node=workflow_node,
                 )
             else:
                 g.add((workflow_node, on_property, namespace[io[0]]))
@@ -552,10 +552,10 @@ def serialize_and_convert_to_networkx(
 
 
 def _to_owl_restriction(
+    base_node: URIRef | None,
     on_property: URIRef,
     target_class: URIRef,
     restriction_type: URIRef = OWL.someValuesFrom,
-    base_node: URIRef | None = None,
 ) -> Graph:
     g = Graph()
     restriction_node = BNode()
