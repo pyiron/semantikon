@@ -161,15 +161,11 @@ def _wf_node_to_graph(
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
                 g += _to_owl_restriction(
-                    base_node=kg_node,
-                    on_property=SNS.has_part,
-                    target_class=namespace[item],
+                    kg_node, SNS.has_part, namespace[item],
                 )
         g.add((kg_node, RDFS.subClassOf, SNS.process))
         g += _to_owl_restriction(
-            base_node=kg_node,
-            on_property=SNS.has_participant,
-            target_class=f_node,
+            kg_node, SNS.has_participant, f_node,
         )
     else:
         g.add((kg_node, RDF.type, SNS.process))
@@ -230,11 +226,7 @@ def _translate_triples(
         s = _local_str_to_uriref(s)
         o = _local_str_to_uriref(o)
         if t_box:
-            g += _to_owl_restriction(
-                base_node=s,
-                on_property=p,
-                target_class=o,
-            )
+            g += _to_owl_restriction(s, p, o)
         else:
             g.add((s, p, o))
     return g
@@ -276,16 +268,12 @@ def _wf_io_to_graph(
                 assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
                 if G.nodes[out[0]]["step"] == "outputs":
                     g += _to_owl_restriction(
-                        base_node=data_node,
-                        on_property=SNS.is_specified_output_of,
-                        target_class=namespace[out[0]],
+                        data_node, SNS.is_specified_output_of, namespace[out[0]]
                     )
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
         if "uri" in data:
             g += _to_owl_restriction(
-                base_node=data_node,
-                on_property=SNS.specifies_value_of,
-                target_class=data["uri"],
+                data_node, SNS.specifies_value_of, data["uri"]
             )
     else:
         g.add((node, RDF.type, io_assignment))
@@ -328,9 +316,7 @@ def _parse_precedes(
             if len(successors) == 0:
                 if t_box:
                     g += _to_owl_restriction(
-                        base_node=workflow_node,
-                        on_property=SNS.has_part,
-                        target_class=namespace[node[0]],
+                        workflow_node, SNS.has_part, namespace[node[0]]
                     )
                 else:
                     g.add((workflow_node, SNS.has_part, namespace[node[0]]))
@@ -339,15 +325,11 @@ def _parse_precedes(
                     node_tmp = BNode()
                     for succ in successors:
                         g += _to_owl_restriction(
-                            base_node=node_tmp,
-                            on_property=SNS.precedes,
-                            target_class=namespace[succ],
+                            node_tmp, SNS.precedes, namespace[succ],
                         )
                     g.add((node_tmp, RDFS.subClassOf, namespace[node[0]]))
                     g += _to_owl_restriction(
-                        base_node=workflow_node,
-                        on_property=SNS.has_part,
-                        target_class=node_tmp,
+                        workflow_node, SNS.has_part, node_tmp,
                     )
                 else:
                     for succ in successors:
@@ -378,9 +360,7 @@ def _parse_global_io(
         for io in global_io:
             if t_box:
                 g += _to_owl_restriction(
-                    base_node=workflow_node,
-                    on_property=on_property,
-                    target_class=namespace[io[0]],
+                    workflow_node, on_property, namespace[io[0]],
                 )
             else:
                 g.add((workflow_node, on_property, namespace[io[0]]))
