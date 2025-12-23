@@ -99,7 +99,7 @@ class TestOntology(unittest.TestCase):
 
         with self.subTest("Single target class as list"):
             g = onto._to_owl_restriction(
-                EX["some_predicate"], EX["destination"], base_node=EX["origin"]
+                EX["origin"], EX["some_predicate"], EX["destination"]
             )
             g.add((EX["origin"], RDFS.subClassOf, EX["my_class"]))
             _, in_first, in_second = graph_diff(g, g_ref_single)
@@ -130,7 +130,7 @@ class TestOntology(unittest.TestCase):
             g = Graph()
             for cl in [EX["dest1"], EX["dest2"]]:
                 g += onto._to_owl_restriction(
-                    EX["some_predicate"], cl, base_node=EX["origin"]
+                    EX["origin"], EX["some_predicate"], cl
                 )
             g.add((EX["origin"], RDFS.subClassOf, EX["my_class"]))
             _, in_first, in_second = graph_diff(g, g_ref)
@@ -156,9 +156,9 @@ class TestOntology(unittest.TestCase):
             g_ref = Graph()
             g_ref.parse(data=text, format="turtle")
             g = onto._to_owl_restriction(
+                EX["origin"],
                 EX["some_predicate"],
                 EX["destination"],
-                base_node=EX["origin"],
                 restriction_type=OWL.hasValue,
             )
             g.add((EX["origin"], RDFS.subClassOf, EX["my_class"]))
