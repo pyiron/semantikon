@@ -161,11 +161,15 @@ def _wf_node_to_graph(
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
                 g += _to_owl_restriction(
-                    kg_node, SNS.has_part, namespace[item],
+                    kg_node,
+                    SNS.has_part,
+                    namespace[item],
                 )
         g.add((kg_node, RDFS.subClassOf, SNS.process))
         g += _to_owl_restriction(
-            kg_node, SNS.has_participant, f_node,
+            kg_node,
+            SNS.has_participant,
+            f_node,
         )
     else:
         g.add((kg_node, RDF.type, SNS.process))
@@ -272,9 +276,7 @@ def _wf_io_to_graph(
                     )
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
         if "uri" in data:
-            g += _to_owl_restriction(
-                data_node, SNS.specifies_value_of, data["uri"]
-            )
+            g += _to_owl_restriction(data_node, SNS.specifies_value_of, data["uri"])
     else:
         g.add((node, RDF.type, io_assignment))
         g.add((node, has_specified_io, data_node))
@@ -325,11 +327,15 @@ def _parse_precedes(
                     node_tmp = BNode()
                     for succ in successors:
                         g += _to_owl_restriction(
-                            node_tmp, SNS.precedes, namespace[succ],
+                            node_tmp,
+                            SNS.precedes,
+                            namespace[succ],
                         )
                     g.add((node_tmp, RDFS.subClassOf, namespace[node[0]]))
                     g += _to_owl_restriction(
-                        workflow_node, SNS.has_part, node_tmp,
+                        workflow_node,
+                        SNS.has_part,
+                        node_tmp,
                     )
                 else:
                     for succ in successors:
@@ -360,7 +366,9 @@ def _parse_global_io(
         for io in global_io:
             if t_box:
                 g += _to_owl_restriction(
-                    workflow_node, on_property, namespace[io[0]],
+                    workflow_node,
+                    on_property,
+                    namespace[io[0]],
                 )
             else:
                 g.add((workflow_node, on_property, namespace[io[0]]))

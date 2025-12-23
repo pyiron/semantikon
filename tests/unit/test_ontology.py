@@ -129,9 +129,7 @@ class TestOntology(unittest.TestCase):
             g_ref.parse(data=text, format="turtle")
             g = Graph()
             for cl in [EX["dest1"], EX["dest2"]]:
-                g += onto._to_owl_restriction(
-                    EX["origin"], EX["some_predicate"], cl
-                )
+                g += onto._to_owl_restriction(EX["origin"], EX["some_predicate"], cl)
             g.add((EX["origin"], RDFS.subClassOf, EX["my_class"]))
             _, in_first, in_second = graph_diff(g, g_ref)
             self.assertEqual(
