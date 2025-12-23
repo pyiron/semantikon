@@ -397,14 +397,22 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
     g.bind("pmdco", str(PMD))
     g.bind("schema", str(SCHEMA))
     g.bind("stato", str(STATO))
-    namespace = BASE
+    if t_box:
+        namespace = BASE
+    else:
+        unique_hash = _get_graph_hash(G, with_global_inputs=True)
+        namespace = Namespace(f"{BASE}{unique_hash}_")
     workflow_node = namespace[G.name]
+    if not t_box:
+        g.add((workflow_node, RDF.type, BASE[G.name]))
     for comp in G.nodes.data():
         data = comp[1].copy()
         step = data.pop("step")
         node = namespace[comp[0]]
         if t_box:
             g.add((node, RDF.type, OWL.Class))
+        else:
+            g.add((node, RDF.type, BASE[comp[0]]))
         assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
         if step == "node":
             g += _wf_node_to_graph(
