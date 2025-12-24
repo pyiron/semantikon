@@ -220,7 +220,7 @@ def _wf_io_to_graph(
     if t_box:
         g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.subClassOf, io_assignment))
-        if "units" in data:
+        if "units" in data and step == "inputs":
             g += _to_owl_restriction(
                 base_node=data_node,
                 on_property=QUDT.hasUnit,
@@ -237,7 +237,7 @@ def _wf_io_to_graph(
                         namespace[out[0]], SNS.has_specified_output, data_node
                     )
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
-        if "uri" in data:
+        if "uri" in data and step == "inputs":
             g += _to_owl_restriction(
                 data_node,
                 SNS.specifies_value_of,
@@ -250,9 +250,9 @@ def _wf_io_to_graph(
         g.add((node, has_specified_io, data_node))
         if "value" in data and list(g.objects(data_node, RDF.value)) == []:
             g.add((data_node, RDF.value, Literal(data["value"])))
-        if "units" in data:
+        if "units" in data and step == "outputs":
             g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
-        if "uri" in data:
+        if "uri" in data and step == "outputs":
             g.add((data_node, SNS.specifies_value_of, data["uri"]))
     triples = data.get("triples", [])
     if triples != [] and not isinstance(triples[0], list | tuple):
@@ -555,37 +555,6 @@ def _get_graph_hash(G: nx.DiGraph, with_global_inputs: bool = True) -> str:
     return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(
         G_tmp, node_attr="canon"
     )
-
-
-def _to_shacl_shape(
-    on_property: URIRef,
-    target_class: URIRef,
-    shape_node: BNode | URIRef | None = None,
-    base_node: URIRef | None = None,
-    min_count: int | None = 1,
-) -> Graph:
-    g = Graph()
-
-    if shape_node is None:
-        shape_node = BNode()
-
-    # Declare PropertyShape
-    g.add((shape_node, RDF.type, SH.PropertyShape))
-    g.add((shape_node, SH.path, on_property))
-    g.add((shape_node, SH["class"], target_class))
-
-    # Existential semantics (OWL someValuesFrom analogue)
-    if min_count is not None:
-        g.add((shape_node, SH.minCount, Literal(min_count)))
-
-    # Attach to a NodeShape via targetClass
-    if base_node is not None:
-        node_shape = BNode()
-        g.add((node_shape, RDF.type, SH.NodeShape))
-        g.add((node_shape, SH.targetClass, base_node))
-        g.add((node_shape, SH.property, shape_node))
-
-    return g
 
 
 def owl_restrictions_to_shacl(owl_graph: Graph) -> Graph:
