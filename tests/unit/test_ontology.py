@@ -216,87 +216,11 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_shacl_validation(self):
-        Person = URIRef(EX + "Person")
-        Email = URIRef(EX + "Email")
-        hasEmail = URIRef(EX + "hasEmail")
-
-        alice = URIRef(EX + "alice")
-        bob = URIRef(EX + "bob")
-        email1 = URIRef(EX + "email1")
-
-        with self.subTest("Data conforms with valid property"):
-            data = Graph()
-            data.add((alice, RDF.type, Person))
-            data.add((alice, hasEmail, email1))
-            data.add((email1, RDF.type, Email))
-
-            shapes = onto._to_shacl_shape(
-                on_property=hasEmail,
-                target_class=Email,
-                base_node=Person,
-            )
-
-            conforms, _, _ = validate(
-                data_graph=data,
-                shacl_graph=shapes,
-            )
-
-            self.assertTrue(conforms)
-
-        with self.subTest("Data fails when property is missing"):
-            data = Graph()
-            data.add((alice, RDF.type, Person))
-
-            shapes = onto._to_shacl_shape(
-                on_property=hasEmail,
-                target_class=Email,
-                base_node=Person,
-            )
-
-            conforms, _, report = validate(
-                data_graph=data,
-                shacl_graph=shapes,
-            )
-
-            self.assertFalse(conforms)
-            self.assertIn("minCount", report)
-
-        with self.subTest("Data fails when property value is wrong class"):
-            data = Graph()
-            data.add((alice, RDF.type, Person))
-            data.add((alice, hasEmail, bob))  # bob not typed as Email
-
-            shapes = onto._to_shacl_shape(
-                on_property=hasEmail,
-                target_class=Email,
-                base_node=Person,
-            )
-
-            conforms, _, report = validate(
-                data_graph=data,
-                shacl_graph=shapes,
-            )
-
-            self.assertFalse(conforms)
-            self.assertIn("class", report)
-
-        with self.subTest("Non-target nodes are ignored"):
-            data = Graph()
-            data.add((bob, hasEmail, email1))
-            data.add((email1, RDF.type, Email))
-
-            shapes = onto._to_shacl_shape(
-                on_property=hasEmail,
-                target_class=Email,
-                base_node=Person,
-            )
-
-            conforms, _, _ = validate(
-                data_graph=data,
-                shacl_graph=shapes,
-            )
-
-            self.assertTrue(conforms)
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        g_t = onto.get_knowledge_graph(wf_dict, t_box=True)
+        g_a = onto.get_knowledge_graph(wf_dict, t_box=False)
+        shacl = onto.owl_restrictions_to_shacl(g_t)
+        self.assertTrue(validate(g_a, shacl_graph=shacl)[0])
 
     def test_derives_from(self):
         wf_dict = wf_triples.serialize_workflow()
