@@ -69,7 +69,7 @@ def validate_values(wf_dict: dict) -> tuple:
         wf_dict (dict): dictionary containing workflow information
 
     Returns:
-        (tuple): list of missing triples
+        (tuple): validation result and message from pyshacl
     """
     g_t = get_knowledge_graph(wf_dict, t_box=True)
     g_a = get_knowledge_graph(wf_dict, t_box=False)
@@ -166,7 +166,7 @@ def _translate_triples(
     t_box: bool,
     namespace: Namespace,
 ) -> Graph:
-    def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode:
+    def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode | BNode:
         if isinstance(t, (URIRef, BNode)):
             return t
         elif t == "self" or t is None:
