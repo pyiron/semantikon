@@ -168,6 +168,7 @@ def _wf_node_to_graph(
             kg_node,
             SNS.has_participant,
             f_node,
+            restriction_type=OWL.hasValue,
         )
     else:
         kg_node = BNode(kg_node)
