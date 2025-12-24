@@ -649,7 +649,6 @@ def owl_restrictions_to_shacl(owl_graph: Graph) -> Graph:
                     yield base_cls, r, prop, restriction_type, value
 
     shacl_graph = Graph()
-
     node_shapes = {}
 
     for base_cls, r, prop, rtype, value in iter_supported_restrictions(owl_graph):
@@ -668,8 +667,13 @@ def owl_restrictions_to_shacl(owl_graph: Graph) -> Graph:
         shacl_graph.add((ps, SH.path, prop))
 
         if rtype == OWL.someValuesFrom:
-            shacl_graph.add((ps, SH["class"], value))
-            shacl_graph.add((ps, SH.minCount, Literal(1)))
+            # Existential restriction:
+            # ∃ prop . C  →  qualifiedValueShape + qualifiedMinCount
+            qvs = BNode()
+            shacl_graph.add((qvs, SH["class"], value))
+
+            shacl_graph.add((ps, SH.qualifiedValueShape, qvs))
+            shacl_graph.add((ps, SH.qualifiedMinCount, Literal(1)))
 
         elif rtype == OWL.hasValue:
             shacl_graph.add((ps, SH.hasValue, value))
