@@ -180,10 +180,10 @@ def _wf_node_to_graph(
     return g
 
 
-def _get_data_node(io: str, G: nx.DiGraph, t_box: bool = False) -> BNode:
+def _get_data_node(io: str, G: nx.DiGraph) -> BNode:
     candidate = list(G.predecessors(io))
     assert len(candidate) <= 1
-    if len(candidate) == 0 or G.nodes[candidate[0]]["step"] == "node" or t_box:
+    if len(candidate) == 0 or G.nodes[candidate[0]]["step"] == "node":
         return f"{io}_data"
     return _get_data_node(candidate[0], G)
 
@@ -252,7 +252,7 @@ def _wf_io_to_graph(
     else:
         g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
     io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
-    data_node = BNode(namespace[_get_data_node(io=node_name, G=G, t_box=t_box)])
+    data_node = namespace[_get_data_node(io=node_name, G=G)]
     has_specified_io = (
         SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
     )
@@ -279,6 +279,8 @@ def _wf_io_to_graph(
         if "uri" in data:
             g += _to_owl_restriction(data_node, SNS.specifies_value_of, data["uri"])
     else:
+        g.add((BNode(data_node), RDF.type, data_node))
+        data_node = BNode(data_node)
         g.add((node, RDF.type, io_assignment))
         g.add((node, has_specified_io, data_node))
         if "value" in data and list(g.objects(data_node, RDF.value)) == []:
