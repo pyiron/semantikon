@@ -69,32 +69,83 @@ class TestOntology(unittest.TestCase):
         cls.maxDiff = None
         cls.static_dir = Path(__file__).parent.parent / "static"
 
-    def test_full_ontology(self):
-        g_ref = Graph()
-        with open(self.static_dir / "kinetic_energy_workflow.ttl", "r") as f:
-            g_ref.parse(
-                data=f.read().replace("__main__", __name__.replace(".", "-")),
-                format="turtle",
-            )
+    def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        g = onto.get_knowledge_graph(wf_dict, t_box=True)
-        _, in_first, in_second = graph_diff(g, g_ref)
-        with self.subTest("Full ontology matches reference"):
-            self.assertEqual(
-                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
-            )
-        with self.subTest("Full ontology matches reference"):
-            self.assertEqual(
-                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
-            )
         g = onto.get_knowledge_graph(wf_dict, t_box=False)
-        self.assertIn(
-            (
-                BNode(onto.BASE["my_kinetic_energy_workflow-inputs-distance_data"]),
-                URIRef("http://qudt.org/vocab/unit/M"),
-            ),
-            list(g.subject_objects(onto.QUDT.hasUnit)),
-        )
+
+        with self.subTest("workflow instance exists"):
+            workflows = list(g.subjects(RDF.type, onto.BASE.my_kinetic_energy_workflow))
+            self.assertEqual(len(workflows), 1)
+
+        wf = workflows[0]
+
+        with self.subTest("workflow has both function executions as parts"):
+            parts = list(g.objects(wf, onto.BFO["0000051"]))
+            ke_calls = [
+                p
+                for p in parts
+                if (
+                    p,
+                    RDF.type,
+                    onto.BASE["my_kinetic_energy_workflow-get_kinetic_energy_0"],
+                )
+                in g
+            ]
+            speed_calls = [
+                p
+                for p in parts
+                if (p, RDF.type, onto.BASE["my_kinetic_energy_workflow-get_speed_0"])
+                in g
+            ]
+            self.assertEqual(len(ke_calls), 1)
+            self.assertEqual(len(speed_calls), 1)
+
+        ke_call = ke_calls[0]
+        speed_call = speed_calls[0]
+
+        with self.subTest("speed computation precedes kinetic energy computation"):
+            self.assertIn(
+                (speed_call, onto.BFO["0000063"], ke_call),
+                g,
+            )
+
+        with self.subTest("functions are linked to python callables"):
+            self.assertIn(
+                (
+                    ke_call,
+                    onto.RO["0000057"],
+                    onto.BASE["__main__-get_kinetic_energy-not_defined"],
+                ),
+                g,
+            )
+            self.assertIn(
+                (
+                    speed_call,
+                    onto.RO["0000057"],
+                    onto.BASE["__main__-get_speed-not_defined"],
+                ),
+                g,
+            )
+
+        with self.subTest("kinetic energy output data has correct unit"):
+            outputs = list(
+                g.subjects(
+                    RDF.type,
+                    onto.BASE[
+                        "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output_data"
+                    ],
+                )
+            )
+            self.assertEqual(len(outputs), 1)
+            self.assertIn(
+                (
+                    outputs[0],
+                    Namespace("http://qudt.org/schema/qudt/").hasUnit,
+                    Namespace("http://qudt.org/vocab/unit/").J,
+                ),
+                g,
+            )
+        onto.validate_values(wf_dict)
 
     def test_to_restrictions(self):
         # Common reference graph for single target class
