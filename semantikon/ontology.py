@@ -340,7 +340,13 @@ def _parse_precedes(
                     )
                 else:
                     for succ in successors:
-                        g.add((BNode(namespace[node[0]]), SNS.precedes, BNode(namespace[succ])))
+                        g.add(
+                            (
+                                BNode(namespace[node[0]]),
+                                SNS.precedes,
+                                BNode(namespace[succ]),
+                            )
+                        )
                     g.add((workflow_node, SNS.has_part, BNode(namespace[node[0]])))
     return g
 

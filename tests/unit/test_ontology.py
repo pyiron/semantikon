@@ -28,6 +28,7 @@ prefixes = """
 
 sparql_prefixes = prefixes.replace("@prefix ", "PREFIX ").replace(" .\n", "\n")
 
+
 def get_speed(
     distance: u(float, uri=PMD["0040001"], units="meter", label="Distance"),
     time: u(float, units="second"),
