@@ -1,10 +1,9 @@
 import json
 from dataclasses import dataclass
-from typing import Any, TypeAlias
+from typing import TypeAlias
 
 import networkx as nx
 from flowrep.tools import get_function_metadata
-from owlrl import DeductiveClosure, OWLRL_Semantics
 from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
