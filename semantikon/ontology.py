@@ -171,8 +171,8 @@ def _wf_node_to_graph(
             restriction_type=OWL.hasValue,
         )
     else:
+        g.add((BNode(kg_node), RDF.type, kg_node))
         kg_node = BNode(kg_node)
-        g.add((kg_node, RDF.type, SNS.process))
         for inp in G.predecessors(node_name):
             g.add((kg_node, SNS.has_part, BNode(namespace[inp])))
         for out in G.successors(node_name):
@@ -282,7 +282,6 @@ def _wf_io_to_graph(
     else:
         g.add((BNode(data_node), RDF.type, data_node))
         data_node = BNode(data_node)
-        g.add((node, RDF.type, io_assignment))
         g.add((node, has_specified_io, data_node))
         if "value" in data and list(g.objects(data_node, RDF.value)) == []:
             g.add((data_node, RDF.value, Literal(data["value"])))
