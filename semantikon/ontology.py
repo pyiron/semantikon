@@ -29,9 +29,7 @@ class SNS:
     participates_in: URIRef = RO["0000056"]
     has_participant: URIRef = RO["0000057"]
     has_specified_input: URIRef = OBI["0000293"]
-    is_specified_input_of: URIRef = OBI["0000295"]
     has_specified_output: URIRef = OBI["0000299"]
-    is_specified_output_of: URIRef = OBI["0000312"]
     input_assignment: URIRef = PMD["0000066"]
     executes: URIRef = STATO["0000102"]
     output_assignment: URIRef = PMD["0000067"]
@@ -274,7 +272,7 @@ def _wf_io_to_graph(
                 assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
                 if G.nodes[out[0]]["step"] == "outputs":
                     g += _to_owl_restriction(
-                        data_node, SNS.is_specified_output_of, namespace[out[0]]
+                        namespace[out[0]], SNS.has_specified_output, data_node
                     )
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
         if "uri" in data:
