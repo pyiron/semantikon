@@ -114,7 +114,9 @@ class TestOntology(unittest.TestCase):
                 (
                     ke_call,
                     onto.RO["0000057"],
-                    onto.BASE[f"{__name__}-get_kinetic_energy-not_defined".replace(".", "-")],
+                    onto.BASE[
+                        f"{__name__}-get_kinetic_energy-not_defined".replace(".", "-")
+                    ],
                 ),
                 g,
             )
