@@ -145,7 +145,7 @@ class TestOntology(unittest.TestCase):
                 ),
                 g,
             )
-        onto.validate_values(wf_dict)
+        self.assertTrue(onto.validate_values(wf_dict)[0])
 
     def test_to_restrictions(self):
         # Common reference graph for single target class
