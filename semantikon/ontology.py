@@ -327,19 +327,16 @@ def _parse_global_io(
         for n in G.nodes.data()
         if G.out_degree(n[0]) == 0 and n[1]["step"] == "outputs"
     ]
-    for on_property, global_io in zip(
-        [SNS.has_specified_input, SNS.has_specified_output],
-        [global_inputs, global_outputs],
-    ):
+    for global_io in [global_inputs, global_outputs]:
         for io in global_io:
             if t_box:
                 g += _to_owl_restriction(
                     workflow_node,
-                    on_property,
+                    SNS.has_part,
                     namespace[io[0]],
                 )
             else:
-                g.add((workflow_node, on_property, BNode(namespace[io[0]])))
+                g.add((workflow_node, SNS.has_part, BNode(namespace[io[0]])))
     return g
 
 
