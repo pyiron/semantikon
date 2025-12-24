@@ -5,6 +5,7 @@ from typing import Any, TypeAlias
 import networkx as nx
 from flowrep.tools import get_function_metadata
 from owlrl import DeductiveClosure, OWLRL_Semantics
+from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
@@ -61,60 +62,20 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
     return URIRef(units)
 
 
-def _check_missing_triples(graph: Graph) -> list:
-    return []
-
-
-def _check_connections(graph: Graph, strict_typing: bool = False, ontology=SNS) -> list:
-    """
-    Check if the connections between inputs and outputs are compatible
-
-    Args:
-        graph (rdflib.Graph): graph to be validated
-        strict_typing (bool): if True, check for strict typing
-
-    Returns:
-        (list): list of incompatible connections
-    """
-    return []
-
-
-def _check_units(graph: Graph, ontology=SNS) -> dict[URIRef, list[URIRef]]:
-    """
-    Check if there are multiple units assigned to the same term
-
-    Args:
-        graph (rdflib.Graph): graph to be validated
-
-    Returns:
-        (dict): dictionary of terms with multiple units
-    """
-    return {}
-
-
-def validate_values(
-    graph: Graph, run_reasoner: bool = True, strict_typing: bool = False, ontology=SNS
-) -> dict[str, Any]:
+def validate_values(wf_dict: dict) -> tuple:
     """
     Validate if all values required by restrictions are present in the graph
 
     Args:
-        graph (rdflib.Graph): graph to be validated
-        run_reasoner (bool): if True, run the reasoner
-        strict_typing (bool): if True, check for strict typing
+        wf_dict (dict): dictionary containing workflow information
 
     Returns:
-        (dict): list of missing triples
+        (tuple): list of missing triples
     """
-    if run_reasoner:
-        DeductiveClosure(OWLRL_Semantics).expand(graph)
-    return {
-        "missing_triples": _check_missing_triples(graph),
-        "incompatible_connections": _check_connections(
-            graph, strict_typing=strict_typing, ontology=ontology
-        ),
-        "distinct_units": _check_units(graph, ontology=ontology),
-    }
+    g_t = get_knowledge_graph(wf_dict, t_box=True)
+    g_a = get_knowledge_graph(wf_dict, t_box=False)
+    shacl = onto.owl_restrictions_to_shacl(g_t)
+    return validate(g_a, shacl_graph=shacl)
 
 
 def extract_dataclass(
@@ -206,15 +167,13 @@ def _translate_triples(
     t_box: bool,
     namespace: Namespace,
 ) -> Graph:
-    def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode | BNode:
+    def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode:
         if isinstance(t, (URIRef, BNode)):
             return t
         elif t == "self" or t is None:
             return data_node
         elif isinstance(t, str) and (t.startswith("inputs") or t.startswith("outputs")):
-            return BNode(
-                namespace[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)]
-            )
+            return namespace[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)]
         else:
             raise ValueError(f"{t} not recognized")
 

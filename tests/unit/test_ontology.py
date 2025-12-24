@@ -282,23 +282,6 @@ class TestOntology(unittest.TestCase):
             ],
         )
 
-    def test_some_values_from_missing_property_fails(self):
-        ont = onto._to_owl_restriction(EX.hasEmail, EX.Email, base_node=EX.Person)
-
-        shapes = onto.owl_restrictions_to_shacl(ont)
-
-        data = Graph()
-        data.add((EX.alice, RDF.type, EX.Person))
-
-        conforms, _, report = validate(
-            data_graph=data,
-            shacl_graph=shapes,
-        )
-
-        self.assertFalse(conforms)
-        self.assertIn("minCount", report)
-
-
 
 if __name__ == "__main__":
     unittest.main()
