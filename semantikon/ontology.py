@@ -289,7 +289,6 @@ def _wf_io_to_graph(
             g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
         if "uri" in data:
             g.add((data_node, RDF.type, data["uri"]))
-        g.add((data_node, SNS.specifies_value_of, SNS.value_specification))
     triples = data.get("triples", [])
     if triples != [] and not isinstance(triples[0], list | tuple):
         triples = [triples]
@@ -327,18 +326,16 @@ def _parse_precedes(
                     g.add((workflow_node, SNS.has_part, BNode(namespace[node[0]])))
             else:
                 if t_box:
-                    node_tmp = BNode()
                     for succ in successors:
                         g += _to_owl_restriction(
-                            node_tmp,
+                            namespace[node[0]],
                             SNS.precedes,
                             namespace[succ],
                         )
-                    g.add((node_tmp, RDFS.subClassOf, namespace[node[0]]))
                     g += _to_owl_restriction(
                         workflow_node,
                         SNS.has_part,
-                        node_tmp,
+                        namespace[node[0]],
                     )
                 else:
                     for succ in successors:
