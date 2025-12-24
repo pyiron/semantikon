@@ -170,11 +170,12 @@ def _wf_node_to_graph(
             f_node,
         )
     else:
+        kg_node = BNode(kg_node)
         g.add((kg_node, RDF.type, SNS.process))
         for inp in G.predecessors(node_name):
-            g.add((kg_node, SNS.has_part, namespace[inp]))
+            g.add((kg_node, SNS.has_part, BNode(namespace[inp])))
         for out in G.successors(node_name):
-            g.add((kg_node, SNS.has_part, namespace[out]))
+            g.add((kg_node, SNS.has_part, BNode(namespace[out])))
         g.add((kg_node, SNS.has_participant, f_node))
     return g
 
@@ -243,6 +244,8 @@ def _wf_io_to_graph(
     t_box: bool,
     namespace: Namespace,
 ) -> Graph:
+    if not t_box:
+        node = BNode(node)
     g = Graph()
     if data.get("label") is not None:
         g.add((node, RDFS.label, Literal(data["label"])))
@@ -305,7 +308,7 @@ def _wf_io_to_graph(
 
 def _parse_precedes(
     G: nx.DiGraph,
-    workflow_node: URIRef,
+    workflow_node: URIRef | BNode,
     t_box: bool,
     namespace: Namespace,
 ) -> Graph:
@@ -319,7 +322,7 @@ def _parse_precedes(
                         workflow_node, SNS.has_part, namespace[node[0]]
                     )
                 else:
-                    g.add((workflow_node, SNS.has_part, namespace[node[0]]))
+                    g.add((workflow_node, SNS.has_part, BNode(namespace[node[0]])))
             else:
                 if t_box:
                     node_tmp = BNode()
@@ -337,14 +340,14 @@ def _parse_precedes(
                     )
                 else:
                     for succ in successors:
-                        g.add((namespace[node[0]], SNS.precedes, namespace[succ]))
-                    g.add((workflow_node, SNS.has_part, namespace[node[0]]))
+                        g.add((BNode(namespace[node[0]]), SNS.precedes, BNode(namespace[succ])))
+                    g.add((workflow_node, SNS.has_part, BNode(namespace[node[0]])))
     return g
 
 
 def _parse_global_io(
     G: nx.DiGraph,
-    workflow_node: URIRef,
+    workflow_node: URIRef | BNode,
     t_box: bool,
     namespace: Namespace,
 ) -> Graph:
@@ -369,7 +372,7 @@ def _parse_global_io(
                     namespace[io[0]],
                 )
             else:
-                g.add((workflow_node, on_property, namespace[io[0]]))
+                g.add((workflow_node, on_property, BNode(namespace[io[0]])))
     return g
 
 
@@ -385,15 +388,8 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
     g.bind("pmdco", str(PMD))
     g.bind("schema", str(SCHEMA))
     g.bind("stato", str(STATO))
-    if t_box:
-        namespace = BASE
-    else:
-        unique_hash = _get_graph_hash(G, with_global_inputs=True)
-        # namespace = Namespace(f"{BASE}{unique_hash}_")
-        namespace = BASE
-    workflow_node = namespace[G.name]
-    if not t_box:
-        g.add((workflow_node, RDF.type, BASE[G.name]))
+    namespace = BASE
+    workflow_node = namespace[G.name] if t_box else BNode(namespace[G.name])
     for comp in G.nodes.data():
         data = comp[1].copy()
         step = data.pop("step")
@@ -401,7 +397,7 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
         if t_box:
             g.add((node, RDF.type, OWL.Class))
         else:
-            g.add((node, RDF.type, BASE[comp[0]]))
+            g.add((BNode(node), RDF.type, BASE[comp[0]]))
         assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
         if step == "node":
             g += _wf_node_to_graph(
@@ -423,8 +419,11 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
                 namespace=namespace,
             )
 
-    g.add((workflow_node, RDF.type, OWL.Class))
-    g.add((workflow_node, RDFS.subClassOf, SNS.process))
+    if t_box:
+        g.add((workflow_node, RDF.type, OWL.Class))
+        g.add((workflow_node, RDFS.subClassOf, SNS.process))
+    else:
+        g.add((workflow_node, RDF.type, BASE[G.name]))
     g += _parse_precedes(
         G=G, workflow_node=workflow_node, t_box=t_box, namespace=namespace
     )
