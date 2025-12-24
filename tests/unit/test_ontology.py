@@ -14,6 +14,21 @@ EX: Namespace = Namespace("http://example.org/")
 PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
 
 
+prefixes = """
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix obi: <http://purl.obolibrary.org/obo/OBI_> .
+@prefix sns: <http://semantikon.org/ontology/> .
+@prefix ro: <http://purl.obolibrary.org/obo/RO_> .
+@prefix pmd: <https://w3id.org/pmd/co/PMD_> .
+@prefix ex: <http://example.org/> .
+"""
+
+sparql_prefixes = prefixes.replace("@prefix ", "PREFIX ").replace(" .\n", "\n")
+
+
 def get_speed(
     distance: u(float, uri=PMD["0040001"], units="meter", label="Distance"),
     time: u(float, units="second"),
@@ -83,11 +98,8 @@ class TestOntology(unittest.TestCase):
 
     def test_to_restrictions(self):
         # Common reference graph for single target class
-        single_target_text = dedent(
+        single_target_text = prefixes + dedent(
             """\
-        @prefix owl: <http://www.w3.org/2002/07/owl#> .
-        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-        
         <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
                     owl:onProperty <http://example.org/some_predicate> ;
                     owl:someValuesFrom <http://example.org/destination> ],
@@ -111,11 +123,8 @@ class TestOntology(unittest.TestCase):
             )
 
         with self.subTest("Multiple target classes"):
-            text = dedent(
+            text = prefixes + dedent(
                 """\
-            @prefix owl: <http://www.w3.org/2002/07/owl#> .
-            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-            
             <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
                         owl:onProperty <http://example.org/some_predicate> ;
                         owl:someValuesFrom <http://example.org/dest1> ],
@@ -140,11 +149,8 @@ class TestOntology(unittest.TestCase):
             )
 
         with self.subTest("owl:hasValue instead of owl:someValuesFrom"):
-            text = dedent(
+            text = prefixes + dedent(
                 """\
-            @prefix owl: <http://www.w3.org/2002/07/owl#> .
-            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-            
             <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
                         owl:hasValue <http://example.org/destination> ;
                         owl:onProperty <http://example.org/some_predicate> ],
@@ -295,9 +301,8 @@ class TestOntology(unittest.TestCase):
     def test_derives_from(self):
         wf_dict = wf_triples.serialize_workflow()
         g = onto.get_knowledge_graph(wf_dict, t_box=True)
-        query = dedent(
+        query = sparql_prefixes + dedent(
             """\
-        PREFIX ro: <http://purl.obolibrary.org/obo/RO_>
         SELECT ?main_class WHERE {
             ?derivedFrom owl:someValuesFrom ?input_class .
             ?derivedFrom owl:onProperty ro:0001000 .
@@ -324,11 +329,8 @@ class TestOntology(unittest.TestCase):
     def test_triples(self):
         wf_dict = wf_triples.serialize_workflow()
         g = onto.get_knowledge_graph(wf_dict, t_box=True)
-        query = dedent(
+        query = sparql_prefixes + dedent(
             """\
-        PREFIX ro: <http://purl.obolibrary.org/obo/RO_>
-        PREFIX ex: <http://example.org/>
-        PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
         SELECT ?input_label ?output_label WHERE {
             ?input_data_class rdfs:label ?input_label .
             ?input_data_class rdfs:subClassOf ?input_data_node .
