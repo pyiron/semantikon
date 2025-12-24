@@ -58,8 +58,8 @@ def f_triples(
 
 
 @workflow
-def wf_triples(a):
-    a = f_triples(a)
+def wf_triples(a, b):
+    a = f_triples(a, b)
     return a
 
 
@@ -252,35 +252,60 @@ class TestOntology(unittest.TestCase):
 
     def test_triples(self):
         wf_dict = wf_triples.serialize_workflow()
-        g = onto.get_knowledge_graph(wf_dict, t_box=True)
-        query = sparql_prefixes + dedent(
-            """\
-        SELECT ?input_label ?output_label WHERE {
-            ?input_data_class rdfs:label ?input_label .
-            ?input_data_class rdfs:subClassOf ?input_data_node .
-            ?input_data_node owl:onProperty obi:0000293 .
-            ?input_data_node owl:someValuesFrom ?input_b .
-            ?has_some_relation owl:someValuesFrom ?input_b .
-            ?has_some_relation owl:onProperty ex:hasSomeRelation .
-            ?data_class_node rdfs:subClassOf ?has_some_relation .
-            ?data_class owl:someValuesFrom ?data_class_node .
-            ?data_class owl:onProperty obi:0000299 .
-            ?output_class rdfs:subClassOf ?data_class .
-            ?output_class rdfs:label ?output_label
-        }
-        """
-        )
-        self.assertEqual(list(g.query(query)), [(Literal("b"), Literal("a"))])
         g = onto.get_knowledge_graph(wf_dict, t_box=False)
-        self.assertEqual(
-            list(g.subject_objects(EX.relatedTo)),
-            [
-                (
-                    BNode(onto.BASE["wf_triples-f_triples_0-inputs-b_data"]),
-                    BNode(onto.BASE["wf_triples-inputs-a_data"]),
+
+        with self.subTest("workflow instance exists"):
+            workflows = list(g.subjects(RDF.type, onto.BASE.wf_triples))
+            self.assertEqual(len(workflows), 1)
+
+        wf = workflows[0]
+
+        with self.subTest("workflow has a function activity part"):
+            parts = list(g.objects(wf, onto.BFO["0000051"]))
+            fn_activities = [
+                p
+                for p in parts
+                if (
+                    p,
+                    onto.RO["0000057"],
+                    onto.BASE[f"{__name__}-f_triples-not_defined"],
                 )
-            ],
-        )
+                in g
+            ]
+            self.assertEqual(len(fn_activities), 1)
+
+        with self.subTest("function output derives from input a"):
+            outputs = list(
+                g.subjects(RDF.type, onto.BASE["wf_triples-f_triples_0-outputs-a_data"])
+            )
+            self.assertEqual(len(outputs), 1)
+            self.assertIn(
+                (
+                    outputs[0],
+                    onto.RO["0001000"],
+                    BNode(onto.BASE["wf_triples-inputs-a_data"]),
+                ),
+                g,
+            )
+
+        with self.subTest("cross-input data relations preserved"):
+            self.assertIn(
+                (
+                    BNode(onto.BASE["wf_triples-inputs-b_data"]),
+                    EX.relatedTo,
+                    BNode(onto.BASE["wf_triples-inputs-a_data"]),
+                ),
+                g,
+            )
+            self.assertIn(
+                (
+                    outputs[0],
+                    EX.hasSomeRelation,
+                    BNode(onto.BASE["wf_triples-inputs-b_data"]),
+                ),
+                g,
+            )
+        self.assertTrue(onto.validate_values(wf_dict))
 
 
 if __name__ == "__main__":

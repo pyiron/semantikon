@@ -74,7 +74,7 @@ def validate_values(wf_dict: dict) -> tuple:
     """
     g_t = get_knowledge_graph(wf_dict, t_box=True)
     g_a = get_knowledge_graph(wf_dict, t_box=False)
-    shacl = onto.owl_restrictions_to_shacl(g_t)
+    shacl = owl_restrictions_to_shacl(g_t)
     return validate(g_a, shacl_graph=shacl)
 
 
@@ -173,7 +173,11 @@ def _translate_triples(
         elif t == "self" or t is None:
             return data_node
         elif isinstance(t, str) and (t.startswith("inputs") or t.startswith("outputs")):
-            return namespace[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)]
+            result = namespace[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)]
+            if t_box:
+                return result
+            else:
+                return BNode(result)
         else:
             raise ValueError(f"{t} not recognized")
 
@@ -239,7 +243,7 @@ def _wf_io_to_graph(
                 data_node,
                 SNS.specifies_value_of,
                 data["uri"],
-                restriction_type=OWL.hasValue
+                restriction_type=OWL.hasValue,
             )
     else:
         g.add((BNode(data_node), RDF.type, data_node))
