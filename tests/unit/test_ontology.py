@@ -356,7 +356,7 @@ class TestOntology(unittest.TestCase):
                 ),
                 g,
             )
-        self.assertTrue(onto.validate_values(wf_dict))
+        self.assertTrue(onto.validate_values(wf_dict)[0])
 
 
 if __name__ == "__main__":
