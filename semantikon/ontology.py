@@ -276,7 +276,12 @@ def _wf_io_to_graph(
                     )
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
         if "uri" in data:
-            g += _to_owl_restriction(data_node, SNS.specifies_value_of, data["uri"])
+            g += _to_owl_restriction(
+                data_node,
+                SNS.specifies_value_of,
+                data["uri"],
+                restriction_type=OWL.hasValue
+            )
     else:
         g.add((BNode(data_node), RDF.type, data_node))
         data_node = BNode(data_node)
@@ -286,7 +291,7 @@ def _wf_io_to_graph(
         if "units" in data:
             g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
         if "uri" in data:
-            g.add((data_node, RDF.type, data["uri"]))
+            g.add((data_node, SNS.specifies_value_of, data["uri"]))
     triples = data.get("triples", [])
     if triples != [] and not isinstance(triples[0], list | tuple):
         triples = [triples]
