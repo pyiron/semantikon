@@ -114,7 +114,7 @@ class TestOntology(unittest.TestCase):
                 (
                     ke_call,
                     onto.RO["0000057"],
-                    onto.BASE[f"{__name__}-get_kinetic_energy-not_defined"],
+                    onto.BASE[f"{__name__}-get_kinetic_energy-not_defined".replace(".", "-")],
                 ),
                 g,
             )
@@ -122,7 +122,7 @@ class TestOntology(unittest.TestCase):
                 (
                     speed_call,
                     onto.RO["0000057"],
-                    onto.BASE[f"{__name__}-get_speed-not_defined"],
+                    onto.BASE[f"{__name__}-get_speed-not_defined".replace(".", "-")],
                 ),
                 g,
             )
@@ -319,7 +319,7 @@ class TestOntology(unittest.TestCase):
                 if (
                     p,
                     onto.RO["0000057"],
-                    onto.BASE[f"{__name__}-f_triples-not_defined"],
+                    onto.BASE[f"{__name__}-f_triples-not_defined".replace(".", "-")],
                 )
                 in g
             ]
