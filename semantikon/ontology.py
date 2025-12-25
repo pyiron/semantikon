@@ -61,20 +61,18 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
     return URIRef(units)
 
 
-def validate_values(wf_dict: dict) -> tuple:
+def validate_values(graph: Graph) -> tuple:
     """
     Validate if all values required by restrictions are present in the graph
 
     Args:
-        wf_dict (dict): dictionary containing workflow information
+        graph (Graph): input RDF graph
 
     Returns:
         (tuple): validation result and message from pyshacl
     """
-    g_t = get_knowledge_graph(wf_dict, t_box=True)
-    g_a = get_knowledge_graph(wf_dict, t_box=False)
-    shacl = owl_restrictions_to_shacl(g_t)
-    return validate(g_a, shacl_graph=shacl)
+    shacl = owl_restrictions_to_shacl(graph)
+    return validate(graph, shacl_graph=shacl)
 
 
 def extract_dataclass(
@@ -85,7 +83,8 @@ def extract_dataclass(
 
 def get_knowledge_graph(
     wf_dict: dict,
-    t_box: bool = False,
+    include_t_box: bool = True,
+    include_a_box: bool = True,
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
@@ -98,7 +97,11 @@ def get_knowledge_graph(
         (rdflib.Graph): graph containing workflow information
     """
     G = serialize_and_convert_to_networkx(wf_dict)
-    graph = _nx_to_kg(G, t_box=t_box)
+    graph = Graph()
+    if include_t_box:
+        graph += _nx_to_kg(G, t_box=True)
+    if include_a_box:
+        graph += _nx_to_kg(G, t_box=False)
     return graph
 
 
@@ -137,6 +140,16 @@ def _wf_node_to_graph(
             g.add((kg_node, SNS.has_part, BNode(namespace[out])))
         g.add((kg_node, SNS.has_participant, f_node))
     return g
+
+
+def _input_is_connected(io: str, G: nx.DiGraph) -> bool:
+    candidate = list(G.predecessors(io))
+    if len(candidate) == 1:
+        if G.nodes[candidate[0]]["step"] == "node":
+            return True
+        return _input_is_connected(candidate[0], G)
+    assert len(candidate) == 0
+    return False
 
 
 def _get_data_node(io: str, G: nx.DiGraph) -> BNode:
@@ -220,14 +233,7 @@ def _wf_io_to_graph(
     if t_box:
         g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.subClassOf, io_assignment))
-        if "units" in data and step == "inputs":
-            g += _to_owl_restriction(
-                base_node=data_node,
-                on_property=QUDT.hasUnit,
-                target_class=_units_to_uri(data["units"]),
-                restriction_type=OWL.hasValue,
-            )
-        if step == "inputs":
+        if step == "inputs" and _input_is_connected(node_name, G):
             out = list(G.predecessors(node_name))
             assert len(out) <= 1
             if len(out) == 1:
@@ -236,14 +242,21 @@ def _wf_io_to_graph(
                     g += _to_owl_restriction(
                         namespace[out[0]], SNS.has_specified_output, data_node
                     )
+            if "units" in data:
+                g += _to_owl_restriction(
+                    base_node=data_node,
+                    on_property=QUDT.hasUnit,
+                    target_class=_units_to_uri(data["units"]),
+                    restriction_type=OWL.hasValue,
+                )
+            if "uri" in data:
+                g += _to_owl_restriction(
+                    data_node,
+                    SNS.specifies_value_of,
+                    data["uri"],
+                    restriction_type=OWL.hasValue,
+                )
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
-        if "uri" in data and step == "inputs":
-            g += _to_owl_restriction(
-                data_node,
-                SNS.specifies_value_of,
-                data["uri"],
-                restriction_type=OWL.hasValue,
-            )
     else:
         g.add((BNode(data_node), RDF.type, data_node))
         data_node = BNode(data_node)

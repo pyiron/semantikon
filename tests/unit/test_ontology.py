@@ -71,7 +71,7 @@ class TestOntology(unittest.TestCase):
 
     def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        g = onto.get_knowledge_graph(wf_dict, t_box=False)
+        g = onto.get_knowledge_graph(wf_dict, include_t_box=False)
 
         with self.subTest("workflow instance exists"):
             workflows = list(g.subjects(RDF.type, onto.BASE.my_kinetic_energy_workflow))
@@ -147,7 +147,8 @@ class TestOntology(unittest.TestCase):
                 ),
                 g,
             )
-        self.assertTrue(onto.validate_values(wf_dict)[0])
+        g = onto.get_knowledge_graph(wf_dict)
+        self.assertTrue(onto.validate_values(g)[0])
 
     def test_to_restrictions(self):
         # Common reference graph for single target class
@@ -270,14 +271,13 @@ class TestOntology(unittest.TestCase):
 
     def test_shacl_validation(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        g_t = onto.get_knowledge_graph(wf_dict, t_box=True)
-        g_a = onto.get_knowledge_graph(wf_dict, t_box=False)
-        shacl = onto.owl_restrictions_to_shacl(g_t)
-        self.assertTrue(validate(g_a, shacl_graph=shacl)[0])
+        g = onto.get_knowledge_graph(wf_dict)
+        shacl = onto.owl_restrictions_to_shacl(g)
+        self.assertTrue(validate(g, shacl_graph=shacl)[0])
 
     def test_derives_from(self):
         wf_dict = wf_triples.serialize_workflow()
-        g = onto.get_knowledge_graph(wf_dict, t_box=True)
+        g = onto.get_knowledge_graph(wf_dict, include_a_box=False)
         query = sparql_prefixes + dedent(
             """\
         SELECT ?main_class WHERE {
@@ -293,7 +293,7 @@ class TestOntology(unittest.TestCase):
             list(g.query(query))[0]["main_class"],
             onto.BASE["wf_triples-f_triples_0-outputs-a_data"],
         )
-        g = onto.get_knowledge_graph(wf_dict, t_box=False)
+        g = onto.get_knowledge_graph(wf_dict, include_t_box=False)
         result = list(
             g.predicates(
                 BNode(onto.BASE["wf_triples-f_triples_0-outputs-a_data"]),
@@ -305,7 +305,7 @@ class TestOntology(unittest.TestCase):
 
     def test_triples(self):
         wf_dict = wf_triples.serialize_workflow()
-        g = onto.get_knowledge_graph(wf_dict, t_box=False)
+        g = onto.get_knowledge_graph(wf_dict, include_t_box=False)
 
         with self.subTest("workflow instance exists"):
             workflows = list(g.subjects(RDF.type, onto.BASE.wf_triples))
@@ -358,7 +358,8 @@ class TestOntology(unittest.TestCase):
                 ),
                 g,
             )
-        self.assertTrue(onto.validate_values(wf_dict)[0])
+        g = onto.get_knowledge_graph(wf_dict)
+        self.assertTrue(onto.validate_values(g)[0])
 
 
 if __name__ == "__main__":
