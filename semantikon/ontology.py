@@ -149,15 +149,16 @@ def _wf_node_to_graph(
     namespace: Namespace,
 ) -> Graph:
     g = Graph()
-    f_node = namespace[data["function"]["identifier"].replace(".", "-")]
-    if list(g.triples((f_node, None, None))) == []:
-        g.add((f_node, RDF.type, SNS.software_method))
-        g.add((f_node, RDFS.label, Literal(data["function"]["qualname"])))
-        if data["function"].get("docstring", "") != "":
-            docstring = BNode(f_node + "_docstring")
-            g.add((docstring, RDF.type, SNS.textual_entity))
-            g.add((docstring, RDF.value, Literal(data["function"]["docstring"])))
-            g.add((docstring, SNS.denotes, f_node))
+    if "function" in data:
+        f_node = namespace[data["function"]["identifier"].replace(".", "-")]
+        if list(g.triples((f_node, None, None))) == []:
+            g.add((f_node, RDF.type, SNS.software_method))
+            g.add((f_node, RDFS.label, Literal(data["function"]["qualname"])))
+            if data["function"].get("docstring", "") != "":
+                docstring = BNode(f_node + "_docstring")
+                g.add((docstring, RDF.type, SNS.textual_entity))
+                g.add((docstring, RDF.value, Literal(data["function"]["docstring"])))
+                g.add((docstring, SNS.denotes, f_node))
     if t_box:
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
@@ -167,12 +168,13 @@ def _wf_node_to_graph(
                     namespace[item],
                 )
         g.add((kg_node, RDFS.subClassOf, SNS.process))
-        g += _to_owl_restriction(
-            kg_node,
-            SNS.has_participant,
-            f_node,
-            restriction_type=OWL.hasValue,
-        )
+        if "function" in data:
+            g += _to_owl_restriction(
+                kg_node,
+                SNS.has_participant,
+                f_node,
+                restriction_type=OWL.hasValue,
+            )
     else:
         g.add((BNode(kg_node), RDF.type, kg_node))
         kg_node = BNode(kg_node)
@@ -180,7 +182,8 @@ def _wf_node_to_graph(
             g.add((kg_node, SNS.has_part, BNode(namespace[inp])))
         for out in G.successors(node_name):
             g.add((kg_node, SNS.has_part, BNode(namespace[out])))
-        g.add((kg_node, SNS.has_participant, f_node))
+        if "function" in data:
+            g.add((kg_node, SNS.has_participant, f_node))
     return g
 
 
@@ -520,16 +523,18 @@ def serialize_and_convert_to_networkx(
                 if key not in ["nodes", "edges"]
             }
         }
-        node_dict[prefix]["function"] = get_function_metadata(
-            wf_dict["function"], full_metadata=True
-        )
-        node_dict[prefix]["function"]["identifier"] = ".".join(
-            (
-                node_dict[prefix]["function"]["module"],
-                node_dict[prefix]["function"]["qualname"],
-                node_dict[prefix]["function"]["version"],
+        assert "function" in wf_dict or wf_dict["type"] != "Function"
+        if "function" in wf_dict:
+            node_dict[prefix]["function"] = get_function_metadata(
+                wf_dict["function"], full_metadata=True
             )
-        )
+            node_dict[prefix]["function"]["identifier"] = ".".join(
+                (
+                    node_dict[prefix]["function"]["module"],
+                    node_dict[prefix]["function"]["qualname"],
+                    node_dict[prefix]["function"]["version"],
+                )
+            )
         for io_ in ["inputs", "outputs"]:
             for key, channel in wf_dict[io_].items():
                 channel_label = _remove_us(prefix, io_, key)
