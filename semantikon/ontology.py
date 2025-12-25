@@ -536,10 +536,14 @@ def serialize_and_convert_to_networkx(
                 )
             )
         for io_ in ["inputs", "outputs"]:
-            for key, channel in wf_dict[io_].items():
+            for loc, (key, channel) in enumerate(wf_dict[io_].items()):
                 channel_label = _remove_us(prefix, io_, key)
                 assert "semantikon_type" not in channel, "semantikon_type already set"
-                channel_dict[channel_label] = channel | {"semantikon_type": io_}
+                channel_dict[channel_label] = channel | {
+                    "semantikon_type": io_,
+                    "position": channel.get("position", loc),
+                    "arg": key,
+                }
         for key, node in wf_dict.get("nodes", {}).items():
             child_node, child_channel, child_edges = _serialize_workflow(
                 node, prefix=_dot(prefix, key)
