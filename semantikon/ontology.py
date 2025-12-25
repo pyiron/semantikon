@@ -4,6 +4,7 @@ from typing import TypeAlias
 
 import networkx as nx
 from flowrep.tools import get_function_metadata
+from owlrl import DeductiveClosure, RDFS_Semantics
 from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
@@ -61,17 +62,20 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
     return URIRef(units)
 
 
-def validate_values(graph: Graph) -> tuple:
+def validate_values(graph: Graph, run_reasoner: bool = True) -> tuple:
     """
     Validate if all values required by restrictions are present in the graph
 
     Args:
         graph (Graph): input RDF graph
+        run_reasoner (bool): if True, run OWL RL reasoner before validation
 
     Returns:
         (tuple): validation result and message from pyshacl
     """
     shacl = owl_restrictions_to_shacl(graph)
+    if run_reasoner:
+        DeductiveClosure(RDFS_Semantics).expand(graph)
     return validate(graph, shacl_graph=shacl)
 
 
@@ -209,6 +213,20 @@ def _translate_triples(
     return g
 
 
+def _restrictions_to_triples(restrictions: _rest_type) -> _triple_type:
+    triples = []
+    assert isinstance(restrictions, tuple | list)
+    assert isinstance(restrictions[0], tuple | list)
+    if not isinstance(restrictions[0][0], tuple | list):
+        restrictions = [restrictions]
+    for r_set in restrictions:
+        b_node = BNode()
+        triples.append((data_node, RDF.type, b_node))
+        for r in r_set:
+            triples.append((b_node, r[0], r[1]))
+    return triples
+
+
 def _wf_io_to_graph(
     step: str,
     node_name: str,
@@ -254,7 +272,6 @@ def _wf_io_to_graph(
                     data_node,
                     SNS.specifies_value_of,
                     data["uri"],
-                    restriction_type=OWL.hasValue,
                 )
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
     else:
@@ -266,13 +283,17 @@ def _wf_io_to_graph(
         if "units" in data and step == "outputs":
             g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
         if "uri" in data and step == "outputs":
-            g.add((data_node, SNS.specifies_value_of, data["uri"]))
+            bnode = BNode()
+            g.add((bnode, RDF.type, data["uri"]))
+            g.add((data_node, SNS.specifies_value_of, bnode))
     triples = data.get("triples", [])
     if triples != [] and not isinstance(triples[0], list | tuple):
         triples = [triples]
     if "derived_from" in data:
         assert step == "outputs", "derived_from only valid for outputs"
         triples.append(("self", SNS.derives_from, data["derived_from"]))
+    if "restrictions" in data:
+        triples += _restrictions_to_triples(data["restrictions"])
     if len(triples) > 0:
         g += _translate_triples(
             triples=triples,
