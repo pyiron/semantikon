@@ -1,14 +1,16 @@
 import json
 from dataclasses import dataclass
-from typing import Any, TypeAlias
+from typing import TypeAlias, cast
 
 import networkx as nx
 from flowrep.tools import get_function_metadata
-from owlrl import DeductiveClosure, OWLRL_Semantics
+from owlrl import DeductiveClosure, RDFS_Semantics
+from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
+from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
 IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")
@@ -29,10 +31,7 @@ class SNS:
     participates_in: URIRef = RO["0000056"]
     has_participant: URIRef = RO["0000057"]
     has_specified_input: URIRef = OBI["0000293"]
-    is_specified_input_of: URIRef = OBI["0000295"]
     has_specified_output: URIRef = OBI["0000299"]
-    is_specified_output_of: URIRef = OBI["0000312"]
-    has_unit: URIRef = QUDT["hasUnit"]
     input_assignment: URIRef = PMD["0000066"]
     executes: URIRef = STATO["0000102"]
     output_assignment: URIRef = PMD["0000067"]
@@ -66,60 +65,49 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
     return URIRef(units)
 
 
-def _check_missing_triples(graph: Graph) -> list:
-    return []
-
-
-def _check_connections(graph: Graph, strict_typing: bool = False, ontology=SNS) -> list:
+def _inherit_properties(graph: Graph, n_max: int = 1000):
+    query = f"""\
+    PREFIX rdfs: <{RDFS}>
+    PREFIX rdf: <{RDF}>
+    PREFIX owl: <{OWL}>
+    PREFIX ro: <{RO}>
+    INSERT {{
+        ?subject ?p ?o .
+    }}
+    WHERE {{
+        ?subject ro:0001000 ?target .
+        ?target ?p ?o .
+        FILTER(?p != ro:0001000)
+        FILTER(?p != rdfs:label)
+        FILTER(?p != rdf:value)
+        FILTER(?p != rdf:type)
+        FILTER(?p != owl:sameAs)
+    }}
     """
-    Check if the connections between inputs and outputs are compatible
-
-    Args:
-        graph (rdflib.Graph): graph to be validated
-        strict_typing (bool): if True, check for strict typing
-
-    Returns:
-        (list): list of incompatible connections
-    """
-    return []
+    n = 0
+    for _ in range(n_max):
+        graph.update(query)
+        if len(graph) == n:
+            break
+        n = len(graph)
 
 
-def _check_units(graph: Graph, ontology=SNS) -> dict[URIRef, list[URIRef]]:
-    """
-    Check if there are multiple units assigned to the same term
-
-    Args:
-        graph (rdflib.Graph): graph to be validated
-
-    Returns:
-        (dict): dictionary of terms with multiple units
-    """
-    return {}
-
-
-def validate_values(
-    graph: Graph, run_reasoner: bool = True, strict_typing: bool = False, ontology=SNS
-) -> dict[str, Any]:
+def validate_values(graph: Graph, run_reasoner: bool = True) -> tuple:
     """
     Validate if all values required by restrictions are present in the graph
 
     Args:
-        graph (rdflib.Graph): graph to be validated
-        run_reasoner (bool): if True, run the reasoner
-        strict_typing (bool): if True, check for strict typing
+        graph (Graph): input RDF graph
+        run_reasoner (bool): if True, run OWL RL reasoner before validation
 
     Returns:
-        (dict): list of missing triples
+        (tuple): validation result and message from pyshacl
     """
+    shacl = owl_restrictions_to_shacl(graph)
     if run_reasoner:
-        DeductiveClosure(OWLRL_Semantics).expand(graph)
-    return {
-        "missing_triples": _check_missing_triples(graph),
-        "incompatible_connections": _check_connections(
-            graph, strict_typing=strict_typing, ontology=ontology
-        ),
-        "distinct_units": _check_units(graph, ontology=ontology),
-    }
+        DeductiveClosure(RDFS_Semantics).expand(graph)
+        _inherit_properties(graph)
+    return validate(graph, shacl_graph=shacl)
 
 
 def extract_dataclass(
@@ -130,8 +118,8 @@ def extract_dataclass(
 
 def get_knowledge_graph(
     wf_dict: dict,
-    t_box: bool = False,
-    namespace: Namespace | None = None,
+    include_t_box: bool = True,
+    include_a_box: bool = True,
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
@@ -139,13 +127,16 @@ def get_knowledge_graph(
     Args:
         wf_dict (dict): dictionary containing workflow information
         t_box (bool): if True, generate T-Box graph, otherwise A-Box graph
-        namespace (Namespace): namespace to be used for the graph
 
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
     G = serialize_and_convert_to_networkx(wf_dict)
-    graph = _nx_to_kg(G, t_box=t_box, namespace=namespace)
+    graph = Graph()
+    if include_t_box:
+        graph += _nx_to_kg(G, t_box=True)
+    if include_a_box:
+        graph += _nx_to_kg(G, t_box=False)
     return graph
 
 
@@ -171,30 +162,42 @@ def _wf_node_to_graph(
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
                 g += _to_owl_restriction(
-                    on_property=SNS.has_part,
-                    target_class=namespace[item],
-                    base_node=kg_node,
+                    kg_node,
+                    SNS.has_part,
+                    namespace[item],
                 )
         g.add((kg_node, RDFS.subClassOf, SNS.process))
         g += _to_owl_restriction(
-            on_property=SNS.has_participant,
-            target_class=f_node,
-            base_node=kg_node,
+            kg_node,
+            SNS.has_participant,
+            f_node,
+            restriction_type=OWL.hasValue,
         )
     else:
-        g.add((kg_node, RDF.type, SNS.process))
+        g.add((BNode(kg_node), RDF.type, kg_node))
+        kg_node = BNode(kg_node)
         for inp in G.predecessors(node_name):
-            g.add((kg_node, SNS.has_part, namespace[inp]))
+            g.add((kg_node, SNS.has_part, BNode(namespace[inp])))
         for out in G.successors(node_name):
-            g.add((kg_node, SNS.has_part, namespace[out]))
+            g.add((kg_node, SNS.has_part, BNode(namespace[out])))
         g.add((kg_node, SNS.has_participant, f_node))
     return g
 
 
-def _get_data_node(io: str, G: nx.DiGraph, t_box: bool = False) -> BNode:
+def _input_is_connected(io: str, G: nx.DiGraph) -> bool:
+    candidate = list(G.predecessors(io))
+    if len(candidate) == 1:
+        if G.nodes[candidate[0]]["step"] == "node":
+            return True
+        return _input_is_connected(candidate[0], G)
+    assert len(candidate) == 0
+    return False
+
+
+def _get_data_node(io: str, G: nx.DiGraph) -> BNode:
     candidate = list(G.predecessors(io))
     assert len(candidate) <= 1
-    if len(candidate) == 0 or G.nodes[candidate[0]]["step"] == "node" or t_box:
+    if len(candidate) == 0 or G.nodes[candidate[0]]["step"] == "node":
         return f"{io}_data"
     return _get_data_node(candidate[0], G)
 
@@ -219,14 +222,18 @@ def _translate_triples(
     namespace: Namespace,
 ) -> Graph:
     def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode | BNode:
-        if isinstance(t, (URIRef, BNode)):
+        if isinstance(t, SemantikonURI):
+            return t.get_instance() if not t_box else t.get_class()
+        elif isinstance(t, (URIRef, BNode)):
             return t
         elif t == "self" or t is None:
             return data_node
         elif isinstance(t, str) and (t.startswith("inputs") or t.startswith("outputs")):
-            return BNode(
-                namespace[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)]
-            )
+            result = namespace[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)]
+            if t_box:
+                return result
+            else:
+                return BNode(result)
         else:
             raise ValueError(f"{t} not recognized")
 
@@ -237,16 +244,30 @@ def _translate_triples(
             p, o = triple
         else:
             s, p, o = triple
-        s = _local_str_to_uriref(s)
-        o = _local_str_to_uriref(o)
+        s_n = _local_str_to_uriref(s)
+        o_n = _local_str_to_uriref(o)
         if t_box:
-            g += _to_owl_restriction(
-                on_property=p,
-                target_class=o,
-                base_node=s,
-            )
+            g += _to_owl_restriction(s_n, p, o_n)
         else:
-            g.add((s, p, o))
+            g.add((s_n, p, o_n))
+            for t in [s, o]:
+                if isinstance(t, SemantikonURI):
+                    g.add((t.get_instance(), RDF.type, t.get_class()))
+    return g
+
+
+def _restrictions_to_triples(restrictions: _rest_type, data_node: URIRef) -> Graph:
+    g = Graph()
+    assert isinstance(restrictions, tuple | list)
+    assert isinstance(restrictions[0], tuple | list)
+    if not isinstance(restrictions[0][0], tuple | list):
+        restrictions = cast(_rest_type, (restrictions,))
+    for r_set in restrictions:
+        b_node = BNode()
+        g.add((data_node, RDFS.subClassOf, b_node))
+        g.add((b_node, RDF.type, OWL.Restriction))
+        for r in r_set:
+            g.add((b_node, r[0], r[1]))
     return g
 
 
@@ -259,54 +280,59 @@ def _wf_io_to_graph(
     t_box: bool,
     namespace: Namespace,
 ) -> Graph:
+    if not t_box:
+        node = BNode(node)
     g = Graph()
     if data.get("label") is not None:
         g.add((node, RDFS.label, Literal(data["label"])))
     else:
         g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
     io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
-    data_node = BNode(namespace[_get_data_node(io=node_name, G=G, t_box=t_box)])
+    data_node = namespace[_get_data_node(io=node_name, G=G)]
     has_specified_io = (
         SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
     )
     if t_box:
-        g += _to_owl_restriction(has_specified_io, data_node, base_node=node)
+        g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.subClassOf, io_assignment))
-        if "units" in data:
-            g += _to_owl_restriction(
-                on_property=SNS.has_unit,
-                target_class=_units_to_uri(data["units"]),
-                restriction_type=OWL.hasValue,
-                base_node=data_node,
-            )
-        if step == "inputs":
+        if step == "inputs" and _input_is_connected(node_name, G):
             out = list(G.predecessors(node_name))
             assert len(out) <= 1
             if len(out) == 1:
                 assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
                 if G.nodes[out[0]]["step"] == "outputs":
                     g += _to_owl_restriction(
-                        on_property=SNS.is_specified_output_of,
-                        target_class=namespace[out[0]],
-                        base_node=data_node,
+                        namespace[out[0]], SNS.has_specified_output, data_node
                     )
+            if "units" in data:
+                g += _to_owl_restriction(
+                    base_node=data_node,
+                    on_property=QUDT.hasUnit,
+                    target_class=_units_to_uri(data["units"]),
+                    restriction_type=OWL.hasValue,
+                )
+            if "uri" in data:
+                g += _to_owl_restriction(
+                    data_node,
+                    SNS.specifies_value_of,
+                    data["uri"],
+                )
+        if "restrictions" in data:
+            assert step == "inputs", "restrictions only valid for inputs"
+            g += _restrictions_to_triples(data["restrictions"], data_node=data_node)
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
-        if "uri" in data:
-            g += _to_owl_restriction(
-                on_property=SNS.specifies_value_of,
-                target_class=data["uri"],
-                base_node=data_node,
-            )
     else:
-        g.add((node, RDF.type, io_assignment))
+        g.add((BNode(data_node), RDF.type, data_node))
+        data_node = BNode(data_node)
         g.add((node, has_specified_io, data_node))
         if "value" in data and list(g.objects(data_node, RDF.value)) == []:
             g.add((data_node, RDF.value, Literal(data["value"])))
-        if "units" in data:
-            g.add((data_node, OWL.hasValue, _units_to_uri(data["units"])))
-        if "uri" in data:
-            g.add((data_node, RDF.type, data["uri"]))
-        g.add((data_node, SNS.specifies_value_of, SNS.value_specification))
+        if "units" in data and step == "outputs":
+            g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
+        if "uri" in data and step == "outputs":
+            bnode = BNode()
+            g.add((bnode, RDF.type, data["uri"]))
+            g.add((data_node, SNS.specifies_value_of, bnode))
     triples = data.get("triples", [])
     if triples != [] and not isinstance(triples[0], list | tuple):
         triples = [triples]
@@ -327,7 +353,7 @@ def _wf_io_to_graph(
 
 def _parse_precedes(
     G: nx.DiGraph,
-    workflow_node: URIRef,
+    workflow_node: URIRef | BNode,
     t_box: bool,
     namespace: Namespace,
 ) -> Graph:
@@ -338,37 +364,39 @@ def _parse_precedes(
             if len(successors) == 0:
                 if t_box:
                     g += _to_owl_restriction(
-                        on_property=SNS.has_part,
-                        target_class=namespace[node[0]],
-                        base_node=workflow_node,
+                        workflow_node, SNS.has_part, namespace[node[0]]
                     )
                 else:
-                    g.add((workflow_node, SNS.has_part, namespace[node[0]]))
+                    g.add((workflow_node, SNS.has_part, BNode(namespace[node[0]])))
             else:
                 if t_box:
-                    node_tmp = BNode()
                     for succ in successors:
                         g += _to_owl_restriction(
-                            on_property=SNS.precedes,
-                            target_class=namespace[succ],
-                            base_node=node_tmp,
+                            namespace[node[0]],
+                            SNS.precedes,
+                            namespace[succ],
                         )
-                    g.add((node_tmp, RDFS.subClassOf, namespace[node[0]]))
                     g += _to_owl_restriction(
-                        on_property=SNS.has_part,
-                        target_class=node_tmp,
-                        base_node=workflow_node,
+                        workflow_node,
+                        SNS.has_part,
+                        namespace[node[0]],
                     )
                 else:
                     for succ in successors:
-                        g.add((namespace[node[0]], SNS.precedes, namespace[succ]))
-                    g.add((workflow_node, SNS.has_part, namespace[node[0]]))
+                        g.add(
+                            (
+                                BNode(namespace[node[0]]),
+                                SNS.precedes,
+                                BNode(namespace[succ]),
+                            )
+                        )
+                    g.add((workflow_node, SNS.has_part, BNode(namespace[node[0]])))
     return g
 
 
 def _parse_global_io(
     G: nx.DiGraph,
-    workflow_node: URIRef,
+    workflow_node: URIRef | BNode,
     t_box: bool,
     namespace: Namespace,
 ) -> Graph:
@@ -381,23 +409,20 @@ def _parse_global_io(
         for n in G.nodes.data()
         if G.out_degree(n[0]) == 0 and n[1]["step"] == "outputs"
     ]
-    for on_property, global_io in zip(
-        [SNS.has_specified_input, SNS.has_specified_output],
-        [global_inputs, global_outputs],
-    ):
+    for global_io in [global_inputs, global_outputs]:
         for io in global_io:
             if t_box:
                 g += _to_owl_restriction(
-                    on_property=on_property,
-                    target_class=namespace[io[0]],
-                    base_node=workflow_node,
+                    workflow_node,
+                    SNS.has_part,
+                    namespace[io[0]],
                 )
             else:
-                g.add((workflow_node, on_property, namespace[io[0]]))
+                g.add((workflow_node, SNS.has_part, BNode(namespace[io[0]])))
     return g
 
 
-def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) -> Graph:
+def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
     g = Graph()
     g.bind("qudt", str(QUDT))
     g.bind("unit", "http://qudt.org/vocab/unit/")
@@ -409,17 +434,16 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) ->
     g.bind("pmdco", str(PMD))
     g.bind("schema", str(SCHEMA))
     g.bind("stato", str(STATO))
-    if namespace is not None:
-        g.bind("ns", str(namespace))
-    if namespace is None:
-        namespace = BASE
-    workflow_node = namespace[G.name]
+    namespace = BASE
+    workflow_node = namespace[G.name] if t_box else BNode(namespace[G.name])
     for comp in G.nodes.data():
         data = comp[1].copy()
         step = data.pop("step")
         node = namespace[comp[0]]
         if t_box:
             g.add((node, RDF.type, OWL.Class))
+        else:
+            g.add((BNode(node), RDF.type, BASE[comp[0]]))
         assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
         if step == "node":
             g += _wf_node_to_graph(
@@ -441,8 +465,11 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool, namespace: Namespace | None = None) ->
                 namespace=namespace,
             )
 
-    g.add((workflow_node, RDF.type, OWL.Class))
-    g.add((workflow_node, RDFS.subClassOf, SNS.process))
+    if t_box:
+        g.add((workflow_node, RDF.type, OWL.Class))
+        g.add((workflow_node, RDFS.subClassOf, SNS.process))
+    else:
+        g.add((workflow_node, RDF.type, BASE[G.name]))
     g += _parse_precedes(
         G=G, workflow_node=workflow_node, t_box=t_box, namespace=namespace
     )
@@ -564,15 +591,13 @@ def serialize_and_convert_to_networkx(
 
 
 def _to_owl_restriction(
+    base_node: URIRef | None,
     on_property: URIRef,
     target_class: URIRef,
-    restriction_node: BNode | URIRef | None = None,
     restriction_type: URIRef = OWL.someValuesFrom,
-    base_node: URIRef | None = None,
 ) -> Graph:
     g = Graph()
-    if restriction_node is None:
-        restriction_node = BNode()
+    restriction_node = BNode()
 
     # Build the restriction
     g.add((restriction_node, RDF.type, OWL.Restriction))
@@ -613,32 +638,55 @@ def _get_graph_hash(G: nx.DiGraph, with_global_inputs: bool = True) -> str:
     )
 
 
-def _to_shacl_shape(
-    on_property: URIRef,
-    target_class: URIRef,
-    shape_node: BNode | URIRef | None = None,
-    base_node: URIRef | None = None,
-    min_count: int | None = 1,
-) -> Graph:
-    g = Graph()
+def owl_restrictions_to_shacl(owl_graph: Graph) -> Graph:
+    def iter_supported_restrictions(g: Graph):
+        """
+        Yield (base_class, restriction_node, property, restriction_type, value)
+        for supported OWL restrictions.
+        """
+        for r in g.subjects(RDF.type, OWL.Restriction):
+            prop = g.value(r, OWL.onProperty)
+            if prop is None:
+                continue
 
-    if shape_node is None:
-        shape_node = BNode()
+            for restriction_type in (OWL.someValuesFrom, OWL.hasValue):
+                value = g.value(r, restriction_type)
+                if value is None:
+                    continue
 
-    # Declare PropertyShape
-    g.add((shape_node, RDF.type, SH.PropertyShape))
-    g.add((shape_node, SH.path, on_property))
-    g.add((shape_node, SH["class"], target_class))
+                for base_cls in g.subjects(RDFS.subClassOf, r):
+                    yield base_cls, prop, restriction_type, value
 
-    # Existential semantics (OWL someValuesFrom analogue)
-    if min_count is not None:
-        g.add((shape_node, SH.minCount, Literal(min_count)))
+    shacl_graph = Graph()
+    node_shapes = {}
 
-    # Attach to a NodeShape via targetClass
-    if base_node is not None:
-        node_shape = BNode()
-        g.add((node_shape, RDF.type, SH.NodeShape))
-        g.add((node_shape, SH.targetClass, base_node))
-        g.add((node_shape, SH.property, shape_node))
+    for base_cls, prop, rtype, value in iter_supported_restrictions(owl_graph):
 
-    return g
+        # One NodeShape per base class
+        if base_cls not in node_shapes:
+            ns = BNode()
+            node_shapes[base_cls] = ns
+            shacl_graph.add((ns, RDF.type, SH.NodeShape))
+            shacl_graph.add((ns, SH.targetClass, base_cls))
+        else:
+            ns = node_shapes[base_cls]
+
+        ps = BNode()
+        shacl_graph.add((ps, RDF.type, SH.PropertyShape))
+        shacl_graph.add((ps, SH.path, prop))
+
+        if rtype == OWL.someValuesFrom:
+            # Existential restriction:
+            # ∃ prop . C  →  qualifiedValueShape + qualifiedMinCount
+            qvs = BNode()
+            shacl_graph.add((qvs, SH["class"], value))
+
+            shacl_graph.add((ps, SH.qualifiedValueShape, qvs))
+            shacl_graph.add((ps, SH.qualifiedMinCount, Literal(1)))
+
+        elif rtype == OWL.hasValue:
+            shacl_graph.add((ps, SH.hasValue, value))
+
+        shacl_graph.add((ns, SH.property, ps))
+
+    return shacl_graph
