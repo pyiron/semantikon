@@ -124,7 +124,8 @@ def get_knowledge_graph(
 
     Args:
         wf_dict (dict): dictionary containing workflow information
-        t_box (bool): if True, generate T-Box graph, otherwise A-Box graph
+        include_t_box (bool): if True, include T-Box information
+        include_a_box (bool): if True, include A-Box information
 
     Returns:
         (rdflib.Graph): graph containing workflow information
