@@ -1,14 +1,16 @@
 import json
 from dataclasses import dataclass
-from typing import TypeAlias
+from typing import TypeAlias, cast
 
 import networkx as nx
 from flowrep.tools import get_function_metadata
+from owlrl import DeductiveClosure, RDFS_Semantics
 from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
+from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
 IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")
@@ -61,17 +63,48 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
     return URIRef(units)
 
 
-def validate_values(graph: Graph) -> tuple:
+def _inherit_properties(graph: Graph, n_max: int = 1000):
+    query = f"""\
+    PREFIX rdfs: <{RDFS}>
+    PREFIX rdf: <{RDF}>
+    PREFIX owl: <{OWL}>
+    PREFIX ro: <{RO}>
+    INSERT {{
+        ?subject ?p ?o .
+    }}
+    WHERE {{
+        ?subject ro:0001000 ?target .
+        ?target ?p ?o .
+        FILTER(?p != ro:0001000)
+        FILTER(?p != rdfs:label)
+        FILTER(?p != rdf:value)
+        FILTER(?p != rdf:type)
+        FILTER(?p != owl:sameAs)
+    }}
+    """
+    n = 0
+    for _ in range(n_max):
+        graph.update(query)
+        if len(graph) == n:
+            break
+        n = len(graph)
+
+
+def validate_values(graph: Graph, run_reasoner: bool = True) -> tuple:
     """
     Validate if all values required by restrictions are present in the graph
 
     Args:
         graph (Graph): input RDF graph
+        run_reasoner (bool): if True, run OWL RL reasoner before validation
 
     Returns:
         (tuple): validation result and message from pyshacl
     """
     shacl = owl_restrictions_to_shacl(graph)
+    if run_reasoner:
+        DeductiveClosure(RDFS_Semantics).expand(graph)
+        _inherit_properties(graph)
     return validate(graph, shacl_graph=shacl)
 
 
@@ -180,7 +213,9 @@ def _translate_triples(
     namespace: Namespace,
 ) -> Graph:
     def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode | BNode:
-        if isinstance(t, (URIRef, BNode)):
+        if isinstance(t, SemantikonURI):
+            return t.get_instance() if not t_box else t.get_class()
+        elif isinstance(t, (URIRef, BNode)):
             return t
         elif t == "self" or t is None:
             return data_node
@@ -200,12 +235,30 @@ def _translate_triples(
             p, o = triple
         else:
             s, p, o = triple
-        s = _local_str_to_uriref(s)
-        o = _local_str_to_uriref(o)
+        s_n = _local_str_to_uriref(s)
+        o_n = _local_str_to_uriref(o)
         if t_box:
-            g += _to_owl_restriction(s, p, o)
+            g += _to_owl_restriction(s_n, p, o_n)
         else:
-            g.add((s, p, o))
+            g.add((s_n, p, o_n))
+            for t in [s, o]:
+                if isinstance(t, SemantikonURI):
+                    g.add((t.get_instance(), RDF.type, t.get_class()))
+    return g
+
+
+def _restrictions_to_triples(restrictions: _rest_type, data_node: URIRef) -> Graph:
+    g = Graph()
+    assert isinstance(restrictions, tuple | list)
+    assert isinstance(restrictions[0], tuple | list)
+    if not isinstance(restrictions[0][0], tuple | list):
+        restrictions = cast(_rest_type, (restrictions,))
+    for r_set in restrictions:
+        b_node = BNode()
+        g.add((data_node, RDFS.subClassOf, b_node))
+        g.add((b_node, RDF.type, OWL.Restriction))
+        for r in r_set:
+            g.add((b_node, r[0], r[1]))
     return g
 
 
@@ -254,8 +307,10 @@ def _wf_io_to_graph(
                     data_node,
                     SNS.specifies_value_of,
                     data["uri"],
-                    restriction_type=OWL.hasValue,
                 )
+        if "restrictions" in data:
+            assert step == "inputs", "restrictions only valid for inputs"
+            g += _restrictions_to_triples(data["restrictions"], data_node=data_node)
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
     else:
         g.add((BNode(data_node), RDF.type, data_node))
@@ -266,7 +321,9 @@ def _wf_io_to_graph(
         if "units" in data and step == "outputs":
             g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
         if "uri" in data and step == "outputs":
-            g.add((data_node, SNS.specifies_value_of, data["uri"]))
+            bnode = BNode()
+            g.add((bnode, RDF.type, data["uri"]))
+            g.add((data_node, SNS.specifies_value_of, bnode))
     triples = data.get("triples", [])
     if triples != [] and not isinstance(triples[0], list | tuple):
         triples = [triples]

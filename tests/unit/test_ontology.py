@@ -7,7 +7,7 @@ from rdflib import OWL, RDF, RDFS, BNode, Graph, Namespace
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
-from semantikon.metadata import u
+from semantikon.metadata import SemantikonURI, u
 from semantikon.workflow import workflow
 
 EX: Namespace = Namespace("http://example.org/")
@@ -61,6 +61,62 @@ def f_triples(
 def wf_triples(a, b):
     a = f_triples(a, b)
     return a
+
+
+class Meal:
+    pass
+
+
+def prepare_pizza() -> u(Meal, uri=EX.Pizza):
+    return Meal()
+
+
+def eat(meal: u(Meal, uri=EX.Meal)) -> str:
+    return "I am full after eating "
+
+
+@workflow
+def eat_pizza():
+    pizza = prepare_pizza()
+    comment = eat(pizza)
+    return comment
+
+
+uri_color = SemantikonURI(EX.Color)
+uri_cleaned = SemantikonURI(EX.Cleaned)
+
+
+class Clothes:
+    pass
+
+
+def wash(
+    clothes: Clothes,
+) -> u(Clothes, triples=(EX.hasProperty, uri_cleaned), derived_from="inputs.clothes"):
+    ...
+    return clothes
+
+
+def dye(clothes: Clothes, color="blue") -> u(
+    Clothes,
+    triples=(EX.hasProperty, uri_color),
+    derived_from="inputs.clothes",
+):
+    ...
+    return clothes
+
+
+def sell(
+    clothes: u(
+        Clothes,
+        restrictions=(
+            ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Cleaned)),
+            ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Color)),
+        ),
+    ),
+) -> int:
+    ...
+    return 10
 
 
 class TestOntology(unittest.TestCase):
@@ -360,6 +416,31 @@ class TestOntology(unittest.TestCase):
             )
         g = onto.get_knowledge_graph(wf_dict)
         self.assertTrue(onto.validate_values(g)[0])
+
+    def test_type_checking(self):
+        wf_dict = eat_pizza.serialize_workflow()
+        graph = onto.get_knowledge_graph(wf_dict)
+        self.assertFalse(onto.validate_values(graph)[0])
+
+    def test_restrictions(self):
+        @workflow
+        def my_correct_workflow(clothes: Clothes) -> int:
+            dyed_clothes = dye(clothes)
+            washed_clothes = wash(dyed_clothes)
+            money = sell(washed_clothes)
+            return money
+
+        graph = onto.get_knowledge_graph(my_correct_workflow.serialize_workflow())
+        self.assertTrue(onto.validate_values(graph)[0])
+
+        @workflow
+        def my_wrong_workflow(clothes: Clothes) -> int:
+            washed_clothes = wash(clothes)
+            money = sell(washed_clothes)
+            return money
+
+        graph = onto.get_knowledge_graph(my_wrong_workflow.serialize_workflow())
+        self.assertFalse(onto.validate_values(graph)[0])
 
 
 if __name__ == "__main__":
