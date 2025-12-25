@@ -7,7 +7,7 @@ from rdflib import OWL, RDF, RDFS, BNode, Graph, Namespace
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
-from semantikon.metadata import u, SemantikonURI
+from semantikon.metadata import SemantikonURI, u
 from semantikon.workflow import workflow
 
 EX: Namespace = Namespace("http://example.org/")
