@@ -159,7 +159,8 @@ def _function_to_graph(f_node: URIRef, data: dict) -> None:
         f_node (URIRef): The URI reference for the function node.
         data (dict): A dictionary containing metadata about the function. 
                      Expected keys:
-                     - "function": A dictionary with the following keys: - "qualname" (str): The qualified name of the function.
+                     - "function": A dictionary with the following keys:
+                     - "qualname" (str): The qualified name of the function.
                      - "docstring" (str, optional): The docstring of the function.
 
     Returns:
