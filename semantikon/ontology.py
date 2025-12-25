@@ -587,12 +587,12 @@ def owl_restrictions_to_shacl(owl_graph: Graph) -> Graph:
                     continue
 
                 for base_cls in g.subjects(RDFS.subClassOf, r):
-                    yield base_cls, r, prop, restriction_type, value
+                    yield base_cls, prop, restriction_type, value
 
     shacl_graph = Graph()
     node_shapes = {}
 
-    for base_cls, r, prop, rtype, value in iter_supported_restrictions(owl_graph):
+    for base_cls, prop, rtype, value in iter_supported_restrictions(owl_graph):
 
         # One NodeShape per base class
         if base_cls not in node_shapes:
