@@ -10,6 +10,7 @@ from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
+from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
 IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")
@@ -212,7 +213,9 @@ def _translate_triples(
     namespace: Namespace,
 ) -> Graph:
     def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode | BNode:
-        if isinstance(t, (URIRef, BNode)):
+        if isinstance(t, SemantikonURI):
+            return t.get_instance() if not t_box else t.get_class()
+        elif isinstance(t, (URIRef, BNode)):
             return t
         elif t == "self" or t is None:
             return data_node
@@ -232,29 +235,32 @@ def _translate_triples(
             p, o = triple
         else:
             s, p, o = triple
-        s = _local_str_to_uriref(s)
-        o = _local_str_to_uriref(o)
+        s_n = _local_str_to_uriref(s)
+        o_n = _local_str_to_uriref(o)
         if t_box:
-            g += _to_owl_restriction(s, p, o)
+            g += _to_owl_restriction(s_n, p, o_n)
         else:
-            g.add((s, p, o))
+            g.add((s_n, p, o_n))
+            for t in [s, o]:
+                if isinstance(t, SemantikonURI):
+                    g.add((t.get_instance(), RDF.type, t.get_class()))
     return g
 
 
 def _restrictions_to_triples(
     restrictions: _rest_type, data_node: URIRef
 ) -> _triple_type:
-    triples = []
+    g = Graph()
     assert isinstance(restrictions, tuple | list)
     assert isinstance(restrictions[0], tuple | list)
     if not isinstance(restrictions[0][0], tuple | list):
         restrictions = [restrictions]
     for r_set in restrictions:
         b_node = BNode()
-        triples.append((data_node, RDF.type, b_node))
+        g.add((data_node, RDF.type, b_node))
         for r in r_set:
-            triples.append((b_node, r[0], r[1]))
-    return triples
+            g.add((b_node, r[0], r[1]))
+    return g
 
 
 def _wf_io_to_graph(
@@ -322,8 +328,6 @@ def _wf_io_to_graph(
     if "derived_from" in data:
         assert step == "outputs", "derived_from only valid for outputs"
         triples.append(("self", SNS.derives_from, data["derived_from"]))
-    if "restrictions" in data:
-        triples += _restrictions_to_triples(data["restrictions"], data_node=data_node)
     if len(triples) > 0:
         g += _translate_triples(
             triples=triples,
@@ -333,6 +337,9 @@ def _wf_io_to_graph(
             t_box=t_box,
             namespace=namespace,
         )
+    if "restrictions" in data:
+        assert step == "inputs", "restrictions only valid for inputs"
+        g += _restrictions_to_triples(data["restrictions"], data_node=data_node)
     return g
 
 
