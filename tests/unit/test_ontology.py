@@ -81,19 +81,21 @@ def eat_pizza():
     comment = eat(pizza)
     return comment
 
+
 uri_color = SemantikonURI(EX.Color)
 uri_cleaned = SemantikonURI(EX.Cleaned)
+
 
 class Clothes:
     pass
 
-def wash(clothes: Clothes) -> u(
-    Clothes,
-    triples=(EX.hasProperty, uri_cleaned),
-    derived_from="inputs.clothes"
-):
+
+def wash(
+    clothes: Clothes,
+) -> u(Clothes, triples=(EX.hasProperty, uri_cleaned), derived_from="inputs.clothes"):
     ...
     return clothes
+
 
 def dye(clothes: Clothes, color="blue") -> u(
     Clothes,
@@ -103,13 +105,15 @@ def dye(clothes: Clothes, color="blue") -> u(
     ...
     return clothes
 
+
 def sell(
     clothes: u(
-        Clothes, restrictions=(
+        Clothes,
+        restrictions=(
             ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Cleaned)),
-            ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Color))
-        )
-    )
+            ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Color)),
+        ),
+    ),
 ) -> int:
     ...
     return 10
@@ -437,6 +441,7 @@ class TestOntology(unittest.TestCase):
 
         graph = onto.get_knowledge_graph(my_wrong_workflow.serialize_workflow())
         self.assertTrue(onto.validate_values(graph))
+
 
 if __name__ == "__main__":
     unittest.main()
