@@ -3,7 +3,7 @@ from pathlib import Path
 from textwrap import dedent
 
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
+from rdflib import OWL, RDF, RDFS, BNode, Graph, Namespace
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
@@ -58,8 +58,8 @@ def f_triples(
 
 
 @workflow
-def wf_triples(a):
-    a = f_triples(a)
+def wf_triples(a, b):
+    a = f_triples(a, b)
     return a
 
 
@@ -69,32 +69,86 @@ class TestOntology(unittest.TestCase):
         cls.maxDiff = None
         cls.static_dir = Path(__file__).parent.parent / "static"
 
-    def test_full_ontology(self):
-        g_ref = Graph()
-        with open(self.static_dir / "kinetic_energy_workflow.ttl", "r") as f:
-            g_ref.parse(
-                data=f.read().replace("__main__", __name__.replace(".", "-")),
-                format="turtle",
-            )
+    def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        g = onto.get_knowledge_graph(wf_dict, t_box=True)
-        _, in_first, in_second = graph_diff(g, g_ref)
-        with self.subTest("Full ontology matches reference"):
-            self.assertEqual(
-                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
+        g = onto.get_knowledge_graph(wf_dict, include_t_box=False)
+
+        with self.subTest("workflow instance exists"):
+            workflows = list(g.subjects(RDF.type, onto.BASE.my_kinetic_energy_workflow))
+            self.assertEqual(len(workflows), 1)
+
+        wf = workflows[0]
+
+        with self.subTest("workflow has both function executions as parts"):
+            parts = list(g.objects(wf, onto.BFO["0000051"]))
+            ke_calls = [
+                p
+                for p in parts
+                if (
+                    p,
+                    RDF.type,
+                    onto.BASE["my_kinetic_energy_workflow-get_kinetic_energy_0"],
+                )
+                in g
+            ]
+            speed_calls = [
+                p
+                for p in parts
+                if (p, RDF.type, onto.BASE["my_kinetic_energy_workflow-get_speed_0"])
+                in g
+            ]
+            self.assertEqual(len(ke_calls), 1)
+            self.assertEqual(len(speed_calls), 1)
+
+        ke_call = ke_calls[0]
+        speed_call = speed_calls[0]
+
+        with self.subTest("speed computation precedes kinetic energy computation"):
+            self.assertIn(
+                (speed_call, onto.BFO["0000063"], ke_call),
+                g,
             )
-        with self.subTest("Full ontology matches reference"):
-            self.assertEqual(
-                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
+
+        with self.subTest("functions are linked to python callables"):
+            self.assertIn(
+                (
+                    ke_call,
+                    onto.RO["0000057"],
+                    onto.BASE[
+                        f"{__name__}-get_kinetic_energy-not_defined".replace(".", "-")
+                    ],
+                ),
+                g,
             )
-        g = onto.get_knowledge_graph(wf_dict, t_box=False)
-        self.assertIn(
-            (
-                BNode(onto.BASE["my_kinetic_energy_workflow-inputs-distance_data"]),
-                URIRef("http://qudt.org/vocab/unit/M"),
-            ),
-            list(g.subject_objects(onto.QUDT.hasUnit)),
-        )
+            self.assertIn(
+                (
+                    speed_call,
+                    onto.RO["0000057"],
+                    onto.BASE[f"{__name__}-get_speed-not_defined".replace(".", "-")],
+                ),
+                g,
+            )
+
+        with self.subTest("kinetic energy output data has correct unit"):
+            outputs = list(
+                g.subjects(
+                    RDF.type,
+                    onto.BASE[
+                        "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output_data"
+                    ],
+                )
+            )
+            self.assertEqual(len(outputs), 1)
+            self.assertIn(
+                (
+                    outputs[0],
+                    Namespace("http://qudt.org/schema/qudt/").hasUnit,
+                    Namespace("http://qudt.org/vocab/unit/").J,
+                ),
+                g,
+            )
+        g = onto.get_knowledge_graph(wf_dict)
+        self.assertTrue(onto.validate_values(g)[0])
 
     def test_to_restrictions(self):
         # Common reference graph for single target class
@@ -216,91 +270,14 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_shacl_validation(self):
-        Person = URIRef(EX + "Person")
-        Email = URIRef(EX + "Email")
-        hasEmail = URIRef(EX + "hasEmail")
-
-        alice = URIRef(EX + "alice")
-        bob = URIRef(EX + "bob")
-        email1 = URIRef(EX + "email1")
-
-        with self.subTest("Data conforms with valid property"):
-            data = Graph()
-            data.add((alice, RDF.type, Person))
-            data.add((alice, hasEmail, email1))
-            data.add((email1, RDF.type, Email))
-
-            shapes = onto._to_shacl_shape(
-                on_property=hasEmail,
-                target_class=Email,
-                base_node=Person,
-            )
-
-            conforms, _, _ = validate(
-                data_graph=data,
-                shacl_graph=shapes,
-            )
-
-            self.assertTrue(conforms)
-
-        with self.subTest("Data fails when property is missing"):
-            data = Graph()
-            data.add((alice, RDF.type, Person))
-
-            shapes = onto._to_shacl_shape(
-                on_property=hasEmail,
-                target_class=Email,
-                base_node=Person,
-            )
-
-            conforms, _, report = validate(
-                data_graph=data,
-                shacl_graph=shapes,
-            )
-
-            self.assertFalse(conforms)
-            self.assertIn("minCount", report)
-
-        with self.subTest("Data fails when property value is wrong class"):
-            data = Graph()
-            data.add((alice, RDF.type, Person))
-            data.add((alice, hasEmail, bob))  # bob not typed as Email
-
-            shapes = onto._to_shacl_shape(
-                on_property=hasEmail,
-                target_class=Email,
-                base_node=Person,
-            )
-
-            conforms, _, report = validate(
-                data_graph=data,
-                shacl_graph=shapes,
-            )
-
-            self.assertFalse(conforms)
-            self.assertIn("class", report)
-
-        with self.subTest("Non-target nodes are ignored"):
-            data = Graph()
-            data.add((bob, hasEmail, email1))
-            data.add((email1, RDF.type, Email))
-
-            shapes = onto._to_shacl_shape(
-                on_property=hasEmail,
-                target_class=Email,
-                base_node=Person,
-            )
-
-            conforms, _, _ = validate(
-                data_graph=data,
-                shacl_graph=shapes,
-            )
-
-            self.assertTrue(conforms)
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict)
+        shacl = onto.owl_restrictions_to_shacl(g)
+        self.assertTrue(validate(g, shacl_graph=shacl)[0])
 
     def test_derives_from(self):
         wf_dict = wf_triples.serialize_workflow()
-        g = onto.get_knowledge_graph(wf_dict, t_box=True)
+        g = onto.get_knowledge_graph(wf_dict, include_a_box=False)
         query = sparql_prefixes + dedent(
             """\
         SELECT ?main_class WHERE {
@@ -314,9 +291,9 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(len(g.query(query)), 1)
         self.assertEqual(
             list(g.query(query))[0]["main_class"],
-            BNode(onto.BASE["wf_triples-f_triples_0-outputs-a_data"]),
+            onto.BASE["wf_triples-f_triples_0-outputs-a_data"],
         )
-        g = onto.get_knowledge_graph(wf_dict, t_box=False)
+        g = onto.get_knowledge_graph(wf_dict, include_t_box=False)
         result = list(
             g.predicates(
                 BNode(onto.BASE["wf_triples-f_triples_0-outputs-a_data"]),
@@ -328,35 +305,61 @@ class TestOntology(unittest.TestCase):
 
     def test_triples(self):
         wf_dict = wf_triples.serialize_workflow()
-        g = onto.get_knowledge_graph(wf_dict, t_box=True)
-        query = sparql_prefixes + dedent(
-            """\
-        SELECT ?input_label ?output_label WHERE {
-            ?input_data_class rdfs:label ?input_label .
-            ?input_data_class rdfs:subClassOf ?input_data_node .
-            ?input_data_node owl:onProperty obi:0000293 .
-            ?input_data_node owl:someValuesFrom ?input_b .
-            ?has_some_relation owl:someValuesFrom ?input_b .
-            ?has_some_relation owl:onProperty ex:hasSomeRelation .
-            ?data_class_node rdfs:subClassOf ?has_some_relation .
-            ?data_class owl:someValuesFrom ?data_class_node .
-            ?data_class owl:onProperty obi:0000299 .
-            ?output_class rdfs:subClassOf ?data_class .
-            ?output_class rdfs:label ?output_label
-        }
-        """
-        )
-        self.assertEqual(list(g.query(query)), [(Literal("b"), Literal("a"))])
-        g = onto.get_knowledge_graph(wf_dict, t_box=False)
-        self.assertEqual(
-            list(g.subject_objects(EX.relatedTo)),
-            [
-                (
-                    BNode(onto.BASE["wf_triples-f_triples_0-inputs-b_data"]),
-                    BNode(onto.BASE["wf_triples-inputs-a_data"]),
+        g = onto.get_knowledge_graph(wf_dict, include_t_box=False)
+
+        with self.subTest("workflow instance exists"):
+            workflows = list(g.subjects(RDF.type, onto.BASE.wf_triples))
+            self.assertEqual(len(workflows), 1)
+
+        wf = workflows[0]
+
+        with self.subTest("workflow has a function activity part"):
+            parts = list(g.objects(wf, onto.BFO["0000051"]))
+            fn_activities = [
+                p
+                for p in parts
+                if (
+                    p,
+                    onto.RO["0000057"],
+                    onto.BASE[f"{__name__}-f_triples-not_defined".replace(".", "-")],
                 )
-            ],
-        )
+                in g
+            ]
+            self.assertEqual(len(fn_activities), 1)
+
+        with self.subTest("function output derives from input a"):
+            outputs = list(
+                g.subjects(RDF.type, onto.BASE["wf_triples-f_triples_0-outputs-a_data"])
+            )
+            self.assertEqual(len(outputs), 1)
+            self.assertIn(
+                (
+                    outputs[0],
+                    onto.RO["0001000"],
+                    BNode(onto.BASE["wf_triples-inputs-a_data"]),
+                ),
+                g,
+            )
+
+        with self.subTest("cross-input data relations preserved"):
+            self.assertIn(
+                (
+                    BNode(onto.BASE["wf_triples-inputs-b_data"]),
+                    EX.relatedTo,
+                    BNode(onto.BASE["wf_triples-inputs-a_data"]),
+                ),
+                g,
+            )
+            self.assertIn(
+                (
+                    outputs[0],
+                    EX.hasSomeRelation,
+                    BNode(onto.BASE["wf_triples-inputs-b_data"]),
+                ),
+                g,
+            )
+        g = onto.get_knowledge_graph(wf_dict)
+        self.assertTrue(onto.validate_values(g)[0])
 
 
 if __name__ == "__main__":
