@@ -257,7 +257,8 @@ def _restrictions_to_triples(
         restrictions = [restrictions]
     for r_set in restrictions:
         b_node = BNode()
-        g.add((data_node, RDF.type, b_node))
+        g.add((data_node, RDFS.subClassOf, b_node))
+        g.add((b_node, RDF.type, OWL.Restriction))
         for r in r_set:
             g.add((b_node, r[0], r[1]))
     return g
@@ -309,6 +310,9 @@ def _wf_io_to_graph(
                     SNS.specifies_value_of,
                     data["uri"],
                 )
+        if "restrictions" in data:
+            assert step == "inputs", "restrictions only valid for inputs"
+            g += _restrictions_to_triples(data["restrictions"], data_node=data_node)
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
     else:
         g.add((BNode(data_node), RDF.type, data_node))
@@ -337,9 +341,6 @@ def _wf_io_to_graph(
             t_box=t_box,
             namespace=namespace,
         )
-    if "restrictions" in data:
-        assert step == "inputs", "restrictions only valid for inputs"
-        g += _restrictions_to_triples(data["restrictions"], data_node=data_node)
     return g
 
 
