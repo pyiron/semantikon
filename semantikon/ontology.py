@@ -1,6 +1,6 @@
 import json
 from dataclasses import dataclass
-from typing import TypeAlias
+from typing import TypeAlias, cast
 
 import networkx as nx
 from flowrep.tools import get_function_metadata
@@ -252,7 +252,7 @@ def _restrictions_to_triples(restrictions: _rest_type, data_node: URIRef) -> Gra
     assert isinstance(restrictions, tuple | list)
     assert isinstance(restrictions[0], tuple | list)
     if not isinstance(restrictions[0][0], tuple | list):
-        restrictions = (restrictions,)
+        restrictions = (cast(rest_type, restrictions),)
     for r_set in restrictions:
         b_node = BNode()
         g.add((data_node, RDFS.subClassOf, b_node))
