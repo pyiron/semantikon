@@ -62,6 +62,33 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
     return URIRef(units)
 
 
+def _inherit_properties(graph: Graph, n_max: int = 1000):
+    query = f"""\
+    PREFIX rdfs: <{RDFS}>
+    PREFIX rdf: <{RDF}>
+    PREFIX owl: <{OWL}>
+    PREFIX ro: <{RO}>
+    INSERT {{
+        ?subject ?p ?o .
+    }}
+    WHERE {{
+        ?subject ro:0001000 ?target .
+        ?target ?p ?o .
+        FILTER(?p != ro:0001000)
+        FILTER(?p != rdfs:label)
+        FILTER(?p != rdf:value)
+        FILTER(?p != rdf:type)
+        FILTER(?p != owl:sameAs)
+    }}
+    """
+    n = 0
+    for _ in range(n_max):
+        graph.update(query)
+        if len(graph) == n:
+            break
+        n = len(graph)
+
+
 def validate_values(graph: Graph, run_reasoner: bool = True) -> tuple:
     """
     Validate if all values required by restrictions are present in the graph
@@ -76,6 +103,7 @@ def validate_values(graph: Graph, run_reasoner: bool = True) -> tuple:
     shacl = owl_restrictions_to_shacl(graph)
     if run_reasoner:
         DeductiveClosure(RDFS_Semantics).expand(graph)
+        _inherit_properties(graph)
     return validate(graph, shacl_graph=shacl)
 
 
@@ -213,7 +241,9 @@ def _translate_triples(
     return g
 
 
-def _restrictions_to_triples(restrictions: _rest_type) -> _triple_type:
+def _restrictions_to_triples(
+    restrictions: _rest_type, data_node: URIRef
+) -> _triple_type:
     triples = []
     assert isinstance(restrictions, tuple | list)
     assert isinstance(restrictions[0], tuple | list)
@@ -293,7 +323,7 @@ def _wf_io_to_graph(
         assert step == "outputs", "derived_from only valid for outputs"
         triples.append(("self", SNS.derives_from, data["derived_from"]))
     if "restrictions" in data:
-        triples += _restrictions_to_triples(data["restrictions"])
+        triples += _restrictions_to_triples(data["restrictions"], data_node=data_node)
     if len(triples) > 0:
         g += _translate_triples(
             triples=triples,
