@@ -1,7 +1,7 @@
 from string import Template
 
 from graphviz import Digraph
-from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, URIRef
+from rdflib import RDF, RDFS, BNode, Literal, URIRef
 
 from semantikon.ontology import SNS
 

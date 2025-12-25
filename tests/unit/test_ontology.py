@@ -447,6 +447,7 @@ class TestOntology(unittest.TestCase):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
         g = onto.get_knowledge_graph(wf_dict)
         from graphviz.graphs import Digraph
+
         self.assertIsInstance(visualize(g), Digraph)
 
 
