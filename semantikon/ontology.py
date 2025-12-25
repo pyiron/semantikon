@@ -151,6 +151,31 @@ def get_knowledge_graph(
     return graph
 
 
+def _function_to_graph(f_node: URIRef, data: dict) -> None:
+    """
+    Converts a function's metadata into an RDF graph representation.
+
+    Args:
+        f_node (URIRef): The URI reference for the function node.
+        data (dict): A dictionary containing metadata about the function. 
+                     Expected keys:
+                     - "function": A dictionary with the following keys: - "qualname" (str): The qualified name of the function.
+                     - "docstring" (str, optional): The docstring of the function.
+
+    Returns:
+        Graph: An RDF graph representing the function and its metadata.
+    """
+    g = Graph()
+    g.add((f_node, RDF.type, SNS.software_method))
+    g.add((f_node, RDFS.label, Literal(data["function"]["qualname"])))
+    if data["function"].get("docstring", "") != "":
+        docstring = BNode(f_node + "_docstring")
+        g.add((docstring, RDF.type, SNS.textual_entity))
+        g.add((docstring, RDF.value, Literal(data["function"]["docstring"])))
+        g.add((docstring, SNS.denotes, f_node))
+    return g
+
+
 def _wf_node_to_graph(
     node_name: str,
     kg_node: URIRef,
@@ -163,13 +188,7 @@ def _wf_node_to_graph(
     if "function" in data:
         f_node = namespace[data["function"]["identifier"].replace(".", "-")]
         if list(g.triples((f_node, None, None))) == []:
-            g.add((f_node, RDF.type, SNS.software_method))
-            g.add((f_node, RDFS.label, Literal(data["function"]["qualname"])))
-            if data["function"].get("docstring", "") != "":
-                docstring = BNode(f_node + "_docstring")
-                g.add((docstring, RDF.type, SNS.textual_entity))
-                g.add((docstring, RDF.value, Literal(data["function"]["docstring"])))
-                g.add((docstring, SNS.denotes, f_node))
+            g += _function_to_graph(f_node, data)
     if t_box:
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
