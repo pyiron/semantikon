@@ -131,6 +131,16 @@ def get_knowledge_graph(
     """
     G = serialize_and_convert_to_networkx(wf_dict)
     graph = Graph()
+    graph.bind("qudt", str(QUDT))
+    graph.bind("unit", "http://qudt.org/vocab/unit/")
+    graph.bind("sns", str(BASE))
+    graph.bind("iao", str(IAO))
+    graph.bind("bfo", str(BFO))
+    graph.bind("obi", str(OBI))
+    graph.bind("ro", str(RO))
+    graph.bind("pmdco", str(PMD))
+    graph.bind("schema", str(SCHEMA))
+    graph.bind("stato", str(STATO))
     if include_t_box:
         graph += _nx_to_kg(G, t_box=True)
     if include_a_box:
@@ -415,16 +425,6 @@ def _parse_global_io(
 
 def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
     g = Graph()
-    g.bind("qudt", str(QUDT))
-    g.bind("unit", "http://qudt.org/vocab/unit/")
-    g.bind("sns", str(BASE))
-    g.bind("iao", str(IAO))
-    g.bind("bfo", str(BFO))
-    g.bind("obi", str(OBI))
-    g.bind("ro", str(RO))
-    g.bind("pmdco", str(PMD))
-    g.bind("schema", str(SCHEMA))
-    g.bind("stato", str(STATO))
     namespace = BASE
     workflow_node = namespace[G.name] if t_box else BNode(namespace[G.name])
     for comp in G.nodes.data():
