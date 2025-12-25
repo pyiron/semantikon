@@ -431,7 +431,7 @@ class TestOntology(unittest.TestCase):
             return money
 
         graph = onto.get_knowledge_graph(my_correct_workflow.serialize_workflow())
-        self.assertTrue(onto.validate_values(graph))
+        self.assertTrue(onto.validate_values(graph)[0])
 
         @workflow
         def my_wrong_workflow(clothes: Clothes) -> int:
@@ -440,7 +440,7 @@ class TestOntology(unittest.TestCase):
             return money
 
         graph = onto.get_knowledge_graph(my_wrong_workflow.serialize_workflow())
-        self.assertTrue(onto.validate_values(graph))
+        self.assertFalse(onto.validate_values(graph)[0])
 
 
 if __name__ == "__main__":
