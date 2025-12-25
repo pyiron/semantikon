@@ -3,7 +3,7 @@ from pathlib import Path
 from textwrap import dedent
 
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, BNode, Graph, Namespace
+from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
@@ -450,6 +450,13 @@ class TestOntology(unittest.TestCase):
         from graphviz.graphs import Digraph
 
         self.assertIsInstance(visualize(g), Digraph)
+
+    def test_docstring(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict)
+        bnode = list(g.subjects(RDF.type, onto.SNS.textual_entity))
+        self.assertEqual(len(bnode), 1)
+        self.assertEqual(g.value(bnode[0], RDF.value), Literal("some random docstring"))
 
 
 if __name__ == "__main__":
