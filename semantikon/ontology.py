@@ -194,6 +194,7 @@ def _get_data_node(io: str, G: nx.DiGraph) -> BNode:
 
 
 def _detect_io_from_str(G: nx.DiGraph, seeked_io: str, ref_io: str) -> str:
+    assert seeked_io.startswith("inputs") or seeked_io.startswith("outputs")
     main_node = ref_io.replace(".", "-").split("-outputs-")[0].split("-inputs-")[0]
     candidate = (
         G.predecessors(main_node) if "inputs" in seeked_io else G.successors(main_node)
@@ -219,14 +220,13 @@ def _translate_triples(
             return t
         elif t == "self" or t is None:
             return data_node
-        elif isinstance(t, str) and (t.startswith("inputs") or t.startswith("outputs")):
+        else:
+            assert isinstance(t, str)
             result = namespace[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)]
             if t_box:
                 return result
             else:
                 return BNode(result)
-        else:
-            raise ValueError(f"{t} not recognized")
 
     g = Graph()
     for triple in triples:
