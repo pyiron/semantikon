@@ -247,9 +247,7 @@ def _translate_triples(
     return g
 
 
-def _restrictions_to_triples(
-    restrictions: _rest_type, data_node: URIRef
-) -> Graph:
+def _restrictions_to_triples(restrictions: _rest_type, data_node: URIRef) -> Graph:
     g = Graph()
     assert isinstance(restrictions, tuple | list)
     assert isinstance(restrictions[0], tuple | list)
