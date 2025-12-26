@@ -458,6 +458,37 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(len(bnode), 1)
         self.assertEqual(g.value(bnode[0], RDF.value), Literal("some random docstring"))
 
+    def test_function_metadata(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        graph = onto.get_knowledge_graph(wf_dict)
+        # Check that the main subject exists
+        main_subject = onto.BASE["__main__-get_kinetic_energy-not_defined"]
+        self.assertTrue((main_subject, RDF.type, onto.IAO["0000591"]) in graph)
+        self.assertTrue((main_subject, RDFS.label, Literal("get_kinetic_energy")) in graph)
+
+        # Check input specifications
+        input_specifications = list(graph.objects(main_subject, onto.BASE.has_parameter_specification))
+        self.assertEqual(len(input_specifications), 3)  # 2 inputs and 1 output
+
+        # Check the first input specification (mass)
+        mass_spec = input_specifications[0]
+        self.assertTrue((mass_spec, RDF.type, onto.BASE.input_specification) in graph)
+        self.assertTrue((mass_spec, RDFS.label, Literal("mass")) in graph)
+        self.assertTrue((mass_spec, onto.IAO["0000136"], onto.PMD["0020133"]) in graph)
+        self.assertTrue((mass_spec, onto.BASE.has_parameter_position, Literal(0)) in graph)
+
+        # Check the second input specification (velocity)
+        velocity_spec = input_specifications[1]
+        self.assertTrue((velocity_spec, RDF.type, onto.BASE.input_specification) in graph)
+        self.assertTrue((velocity_spec, RDFS.label, Literal("velocity")) in graph)
+        self.assertTrue((velocity_spec, onto.BASE.has_parameter_position, Literal(1)) in graph)
+
+        # Check the output specification
+        output_spec = input_specifications[2]
+        self.assertTrue((output_spec, RDF.type, onto.BASE.output_specification) in graph)
+        self.assertTrue((output_spec, RDFS.label, Literal("output")) in graph)
+        self.assertTrue((output_spec, onto.IAO["0000136"], onto.PMD["0020142"]) in graph)
+        self.assertTrue((output_spec, onto.BASE.has_parameter_position, Literal(0)) in graph)
 
 if __name__ == "__main__":
     unittest.main()
