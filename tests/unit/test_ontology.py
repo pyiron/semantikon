@@ -54,6 +54,13 @@ def my_kinetic_energy_workflow(distance: u(float, uri=PMD["0040001"]), time, mas
     return kinetic_energy
 
 
+def get_kinetic_energy_wrong_units(
+    mass: u(float, uri=PMD["0020133"], units="kilogram"),
+    velocity: u(float, units="angstrom"),
+) -> u(float, uri=PMD["0020142"], units="joule"):
+    return 0.5 * mass * velocity**2
+
+
 def f_triples(
     a: float, b: u(float, triples=("self", EX.relatedTo, "inputs.a"))
 ) -> u(float, triples=((EX.hasSomeRelation, "inputs.b")), derived_from="inputs.a"):
@@ -422,6 +429,22 @@ class TestOntology(unittest.TestCase):
 
     def test_type_checking(self):
         wf_dict = eat_pizza.serialize_workflow()
+        graph = onto.get_knowledge_graph(wf_dict)
+        self.assertFalse(onto.validate_values(graph)[0])
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        graph = onto.get_knowledge_graph(wf_dict)
+        verdict, _, report = onto.validate_values(graph)
+        self.assertTrue(verdict, msg=report)
+
+        @workflow
+        def my_kinetic_energy_workflow_wrong_units(
+            distance: u(float, uri=PMD["0040001"]), time, mass
+        ):
+            speed = get_speed(distance, time)
+            kinetic_energy = get_kinetic_energy_wrong_units(mass, speed)
+            return kinetic_energy
+
+        wf_dict = my_kinetic_energy_workflow_wrong_units.serialize_workflow()
         graph = onto.get_knowledge_graph(wf_dict)
         self.assertFalse(onto.validate_values(graph)[0])
 
