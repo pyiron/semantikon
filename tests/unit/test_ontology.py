@@ -33,7 +33,7 @@ sparql_prefixes = prefixes.replace("@prefix ", "PREFIX ").replace(" .\n", "\n")
 def get_speed(
     distance: u(float, uri=PMD["0040001"], units="meter", label="Distance"),
     time: u(float, units="second"),
-) -> u(float, units="meter/second"):
+) -> u(float, units="meter/second", uri=EX.Velocity):
     """some random docstring"""
     speed = distance / time
     return speed
@@ -42,7 +42,7 @@ def get_speed(
 @meta(uri=EX.get_kinetic_energy)
 def get_kinetic_energy(
     mass: u(float, uri=PMD["0020133"], units="kilogram"),
-    velocity: u(float, units="meter/second"),
+    velocity: u(float, units="meter/second", uri=EX.Velocity),
 ) -> u(float, uri=PMD["0020142"], units="joule"):
     return 0.5 * mass * velocity**2
 
@@ -56,7 +56,14 @@ def my_kinetic_energy_workflow(distance: u(float, uri=PMD["0040001"]), time, mas
 
 def get_kinetic_energy_wrong_units(
     mass: u(float, uri=PMD["0020133"], units="kilogram"),
-    velocity: u(float, units="angstrom"),
+    velocity: u(float, units="angstrom", uri=EX.Velocity),
+) -> u(float, uri=PMD["0020142"], units="joule"):
+    return 0.5 * mass * velocity**2
+
+
+def get_kinetic_energy_wrong_uri(
+    mass: u(float, units="kilogram"),
+    velocity: u(float, units="meter/second", uri=EX.WrongURI),
 ) -> u(float, uri=PMD["0020142"], units="joule"):
     return 0.5 * mass * velocity**2
 
@@ -445,6 +452,18 @@ class TestOntology(unittest.TestCase):
             return kinetic_energy
 
         wf_dict = my_kinetic_energy_workflow_wrong_units.serialize_workflow()
+        graph = onto.get_knowledge_graph(wf_dict)
+        self.assertFalse(onto.validate_values(graph)[0])
+
+        @workflow
+        def my_kinetic_energy_workflow_wrong_uri(
+            distance: u(float, uri=PMD["0040001"]), time, mass
+        ):
+            speed = get_speed(distance, time)
+            kinetic_energy = get_kinetic_energy_wrong_uri(mass, speed)
+            return kinetic_energy
+
+        wf_dict = my_kinetic_energy_workflow_wrong_uri.serialize_workflow()
         graph = onto.get_knowledge_graph(wf_dict)
         self.assertFalse(onto.validate_values(graph)[0])
 

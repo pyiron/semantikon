@@ -1,3 +1,4 @@
+import copy
 import json
 from dataclasses import dataclass
 from typing import TypeAlias, cast
@@ -98,22 +99,28 @@ def _inherit_properties(graph: Graph, n_max: int = 1000):
         n = len(graph)
 
 
-def validate_values(graph: Graph, run_reasoner: bool = True) -> tuple:
+def validate_values(
+    graph: Graph, run_reasoner: bool = True, copy_graph: bool = True
+) -> tuple:
     """
     Validate if all values required by restrictions are present in the graph
 
     Args:
         graph (Graph): input RDF graph
         run_reasoner (bool): if True, run OWL RL reasoner before validation
+        copy_graph (bool): if True, work on a copy of the graph. When the graph
+            is not copied and reasoner is run, the input graph is modified by
+            inferred triples.
 
     Returns:
         (tuple): validation result and message from pyshacl
     """
-    shacl = owl_restrictions_to_shacl(graph)
+    g = copy.deepcopy(graph) if copy_graph and run_reasoner else graph
+    shacl = owl_restrictions_to_shacl(g)
     if run_reasoner:
-        DeductiveClosure(RDFS_Semantics).expand(graph)
-        _inherit_properties(graph)
-    return validate(graph, shacl_graph=shacl)
+        DeductiveClosure(RDFS_Semantics).expand(g)
+        _inherit_properties(g)
+    return validate(g, shacl_graph=shacl)
 
 
 def extract_dataclass(
