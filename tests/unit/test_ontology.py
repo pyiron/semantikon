@@ -463,7 +463,7 @@ class TestOntology(unittest.TestCase):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
         graph = onto.get_knowledge_graph(wf_dict)
         # Check that the main subject exists
-        main_subject = onto.BASE["__main__-get_kinetic_energy-not_defined"]
+        main_subject = onto.BASE[f"{__name__}-get_kinetic_energy-not_defined"]
         self.assertTrue((main_subject, RDF.type, onto.IAO["0000591"]) in graph)
         self.assertTrue(
             (main_subject, RDFS.label, Literal("get_kinetic_energy")) in graph
