@@ -7,7 +7,7 @@ from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
-from semantikon.metadata import SemantikonURI, u
+from semantikon.metadata import SemantikonURI, meta, u
 from semantikon.visualize import visualize
 from semantikon.workflow import workflow
 
@@ -39,6 +39,7 @@ def get_speed(
     return speed
 
 
+@meta(uri=EX.get_kinetic_energy)
 def get_kinetic_energy(
     mass: u(float, uri=PMD["0020133"], units="kilogram"),
     velocity: u(float, units="meter/second"),
@@ -464,31 +465,41 @@ class TestOntology(unittest.TestCase):
         # Check that the main subject exists
         main_subject = onto.BASE["__main__-get_kinetic_energy-not_defined"]
         self.assertTrue((main_subject, RDF.type, onto.IAO["0000591"]) in graph)
-        self.assertTrue((main_subject, RDFS.label, Literal("get_kinetic_energy")) in graph)
+        self.assertTrue(
+            (main_subject, RDFS.label, Literal("get_kinetic_energy")) in graph
+        )
+        self.assertTrue(
+            (main_subject, onto.IAO["0000136"], EX.get_kinetic_energy) in graph
+        )
 
         # Check input specifications
-        input_specifications = list(graph.objects(main_subject, onto.BASE.has_parameter_specification))
+        input_specifications = list(
+            graph.objects(main_subject, onto.BASE.has_parameter_specification)
+        )
         self.assertEqual(len(input_specifications), 3)  # 2 inputs and 1 output
 
         # Check the first input specification (mass)
-        mass_spec = input_specifications[0]
-        self.assertTrue((mass_spec, RDF.type, onto.BASE.input_specification) in graph)
-        self.assertTrue((mass_spec, RDFS.label, Literal("mass")) in graph)
-        self.assertTrue((mass_spec, onto.IAO["0000136"], onto.PMD["0020133"]) in graph)
-        self.assertTrue((mass_spec, onto.BASE.has_parameter_position, Literal(0)) in graph)
-
-        # Check the second input specification (velocity)
-        velocity_spec = input_specifications[1]
-        self.assertTrue((velocity_spec, RDF.type, onto.BASE.input_specification) in graph)
-        self.assertTrue((velocity_spec, RDFS.label, Literal("velocity")) in graph)
-        self.assertTrue((velocity_spec, onto.BASE.has_parameter_position, Literal(1)) in graph)
+        mass_spec = list(graph.subjects(onto.IAO["0000136"], onto.PMD["0020133"]))
+        self.assertEqual(len(mass_spec), 1)
+        self.assertTrue(
+            (mass_spec[0], RDF.type, onto.BASE.input_specification) in graph
+        )
+        self.assertTrue((mass_spec[0], RDFS.label, Literal("mass")) in graph)
+        self.assertTrue(
+            (mass_spec[0], onto.BASE.has_parameter_position, Literal(0)) in graph
+        )
 
         # Check the output specification
-        output_spec = input_specifications[2]
-        self.assertTrue((output_spec, RDF.type, onto.BASE.output_specification) in graph)
-        self.assertTrue((output_spec, RDFS.label, Literal("output")) in graph)
-        self.assertTrue((output_spec, onto.IAO["0000136"], onto.PMD["0020142"]) in graph)
-        self.assertTrue((output_spec, onto.BASE.has_parameter_position, Literal(0)) in graph)
+        output_spec = list(graph.subjects(onto.IAO["0000136"], onto.PMD["0020142"]))
+        self.assertEqual(len(output_spec), 1)
+        self.assertTrue(
+            (output_spec[0], RDF.type, onto.BASE.output_specification) in graph
+        )
+        self.assertTrue((output_spec[0], RDFS.label, Literal("output")) in graph)
+        self.assertTrue(
+            (output_spec[0], onto.BASE.has_parameter_position, Literal(0)) in graph
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

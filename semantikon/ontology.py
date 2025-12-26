@@ -158,7 +158,11 @@ def get_knowledge_graph(
 
 
 def _function_to_graph(
-    f_node: URIRef, data: dict, input_args: list[dict], output_args: list[dict]
+    f_node: URIRef,
+    data: dict,
+    input_args: list[dict],
+    output_args: list[dict],
+    uri: URIRef | None = None,
 ) -> Graph:
     """
     Converts a function's metadata into an RDF graph representation.
@@ -167,21 +171,25 @@ def _function_to_graph(
         f_node (URIRef): The URI reference for the function node.
         data (dict): A dictionary containing metadata about the function.
                      Expected keys:
-                     - "function": A dictionary with the following keys:
                      - "qualname" (str): The qualified name of the function.
                      - "docstring" (str, optional): The docstring of the function.
+                     - "uri" (URIRef, optional): The URI of the function.
+        input_args (list[dict]): A list of dictionaries representing input arguments.
+        output_args (list[dict]): A list of dictionaries representing output arguments.
 
     Returns:
         Graph: An RDF graph representing the function and its metadata.
     """
     g = Graph()
     g.add((f_node, RDF.type, SNS.software_method))
-    g.add((f_node, RDFS.label, Literal(data["function"]["qualname"])))
-    if data["function"].get("docstring", "") != "":
+    g.add((f_node, RDFS.label, Literal(data["qualname"])))
+    if data.get("docstring", "") != "":
         docstring = BNode(f_node + "_docstring")
         g.add((docstring, RDF.type, SNS.textual_entity))
-        g.add((docstring, RDF.value, Literal(data["function"]["docstring"])))
+        g.add((docstring, RDF.value, Literal(data["docstring"])))
         g.add((docstring, SNS.denotes, f_node))
+    if uri is not None:
+        g.add((f_node, SNS.is_about, uri))
     for io, io_args in zip(["input", "output"], [input_args, output_args]):
         for arg in io_args:
             if io == "input":
@@ -218,9 +226,10 @@ def _wf_node_to_graph(
         if list(g.triples((f_node, None, None))) == []:
             g += _function_to_graph(
                 f_node,
-                data,
+                data["function"],
                 input_args=[G.nodes[item] for item in G.predecessors(node_name)],
                 output_args=[G.nodes[item] for item in G.successors(node_name)],
+                uri=data.get("uri"),
             )
     if t_box:
         for io in [G.predecessors(node_name), G.successors(node_name)]:
