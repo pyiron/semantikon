@@ -45,11 +45,11 @@ class SNS:
     textual_entity: URIRef = IAO["0000300"]
     denotes: URIRef = IAO["0000219"]
     is_about: URIRef = IAO["0000136"]
-    input_specification = BASE["input_specification"]
-    output_specification = BASE["output_specification"]
-    has_parameter_specification = BASE["has_parameter_specification"]
-    has_parameter_position = BASE["has_parameter_position"]
-    has_default_literal_value = BASE["has_default_literal_value"]
+    input_specification: URIRef = BASE["input_specification"]
+    output_specification: URIRef = BASE["output_specification"]
+    has_parameter_specification: URIRef = BASE["has_parameter_specification"]
+    has_parameter_position: URIRef = BASE["has_parameter_position"]
+    has_default_literal_value: URIRef = BASE["has_default_literal_value"]
 
 
 ud = UnitsDict()
