@@ -140,6 +140,17 @@ def sell(
     return 10
 
 
+def sell_without_color(
+    clothes: u(
+        Clothes,
+        # Different shape from above
+        restrictions=((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Cleaned)),
+    ),
+) -> int:
+    ...
+    return 10
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -503,6 +514,15 @@ class TestOntology(unittest.TestCase):
 
         graph = onto.get_knowledge_graph(my_wrong_workflow.serialize_workflow())
         self.assertFalse(onto.validate_values(graph)[0])
+
+        @workflow
+        def my_simple_workflow(clothes: Clothes) -> int:
+            washed_clothes = wash(clothes)
+            money = sell_without_color(washed_clothes)
+            return money
+
+        graph = onto.get_knowledge_graph(my_simple_workflow.serialize_workflow())
+        self.assertTrue(onto.validate_values(graph)[0])
 
     def test_visualize(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
