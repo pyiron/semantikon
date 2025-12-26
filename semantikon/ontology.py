@@ -100,7 +100,10 @@ def _inherit_properties(graph: Graph, n_max: int = 1000):
 
 
 def validate_values(
-    graph: Graph, run_reasoner: bool = True, copy_graph: bool = True
+    graph: Graph,
+    run_reasoner: bool = True,
+    copy_graph: bool = True,
+    strict_typing: bool = True,
 ) -> tuple:
     """
     Validate if all values required by restrictions are present in the graph
@@ -111,12 +114,19 @@ def validate_values(
         copy_graph (bool): if True, work on a copy of the graph. When the graph
             is not copied and reasoner is run, the input graph is modified by
             inferred triples.
+        strict_typing (bool): if True, enforce strict typing, i.e. if the
+            URI/units of the input of a node are defined, the output of the
+            preceding node must have the same URI/units
 
     Returns:
         (tuple): validation result and message from pyshacl
     """
     g = copy.deepcopy(graph) if copy_graph and run_reasoner else graph
-    shacl = owl_restrictions_to_shacl(g)
+    excluded = []
+    if not strict_typing:
+        excluded = _get_undefined_connections(g, "qudt:hasUnit")
+        excluded.extend(_get_undefined_connections(g, "obi:0001927"))
+    shacl = owl_restrictions_to_shacl(g, excluded_nodes=excluded)
     if run_reasoner:
         DeductiveClosure(RDFS_Semantics).expand(g)
         _inherit_properties(g)
@@ -716,17 +726,37 @@ def _get_graph_hash(G: nx.DiGraph, with_global_inputs: bool = True) -> str:
     )
 
 
-def owl_restrictions_to_shacl(owl_graph: Graph) -> Graph:
+def _get_undefined_connections(g, term):
+    query = "\n".join(
+        [f"PREFIX {key}: <{value}>" for key, value in dict(g.namespaces()).items()]
+    )
+    query += f"""
+    SELECT ?rnode WHERE {{
+      ?class rdfs:subClassOf ?rnode .
+      ?rnode a owl:Restriction .
+      ?rnode owl:onProperty {term} .
+      ?instance a ?class .
+      FILTER NOT EXISTS {{
+        ?instance {term} ?bnode .
+      }}
+    }}"""
+    return [item for items in g.query(query) for item in items]
+
+
+def owl_restrictions_to_shacl(
+    owl_graph: Graph, excluded_nodes: list[BNode] | None = None
+) -> Graph:
     def iter_supported_restrictions(g: Graph):
         """
         Yield (base_class, restriction_node, property, restriction_type, value)
         for supported OWL restrictions.
         """
         for r in g.subjects(RDF.type, OWL.Restriction):
+            if excluded_nodes is not None and r in excluded_nodes:
+                continue
             prop = g.value(r, OWL.onProperty)
             if prop is None:
                 continue
-
             for restriction_type in (OWL.someValuesFrom, OWL.hasValue):
                 value = g.value(r, restriction_type)
                 if value is None:

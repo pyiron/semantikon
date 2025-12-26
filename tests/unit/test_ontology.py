@@ -68,6 +68,10 @@ def get_kinetic_energy_wrong_uri(
     return 0.5 * mass * velocity**2
 
 
+def get_speed_not_annotated(distance, time) -> float:
+    return distance / time
+
+
 def f_triples(
     a: float, b: u(float, triples=("self", EX.relatedTo, "inputs.a"))
 ) -> u(float, triples=((EX.hasSomeRelation, "inputs.b")), derived_from="inputs.a"):
@@ -466,6 +470,19 @@ class TestOntology(unittest.TestCase):
         wf_dict = my_kinetic_energy_workflow_wrong_uri.serialize_workflow()
         graph = onto.get_knowledge_graph(wf_dict)
         self.assertFalse(onto.validate_values(graph)[0])
+
+        @workflow
+        def my_kinetic_energy_workflow_not_annotated(
+            distance: u(float, uri=PMD["0040001"]), time, mass
+        ):
+            speed = get_speed_not_annotated(distance, time)
+            kinetic_energy = get_kinetic_energy(mass, speed)
+            return kinetic_energy
+
+        wf_dict = my_kinetic_energy_workflow_not_annotated.serialize_workflow()
+        graph = onto.get_knowledge_graph(wf_dict)
+        self.assertFalse(onto.validate_values(graph, strict_typing=True)[0])
+        self.assertTrue(onto.validate_values(graph, strict_typing=False)[0])
 
     def test_restrictions(self):
         @workflow
