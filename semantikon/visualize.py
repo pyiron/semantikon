@@ -116,7 +116,6 @@ def visualize(graph, engine="dot"):
     Args:
         graph: An RDFLib Graph to visualize.
         engine (str): Graphviz layout engine to use (default: "dot").
-            for cleaner visualization (default: False).
 
     Returns:
         Digraph: A graphviz Digraph object representing the visualized graph.
