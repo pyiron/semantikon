@@ -463,14 +463,12 @@ class TestOntology(unittest.TestCase):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
         graph = onto.get_knowledge_graph(wf_dict)
         # Check that the main subject exists
-        main_subject = onto.BASE[f"{__name__}-get_kinetic_energy-not_defined"]
+        main_subject = onto.BASE[
+            f"{__name__}-get_kinetic_energy-not_defined".replace(".", "-")
+        ]
         self.assertIn((main_subject, RDF.type, onto.IAO["0000591"]), graph)
-        self.assertIn(
-            (main_subject, RDFS.label, Literal("get_kinetic_energy")), graph
-        )
-        self.assertIn(
-            (main_subject, onto.IAO["0000136"], EX.get_kinetic_energy), graph
-        )
+        self.assertIn((main_subject, RDFS.label, Literal("get_kinetic_energy")), graph)
+        self.assertIn((main_subject, onto.IAO["0000136"], EX.get_kinetic_energy), graph)
 
         # Check input specifications
         input_specifications = list(
@@ -481,9 +479,7 @@ class TestOntology(unittest.TestCase):
         # Check the first input specification (mass)
         mass_spec = list(graph.subjects(onto.IAO["0000136"], onto.PMD["0020133"]))
         self.assertEqual(len(mass_spec), 1)
-        self.assertIn(
-            (mass_spec[0], RDF.type, onto.BASE.input_specification), graph
-        )
+        self.assertIn((mass_spec[0], RDF.type, onto.BASE.input_specification), graph)
         self.assertIn((mass_spec[0], RDFS.label, Literal("mass")), graph)
         self.assertIn(
             (mass_spec[0], onto.BASE.has_parameter_position, Literal(0)), graph
@@ -492,9 +488,7 @@ class TestOntology(unittest.TestCase):
         # Check the output specification
         output_spec = list(graph.subjects(onto.IAO["0000136"], onto.PMD["0020142"]))
         self.assertEqual(len(output_spec), 1)
-        self.assertIn(
-            (output_spec[0], RDF.type, onto.BASE.output_specification), graph
-        )
+        self.assertIn((output_spec[0], RDF.type, onto.BASE.output_specification), graph)
         self.assertIn((output_spec[0], RDFS.label, Literal("output")), graph)
         self.assertIn(
             (output_spec[0], onto.BASE.has_parameter_position, Literal(0)), graph
