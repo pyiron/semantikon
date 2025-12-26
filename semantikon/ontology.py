@@ -42,6 +42,14 @@ class SNS:
     specifies_value_of: URIRef = OBI["0001927"]
     derives_from: URIRef = RO["0001000"]
     software_method: URIRef = IAO["0000591"]
+    textual_entity: URIRef = IAO["0000300"]
+    denotes: URIRef = IAO["0000219"]
+    is_about: URIRef = IAO["0000136"]
+    input_specification: URIRef = BASE["input_specification"]
+    output_specification: URIRef = BASE["output_specification"]
+    has_parameter_specification: URIRef = BASE["has_parameter_specification"]
+    has_parameter_position: URIRef = BASE["has_parameter_position"]
+    has_default_literal_value: URIRef = BASE["has_default_literal_value"]
 
 
 ud = UnitsDict()
@@ -124,18 +132,84 @@ def get_knowledge_graph(
 
     Args:
         wf_dict (dict): dictionary containing workflow information
-        t_box (bool): if True, generate T-Box graph, otherwise A-Box graph
+        include_t_box (bool): if True, include T-Box information
+        include_a_box (bool): if True, include A-Box information
 
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
     G = serialize_and_convert_to_networkx(wf_dict)
     graph = Graph()
+    graph.bind("qudt", str(QUDT))
+    graph.bind("unit", "http://qudt.org/vocab/unit/")
+    graph.bind("sns", str(BASE))
+    graph.bind("iao", str(IAO))
+    graph.bind("bfo", str(BFO))
+    graph.bind("obi", str(OBI))
+    graph.bind("ro", str(RO))
+    graph.bind("pmdco", str(PMD))
+    graph.bind("schema", str(SCHEMA))
+    graph.bind("stato", str(STATO))
     if include_t_box:
         graph += _nx_to_kg(G, t_box=True)
     if include_a_box:
         graph += _nx_to_kg(G, t_box=False)
     return graph
+
+
+def _function_to_graph(
+    f_node: URIRef,
+    data: dict,
+    input_args: list[dict],
+    output_args: list[dict],
+    uri: URIRef | None = None,
+) -> Graph:
+    """
+    Converts a function's metadata into an RDF graph representation.
+
+    Args:
+        f_node (URIRef): The URI reference for the function node.
+        data (dict): A dictionary containing metadata about the function.
+                     Expected keys:
+                     - "qualname" (str): The qualified name of the function.
+                     - "docstring" (str, optional): The docstring of the function.
+        input_args (list[dict]): A list of dictionaries representing input arguments.
+        output_args (list[dict]): A list of dictionaries representing output arguments.
+        uri (URIRef | None, optional): The URI of the function, if available.
+
+    Returns:
+        Graph: An RDF graph representing the function and its metadata.
+    """
+    g = Graph()
+    g.add((f_node, RDF.type, SNS.software_method))
+    g.add((f_node, RDFS.label, Literal(data["qualname"])))
+    if data.get("docstring", "") != "":
+        docstring = BNode(f_node + "_docstring")
+        g.add((docstring, RDF.type, SNS.textual_entity))
+        g.add((docstring, RDF.value, Literal(data["docstring"])))
+        g.add((docstring, SNS.denotes, f_node))
+    if uri is not None:
+        g.add((f_node, SNS.is_about, uri))
+    for io, io_args in zip(["input", "output"], [input_args, output_args]):
+        for arg in io_args:
+            if io == "input":
+                arg_node = BNode(f_node + "_input_" + arg["arg"])
+                g.add((arg_node, RDF.type, SNS.input_specification))
+            else:
+                arg_node = BNode(f_node + "_output_" + arg["arg"])
+                g.add((arg_node, RDF.type, SNS.output_specification))
+            g.add((arg_node, RDFS.label, Literal(arg["arg"])))
+            g.add((f_node, SNS.has_parameter_specification, arg_node))
+            g.add(
+                (arg_node, SNS.has_parameter_position, Literal(arg.get("position", 0)))
+            )
+            if "default" in arg:
+                g.add(
+                    (arg_node, SNS.has_default_literal_value, Literal(arg["default"]))
+                )
+            if "uri" in arg:
+                g.add((arg_node, SNS.is_about, arg["uri"]))
+    return g
 
 
 def _wf_node_to_graph(
@@ -147,8 +221,16 @@ def _wf_node_to_graph(
     namespace: Namespace,
 ) -> Graph:
     g = Graph()
-    f_node = namespace[data["function"]["identifier"].replace(".", "-")]
-    g.add((f_node, RDF.type, SNS.software_method))
+    if "function" in data:
+        f_node = namespace[data["function"]["identifier"].replace(".", "-")]
+        if list(g.triples((f_node, None, None))) == []:
+            g += _function_to_graph(
+                f_node,
+                data["function"],
+                input_args=[G.nodes[item] for item in G.predecessors(node_name)],
+                output_args=[G.nodes[item] for item in G.successors(node_name)],
+                uri=data.get("uri"),
+            )
     if t_box:
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
@@ -158,12 +240,13 @@ def _wf_node_to_graph(
                     namespace[item],
                 )
         g.add((kg_node, RDFS.subClassOf, SNS.process))
-        g += _to_owl_restriction(
-            kg_node,
-            SNS.has_participant,
-            f_node,
-            restriction_type=OWL.hasValue,
-        )
+        if "function" in data:
+            g += _to_owl_restriction(
+                kg_node,
+                SNS.has_participant,
+                f_node,
+                restriction_type=OWL.hasValue,
+            )
     else:
         g.add((BNode(kg_node), RDF.type, kg_node))
         kg_node = BNode(kg_node)
@@ -171,7 +254,8 @@ def _wf_node_to_graph(
             g.add((kg_node, SNS.has_part, BNode(namespace[inp])))
         for out in G.successors(node_name):
             g.add((kg_node, SNS.has_part, BNode(namespace[out])))
-        g.add((kg_node, SNS.has_participant, f_node))
+        if "function" in data:
+            g.add((kg_node, SNS.has_participant, f_node))
     return g
 
 
@@ -415,16 +499,6 @@ def _parse_global_io(
 
 def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
     g = Graph()
-    g.bind("qudt", str(QUDT))
-    g.bind("unit", "http://qudt.org/vocab/unit/")
-    g.bind("sns", str(BASE))
-    g.bind("iao", str(IAO))
-    g.bind("bfo", str(BFO))
-    g.bind("obi", str(OBI))
-    g.bind("ro", str(RO))
-    g.bind("pmdco", str(PMD))
-    g.bind("schema", str(SCHEMA))
-    g.bind("stato", str(STATO))
     namespace = BASE
     workflow_node = namespace[G.name] if t_box else BNode(namespace[G.name])
     for comp in G.nodes.data():
@@ -511,19 +585,27 @@ def serialize_and_convert_to_networkx(
                 if key not in ["nodes", "edges"]
             }
         }
-        node_dict[prefix]["function"] = get_function_metadata(wf_dict["function"])
-        node_dict[prefix]["function"]["identifier"] = ".".join(
-            (
-                node_dict[prefix]["function"]["module"],
-                node_dict[prefix]["function"]["qualname"],
-                node_dict[prefix]["function"]["version"],
+        assert "function" in wf_dict or wf_dict["type"] != "Function"
+        if "function" in wf_dict:
+            node_dict[prefix]["function"] = get_function_metadata(
+                wf_dict["function"], full_metadata=True
             )
-        )
+            node_dict[prefix]["function"]["identifier"] = ".".join(
+                (
+                    node_dict[prefix]["function"]["module"],
+                    node_dict[prefix]["function"]["qualname"],
+                    node_dict[prefix]["function"]["version"],
+                )
+            )
         for io_ in ["inputs", "outputs"]:
-            for key, channel in wf_dict[io_].items():
+            for loc, (key, channel) in enumerate(wf_dict[io_].items()):
                 channel_label = _remove_us(prefix, io_, key)
                 assert "semantikon_type" not in channel, "semantikon_type already set"
-                channel_dict[channel_label] = channel | {"semantikon_type": io_}
+                channel_dict[channel_label] = channel | {
+                    "semantikon_type": io_,
+                    "position": channel.get("position", loc),
+                    "arg": key,
+                }
         for key, node in wf_dict.get("nodes", {}).items():
             child_node, child_channel, child_edges = _serialize_workflow(
                 node, prefix=_dot(prefix, key)

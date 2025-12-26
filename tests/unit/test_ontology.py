@@ -3,11 +3,11 @@ from pathlib import Path
 from textwrap import dedent
 
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, BNode, Graph, Namespace
+from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
-from semantikon.metadata import SemantikonURI, u
+from semantikon.metadata import SemantikonURI, meta, u
 from semantikon.visualize import visualize
 from semantikon.workflow import workflow
 
@@ -34,10 +34,12 @@ def get_speed(
     distance: u(float, uri=PMD["0040001"], units="meter", label="Distance"),
     time: u(float, units="second"),
 ) -> u(float, units="meter/second"):
+    """some random docstring"""
     speed = distance / time
     return speed
 
 
+@meta(uri=EX.get_kinetic_energy)
 def get_kinetic_energy(
     mass: u(float, uri=PMD["0020133"], units="kilogram"),
     velocity: u(float, units="meter/second"),
@@ -449,6 +451,48 @@ class TestOntology(unittest.TestCase):
         from graphviz.graphs import Digraph
 
         self.assertIsInstance(visualize(g), Digraph)
+
+    def test_docstring(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict)
+        bnode = list(g.subjects(RDF.type, onto.SNS.textual_entity))
+        self.assertEqual(len(bnode), 1)
+        self.assertEqual(g.value(bnode[0], RDF.value), Literal("some random docstring"))
+
+    def test_function_metadata(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        graph = onto.get_knowledge_graph(wf_dict)
+        # Check that the main subject exists
+        main_subject = onto.BASE[
+            f"{__name__}-get_kinetic_energy-not_defined".replace(".", "-")
+        ]
+        self.assertIn((main_subject, RDF.type, onto.IAO["0000591"]), graph)
+        self.assertIn((main_subject, RDFS.label, Literal("get_kinetic_energy")), graph)
+        self.assertIn((main_subject, onto.IAO["0000136"], EX.get_kinetic_energy), graph)
+
+        # Check input specifications
+        input_specifications = list(
+            graph.objects(main_subject, onto.BASE.has_parameter_specification)
+        )
+        self.assertEqual(len(input_specifications), 3)  # 2 inputs and 1 output
+
+        # Check the first input specification (mass)
+        mass_spec = list(graph.subjects(onto.IAO["0000136"], onto.PMD["0020133"]))
+        self.assertEqual(len(mass_spec), 1)
+        self.assertIn((mass_spec[0], RDF.type, onto.BASE.input_specification), graph)
+        self.assertIn((mass_spec[0], RDFS.label, Literal("mass")), graph)
+        self.assertIn(
+            (mass_spec[0], onto.BASE.has_parameter_position, Literal(0)), graph
+        )
+
+        # Check the output specification
+        output_spec = list(graph.subjects(onto.IAO["0000136"], onto.PMD["0020142"]))
+        self.assertEqual(len(output_spec), 1)
+        self.assertIn((output_spec[0], RDF.type, onto.BASE.output_specification), graph)
+        self.assertIn((output_spec[0], RDFS.label, Literal("output")), graph)
+        self.assertIn(
+            (output_spec[0], onto.BASE.has_parameter_position, Literal(0)), graph
+        )
 
 
 if __name__ == "__main__":
