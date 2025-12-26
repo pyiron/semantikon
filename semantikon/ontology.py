@@ -173,9 +173,9 @@ def _function_to_graph(
                      Expected keys:
                      - "qualname" (str): The qualified name of the function.
                      - "docstring" (str, optional): The docstring of the function.
-                     - "uri" (URIRef, optional): The URI of the function.
         input_args (list[dict]): A list of dictionaries representing input arguments.
         output_args (list[dict]): A list of dictionaries representing output arguments.
+        uri (URIRef | None, optional): The URI of the function, if available.
 
     Returns:
         Graph: An RDF graph representing the function and its metadata.
