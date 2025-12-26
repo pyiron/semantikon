@@ -44,6 +44,12 @@ class SNS:
     software_method: URIRef = IAO["0000591"]
     textual_entity: URIRef = IAO["0000300"]
     denotes: URIRef = IAO["0000219"]
+    is_about: URIRef = IAO["0000136"]
+    input_specification = BASE["input_specification"]
+    output_specification = BASE["output_specification"]
+    has_parameter_specification = BASE["has_parameter_specification"]
+    has_parameter_position = BASE["has_parameter_position"]
+    has_default_literal_value = BASE["has_default_literal_value"]
 
 
 ud = UnitsDict()
@@ -151,13 +157,15 @@ def get_knowledge_graph(
     return graph
 
 
-def _function_to_graph(f_node: URIRef, data: dict) -> None:
+def _function_to_graph(
+    f_node: URIRef, data: dict, input_args: list[dict], output_args: list[dict]
+) -> Graph:
     """
     Converts a function's metadata into an RDF graph representation.
 
     Args:
         f_node (URIRef): The URI reference for the function node.
-        data (dict): A dictionary containing metadata about the function. 
+        data (dict): A dictionary containing metadata about the function.
                      Expected keys:
                      - "function": A dictionary with the following keys:
                      - "qualname" (str): The qualified name of the function.
@@ -174,6 +182,25 @@ def _function_to_graph(f_node: URIRef, data: dict) -> None:
         g.add((docstring, RDF.type, SNS.textual_entity))
         g.add((docstring, RDF.value, Literal(data["function"]["docstring"])))
         g.add((docstring, SNS.denotes, f_node))
+    for io, io_args in zip(["input", "output"], [input_args, output_args]):
+        for arg in io_args:
+            if io == "input":
+                arg_node = BNode(f_node + "_input_" + arg["arg"])
+                g.add((arg_node, RDF.type, SNS.input_specification))
+            else:
+                arg_node = BNode(f_node + "_output_" + arg["arg"])
+                g.add((arg_node, RDF.type, SNS.output_specification))
+            g.add((arg_node, RDFS.label, Literal(arg["arg"])))
+            g.add((f_node, SNS.has_parameter_specification, arg_node))
+            g.add(
+                (arg_node, SNS.has_parameter_position, Literal(arg.get("position", 0)))
+            )
+            if "default" in arg:
+                g.add(
+                    (arg_node, SNS.has_default_literal_value, Literal(arg["default"]))
+                )
+            if "uri" in arg:
+                g.add((arg_node, SNS.is_about, arg["uri"]))
     return g
 
 
@@ -189,7 +216,12 @@ def _wf_node_to_graph(
     if "function" in data:
         f_node = namespace[data["function"]["identifier"].replace(".", "-")]
         if list(g.triples((f_node, None, None))) == []:
-            g += _function_to_graph(f_node, data)
+            g += _function_to_graph(
+                f_node,
+                data,
+                input_args=[G.nodes[item] for item in G.predecessors(node_name)],
+                output_args=[G.nodes[item] for item in G.successors(node_name)],
+            )
     if t_box:
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
