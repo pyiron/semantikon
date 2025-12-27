@@ -580,12 +580,15 @@ class TestOntology(unittest.TestCase):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
         g = onto.get_knowledge_graph(wf_dict)
         g_run = onto.get_knowledge_graph(my_kinetic_energy_workflow.run(2, 1, 4))
-        query = sparql_prefixes + """
+        query = (
+            sparql_prefixes
+            + """
         SELECT ?node ?value WHERE {
           ?bnode a ?node ;
             rdf:value ?value .
         }
         """
+        )
         results = list(g_run.query(query))
         for tag, value in zip(
             [
