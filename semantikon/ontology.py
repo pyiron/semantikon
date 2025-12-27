@@ -77,12 +77,11 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
 
 class SemantikonDiGraph(nx.DiGraph):
     @cached_property
-    def t_namespace(self):
-        h = _get_graph_hash(self, with_global_inputs=False)
-        return Namespace(BASE + h + "_")
+    def t_ns(self):
+        return BASE
 
     @cached_property
-    def a_namespace(self):
+    def a_ns(self):
         h = _get_graph_hash(self, with_global_inputs=True)
         return Namespace(BASE + h + "_")
 
