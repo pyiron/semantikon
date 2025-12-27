@@ -694,7 +694,13 @@ def _to_owl_restriction(
     restriction_type: URIRef = OWL.someValuesFrom,
 ) -> Graph:
     g = Graph()
-    restriction_node = BNode()
+    restriction_node = BNode(
+        sha256(
+            str((base_node, on_property, target_class, restriction_type)).encode(
+                "utf-8"
+            )
+        ).hexdigest()
+    )
 
     # Build the restriction
     g.add((restriction_node, RDF.type, OWL.Restriction))

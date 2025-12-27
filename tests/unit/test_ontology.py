@@ -576,6 +576,36 @@ class TestOntology(unittest.TestCase):
             (output_spec[0], onto.BASE.has_parameter_position, Literal(0)), graph
         )
 
+    def test_value(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict)
+        g_run = onto.get_knowledge_graph(my_kinetic_energy_workflow.run(2, 1, 4))
+        query = sparql_prefixes + """
+        SELECT ?node ?value WHERE {
+          ?bnode a ?node ;
+            rdf:value ?value .
+        }
+        """
+        results = list(g_run.query(query))
+        for tag, value in zip(
+            [
+                "my_kinetic_energy_workflow-inputs-mass_data",
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output_data",
+                "my_kinetic_energy_workflow-inputs-time_data",
+                "my_kinetic_energy_workflow-get_speed_0-outputs-speed_data",
+                "my_kinetic_energy_workflow-inputs-distance_data",
+            ],
+            [4, 8.0, 1, 2.0, 2],
+        ):
+            with self.subTest(f"Checking value for {tag}"):
+                matched = [
+                    (str(row["node"]), row["value"])
+                    for row in results
+                    if str(row["node"]).endswith(tag)
+                ]
+                self.assertEqual(len(matched), 1)
+                self.assertEqual(matched[0][1].toPython(), value)
+
 
 if __name__ == "__main__":
     unittest.main()
