@@ -566,114 +566,133 @@ def _get_successor_nodes(G, node_name):
                 yield node
 
 
-def serialize_and_convert_to_networkx(
-    wf_dict: dict, prefix: str | None = None
-) -> SemantikonDiGraph:
+class _WorkflowGraphSerializer:
     """
-    Serializes a workflow dictionary and converts it into a NetworkX directed graph.
-
-    Args:
-        wf_dict (dict): The workflow dictionary to process.
-        prefix (str | None): Optional prefix for node names.
-
-    Returns:
-        SemantikonDiGraph: A directed graph representation of the workflow.
+    Serializes a workflow dictionary into a SemantikonDiGraph.
     """
 
-    def _remove_us(*args) -> str:
-        """Remove underscores from the components of a dotted string."""
+    def __init__(self, wf_dict: dict):
+        self.wf_dict = wf_dict
+        self.node_dict: dict = {}
+        self.channel_dict: dict = {}
+        self.edge_list: list[list[str]] = []
+
+    # -----------------------------
+    # String utilities
+    # -----------------------------
+
+    @staticmethod
+    def _remove_us(*args: str) -> str:
         s = ".".join(args)
         return ".".join(part.split("__")[-1] for part in s.split("."))
 
-    def _dot(*args) -> str:
-        """Join components with a dot, ignoring None values."""
-        return ".".join([a for a in args if a is not None])
+    @staticmethod
+    def _dot(*args: str | None) -> str:
+        return ".".join(a for a in args if a is not None)
 
-    def _serialize_workflow(wf_dict: dict, prefix: str) -> tuple[dict, dict, list]:
-        """Serialize the workflow dictionary into node, channel, and edge data."""
-        edge_list = []
-        channel_dict = {}
-        node_dict = {
-            prefix: {
-                key: value
-                for key, value in wf_dict.items()
-                if key not in ["nodes", "edges"]
-            }
+    # -----------------------------
+    # Serialization
+    # -----------------------------
+
+    def serialize(self) -> SemantikonDiGraph:
+        self._serialize_workflow(self.wf_dict, self.wf_dict["label"])
+        return self._build_graph()
+
+    def _serialize_workflow(self, wf_dict: dict, prefix: str) -> None:
+        self._serialize_node_metadata(wf_dict, prefix)
+        self._serialize_channels(wf_dict, prefix)
+        self._serialize_children(wf_dict, prefix)
+        self._serialize_edges(wf_dict, prefix)
+
+    def _serialize_node_metadata(self, wf_dict: dict, prefix: str) -> None:
+        self.node_dict[prefix] = {
+            k: v for k, v in wf_dict.items() if k not in {"nodes", "edges"}
         }
+
         assert "function" in wf_dict or wf_dict["type"] != "Function"
+
         if "function" in wf_dict:
-            node_dict[prefix]["function"] = get_function_metadata(
+            meta = get_function_metadata(
                 wf_dict["function"], full_metadata=True
             )
-            node_dict[prefix]["function"]["identifier"] = ".".join(
-                (
-                    node_dict[prefix]["function"]["module"],
-                    node_dict[prefix]["function"]["qualname"],
-                    node_dict[prefix]["function"]["version"],
-                )
+            meta["identifier"] = ".".join(
+                (meta["module"], meta["qualname"], meta["version"])
             )
-        for io_ in ["inputs", "outputs"]:
-            for loc, (key, channel) in enumerate(wf_dict[io_].items()):
-                channel_label = _remove_us(prefix, io_, key)
-                assert "semantikon_type" not in channel, "semantikon_type already set"
-                channel_dict[channel_label] = channel | {
-                    "semantikon_type": io_,
-                    "position": channel.get("position", loc),
-                    "arg": key,
-                }
-        for key, node in wf_dict.get("nodes", {}).items():
-            child_node, child_channel, child_edges = _serialize_workflow(
-                node, prefix=_dot(prefix, key)
-            )
-            node_dict.update(child_node)
-            edge_list.extend(child_edges)
-            channel_dict.update(child_channel)
-        for args in wf_dict.get("edges", []):
-            edge_list.append([_remove_us(prefix, a) for a in args])
-        return node_dict, channel_dict, edge_list
+            self.node_dict[prefix]["function"] = meta
 
-    def _build_graph(
-        node_dict: dict, channel_dict: dict, edge_list: list
-    ) -> SemantikonDiGraph:
-        """Build a NetworkX directed graph from node, channel, and edge data."""
+    def _serialize_channels(self, wf_dict: dict, prefix: str) -> None:
+        for io_type in ("inputs", "outputs"):
+            for pos, (arg, channel) in enumerate(wf_dict.get(io_type, {}).items()):
+                label = self._remove_us(prefix, io_type, arg)
+                assert "semantikon_type" not in channel
+
+                self.channel_dict[label] = channel | {
+                    "semantikon_type": io_type,
+                    "position": channel.get("position", pos),
+                    "arg": arg,
+                }
+
+    def _serialize_children(self, wf_dict: dict, prefix: str) -> None:
+        for key, node in wf_dict.get("nodes", {}).items():
+            self._serialize_workflow(node, self._dot(prefix, key))
+
+    def _serialize_edges(self, wf_dict: dict, prefix: str) -> None:
+        for edge in wf_dict.get("edges", []):
+            self.edge_list.append(
+                [self._remove_us(prefix, a) for a in edge]
+            )
+
+    # -----------------------------
+    # Graph construction
+    # -----------------------------
+
+    def _build_graph(self) -> SemantikonDiGraph:
         G = SemantikonDiGraph()
 
-        # Add channel nodes
-        for key, data in channel_dict.items():
+        self._add_channels(G)
+        self._add_nodes(G)
+        self._add_edges(G)
+
+        return self._relabel_graph(G)
+
+    def _add_channels(self, G: SemantikonDiGraph) -> None:
+        for key, data in self.channel_dict.items():
             G.add_node(
                 key,
                 step=data["semantikon_type"],
-                **{k: v for k, v in data.items() if k not in ["semantikon_type"]},
+                **{k: v for k, v in data.items() if k != "semantikon_type"},
             )
 
-        # Add workflow and node nodes
-        for key, data in node_dict.items():
-            if "." not in key:  # Root workflow node
+    def _add_nodes(self, G: SemantikonDiGraph) -> None:
+        for key, data in self.node_dict.items():
+            if "." not in key:
                 G.name = key
                 continue
+
             G.add_node(
                 key,
                 step="node",
-                **{k: v for k, v in data.items() if k not in ["inputs", "outputs"]},
+                **{k: v for k, v in data.items() if k not in {"inputs", "outputs"}},
             )
-            for inp in data.get("inputs", {}).keys():
+
+            for inp in data.get("inputs", {}):
                 G.add_edge(f"{key}.inputs.{inp}", key)
-            for out in data.get("outputs", {}).keys():
+
+            for out in data.get("outputs", {}):
                 G.add_edge(key, f"{key}.outputs.{out}")
 
-        # Add edges
-        for edge in edge_list:
+    def _add_edges(self, G: SemantikonDiGraph) -> None:
+        for edge in self.edge_list:
             G.add_edge(*edge)
 
-        # Relabel nodes to replace dots with dashes
+    @staticmethod
+    def _relabel_graph(G: SemantikonDiGraph) -> SemantikonDiGraph:
         mapping = {n: n.replace(".", "-") for n in G.nodes()}
         return nx.relabel_nodes(G, mapping, copy=True)
 
-    # Main logic
-    if prefix is None:
-        prefix = wf_dict["label"]
-    node_dict, channel_dict, edge_list = _serialize_workflow(wf_dict, prefix)
-    return _build_graph(node_dict, channel_dict, edge_list)
+
+def serialize_and_convert_to_networkx(wf_dict: dict) -> SemantikonDiGraph:
+    return _WorkflowGraphSerializer(wf_dict).serialize()
 
 
 def _to_owl_restriction(
