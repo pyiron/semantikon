@@ -612,9 +612,7 @@ class _WorkflowGraphSerializer:
         assert "function" in wf_dict or wf_dict["type"] != "Function"
 
         if "function" in wf_dict:
-            meta = get_function_metadata(
-                wf_dict["function"], full_metadata=True
-            )
+            meta = get_function_metadata(wf_dict["function"], full_metadata=True)
             meta["identifier"] = ".".join(
                 (meta["module"], meta["qualname"], meta["version"])
             )
@@ -638,9 +636,7 @@ class _WorkflowGraphSerializer:
 
     def _serialize_edges(self, wf_dict: dict, prefix: str) -> None:
         for edge in wf_dict.get("edges", []):
-            self.edge_list.append(
-                [self._remove_us(prefix, a) for a in edge]
-            )
+            self.edge_list.append([self._remove_us(prefix, a) for a in edge])
 
     # -----------------------------
     # Graph construction
