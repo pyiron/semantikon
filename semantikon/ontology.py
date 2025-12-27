@@ -85,6 +85,9 @@ class SemantikonDiGraph(nx.DiGraph):
         h = _get_graph_hash(self, with_global_inputs=True)
         return Namespace(BASE + h + "_")
 
+    def get_a_node(self, node_name: str) -> BNode:
+        return BNode(self.a_ns[node_name])
+
 
 def _inherit_properties(graph: Graph, n_max: int = 1000):
     query = f"""\
