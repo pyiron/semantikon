@@ -273,20 +273,20 @@ def _wf_node_to_graph(
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
                 g += _to_owl_restriction(
-                    kg_node,
+                    G.t_ns[node_name],
                     SNS.has_part,
                     BASE[item],
                 )
-        g.add((kg_node, RDFS.subClassOf, SNS.process))
+        g.add((G.t_ns[node_name], RDFS.subClassOf, SNS.process))
         if "function" in data:
             g += _to_owl_restriction(
-                kg_node,
+                G.t_ns[node_name],
                 SNS.has_participant,
                 f_node,
                 restriction_type=OWL.hasValue,
             )
     else:
-        g.add((BNode(kg_node), RDF.type, kg_node))
+        g.add((BNode(kg_node), RDF.type, G.t_ns[node_name]))
         kg_node = BNode(kg_node)
         for inp in G.predecessors(node_name):
             g.add((kg_node, SNS.has_part, BNode(BASE[inp])))
@@ -542,7 +542,7 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
         if t_box:
             g.add((G.t_ns[comp[0]], RDF.type, OWL.Class))
         else:
-            g.add((BNode(node), RDF.type, BASE[comp[0]]))
+            g.add((BNode(node), RDF.type, G.t_ns[comp[0]]))
         assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
         if step == "node":
             g += _wf_node_to_graph(
