@@ -577,7 +577,6 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_run(self):
-        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
         g_run = onto.get_knowledge_graph(my_kinetic_energy_workflow.run(2, 1, 4))
         query = (
             sparql_prefixes
