@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 from textwrap import dedent
+from typing import Annotated
 
 from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, Graph, Literal, Namespace
@@ -31,9 +32,11 @@ sparql_prefixes = prefixes.replace("@prefix ", "PREFIX ").replace(" .\n", "\n")
 
 
 def get_speed(
-    distance: u(float, uri=PMD["0040001"], units="meter", label="Distance"),
-    time: u(float, units="second"),
-) -> u(float, units="meter/second", uri=EX.Velocity):
+    distance: Annotated[
+        float, {"uri": PMD["0040001"], "units": "meter", "label": "Distance"}
+    ],
+    time: Annotated[float, {"units": "second"}],
+) -> Annotated[float, {"units": "meter/second", "uri": EX.Velocity}]:
     """some random docstring"""
     speed = distance / time
     return speed
@@ -41,30 +44,32 @@ def get_speed(
 
 @meta(uri=EX.get_kinetic_energy)
 def get_kinetic_energy(
-    mass: u(float, uri=PMD["0020133"], units="kilogram"),
-    velocity: u(float, units="meter/second", uri=EX.Velocity),
-) -> u(float, uri=PMD["0020142"], units="joule"):
+    mass: Annotated[float, {"uri": PMD["0020133"], "units": "kilogram"}],
+    velocity: Annotated[float, {"units": "meter/second", "uri": EX.Velocity}],
+) -> Annotated[float, {"uri": PMD["0020142"], "units": "joule"}]:
     return 0.5 * mass * velocity**2
 
 
 @workflow
-def my_kinetic_energy_workflow(distance: u(float, uri=PMD["0040001"]), time, mass):
+def my_kinetic_energy_workflow(
+    distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
+):
     speed = get_speed(distance, time)
     kinetic_energy = get_kinetic_energy(mass, speed)
     return kinetic_energy
 
 
 def get_kinetic_energy_wrong_units(
-    mass: u(float, uri=PMD["0020133"], units="kilogram"),
-    velocity: u(float, units="angstrom", uri=EX.Velocity),
-) -> u(float, uri=PMD["0020142"], units="joule"):
+    mass: Annotated[float, {"uri": PMD["0020133"], "units": "kilogram"}],
+    velocity: Annotated[float, {"units": "angstrom", "uri": EX.Velocity}],
+) -> Annotated[float, {"uri": PMD["0020142"], "units": "joule"}]:
     return 0.5 * mass * velocity**2
 
 
 def get_kinetic_energy_wrong_uri(
-    mass: u(float, units="kilogram"),
-    velocity: u(float, units="meter/second", uri=EX.WrongURI),
-) -> u(float, uri=PMD["0020142"], units="joule"):
+    mass: Annotated[float, {"units": "kilogram"}],
+    velocity: Annotated[float, {"units": "meter/second", "uri": EX.WrongURI}],
+) -> Annotated[float, {"uri": PMD["0020142"], "units": "joule"}]:
     return 0.5 * mass * velocity**2
 
 
@@ -73,8 +78,10 @@ def get_speed_not_annotated(distance, time) -> float:
 
 
 def f_triples(
-    a: float, b: u(float, triples=("self", EX.relatedTo, "inputs.a"))
-) -> u(float, triples=((EX.hasSomeRelation, "inputs.b")), derived_from="inputs.a"):
+    a: float, b: Annotated[float, {"triples": ("self", EX.relatedTo, "inputs.a")}]
+) -> Annotated[
+    float, {"triples": ((EX.hasSomeRelation, "inputs.b")), "derived_from": "inputs.a"}
+]:
     return a
 
 
@@ -88,11 +95,11 @@ class Meal:
     pass
 
 
-def prepare_pizza() -> u(Meal, uri=EX.Pizza):
+def prepare_pizza() -> Annotated[Meal, {"uri": EX.Pizza}]:
     return Meal()
 
 
-def eat(meal: u(Meal, uri=EX.Meal)) -> str:
+def eat(meal: Annotated[Meal, {"uri": EX.Meal}]) -> str:
     return "I am full after eating "
 
 
@@ -113,28 +120,33 @@ class Clothes:
 
 def wash(
     clothes: Clothes,
-) -> u(Clothes, triples=(EX.hasProperty, uri_cleaned), derived_from="inputs.clothes"):
+) -> Annotated[
+    Clothes,
+    {"triples": (EX.hasProperty, uri_cleaned), "derived_from": "inputs.clothes"},
+]:
     ...
     return clothes
 
 
-def dye(clothes: Clothes, color="blue") -> u(
-    Clothes,
-    triples=(EX.hasProperty, uri_color),
-    derived_from="inputs.clothes",
-):
+def dye(
+    clothes: Clothes, color="blue"
+) -> Annotated[
+    Clothes, {"triples": (EX.hasProperty, uri_color), "derived_from": "inputs.clothes"}
+]:
     ...
     return clothes
 
 
 def sell(
-    clothes: u(
+    clothes: Annotated[
         Clothes,
-        restrictions=(
-            ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Cleaned)),
-            ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Color)),
-        ),
-    ),
+        {
+            "restrictions": (
+                ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Cleaned)),
+                ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Color)),
+            )
+        },
+    ],
 ) -> int:
     ...
     return 10
