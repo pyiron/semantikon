@@ -540,14 +540,14 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
         step = data.pop("step")
         node = BASE[comp[0]]
         if t_box:
-            g.add((node, RDF.type, OWL.Class))
+            g.add((G.t_ns[comp[0]], RDF.type, OWL.Class))
         else:
             g.add((BNode(node), RDF.type, BASE[comp[0]]))
         assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
         if step == "node":
             g += _wf_node_to_graph(
                 node_name=comp[0],
-                kg_node=node,
+                kg_node=G.t_ns[comp[0]],
                 data=data,
                 G=G,
                 t_box=t_box,
@@ -556,7 +556,7 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
             g += _wf_io_to_graph(
                 step=step,
                 node_name=comp[0],
-                node=node,
+                node=G.t_ns[comp[0]],
                 data=data,
                 G=G,
                 t_box=t_box,
