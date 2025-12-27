@@ -1,6 +1,7 @@
 import copy
 import json
 from dataclasses import dataclass
+from functools import cached_property
 from hashlib import sha256
 from typing import TypeAlias, cast
 
@@ -74,6 +75,18 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
     return URIRef(units)
 
 
+class SemantikonDiGraph(nx.DiGraph):
+    @cached_property
+    def t_namespace(self):
+        h = _get_graph_hash(self, with_global_inputs=False)
+        return Namespace(BASE + h + "_")
+
+    @cached_property
+    def a_namespace(self):
+        h = _get_graph_hash(self, with_global_inputs=True)
+        return Namespace(BASE + h + "_")
+
+
 def _inherit_properties(graph: Graph, n_max: int = 1000):
     query = f"""\
     PREFIX rdfs: <{RDFS}>
@@ -136,7 +149,7 @@ def validate_values(
 
 
 def extract_dataclass(
-    graph: Graph, namespace: Namespace | None = None, ontology=SNS
+    graph: Graph, ontology=SNS
 ) -> Graph:
     return Graph()
 
@@ -240,13 +253,12 @@ def _wf_node_to_graph(
     node_name: str,
     kg_node: URIRef,
     data: dict,
-    G: nx.DiGraph,
+    G: SemantikonDiGraph,
     t_box: bool,
-    namespace: Namespace,
 ) -> Graph:
     g = Graph()
     if "function" in data:
-        f_node = namespace[data["function"]["identifier"].replace(".", "-")]
+        f_node = BASE[data["function"]["identifier"].replace(".", "-")]
         if list(g.triples((f_node, None, None))) == [] and t_box:
             g += _function_to_graph(
                 f_node,
@@ -261,7 +273,7 @@ def _wf_node_to_graph(
                 g += _to_owl_restriction(
                     kg_node,
                     SNS.has_part,
-                    namespace[item],
+                    BASE[item],
                 )
         g.add((kg_node, RDFS.subClassOf, SNS.process))
         if "function" in data:
@@ -275,15 +287,15 @@ def _wf_node_to_graph(
         g.add((BNode(kg_node), RDF.type, kg_node))
         kg_node = BNode(kg_node)
         for inp in G.predecessors(node_name):
-            g.add((kg_node, SNS.has_part, BNode(namespace[inp])))
+            g.add((kg_node, SNS.has_part, BNode(BASE[inp])))
         for out in G.successors(node_name):
-            g.add((kg_node, SNS.has_part, BNode(namespace[out])))
+            g.add((kg_node, SNS.has_part, BNode(BASE[out])))
         if "function" in data:
             g.add((kg_node, SNS.has_participant, f_node))
     return g
 
 
-def _input_is_connected(io: str, G: nx.DiGraph) -> bool:
+def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
     candidate = list(G.predecessors(io))
     if len(candidate) == 1:
         if G.nodes[candidate[0]]["step"] == "node":
@@ -293,7 +305,7 @@ def _input_is_connected(io: str, G: nx.DiGraph) -> bool:
     return False
 
 
-def _get_data_node(io: str, G: nx.DiGraph) -> BNode:
+def _get_data_node(io: str, G: SemantikonDiGraph) -> BNode:
     candidate = list(G.predecessors(io))
     assert len(candidate) <= 1
     if len(candidate) == 0 or G.nodes[candidate[0]]["step"] == "node":
@@ -301,7 +313,7 @@ def _get_data_node(io: str, G: nx.DiGraph) -> BNode:
     return _get_data_node(candidate[0], G)
 
 
-def _detect_io_from_str(G: nx.DiGraph, seeked_io: str, ref_io: str) -> str:
+def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: str) -> str:
     assert seeked_io.startswith("inputs") or seeked_io.startswith("outputs")
     main_node = ref_io.replace(".", "-").split("-outputs-")[0].split("-inputs-")[0]
     candidate = (
@@ -317,9 +329,8 @@ def _translate_triples(
     triples: _triple_type,
     node_name: str,
     data_node: BNode,
-    G: nx.DiGraph,
+    G: SemantikonDiGraph,
     t_box: bool,
-    namespace: Namespace,
 ) -> Graph:
     def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode | BNode:
         if isinstance(t, SemantikonURI):
@@ -330,7 +341,7 @@ def _translate_triples(
             return data_node
         else:
             assert isinstance(t, str)
-            result = namespace[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)]
+            result = BASE[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)]
             if t_box:
                 return result
             else:
@@ -377,9 +388,8 @@ def _wf_io_to_graph(
     node_name: str,
     node: URIRef,
     data: dict,
-    G: nx.DiGraph,
+    G: SemantikonDiGraph,
     t_box: bool,
-    namespace: Namespace,
 ) -> Graph:
     if not t_box:
         node = BNode(node)
@@ -389,7 +399,7 @@ def _wf_io_to_graph(
     else:
         g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
     io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
-    data_node = namespace[_get_data_node(io=node_name, G=G)]
+    data_node = BASE[_get_data_node(io=node_name, G=G)]
     has_specified_io = (
         SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
     )
@@ -403,7 +413,7 @@ def _wf_io_to_graph(
                 assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
                 if G.nodes[out[0]]["step"] == "outputs":
                     g += _to_owl_restriction(
-                        namespace[out[0]], SNS.has_specified_output, data_node
+                        BASE[out[0]], SNS.has_specified_output, data_node
                     )
             if "units" in data:
                 g += _to_owl_restriction(
@@ -447,16 +457,14 @@ def _wf_io_to_graph(
             data_node=data_node,
             G=G,
             t_box=t_box,
-            namespace=namespace,
         )
     return g
 
 
 def _parse_precedes(
-    G: nx.DiGraph,
+    G: SemantikonDiGraph,
     workflow_node: URIRef | BNode,
     t_box: bool,
-    namespace: Namespace,
 ) -> Graph:
     g = Graph()
     for node in G.nodes.data():
@@ -465,41 +473,40 @@ def _parse_precedes(
             if len(successors) == 0:
                 if t_box:
                     g += _to_owl_restriction(
-                        workflow_node, SNS.has_part, namespace[node[0]]
+                        workflow_node, SNS.has_part, BASE[node[0]]
                     )
                 else:
-                    g.add((workflow_node, SNS.has_part, BNode(namespace[node[0]])))
+                    g.add((workflow_node, SNS.has_part, BNode(BASE[node[0]])))
             else:
                 if t_box:
                     for succ in successors:
                         g += _to_owl_restriction(
-                            namespace[node[0]],
+                            BASE[node[0]],
                             SNS.precedes,
-                            namespace[succ],
+                            BASE[succ],
                         )
                     g += _to_owl_restriction(
                         workflow_node,
                         SNS.has_part,
-                        namespace[node[0]],
+                        BASE[node[0]],
                     )
                 else:
                     for succ in successors:
                         g.add(
                             (
-                                BNode(namespace[node[0]]),
+                                BNode(BASE[node[0]]),
                                 SNS.precedes,
-                                BNode(namespace[succ]),
+                                BNode(BASE[succ]),
                             )
                         )
-                    g.add((workflow_node, SNS.has_part, BNode(namespace[node[0]])))
+                    g.add((workflow_node, SNS.has_part, BNode(BASE[node[0]])))
     return g
 
 
 def _parse_global_io(
-    G: nx.DiGraph,
+    G: SemantikonDiGraph,
     workflow_node: URIRef | BNode,
     t_box: bool,
-    namespace: Namespace,
 ) -> Graph:
     g = Graph()
     global_inputs = [
@@ -516,14 +523,14 @@ def _parse_global_io(
                 g += _to_owl_restriction(
                     workflow_node,
                     SNS.has_part,
-                    namespace[io[0]],
+                    BASE[io[0]],
                 )
             else:
-                g.add((workflow_node, SNS.has_part, BNode(namespace[io[0]])))
+                g.add((workflow_node, SNS.has_part, BNode(BASE[io[0]])))
     return g
 
 
-def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
+def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
     g = Graph()
     workflow_node = BASE[G.name] if t_box else BNode(BASE[G.name])
     for comp in G.nodes.data():
@@ -542,7 +549,6 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
                 data=data,
                 G=G,
                 t_box=t_box,
-                namespace=BASE,
             )
         else:
             g += _wf_io_to_graph(
@@ -552,7 +558,6 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
                 data=data,
                 G=G,
                 t_box=t_box,
-                namespace=BASE,
             )
 
     if t_box:
@@ -560,8 +565,8 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
         g.add((workflow_node, RDFS.subClassOf, SNS.process))
     else:
         g.add((workflow_node, RDF.type, BASE[G.name]))
-    g += _parse_precedes(G=G, workflow_node=workflow_node, t_box=t_box, namespace=BASE)
-    g += _parse_global_io(G=G, workflow_node=workflow_node, t_box=t_box, namespace=BASE)
+    g += _parse_precedes(G=G, workflow_node=workflow_node, t_box=t_box)
+    g += _parse_global_io(G=G, workflow_node=workflow_node, t_box=t_box)
     return g
 
 
@@ -574,7 +579,7 @@ def _get_successor_nodes(G, node_name):
 
 def serialize_and_convert_to_networkx(
     wf_dict: dict, prefix: str | None = None
-) -> nx.DiGraph:
+) -> SemantikonDiGraph:
     """
     Serializes a workflow dictionary and converts it into a NetworkX directed graph.
 
@@ -583,7 +588,7 @@ def serialize_and_convert_to_networkx(
         prefix (str | None): Optional prefix for node names.
 
     Returns:
-        nx.DiGraph: A directed graph representation of the workflow.
+        SemantikonDiGraph: A directed graph representation of the workflow.
     """
 
     def _remove_us(*args) -> str:
@@ -640,9 +645,9 @@ def serialize_and_convert_to_networkx(
 
     def _build_graph(
         node_dict: dict, channel_dict: dict, edge_list: list
-    ) -> nx.DiGraph:
+    ) -> SemantikonDiGraph:
         """Build a NetworkX directed graph from node, channel, and edge data."""
-        G = nx.DiGraph()
+        G = SemantikonDiGraph()
 
         # Add channel nodes
         for key, data in channel_dict.items():
@@ -707,14 +712,14 @@ def _to_owl_restriction(
     return g
 
 
-def _get_graph_hash(G: nx.DiGraph, with_global_inputs: bool = True) -> str:
+def _get_graph_hash(G: SemantikonDiGraph, with_global_inputs: bool = True) -> str:
     """
     Generate a hash for a NetworkX graph, making sure that data types and
     values (except for the global ones) because they can often not be
     serialized.
 
     Args:
-        G (nx.DiGraph): input graph
+        G (SemantikonDiGraph): input graph
         with_global_inputs (bool): if True, keep values for global inputs
 
     Returns:
