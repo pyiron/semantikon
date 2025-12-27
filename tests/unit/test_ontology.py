@@ -21,7 +21,7 @@ prefixes = """
 @prefix qudt: <http://qudt.org/schema/qudt/> .
 @prefix unit: <http://qudt.org/vocab/unit/> .
 @prefix obi: <http://purl.obolibrary.org/obo/OBI_> .
-@prefix sns: <http://semantikon.org/ontology/> .
+@prefix sns: <http://pyiron.org/ontology/> .
 @prefix ro: <http://purl.obolibrary.org/obo/RO_> .
 @prefix pmd: <https://w3id.org/pmd/co/PMD_> .
 @prefix ex: <http://example.org/> .
@@ -397,14 +397,16 @@ class TestOntology(unittest.TestCase):
             onto.BASE["wf_triples-f_triples_0-outputs-a_data"],
         )
         g = onto.get_knowledge_graph(wf_dict, include_t_box=False)
-        result = list(
-            g.predicates(
-                BNode(onto.BASE["wf_triples-f_triples_0-outputs-a_data"]),
-                BNode(onto.BASE["wf_triples-inputs-a_data"]),
-            )
+        query = sparql_prefixes + dedent(
+            """
+        ASK WHERE {
+            ?output a sns:wf_triples-f_triples_0-outputs-a_data .
+            ?input a sns:wf_triples-inputs-a_data .
+            ?output ro:0001000 ?input .
+        }
+        """
         )
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0], onto.SNS.derives_from)
+        self.assertTrue(g.query(query).askAnswer)
 
     def test_triples(self):
         wf_dict = wf_triples.serialize_workflow()
@@ -430,37 +432,27 @@ class TestOntology(unittest.TestCase):
             ]
             self.assertEqual(len(fn_activities), 1)
 
-        with self.subTest("function output derives from input a"):
-            outputs = list(
-                g.subjects(RDF.type, onto.BASE["wf_triples-f_triples_0-outputs-a_data"])
-            )
-            self.assertEqual(len(outputs), 1)
-            self.assertIn(
-                (
-                    outputs[0],
-                    onto.RO["0001000"],
-                    BNode(onto.BASE["wf_triples-inputs-a_data"]),
-                ),
-                g,
-            )
-
         with self.subTest("cross-input data relations preserved"):
-            self.assertIn(
-                (
-                    BNode(onto.BASE["wf_triples-inputs-b_data"]),
-                    EX.relatedTo,
-                    BNode(onto.BASE["wf_triples-inputs-a_data"]),
-                ),
-                g,
+            query = sparql_prefixes + dedent(
+                """
+            ASK WHERE {
+                ?b_data a sns:wf_triples-inputs-b_data .
+                ?a_data a sns:wf_triples-inputs-a_data .
+                ?b_data ex:relatedTo ?a_data .
+            }
+            """
             )
-            self.assertIn(
-                (
-                    outputs[0],
-                    EX.hasSomeRelation,
-                    BNode(onto.BASE["wf_triples-inputs-b_data"]),
-                ),
-                g,
+            self.assertTrue(g.query(query).askAnswer)
+            query = sparql_prefixes + dedent(
+                """
+            ASK WHERE {
+                ?output a sns:wf_triples-f_triples_0-outputs-a_data .
+                ?input a sns:wf_triples-inputs-b_data .
+                ?output ex:hasSomeRelation ?input .
+            }
+            """
             )
+            self.assertTrue(g.query(query).askAnswer)
         g = onto.get_knowledge_graph(wf_dict)
         self.assertTrue(onto.validate_values(g)[0])
 

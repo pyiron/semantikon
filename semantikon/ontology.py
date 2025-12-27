@@ -150,9 +150,7 @@ def validate_values(
     return validate(g, shacl_graph=shacl)
 
 
-def extract_dataclass(
-    graph: Graph, ontology=SNS
-) -> Graph:
+def extract_dataclass(graph: Graph, ontology=SNS) -> Graph:
     return Graph()
 
 
@@ -253,7 +251,6 @@ def _function_to_graph(
 
 def _wf_node_to_graph(
     node_name: str,
-    kg_node: URIRef,
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
@@ -275,7 +272,7 @@ def _wf_node_to_graph(
                 g += _to_owl_restriction(
                     G.t_ns[node_name],
                     SNS.has_part,
-                    BASE[item],
+                    G.t_ns[item],
                 )
         g.add((G.t_ns[node_name], RDFS.subClassOf, SNS.process))
         if "function" in data:
@@ -286,14 +283,14 @@ def _wf_node_to_graph(
                 restriction_type=OWL.hasValue,
             )
     else:
-        g.add((BNode(kg_node), RDF.type, G.t_ns[node_name]))
-        kg_node = BNode(kg_node)
+        node = G.get_a_node(node_name)
+        g.add((node, RDF.type, G.t_ns[node_name]))
         for inp in G.predecessors(node_name):
-            g.add((kg_node, SNS.has_part, BNode(BASE[inp])))
+            g.add((node, SNS.has_part, G.get_a_node(inp)))
         for out in G.successors(node_name):
-            g.add((kg_node, SNS.has_part, BNode(BASE[out])))
+            g.add((node, SNS.has_part, G.get_a_node(out)))
         if "function" in data:
-            g.add((kg_node, SNS.has_participant, f_node))
+            g.add((node, SNS.has_participant, f_node))
     return g
 
 
@@ -343,11 +340,8 @@ def _translate_triples(
             return data_node
         else:
             assert isinstance(t, str)
-            result = BASE[_detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)]
-            if t_box:
-                return result
-            else:
-                return BNode(result)
+            io = _detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)
+            return G.t_ns[io] if t_box else G.get_a_node(io)
 
     g = Graph()
     for triple in triples:
@@ -388,24 +382,23 @@ def _restrictions_to_triples(
 def _wf_io_to_graph(
     step: str,
     node_name: str,
-    node: URIRef,
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
 ) -> Graph:
-    if not t_box:
-        node = BNode(node)
+    node = G.t_ns[node_name] if t_box else G.get_a_node(node_name)
     g = Graph()
     if data.get("label") is not None:
         g.add((node, RDFS.label, Literal(data["label"])))
     else:
         g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
     io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
-    data_node = BASE[_get_data_node(io=node_name, G=G)]
     has_specified_io = (
         SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
     )
+    data_node_tag = _get_data_node(io=node_name, G=G)
     if t_box:
+        data_node = G.t_ns[data_node_tag]
         g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.subClassOf, io_assignment))
         if step == "inputs" and _input_is_connected(node_name, G):
@@ -415,7 +408,7 @@ def _wf_io_to_graph(
                 assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
                 if G.nodes[out[0]]["step"] == "outputs":
                     g += _to_owl_restriction(
-                        BASE[out[0]], SNS.has_specified_output, data_node
+                        G.t_ns[out[0]], SNS.has_specified_output, data_node
                     )
             if "units" in data:
                 g += _to_owl_restriction(
@@ -435,7 +428,8 @@ def _wf_io_to_graph(
             g += _restrictions_to_triples(data["restrictions"], data_node=data_node)
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
     else:
-        g.add((BNode(data_node), RDF.type, data_node))
+        data_node = G.get_a_node(data_node_tag)
+        g.add((data_node, RDF.type, G.t_ns[data_node_tag]))
         data_node = BNode(data_node)
         g.add((node, has_specified_io, data_node))
         if "value" in data and list(g.objects(data_node, RDF.value)) == []:
@@ -475,33 +469,33 @@ def _parse_precedes(
             if len(successors) == 0:
                 if t_box:
                     g += _to_owl_restriction(
-                        workflow_node, SNS.has_part, BASE[node[0]]
+                        workflow_node, SNS.has_part, G.t_ns[node[0]]
                     )
                 else:
-                    g.add((workflow_node, SNS.has_part, BNode(BASE[node[0]])))
+                    g.add((workflow_node, SNS.has_part, G.get_a_node(node[0])))
             else:
                 if t_box:
                     for succ in successors:
                         g += _to_owl_restriction(
-                            BASE[node[0]],
+                            G.t_ns[node[0]],
                             SNS.precedes,
-                            BASE[succ],
+                            G.t_ns[succ],
                         )
                     g += _to_owl_restriction(
                         workflow_node,
                         SNS.has_part,
-                        BASE[node[0]],
+                        G.t_ns[node[0]],
                     )
                 else:
                     for succ in successors:
                         g.add(
                             (
-                                BNode(BASE[node[0]]),
+                                G.get_a_node(node[0]),
                                 SNS.precedes,
-                                BNode(BASE[succ]),
+                                G.get_a_node(succ),
                             )
                         )
-                    g.add((workflow_node, SNS.has_part, BNode(BASE[node[0]])))
+                    g.add((workflow_node, SNS.has_part, G.get_a_node(node[0])))
     return g
 
 
@@ -525,29 +519,27 @@ def _parse_global_io(
                 g += _to_owl_restriction(
                     workflow_node,
                     SNS.has_part,
-                    BASE[io[0]],
+                    G.t_ns[io[0]],
                 )
             else:
-                g.add((workflow_node, SNS.has_part, BNode(BASE[io[0]])))
+                g.add((workflow_node, SNS.has_part, G.get_a_node(io[0])))
     return g
 
 
 def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
     g = Graph()
-    workflow_node = BASE[G.name] if t_box else BNode(BASE[G.name])
+    workflow_node = G.t_ns[G.name] if t_box else G.get_a_node(G.name)
     for comp in G.nodes.data():
         data = comp[1].copy()
         step = data.pop("step")
-        node = BASE[comp[0]]
         if t_box:
             g.add((G.t_ns[comp[0]], RDF.type, OWL.Class))
         else:
-            g.add((BNode(node), RDF.type, G.t_ns[comp[0]]))
+            g.add((G.get_a_node(comp[0]), RDF.type, G.t_ns[comp[0]]))
         assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
         if step == "node":
             g += _wf_node_to_graph(
                 node_name=comp[0],
-                kg_node=G.t_ns[comp[0]],
                 data=data,
                 G=G,
                 t_box=t_box,
@@ -556,7 +548,6 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
             g += _wf_io_to_graph(
                 step=step,
                 node_name=comp[0],
-                node=G.t_ns[comp[0]],
                 data=data,
                 G=G,
                 t_box=t_box,
@@ -566,7 +557,7 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
         g.add((workflow_node, RDF.type, OWL.Class))
         g.add((workflow_node, RDFS.subClassOf, SNS.process))
     else:
-        g.add((workflow_node, RDF.type, BASE[G.name]))
+        g.add((workflow_node, RDF.type, G.t_ns[G.name]))
     g += _parse_precedes(G=G, workflow_node=workflow_node, t_box=t_box)
     g += _parse_global_io(G=G, workflow_node=workflow_node, t_box=t_box)
     return g
