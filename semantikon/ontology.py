@@ -525,12 +525,11 @@ def _parse_global_io(
 
 def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
     g = Graph()
-    namespace = BASE
-    workflow_node = namespace[G.name] if t_box else BNode(namespace[G.name])
+    workflow_node = BASE[G.name] if t_box else BNode(BASE[G.name])
     for comp in G.nodes.data():
         data = comp[1].copy()
         step = data.pop("step")
-        node = namespace[comp[0]]
+        node = BASE[comp[0]]
         if t_box:
             g.add((node, RDF.type, OWL.Class))
         else:
@@ -543,7 +542,7 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
                 data=data,
                 G=G,
                 t_box=t_box,
-                namespace=namespace,
+                namespace=BASE,
             )
         else:
             g += _wf_io_to_graph(
@@ -553,7 +552,7 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
                 data=data,
                 G=G,
                 t_box=t_box,
-                namespace=namespace,
+                namespace=BASE,
             )
 
     if t_box:
@@ -562,10 +561,10 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
     else:
         g.add((workflow_node, RDF.type, BASE[G.name]))
     g += _parse_precedes(
-        G=G, workflow_node=workflow_node, t_box=t_box, namespace=namespace
+        G=G, workflow_node=workflow_node, t_box=t_box, namespace=BASE
     )
     g += _parse_global_io(
-        G=G, workflow_node=workflow_node, t_box=t_box, namespace=namespace
+        G=G, workflow_node=workflow_node, t_box=t_box, namespace=BASE
     )
     return g
 
@@ -727,6 +726,10 @@ def _get_graph_hash(G: nx.DiGraph, with_global_inputs: bool = True) -> str:
     """
     G_tmp = G.copy()
     for node in G_tmp.nodes:
+        if "default" in G_tmp.nodes[node]:
+            default = G_tmp.nodes[node].pop("default")
+            if "value" not in G_tmp.nodes[node]:
+                G_tmp.nodes[node]["value"] = default
         if G_tmp.in_degree(node) > 0 or not with_global_inputs:
             if "value" in G_tmp.nodes[node]:
                 del G_tmp.nodes[node]["value"]
