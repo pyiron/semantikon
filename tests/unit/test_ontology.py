@@ -144,7 +144,10 @@ def sell_without_color(
     clothes: u(
         Clothes,
         # Different shape from above
-        restrictions=((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Cleaned)),
+        restrictions=(
+            (OWL.onProperty, EX.hasProperty),
+            (OWL.someValuesFrom, EX.Cleaned),
+        ),
     ),
 ) -> int:
     ...

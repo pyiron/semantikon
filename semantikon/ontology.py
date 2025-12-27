@@ -1,6 +1,7 @@
 import copy
 import json
 from dataclasses import dataclass
+from hashlib import sha256
 from typing import TypeAlias, cast
 
 import networkx as nx
@@ -51,6 +52,7 @@ class SNS:
     has_parameter_specification: URIRef = BASE["has_parameter_specification"]
     has_parameter_position: URIRef = BASE["has_parameter_position"]
     has_default_literal_value: URIRef = BASE["has_default_literal_value"]
+    has_constraint: URIRef = BASE["has_constraint"]
 
 
 ud = UnitsDict()
@@ -209,11 +211,10 @@ def _function_to_graph(
         g.add((f_node, SNS.is_about, uri))
     for io, io_args in zip(["input", "output"], [input_args, output_args]):
         for arg in io_args:
+            arg_node = BNode("_".join([f_node, io, arg["arg"]]))
             if io == "input":
-                arg_node = BNode(f_node + "_input_" + arg["arg"])
                 g.add((arg_node, RDF.type, SNS.input_specification))
             else:
-                arg_node = BNode(f_node + "_output_" + arg["arg"])
                 g.add((arg_node, RDF.type, SNS.output_specification))
             g.add((arg_node, RDFS.label, Literal(arg["arg"])))
             g.add((f_node, SNS.has_parameter_specification, arg_node))
@@ -226,6 +227,12 @@ def _function_to_graph(
                 )
             if "uri" in arg:
                 g.add((arg_node, SNS.is_about, arg["uri"]))
+            if "restrictions" in arg:
+                g += _restrictions_to_triples(
+                    arg["restrictions"],
+                    data_node=arg_node,
+                    predicate=SNS.has_constraint,
+                )
     return g
 
 
@@ -240,7 +247,7 @@ def _wf_node_to_graph(
     g = Graph()
     if "function" in data:
         f_node = namespace[data["function"]["identifier"].replace(".", "-")]
-        if list(g.triples((f_node, None, None))) == []:
+        if list(g.triples((f_node, None, None))) == [] and t_box:
             g += _function_to_graph(
                 f_node,
                 data["function"],
@@ -348,15 +355,17 @@ def _translate_triples(
     return g
 
 
-def _restrictions_to_triples(restrictions: _rest_type, data_node: URIRef) -> Graph:
+def _restrictions_to_triples(
+    restrictions: _rest_type, data_node: URIRef, predicate=RDFS.subClassOf
+) -> Graph:
     g = Graph()
     assert isinstance(restrictions, tuple | list)
     assert isinstance(restrictions[0], tuple | list)
     if not isinstance(restrictions[0][0], tuple | list):
         restrictions = cast(_rest_type, (restrictions,))
     for r_set in restrictions:
-        b_node = BNode()
-        g.add((data_node, RDFS.subClassOf, b_node))
+        b_node = BNode("rest_" + sha256(str(r_set).encode("utf-8")).hexdigest())
+        g.add((data_node, predicate, b_node))
         g.add((b_node, RDF.type, OWL.Restriction))
         for r in r_set:
             g.add((b_node, r[0], r[1]))
