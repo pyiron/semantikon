@@ -8,7 +8,7 @@ from rdflib import OWL, RDF, RDFS, Graph, Literal, Namespace
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
-from semantikon.metadata import SemantikonURI, meta, u
+from semantikon.metadata import SemantikonURI, meta
 from semantikon.visualize import visualize
 from semantikon.workflow import workflow
 
@@ -153,14 +153,16 @@ def sell(
 
 
 def sell_without_color(
-    clothes: u(
+    clothes: Annotated[
         Clothes,
         # Different shape from above
-        restrictions=(
-            (OWL.onProperty, EX.hasProperty),
-            (OWL.someValuesFrom, EX.Cleaned),
-        ),
-    ),
+        {
+            "restrictions": (
+                (OWL.onProperty, EX.hasProperty),
+                (OWL.someValuesFrom, EX.Cleaned),
+            )
+        },
+    ],
 ) -> int:
     ...
     return 10
@@ -479,7 +481,7 @@ class TestOntology(unittest.TestCase):
 
         @workflow
         def my_kinetic_energy_workflow_wrong_units(
-            distance: u(float, uri=PMD["0040001"]), time, mass
+            distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
         ):
             speed = get_speed(distance, time)
             kinetic_energy = get_kinetic_energy_wrong_units(mass, speed)
@@ -491,7 +493,7 @@ class TestOntology(unittest.TestCase):
 
         @workflow
         def my_kinetic_energy_workflow_wrong_uri(
-            distance: u(float, uri=PMD["0040001"]), time, mass
+            distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
         ):
             speed = get_speed(distance, time)
             kinetic_energy = get_kinetic_energy_wrong_uri(mass, speed)
@@ -503,7 +505,7 @@ class TestOntology(unittest.TestCase):
 
         @workflow
         def my_kinetic_energy_workflow_not_annotated(
-            distance: u(float, uri=PMD["0040001"]), time, mass
+            distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
         ):
             speed = get_speed_not_annotated(distance, time)
             kinetic_energy = get_kinetic_energy(mass, speed)

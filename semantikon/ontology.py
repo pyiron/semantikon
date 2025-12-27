@@ -150,10 +150,6 @@ def validate_values(
     return validate(g, shacl_graph=shacl)
 
 
-def extract_dataclass(graph: Graph, ontology=SNS) -> Graph:
-    return Graph()
-
-
 def get_knowledge_graph(
     wf_dict: dict,
     include_t_box: bool = True,
