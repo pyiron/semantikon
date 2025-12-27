@@ -560,12 +560,8 @@ def _nx_to_kg(G: nx.DiGraph, t_box: bool) -> Graph:
         g.add((workflow_node, RDFS.subClassOf, SNS.process))
     else:
         g.add((workflow_node, RDF.type, BASE[G.name]))
-    g += _parse_precedes(
-        G=G, workflow_node=workflow_node, t_box=t_box, namespace=BASE
-    )
-    g += _parse_global_io(
-        G=G, workflow_node=workflow_node, t_box=t_box, namespace=BASE
-    )
+    g += _parse_precedes(G=G, workflow_node=workflow_node, t_box=t_box, namespace=BASE)
+    g += _parse_global_io(G=G, workflow_node=workflow_node, t_box=t_box, namespace=BASE)
     return g
 
 

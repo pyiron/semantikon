@@ -346,7 +346,19 @@ class TestOntology(unittest.TestCase):
             ),
         )
 
-    def test_value(self):
+        @workflow
+        def workflow_with_default_values(distance=2, time=1, mass=4):
+            speed = get_speed(distance, time)
+            kinetic_energy = get_kinetic_energy(mass, speed)
+            return kinetic_energy
+
+        wf_dict = workflow_with_default_values.serialize_workflow()
+        wf_dict_run = workflow_with_default_values.run(distance=2, time=1, mass=4)
+        G = onto.serialize_and_convert_to_networkx(wf_dict)
+        G_run = onto.serialize_and_convert_to_networkx(wf_dict_run)
+        self.assertEqual(onto._get_graph_hash(G), onto._get_graph_hash(G_run))
+
+    def test_hash_with_value(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
         G = onto.serialize_and_convert_to_networkx(wf_dict)
         wf_dict = my_kinetic_energy_workflow.run(1, 2, 3)
