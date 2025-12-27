@@ -576,7 +576,7 @@ class TestOntology(unittest.TestCase):
             (output_spec[0], onto.BASE.has_parameter_position, Literal(0)), graph
         )
 
-    def test_value(self):
+    def test_run(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
         g = onto.get_knowledge_graph(wf_dict)
         g_run = onto.get_knowledge_graph(my_kinetic_energy_workflow.run(2, 1, 4))
