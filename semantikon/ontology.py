@@ -13,6 +13,7 @@ from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
+from semantikon.converter import meta_to_dict
 from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
@@ -558,81 +559,81 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
     return g
 
 
+def _to_subkey(node: URIRef | BNode, key: str):
+    return node.__class__("_".join([str(node).rsplit("_data", 1)[0], key, "data"]))
+
+
 def _translate_dataclass(
-    io_port: list[URIRef | str | BNode],
-    unique_io_port: str,
+    a_node: BNode,
+    t_node: URIRef,
     value: Any = None,
     dtype: type | None = None,
-    units: str | URIRef | None = None,
+    include_t_box: bool = True,
+    include_a_box: bool = True,
 ) -> _triple_type:
-    value_node = unique_io_port + ".value"
-    triples: _triple_type = [
-        (io, SNS.has_participant, value_node) for io in io_port
-    ]
+    g = Graph()
     for k, v in dtype.__dict__.items():
         if isinstance(v, type) and is_dataclass(v):
-            triples.extend(
-                _translate_dataclass(
-                    io_port=io_port,
-                    unique_io_port=_dot(unique_io_port, k),
-                    value=getattr(value, k, None),
-                    dtype=v,
-                )
+            g += _translate_dataclass(
+                a_node=_to_subkey(a_node, k),
+                t_node=_to_subkey(t_node, k),
+                value=getattr(value, k, None),
+                dtype=v,
+                include_t_box=include_t_box,
+                include_a_box=include_a_box,
             )
     for k, v in dtype.__annotations__.items():
         metadata = meta_to_dict(v)
-        triples.append(
-            (_dot(unique_io_port, k) + ".value", RDFS.subClassOf, value_node)
-        )
-        for io in io_port:
-            triples.append(
-                (io, SNS.has_participant, _dot(unique_io_port, k) + ".value")
-            )
-        triples.extend(
-            _translate_has_value(
-                value_node=_dot(unique_io_port, k) + ".value",
-                value=getattr(value, k, None),
-                dtype=metadata["dtype"],
-                units=metadata.get("units", None),
-            )
-        )
-    return triples
+        t_node_key = _to_subkey(t_node, k)
+        a_node_key = _to_subkey(a_node, k)
+        if include_t_box:
+            g.add((t_node_key, RDFS.subClassOf, t_node))
+            if "units" in metadata:
+                g += _to_owl_restriction(
+                    base_node=t_node_key,
+                    on_property=QUDT.hasUnit,
+                    target_class=_units_to_uri(metadata["units"]),
+                    restriction_type=OWL.hasValue,
+                )
+            if "uri" in metadata:
+                g += _to_owl_restriction(
+                    base_node=t_node_key,
+                    on_property=SNS.specifies_value_of,
+                    target_class=metadata["uri"],
+                )
+        if include_a_box:
+            g.add((a_node_key, RDF.type, t_node_key))
+            if "units" in metadata:
+                g.add((a_node_key, QUDT.hasUnit, _units_to_uri(metadata["units"])))
+            if "uri" in metadata:
+                bnode = BNode()
+                g.add((bnode, RDF.type, metadata["uri"]))
+                g.add((a_node_key, SNS.specifies_value_of, bnode))
+            new_value = getattr(value, k, None)
+            if new_value is not None:
+                g.add((a_node_key, RDF.value, Literal(new_value)))
+    return g
 
 
-def _triples_to_knowledge_graph(
-    triples: list, graph: Graph | None = None
+def extract_dataclass(
+    graph: Graph, include_t_box: bool = True, include_a_box: bool = True
 ) -> Graph:
-    if graph is None:
-        graph = Graph()
-    for triple in triples:
-        triple_to_add = []
-        for t in triple:
-            if t is None:
-                break
-            triple_to_add.append(_convert_to_uriref(t))
-            if isinstance(t, SemantikonURI):
-                graph.add((t.get_instance(), RDF.type, t.get_class()))
-        else:
-            graph.add(tuple(triple_to_add))
-    return graph
-
-
-def extract_dataclass(graph: Graph) -> Graph:
-    triples = []
+    g = Graph()
     for subj, obj in graph.subject_objects(RDF.value):
         obj = obj.toPython()
         if not is_dataclass(obj):
             continue
-        tag = str(subj).rsplit("_data")[0]
-        triples.extend(
-            _translate_dataclass(
-                io_port=list(graph.subjects(SNS.has_participant, subj)),
-                unique_io_port=tag,
-                value=obj,
-                dtype=type(obj),
-            )
+        t_node = list(graph.objects(subj, RDF.type))
+        assert len(t_node) == 1
+        g += _translate_dataclass(
+            a_node=subj,
+            t_node=t_node[0],
+            value=obj,
+            dtype=type(obj),
+            include_t_box=include_t_box,
+            include_a_box=include_a_box,
         )
-    return _triples_to_knowledge_graph(triples, graph=graph)
+    return g
 
 
 def _get_successor_nodes(G, node_name):

@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
 from typing import Annotated
@@ -14,6 +15,7 @@ from semantikon.workflow import workflow
 
 EX: Namespace = Namespace("http://example.org/")
 PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
+UNIT: Namespace = Namespace("http://qudt.org/vocab/unit/")
 
 
 prefixes = """
@@ -166,6 +168,30 @@ def sell_without_color(
 ) -> int:
     ...
     return 10
+
+
+@dataclass
+class Input:
+    T: Annotated[float, {"units": "kelvin"}]
+    n: int
+
+    @dataclass
+    class parameters:
+        a: int = 2
+
+    class not_dataclass:
+        b: int = 3
+
+
+@dataclass
+class Output:
+    E: Annotated[float, {"units": "electron_volt", "uri": EX.Energy}]
+    L: Annotated[float, {"units": "nanometer"}]
+
+
+def run_md(inp: Input) -> Output:
+    out = Output(E=1.0, L=2.0)
+    return out
 
 
 class TestOntology(unittest.TestCase):
@@ -624,6 +650,41 @@ class TestOntology(unittest.TestCase):
                 ]
                 self.assertEqual(len(matched), 1)
                 self.assertEqual(matched[0][1].toPython(), value)
+
+    def test_extract_dataclass(self):
+        @workflow
+        def get_run_md(inp: Input):
+            result = run_md(inp)
+            return result
+
+        inp = Input(T=300.0, n=100)
+        wf_dict = get_run_md.run(inp)
+        g = onto.get_knowledge_graph(wf_dict)
+        g_dc = onto.extract_dataclass(g)
+        with self.subTest("temperature data"):
+            for s in g_dc.subjects(RDF.type, onto.BASE["get_run_md-inputs-inp_T_data"]):
+                self.assertIn((s, onto.QUDT.hasUnit, UNIT["K"]), g_dc)
+                self.assertIn((s, RDF.value, Literal(300.0)), g_dc)
+
+        with self.subTest("particle count data"):
+            # Check that the particle count data has the correct value
+            for s in g_dc.subjects(RDF.type, onto.BASE["get_run_md-inputs-inp_n_data"]):
+                self.assertIn((s, RDF.value, Literal(100)), g_dc)
+
+        with self.subTest("energy output data"):
+            for s in g_dc.subjects(
+                RDF.type, onto.BASE["get_run_md-run_md_0-outputs-out_E_data"]
+            ):
+                self.assertIn((s, onto.QUDT.hasUnit, UNIT["EV"]), g_dc)
+                self.assertIn((s, RDF.value, Literal(1.0)), g_dc)
+                self.assertIn((s, onto.OBI["0001927"], None), g_dc)
+
+        with self.subTest("length output data"):
+            for s in g_dc.subjects(
+                RDF.type, onto.BASE["get_run_md-run_md_0-outputs-out_L_data"]
+            ):
+                self.assertIn((s, onto.QUDT.hasUnit, UNIT["NanoM"]), g_dc)
+                self.assertIn((s, RDF.value, Literal(2.0)), g_dc)
 
 
 if __name__ == "__main__":
