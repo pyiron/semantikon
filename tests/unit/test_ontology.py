@@ -499,7 +499,7 @@ class TestOntology(unittest.TestCase):
     def test_type_checking(self):
         wf_dict = eat_pizza.serialize_workflow()
         graph = onto.get_knowledge_graph(wf_dict)
-        self.assertFalse(onto.validate_values(graph)[0])
+        self.assertFalse(onto.validate_values(graph)[0], msg=graph.serialize())
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
         graph = onto.get_knowledge_graph(wf_dict)
         verdict, _, report = onto.validate_values(graph)

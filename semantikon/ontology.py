@@ -419,6 +419,7 @@ def _wf_io_to_graph(
                     data_node,
                     SNS.specifies_value_of,
                     data["uri"],
+                    restriction_type=OWL.allValuesFrom,
                 )
         if "restrictions" in data:
             assert step == "inputs", "restrictions only valid for inputs"
@@ -1003,58 +1004,87 @@ def _get_undefined_connections(g, term):
     return [item for items in g.query(query) for item in items]
 
 
-def owl_restrictions_to_shacl(
-    owl_graph: Graph, excluded_nodes: list[BNode] | None = None
-) -> Graph:
-    def iter_supported_restrictions(g: Graph):
+class _OWLToSHACLConverter:
+    def __init__(self, owl_graph: Graph, excluded_nodes: list[BNode] | None = None):
+        """
+        Initialize the converter with an OWL graph and optional excluded nodes.
+        """
+        self.owl_graph = owl_graph
+        self.excluded_nodes = excluded_nodes
+        self.shacl_graph = Graph()
+        self.node_shapes = {}
+
+    def iter_supported_restrictions(self):
         """
         Yield (base_class, restriction_node, property, restriction_type, value)
         for supported OWL restrictions.
         """
-        for r in g.subjects(RDF.type, OWL.Restriction):
-            if excluded_nodes is not None and r in excluded_nodes:
+        for r in self.owl_graph.subjects(RDF.type, OWL.Restriction):
+            if self.excluded_nodes is not None and r in self.excluded_nodes:
                 continue
-            prop = g.value(r, OWL.onProperty)
+            prop = self.owl_graph.value(r, OWL.onProperty)
             if prop is None:
                 continue
-            for restriction_type in (OWL.someValuesFrom, OWL.hasValue):
-                value = g.value(r, restriction_type)
+            for restriction_type in (
+                OWL.someValuesFrom,
+                OWL.hasValue,
+                OWL.allValuesFrom,
+            ):
+                value = self.owl_graph.value(r, restriction_type)
                 if value is None:
                     continue
 
-                for base_cls in g.subjects(RDFS.subClassOf, r):
+                for base_cls in self.owl_graph.subjects(RDFS.subClassOf, r):
                     yield base_cls, prop, restriction_type, value
 
-    shacl_graph = Graph()
-    node_shapes = {}
+    def convert(self) -> Graph:
+        """
+        Convert the OWL restrictions in the graph to SHACL shapes.
+        """
+        for base_cls, prop, rtype, value in self.iter_supported_restrictions():
 
-    for base_cls, prop, rtype, value in iter_supported_restrictions(owl_graph):
+            # One NodeShape per base class
+            if base_cls not in self.node_shapes:
+                ns = BNode()
+                self.node_shapes[base_cls] = ns
+                self.shacl_graph.add((ns, RDF.type, SH.NodeShape))
+                self.shacl_graph.add((ns, SH.targetClass, base_cls))
+            else:
+                ns = self.node_shapes[base_cls]
 
-        # One NodeShape per base class
-        if base_cls not in node_shapes:
-            ns = BNode()
-            node_shapes[base_cls] = ns
-            shacl_graph.add((ns, RDF.type, SH.NodeShape))
-            shacl_graph.add((ns, SH.targetClass, base_cls))
-        else:
-            ns = node_shapes[base_cls]
+            ps = BNode()
+            self.shacl_graph.add((ps, RDF.type, SH.PropertyShape))
+            self.shacl_graph.add((ps, SH.path, prop))
 
-        ps = BNode()
-        shacl_graph.add((ps, RDF.type, SH.PropertyShape))
-        shacl_graph.add((ps, SH.path, prop))
+            if rtype == OWL.someValuesFrom:
+                # Existential restriction:
+                # ∃ prop . C  →  qualifiedValueShape + qualifiedMinCount
+                qvs = BNode()
+                self.shacl_graph.add((qvs, SH["class"], value))
 
-        if rtype == OWL.someValuesFrom:
-            # Existential restriction:
-            # ∃ prop . C  →  qualifiedValueShape + qualifiedMinCount
-            qvs = BNode()
-            shacl_graph.add((qvs, SH["class"], value))
+                self.shacl_graph.add((ps, SH.qualifiedValueShape, qvs))
+                self.shacl_graph.add((ps, SH.qualifiedMinCount, Literal(1)))
 
-            shacl_graph.add((ps, SH.qualifiedValueShape, qvs))
-            shacl_graph.add((ps, SH.qualifiedMinCount, Literal(1)))
+            elif rtype == OWL.hasValue:
+                self.shacl_graph.add((ps, SH.hasValue, value))
 
-        elif rtype == OWL.hasValue:
-            shacl_graph.add((ps, SH.hasValue, value))
+            elif rtype == OWL.allValuesFrom:
+                # Universal restriction:
+                # ∀ prop . C  →  class
+                self.shacl_graph.add((ps, SH["class"], value))
 
-        shacl_graph.add((ns, SH.property, ps))
+            self.shacl_graph.add((ns, SH.property, ps))
 
-    return shacl_graph
+        return self.shacl_graph
+
+
+def owl_restrictions_to_shacl(
+    owl_graph: Graph, excluded_nodes: list[BNode] | None = None
+) -> Graph:
+    """
+    Convert OWL restrictions in the given graph to SHACL shapes.
+
+    This function is a wrapper around the _OWLToSHACLConverter class.
+    """
+    converter = _OWLToSHACLConverter(owl_graph, excluded_nodes)
+    return converter.convert()
