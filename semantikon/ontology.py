@@ -1012,7 +1012,7 @@ class _OWLToSHACLConverter:
         self.owl_graph = owl_graph
         self.excluded_nodes = excluded_nodes
         self.shacl_graph = Graph()
-        self.node_shapes = {}
+        self.node_shapes: dict[URIRef, BNode] = {}
 
     def iter_supported_restrictions(self):
         """
