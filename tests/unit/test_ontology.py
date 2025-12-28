@@ -189,8 +189,8 @@ class Output:
     L: Annotated[float, {"units": "nanometer"}]
 
 
-def run_md(inp: Input) -> Output:
-    out = Output(E=1.0, L=2.0)
+def run_md(inp: Input, E=1.0) -> Output:
+    out = Output(E=E, L=2.0)
     return out
 
 
@@ -653,12 +653,12 @@ class TestOntology(unittest.TestCase):
 
     def test_extract_dataclass(self):
         @workflow
-        def get_run_md(inp: Input):
+        def get_run_md(inp: Input, E=1.0):
             result = run_md(inp)
             return result
 
         inp = Input(T=300.0, n=100)
-        wf_dict = get_run_md.run(inp)
+        wf_dict = get_run_md.run(inp, E=1.0)
         g = onto.get_knowledge_graph(wf_dict)
         g_dc = onto.extract_dataclass(g)
         with self.subTest("temperature data"):
