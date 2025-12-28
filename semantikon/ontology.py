@@ -1,9 +1,9 @@
 import copy
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from functools import cached_property
 from hashlib import sha256
-from typing import TypeAlias, cast
+from typing import Any, TypeAlias, cast
 
 import networkx as nx
 from flowrep.tools import get_function_metadata
@@ -426,7 +426,6 @@ def _wf_io_to_graph(
     else:
         data_node = G.get_a_node(data_node_tag)
         g.add((data_node, RDF.type, G.t_ns[data_node_tag]))
-        data_node = BNode(data_node)
         g.add((node, has_specified_io, data_node))
         if "value" in data and list(g.objects(data_node, RDF.value)) == []:
             g.add((data_node, RDF.value, Literal(data["value"])))
@@ -557,6 +556,83 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
     g += _parse_precedes(G=G, workflow_node=workflow_node, t_box=t_box)
     g += _parse_global_io(G=G, workflow_node=workflow_node, t_box=t_box)
     return g
+
+
+def _translate_dataclass(
+    io_port: list[URIRef | str | BNode],
+    unique_io_port: str,
+    value: Any = None,
+    dtype: type | None = None,
+    units: str | URIRef | None = None,
+) -> _triple_type:
+    value_node = unique_io_port + ".value"
+    triples: _triple_type = [
+        (io, SNS.has_participant, value_node) for io in io_port
+    ]
+    for k, v in dtype.__dict__.items():
+        if isinstance(v, type) and is_dataclass(v):
+            triples.extend(
+                _translate_dataclass(
+                    io_port=io_port,
+                    unique_io_port=_dot(unique_io_port, k),
+                    value=getattr(value, k, None),
+                    dtype=v,
+                )
+            )
+    for k, v in dtype.__annotations__.items():
+        metadata = meta_to_dict(v)
+        triples.append(
+            (_dot(unique_io_port, k) + ".value", RDFS.subClassOf, value_node)
+        )
+        for io in io_port:
+            triples.append(
+                (io, SNS.has_participant, _dot(unique_io_port, k) + ".value")
+            )
+        triples.extend(
+            _translate_has_value(
+                value_node=_dot(unique_io_port, k) + ".value",
+                value=getattr(value, k, None),
+                dtype=metadata["dtype"],
+                units=metadata.get("units", None),
+            )
+        )
+    return triples
+
+
+def _triples_to_knowledge_graph(
+    triples: list, graph: Graph | None = None
+) -> Graph:
+    if graph is None:
+        graph = Graph()
+    for triple in triples:
+        triple_to_add = []
+        for t in triple:
+            if t is None:
+                break
+            triple_to_add.append(_convert_to_uriref(t))
+            if isinstance(t, SemantikonURI):
+                graph.add((t.get_instance(), RDF.type, t.get_class()))
+        else:
+            graph.add(tuple(triple_to_add))
+    return graph
+
+
+def extract_dataclass(graph: Graph) -> Graph:
+    triples = []
+    for subj, obj in graph.subject_objects(RDF.value):
+        obj = obj.toPython()
+        if not is_dataclass(obj):
+            continue
+        tag = str(subj).rsplit("_data")[0]
+        triples.extend(
+            _translate_dataclass(
+                io_port=list(graph.subjects(SNS.has_participant, subj)),
+                unique_io_port=tag,
+                value=obj,
+                dtype=type(obj),
+            )
+        )
+    return _triples_to_knowledge_graph(triples, graph=graph)
 
 
 def _get_successor_nodes(G, node_name):
@@ -735,9 +811,11 @@ def _get_graph_hash(G: SemantikonDiGraph, with_global_inputs: bool = True) -> st
             default = G_tmp.nodes[node].pop("default")
             if "value" not in G_tmp.nodes[node]:
                 G_tmp.nodes[node]["value"] = default
-        if G_tmp.in_degree(node) > 0 or not with_global_inputs:
-            if "value" in G_tmp.nodes[node]:
+        if "value" in G_tmp.nodes[node]:
+            if G_tmp.in_degree(node) > 0 or not with_global_inputs:
                 del G_tmp.nodes[node]["value"]
+            elif is_dataclass(G_tmp.nodes[node]["value"]):
+                G_tmp.nodes[node]["value"] = asdict(G_tmp.nodes[node]["value"])
         if "dtype" in G_tmp.nodes[node]:
             del G_tmp.nodes[node]["dtype"]
 
