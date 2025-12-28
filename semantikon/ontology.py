@@ -559,81 +559,239 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
     return g
 
 
-def _to_subkey(node: URIRef | BNode, key: str):
-    return node.__class__("_".join([str(node).rsplit("_data", 1)[0], key, "data"]))
+class _DataclassTranslator:
+    """
+    Internal helper class responsible for translating Python dataclasses
+    into RDF TBox and ABox statements.
 
+    This class encapsulates the recursive traversal logic and graph
+    construction in order to reduce cyclomatic complexity of the public
+    API functions.
+    """
 
-def _translate_dataclass(
-    a_node: BNode,
-    t_node: URIRef,
-    value: Any = None,
-    dtype: type | None = None,
-    include_t_box: bool = True,
-    include_a_box: bool = True,
-) -> _triple_type:
-    g = Graph()
-    for k, v in dtype.__dict__.items():
-        if isinstance(v, type) and is_dataclass(v):
-            g += _translate_dataclass(
-                a_node=_to_subkey(a_node, k),
-                t_node=_to_subkey(t_node, k),
-                value=getattr(value, k, None),
-                dtype=v,
-                include_t_box=include_t_box,
-                include_a_box=include_a_box,
+    def __init__(
+        self,
+        *,
+        include_t_box: bool = True,
+        include_a_box: bool = True,
+    ) -> None:
+        """
+        Initialize the translator.
+
+        Args:
+            include_t_box: Whether to emit TBox axioms (classes, restrictions).
+            include_a_box: Whether to emit ABox assertions (individuals, values).
+        """
+        self.include_t_box = include_t_box
+        self.include_a_box = include_a_box
+
+    def translate(
+        self,
+        *,
+        a_node: BNode,
+        t_node: URIRef,
+        value: Any,
+        dtype: type,
+    ) -> Graph:
+        """
+        Translate a single dataclass instance and its type into RDF.
+
+        Args:
+            a_node: ABox node representing the dataclass instance.
+            t_node: TBox node representing the dataclass type.
+            value: The Python dataclass instance.
+            dtype: The dataclass type.
+
+        Returns:
+            An RDF graph containing the generated triples.
+        """
+        g = Graph()
+
+        self._translate_nested_dataclasses(
+            graph=g,
+            a_node=a_node,
+            t_node=t_node,
+            value=value,
+            dtype=dtype,
+        )
+
+        for field, annotation in dtype.__annotations__.items():
+            metadata = meta_to_dict(annotation)
+
+            t_field = self._to_subkey(t_node, field)
+            a_field = self._to_subkey(a_node, field)
+            field_value = getattr(value, field, None)
+
+            if self.include_t_box:
+                self._emit_tbox(
+                    graph=g,
+                    parent=t_node,
+                    field_node=t_field,
+                    metadata=metadata,
+                )
+
+            if self.include_a_box:
+                self._emit_abox(
+                    graph=g,
+                    field_node=a_field,
+                    field_class=t_field,
+                    metadata=metadata,
+                    value=field_value,
+                )
+
+        return g
+
+    def _to_subkey(self, node: URIRef | BNode, key: str):
+        """
+        Construct a deterministic sub-node for a dataclass field.
+
+        Args:
+            node: Base URIRef or BNode.
+            key: Field name.
+
+        Returns:
+            A new URIRef or BNode derived from the base node.
+        """
+        base = str(node).rsplit("_data", 1)[0]
+        return node.__class__(f"{base}_{key}_data")
+
+    def _translate_nested_dataclasses(
+        self,
+        *,
+        graph: Graph,
+        a_node: BNode,
+        t_node: URIRef,
+        value: Any,
+        dtype: type,
+    ) -> None:
+        """
+        Recursively translate nested dataclass fields.
+
+        Args:
+            graph: Graph to populate.
+            a_node: Parent ABox node.
+            t_node: Parent TBox node.
+            value: Dataclass instance.
+            dtype: Dataclass type.
+        """
+        for field, field_type in dtype.__dict__.items():
+            if isinstance(field_type, type) and is_dataclass(field_type):
+                graph += self.translate(
+                    a_node=self._to_subkey(a_node, field),
+                    t_node=self._to_subkey(t_node, field),
+                    value=getattr(value, field, None),
+                    dtype=field_type,
+                )
+
+    def _emit_tbox(
+        self,
+        *,
+        graph: Graph,
+        parent: URIRef,
+        field_node: URIRef,
+        metadata: dict,
+    ) -> None:
+        """
+        Emit TBox axioms for a dataclass field.
+
+        Args:
+            graph: Graph to populate.
+            parent: Parent class.
+            field_node: Field class.
+            metadata: Parsed annotation metadata.
+        """
+        graph.add((field_node, RDFS.subClassOf, parent))
+
+        if "units" in metadata:
+            graph += _to_owl_restriction(
+                base_node=field_node,
+                on_property=QUDT.hasUnit,
+                target_class=_units_to_uri(metadata["units"]),
+                restriction_type=OWL.hasValue,
             )
-    for k, v in dtype.__annotations__.items():
-        metadata = meta_to_dict(v)
-        t_node_key = _to_subkey(t_node, k)
-        a_node_key = _to_subkey(a_node, k)
-        if include_t_box:
-            g.add((t_node_key, RDFS.subClassOf, t_node))
-            if "units" in metadata:
-                g += _to_owl_restriction(
-                    base_node=t_node_key,
-                    on_property=QUDT.hasUnit,
-                    target_class=_units_to_uri(metadata["units"]),
-                    restriction_type=OWL.hasValue,
-                )
-            if "uri" in metadata:
-                g += _to_owl_restriction(
-                    base_node=t_node_key,
-                    on_property=SNS.specifies_value_of,
-                    target_class=metadata["uri"],
-                )
-        if include_a_box:
-            g.add((a_node_key, RDF.type, t_node_key))
-            if "units" in metadata:
-                g.add((a_node_key, QUDT.hasUnit, _units_to_uri(metadata["units"])))
-            if "uri" in metadata:
-                bnode = BNode()
-                g.add((bnode, RDF.type, metadata["uri"]))
-                g.add((a_node_key, SNS.specifies_value_of, bnode))
-            new_value = getattr(value, k, None)
-            if new_value is not None:
-                g.add((a_node_key, RDF.value, Literal(new_value)))
-    return g
+
+        if "uri" in metadata:
+            graph += _to_owl_restriction(
+                base_node=field_node,
+                on_property=SNS.specifies_value_of,
+                target_class=metadata["uri"],
+            )
+
+    def _emit_abox(
+        self,
+        *,
+        graph: Graph,
+        field_node: BNode,
+        field_class: URIRef,
+        metadata: dict,
+        value: Any,
+    ) -> None:
+        """
+        Emit ABox assertions for a dataclass field.
+
+        Args:
+            graph: Graph to populate.
+            field_node: Individual representing the field value.
+            field_class: Class of the field.
+            metadata: Parsed annotation metadata.
+            value: Python value of the field.
+        """
+        graph.add((field_node, RDF.type, field_class))
+
+        if "units" in metadata:
+            graph.add((field_node, QUDT.hasUnit, _units_to_uri(metadata["units"])))
+
+        if "uri" in metadata:
+            bnode = BNode()
+            graph.add((bnode, RDF.type, metadata["uri"]))
+            graph.add((field_node, SNS.specifies_value_of, bnode))
+
+        if value is not None:
+            graph.add((field_node, RDF.value, Literal(value)))
 
 
 def extract_dataclass(
-    graph: Graph, include_t_box: bool = True, include_a_box: bool = True
+    graph: Graph,
+    include_t_box: bool = True,
+    include_a_box: bool = True,
 ) -> Graph:
-    g = Graph()
+    """
+    Extract dataclass-backed RDF.value entries from a graph and translate
+    them into RDF TBox and/or ABox triples.
+
+    This function preserves the original public API while delegating
+    the translation logic to an internal helper class.
+
+    Args:
+        graph: Input RDF graph.
+        include_t_box: Whether to include TBox axioms.
+        include_a_box: Whether to include ABox assertions.
+
+    Returns:
+        A new RDF graph containing the extracted triples.
+    """
+    out = Graph()
+    translator = _DataclassTranslator(
+        include_t_box=include_t_box,
+        include_a_box=include_a_box,
+    )
+
     for subj, obj in graph.subject_objects(RDF.value):
-        obj = obj.toPython()
-        if not is_dataclass(obj):
+        py_value = obj.toPython()
+        if not is_dataclass(py_value):
             continue
-        t_node = list(graph.objects(subj, RDF.type))
-        assert len(t_node) == 1
-        g += _translate_dataclass(
+
+        t_nodes = list(graph.objects(subj, RDF.type))
+        assert len(t_nodes) == 1
+
+        out += translator.translate(
             a_node=subj,
-            t_node=t_node[0],
-            value=obj,
-            dtype=type(obj),
-            include_t_box=include_t_box,
-            include_a_box=include_a_box,
+            t_node=t_nodes[0],
+            value=py_value,
+            dtype=type(py_value),
         )
-    return g
+
+    return out
 
 
 def _get_successor_nodes(G, node_name):
