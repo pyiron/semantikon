@@ -117,6 +117,47 @@ def _inherit_properties(graph: Graph, n_max: int = 1000):
         n = len(graph)
 
 
+def _extract_shacl_constraints(input_graph: Graph) -> Graph:
+    """
+    Extracts SHACL NodeShapes and their properties from an RDF graph and
+    returns a new graph.
+
+    Args:
+        input_graph (rdflib.Graph): The input RDF graph.
+
+    Returns:
+        rdflib.Graph: A new RDF graph containing only the extracted SHACL
+            NodeShapes and their properties.
+    """
+
+    # Create a new graph to store the extracted NodeShapes
+    output_graph = Graph()
+
+    # Define the SPARQL query to extract NodeShapes and their properties
+    query = """
+    PREFIX sh: <http://www.w3.org/ns/shacl#>
+    CONSTRUCT {
+        ?shape a sh:NodeShape .
+        ?shape ?property ?value .
+    }
+    WHERE {
+        ?shape a sh:NodeShape .
+        OPTIONAL {
+            ?shape ?property ?value .
+        }
+    }
+    """
+
+    # Execute the CONSTRUCT query
+    results = input_graph.query(query)
+
+    # Add the results to the new graph
+    for triple in results:
+        output_graph.add(triple)
+
+    return output_graph
+
+
 def validate_values(
     graph: Graph,
     run_reasoner: bool = True,
@@ -145,6 +186,7 @@ def validate_values(
         excluded = _get_undefined_connections(g, "qudt:hasUnit")
         excluded.extend(_get_undefined_connections(g, "obi:0001927"))
     shacl = owl_restrictions_to_shacl(g, excluded_nodes=excluded)
+    shacl += _extract_shacl_constraints(g)
     if run_reasoner:
         DeductiveClosure(RDFS_Semantics).expand(g)
         _inherit_properties(g)
@@ -360,19 +402,55 @@ def _translate_triples(
 
 
 def _restrictions_to_triples(
-    restrictions: _rest_type, data_node: URIRef, predicate=RDFS.subClassOf
+    restrictions: _rest_type, 
+    data_node: URIRef, 
+    predicate=RDFS.subClassOf
 ) -> Graph:
+    """
+    Converts restrictions into triples for OWL restrictions or SHACL constraints.
+
+    Args:
+        restrictions (_rest_type): The restrictions to convert.
+        data_node (URIRef): The node to which the restrictions apply.
+        predicate (URIRef): The predicate to use for OWL restrictions (default: RDFS.subClassOf).
+
+    Returns:
+        Graph: An RDF graph containing the generated triples.
+    """
     g = Graph()
     assert isinstance(restrictions, tuple | list)
     assert isinstance(restrictions[0], tuple | list)
     if not isinstance(restrictions[0][0], tuple | list):
         restrictions = cast(_rest_type, (restrictions,))
+    
     for r_set in restrictions:
-        b_node = BNode("rest_" + sha256(str(r_set).encode("utf-8")).hexdigest())
-        g.add((data_node, predicate, b_node))
-        g.add((b_node, RDF.type, OWL.Restriction))
-        for r in r_set:
-            g.add((b_node, r[0], r[1]))
+        # Determine whether the restriction is OWL or SHACL based on the predicates
+        is_owl = any(r[0] == OWL.onProperty for r in r_set)
+        is_shacl = any(r[0] == SH.path for r in r_set)
+        
+        if is_owl:
+            # Create an OWL Restriction
+            b_node = BNode("rest_" + sha256(str(r_set).encode("utf-8")).hexdigest())
+            g.add((data_node, predicate, b_node))
+            g.add((b_node, RDF.type, OWL.Restriction))
+            for r in r_set:
+                g.add((b_node, r[0], r[1]))
+        elif is_shacl:
+            # Create a SHACL NodeShape
+            shape_node = BNode("shape_" + sha256(str(r_set).encode("utf-8")).hexdigest())
+            g.add((data_node, SH.node, shape_node))
+            g.add((shape_node, RDF.type, SH.NodeShape))
+            
+            for r in r_set:
+                # Create a SHACL PropertyShape for each restriction
+                property_shape = BNode("prop_" + sha256(str(r).encode("utf-8")).hexdigest())
+                g.add((shape_node, SH.property, property_shape))
+                g.add((property_shape, RDF.type, SH.PropertyShape))
+                g.add((property_shape, SH.path, r[0]))  # r[0] is the property path
+                g.add((property_shape, SH["class"], r[1]))  # r[1] is the target class or value
+        else:
+            raise ValueError("Unable to determine whether the restrictions are OWL or SHACL.")
+    
     return g
 
 

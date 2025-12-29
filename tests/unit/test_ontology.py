@@ -5,7 +5,7 @@ from textwrap import dedent
 from typing import Annotated
 
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, Graph, Literal, Namespace
+from rdflib import OWL, RDF, RDFS, SH, Graph, Literal, Namespace
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
@@ -146,6 +146,22 @@ def sell(
             "restrictions": (
                 ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Cleaned)),
                 ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Color)),
+            )
+        },
+    ],
+) -> int:
+    ...
+    return 10
+
+
+
+def sell_with_shacl(
+    clothes: Annotated[
+        Clothes,
+        {
+            "restrictions": (
+                ((SH.path, EX.hasProperty), (SH.minCount, Literal(1)), (SH["class"], EX.Cleaned)),
+                ((SH.path, EX.hasProperty), (SH.minCount, Literal(1)), (SH["class"], EX.Color)),
             )
         },
     ],
@@ -570,6 +586,28 @@ class TestOntology(unittest.TestCase):
 
         graph = onto.get_knowledge_graph(my_simple_workflow.serialize_workflow())
         self.assertTrue(onto.validate_values(graph)[0])
+
+        @workflow
+        def my_shacl_workflow(clothes: Clothes) -> int:
+            dyed_clothes = dye(clothes)
+            washed_clothes = wash(dyed_clothes)
+            money = sell_with_shacl(washed_clothes)
+            return money
+
+        graph = onto.get_knowledge_graph(my_shacl_workflow.serialize_workflow())
+        verdict, _, report = onto.validate_values(graph)
+        self.assertTrue(verdict, msg=report)
+
+        @workflow
+        def my_shacl_wrong_workflow(clothes: Clothes) -> int:
+            washed_clothes = wash(clothes)
+            money = sell_with_shacl(washed_clothes)
+            return money
+
+        graph = onto.get_knowledge_graph(
+            my_shacl_wrong_workflow.serialize_workflow()
+        )
+        self.assertFalse(onto.validate_values(graph)[0])
 
     def test_visualize(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
