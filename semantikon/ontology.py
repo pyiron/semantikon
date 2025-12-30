@@ -411,9 +411,9 @@ def _restrictions_to_triples(
         is_owl = any(r[0] == OWL.onProperty for r in r_set)
         is_shacl = any(r[0] == SH.path for r in r_set)
 
-        assert is_owl ^ is_shacl, (
-            "Unable to determine whether the restrictions are OWL or SHACL."
-        )
+        assert (
+            is_owl ^ is_shacl
+        ), "Unable to determine whether the restrictions are OWL or SHACL."
         if is_owl:
             # Create an OWL Restriction
             if predicate is None:
