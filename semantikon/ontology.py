@@ -133,7 +133,7 @@ def _extract_shacl_shapes(input_graph: Graph) -> Graph:
         for p, o in input_graph.predicate_objects(node):
             output_graph.add((node, p, o))
             # Recurse into blank nodes and referenced shapes
-            if isinstance(o, (type(node),)) or o.startswith(SH):
+            if isinstance(o, BNode) or (isinstance(o, URIRef) and o.startswith(SH)):
                 copy_subgraph(o)
 
     for shape in input_graph.subjects(RDF.type, SH.NodeShape):
