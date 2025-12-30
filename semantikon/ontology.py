@@ -48,6 +48,7 @@ class SNS:
     software_method: URIRef = IAO["0000591"]
     textual_entity: URIRef = IAO["0000300"]
     denotes: URIRef = IAO["0000219"]
+    identifier: URIRef = IAO["0020000"]
     is_about: URIRef = IAO["0000136"]
     input_specification: URIRef = BASE["input_specification"]
     output_specification: URIRef = BASE["output_specification"]
@@ -245,6 +246,11 @@ def _function_to_graph(
         g.add((docstring, SNS.denotes, f_node))
     if uri is not None:
         g.add((f_node, SNS.is_about, uri))
+    if data.get("hash", "") != "":
+        hash_bnode = BNode(f_node + "_hash")
+        g.add((hash_bnode, SNS.denotes, f_node))
+        g.add((hash_bnode, RDF.type, SNS.identifier))
+        g.add((hash_bnode, RDF.value, Literal(data["hash"])))
     for io, io_args in zip(["input", "output"], [input_args, output_args]):
         for arg in io_args:
             arg_node = BNode("_".join([f_node, io, arg["arg"]]))
