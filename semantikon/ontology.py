@@ -433,7 +433,7 @@ def _restrictions_to_triples(
             else:
                 g.add((shape_node, SH.targetClass, data_node))
             g.add((shape_node, RDF.type, SH.NodeShape))
-            sh_property = BNode(shape_node + "_property")
+            sh_property = BNode(str(shape_node) + "_property")
             g.add((shape_node, SH.property, sh_property))
 
             for r in r_set:
