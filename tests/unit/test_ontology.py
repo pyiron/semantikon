@@ -154,14 +154,16 @@ def sell(
     return 10
 
 
-
 def sell_with_shacl(
     clothes: Annotated[
         Clothes,
         {
             "restrictions": (
-                ((SH.path, EX.hasProperty), (SH.minCount, Literal(1)), (SH["class"], EX.Cleaned)),
-                ((SH.path, EX.hasProperty), (SH.minCount, Literal(1)), (SH["class"], EX.Color)),
+                (
+                    (SH.path, EX.hasProperty),
+                    (SH.minCount, Literal(1)),
+                    (SH["class"], EX.Cleaned),
+                ),
             )
         },
     ],
@@ -589,8 +591,7 @@ class TestOntology(unittest.TestCase):
 
         @workflow
         def my_shacl_workflow(clothes: Clothes) -> int:
-            dyed_clothes = dye(clothes)
-            washed_clothes = wash(dyed_clothes)
+            washed_clothes = wash(clothes)
             money = sell_with_shacl(washed_clothes)
             return money
 
@@ -600,13 +601,10 @@ class TestOntology(unittest.TestCase):
 
         @workflow
         def my_shacl_wrong_workflow(clothes: Clothes) -> int:
-            washed_clothes = wash(clothes)
-            money = sell_with_shacl(washed_clothes)
+            money = sell_with_shacl(clothes)
             return money
 
-        graph = onto.get_knowledge_graph(
-            my_shacl_wrong_workflow.serialize_workflow()
-        )
+        graph = onto.get_knowledge_graph(my_shacl_wrong_workflow.serialize_workflow())
         self.assertFalse(onto.validate_values(graph)[0])
 
     def test_visualize(self):
