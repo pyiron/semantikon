@@ -386,14 +386,14 @@ def _translate_triples(
 
 
 def _restrictions_to_triples(
-    restrictions: _rest_type, data_node: URIRef, predicate: URIRef | None = None
+    restrictions: _rest_type, data_node: URIRef | BNode, predicate: URIRef | None = None
 ) -> Graph:
     """
     Converts restrictions into triples for OWL restrictions or SHACL constraints.
 
     Args:
         restrictions (_rest_type): The restrictions to convert.
-        data_node (URIRef): The node to which the restrictions apply.
+        data_node (URIRef | BNode): The node to which the restrictions apply.
         predicate (URIRef | None): The predicate to use for OWL restrictions
             (default: RDFS.subClassOf).
 
