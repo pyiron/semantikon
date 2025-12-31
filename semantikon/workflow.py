@@ -119,10 +119,17 @@ def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, di
         return {key: {} for key in output_vars}
     else:
         assert counts is None or len(output_hints) >= counts
-        result = {
-            hint.get("label", key): hint for key, hint in zip(output_vars, output_hints)
-        }
-        assert len(result) == len(output_vars), (result, output_vars, output_hints)
+        result: dict[str, dict] = {}
+        for key, hint in zip(output_vars, output_hints):
+            label = hint.get("label", key)
+            if label in result:
+                func_name = getattr(func, "__name__", repr(func))
+                raise ValueError(
+                    f"Duplicate output label '{label}' detected for function "
+                    f"{func_name}. Each output must have a unique label. "
+                    f"output_vars={output_vars!r}, output_hints={output_hints!r}"
+                )
+            result[label] = hint
         return result
 
 
