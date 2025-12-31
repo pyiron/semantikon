@@ -100,6 +100,25 @@ def _edges_to_output_counts(edges: Iterable[tuple[str, str]]) -> dict[str, int]:
     return dict(Counter(counts))
 
 
+def _validate_label(label: str, func: Callable) -> None:
+    """
+    Validate that a label is a valid Python identifier and not a keyword.
+    
+    Args:
+        label: The label to validate
+        func: The function being analyzed (used for error messages)
+        
+    Raises:
+        ValueError: If the label is not a valid identifier or is a keyword
+    """
+    if not label.isidentifier() or keyword.iskeyword(label):
+        func_name = getattr(func, "__name__", repr(func))
+        raise ValueError(
+            f"Invalid output label '{label}' for function {func_name}. "
+            f"Label must be a valid Python identifier and not a keyword."
+        )
+
+
 def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, dict]:
     output_hints = parse_output_args(
         func, separate_tuple=(counts is None or counts > 1)
@@ -111,24 +130,14 @@ def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, di
         if not isinstance(output_vars, str):
             output_vars = "output"
         label = cast(dict, output_hints).get("label", output_vars)
-        if not label.isidentifier() or keyword.iskeyword(label):
-            func_name = getattr(func, "__name__", repr(func))
-            raise ValueError(
-                f"Invalid output label '{label}' for function {func_name}. "
-                f"Label must be a valid Python identifier and not a keyword."
-            )
+        _validate_label(label, func)
         return {label: cast(dict, output_hints)}
     assert isinstance(output_vars, tuple), output_vars
     assert counts is None or len(output_vars) >= counts, output_vars
     if output_hints == {}:
         result = {}
         for key in output_vars:
-            if not key.isidentifier() or keyword.iskeyword(key):
-                func_name = getattr(func, "__name__", repr(func))
-                raise ValueError(
-                    f"Invalid output label '{key}' for function {func_name}. "
-                    f"Label must be a valid Python identifier and not a keyword."
-                )
+            _validate_label(key, func)
             result[key] = {}
         return result
     else:
@@ -136,12 +145,7 @@ def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, di
         result: dict[str, dict] = {}
         for key, hint in zip(output_vars, output_hints):
             label = hint.get("label", key)
-            if not label.isidentifier() or keyword.iskeyword(label):
-                func_name = getattr(func, "__name__", repr(func))
-                raise ValueError(
-                    f"Invalid output label '{label}' for function {func_name}. "
-                    f"Label must be a valid Python identifier and not a keyword."
-                )
+            _validate_label(label, func)
             if label in result:
                 func_name = getattr(func, "__name__", repr(func))
                 raise ValueError(
@@ -295,11 +299,13 @@ def get_ports(
             data = meta_to_dict(ann, flatten_metadata=False)
             if "metadata" in data:
                 label = data["metadata"].to_dictionary().get("label", label)
-            assert label.isidentifier() and not keyword.iskeyword(label)
+            _validate_label(label, func)
             output_annotations[label] = data
     else:
+        label = return_labels[0]
+        _validate_label(label, func)
         output_annotations = {
-            return_labels[0]: meta_to_dict(return_hint, flatten_metadata=False)
+            label: meta_to_dict(return_hint, flatten_metadata=False)
         }
     input_annotations = {
         key: meta_to_dict(
