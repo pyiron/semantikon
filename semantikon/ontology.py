@@ -182,6 +182,7 @@ def get_knowledge_graph(
     wf_dict: dict,
     include_t_box: bool = True,
     include_a_box: bool = True,
+    hash_data: bool = True,
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
