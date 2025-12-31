@@ -118,8 +118,7 @@ def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, di
     else:
         assert counts is None or len(output_hints) >= counts
         result = {
-            hint.get("label", key): hint
-            for key, hint in zip(output_vars, output_hints)
+            hint.get("label", key): hint for key, hint in zip(output_vars, output_hints)
         }
         assert len(result) == len(output_vars), (result, output_vars, output_hints)
         return result
@@ -281,7 +280,7 @@ def get_ports(
     }
     return (
         Inputs(**{k: Input(label=k, **v) for k, v in input_annotations.items()}),
-        Outputs(**{k: Output(label=k, **v) for k, v in output_annotations.items()})
+        Outputs(**{k: Output(label=k, **v) for k, v in output_annotations.items()}),
     )
 
 
