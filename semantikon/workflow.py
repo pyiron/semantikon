@@ -110,18 +110,38 @@ def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, di
     if (counts is not None and counts == 1) or isinstance(output_vars, str):
         if not isinstance(output_vars, str):
             output_vars = "output"
-        return {
-            cast(dict, output_hints).get("label", output_vars): cast(dict, output_hints)
-        }
+        label = cast(dict, output_hints).get("label", output_vars)
+        if not label.isidentifier() or keyword.iskeyword(label):
+            func_name = getattr(func, "__name__", repr(func))
+            raise ValueError(
+                f"Invalid output label '{label}' for function {func_name}. "
+                f"Label must be a valid Python identifier and not a keyword."
+            )
+        return {label: cast(dict, output_hints)}
     assert isinstance(output_vars, tuple), output_vars
     assert counts is None or len(output_vars) >= counts, output_vars
     if output_hints == {}:
-        return {key: {} for key in output_vars}
+        result = {}
+        for key in output_vars:
+            if not key.isidentifier() or keyword.iskeyword(key):
+                func_name = getattr(func, "__name__", repr(func))
+                raise ValueError(
+                    f"Invalid output label '{key}' for function {func_name}. "
+                    f"Label must be a valid Python identifier and not a keyword."
+                )
+            result[key] = {}
+        return result
     else:
         assert counts is None or len(output_hints) >= counts
         result: dict[str, dict] = {}
         for key, hint in zip(output_vars, output_hints):
             label = hint.get("label", key)
+            if not label.isidentifier() or keyword.iskeyword(label):
+                func_name = getattr(func, "__name__", repr(func))
+                raise ValueError(
+                    f"Invalid output label '{label}' for function {func_name}. "
+                    f"Label must be a valid Python identifier and not a keyword."
+                )
             if label in result:
                 func_name = getattr(func, "__name__", repr(func))
                 raise ValueError(
