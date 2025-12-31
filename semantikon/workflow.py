@@ -1,6 +1,7 @@
 import copy
 import dataclasses
 import inspect
+import keyword
 from collections import Counter
 from typing import Any, Callable, Iterable, cast, get_args, get_origin
 
@@ -261,10 +262,13 @@ def get_ports(
         func, separate_tuple=separate_return_tuple, strict=strict
     )
     if get_origin(return_hint) is tuple and separate_return_tuple:
-        output_annotations = {
-            label: meta_to_dict(ann, flatten_metadata=False)
-            for label, ann in zip(return_labels, get_args(return_hint))
-        }
+        output_annotations = {}
+        for label, ann in zip(return_labels, get_args(return_hint)):
+            data = meta_to_dict(ann, flatten_metadata=False)
+            if "metadata" in data:
+                label = data["metadata"].to_dictionary().get("label", label)
+            assert label.isidentifier() and not keyword.iskeyword(label)
+            output_annotations[label] = data
     else:
         output_annotations = {
             return_labels[0]: meta_to_dict(return_hint, flatten_metadata=False)
@@ -275,9 +279,9 @@ def get_ports(
         )
         for key, value in inspect.signature(func).parameters.items()
     }
-    outputs = Outputs(**{k: Output(label=k, **v) for k, v in output_annotations.items()})
     return (
         Inputs(**{k: Input(label=k, **v) for k, v in input_annotations.items()}),
+        Outputs(**{k: Output(label=k, **v) for k, v in output_annotations.items()})
     )
 
 

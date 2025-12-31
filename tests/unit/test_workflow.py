@@ -388,7 +388,7 @@ class TestWorkflow(unittest.TestCase):
             )
             self.assertEqual(node.outputs.speed.metadata.units, "meter/second")
             self.assertEqual(node.outputs.speed.metadata.uri, "VELOCITY")
-            self.assertIs(node.outputs.output_2.dtype, float)
+            self.assertIs(node.outputs.complex_output.dtype, float)
 
     def test_complex_macro(self):
         node = swf.get_node(complex_macro)
