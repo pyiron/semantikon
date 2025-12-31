@@ -1,4 +1,5 @@
 import unittest
+from typing import Annotated
 
 from flowrep import tools
 
@@ -55,7 +56,7 @@ def complex_function(
 ) -> tuple[
     u(float, units="meter"),
     u(float, units="meter/second", uri="VELOCITY"),
-    float,
+    Annotated[float, {"label": "complex_output"}],
 ]:
     speed = x / y
     return x, speed, speed / y
@@ -349,7 +350,7 @@ class TestWorkflow(unittest.TestCase):
                             entry,
                             node_dictionary,
                             msg="Dictionary representation must be equivalent to "
-                            "existing dictionaries",
+                            f"existing dictionaries: {entry} != {node_dictionary}",
                         )
 
     def test_complex_function_node(self):
@@ -387,7 +388,7 @@ class TestWorkflow(unittest.TestCase):
             )
             self.assertEqual(node.outputs.speed.metadata.units, "meter/second")
             self.assertEqual(node.outputs.speed.metadata.uri, "VELOCITY")
-            self.assertIs(node.outputs.output_2.dtype, float)
+            self.assertIs(node.outputs.complex_output.dtype, float)
 
     def test_complex_macro(self):
         node = swf.get_node(complex_macro)
@@ -412,7 +413,7 @@ class TestWorkflow(unittest.TestCase):
                 {
                     "complex_function_0.inputs.x": "inputs.x",
                     "outputs.b": "complex_function_0.outputs.speed",
-                    "outputs.c": "complex_function_0.outputs.output_2",
+                    "outputs.c": "complex_function_0.outputs.complex_output",
                 },
                 node.edges.to_dictionary(),
             )

@@ -1,6 +1,7 @@
 import copy
 import dataclasses
 import inspect
+import keyword
 from collections import Counter
 from typing import Any, Callable, Iterable, cast, get_args, get_origin
 
@@ -107,17 +108,22 @@ def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, di
     if output_vars is None or len(output_vars) == 0:
         return {}
     if (counts is not None and counts == 1) or isinstance(output_vars, str):
-        if isinstance(output_vars, str):
-            return {output_vars: cast(dict, output_hints)}
-        else:
-            return {"output": cast(dict, output_hints)}
+        if not isinstance(output_vars, str):
+            output_vars = "output"
+        return {
+            cast(dict, output_hints).get("label", output_vars): cast(dict, output_hints)
+        }
     assert isinstance(output_vars, tuple), output_vars
     assert counts is None or len(output_vars) >= counts, output_vars
     if output_hints == {}:
         return {key: {} for key in output_vars}
     else:
         assert counts is None or len(output_hints) >= counts
-        return {key: hint for key, hint in zip(output_vars, output_hints)}
+        result = {
+            hint.get("label", key): hint for key, hint in zip(output_vars, output_hints)
+        }
+        assert len(result) == len(output_vars), (result, output_vars, output_hints)
+        return result
 
 
 def _get_node_dict(
@@ -257,10 +263,13 @@ def get_ports(
         func, separate_tuple=separate_return_tuple, strict=strict
     )
     if get_origin(return_hint) is tuple and separate_return_tuple:
-        output_annotations = {
-            label: meta_to_dict(ann, flatten_metadata=False)
-            for label, ann in zip(return_labels, get_args(return_hint))
-        }
+        output_annotations = {}
+        for label, ann in zip(return_labels, get_args(return_hint)):
+            data = meta_to_dict(ann, flatten_metadata=False)
+            if "metadata" in data:
+                label = data["metadata"].to_dictionary().get("label", label)
+            assert label.isidentifier() and not keyword.iskeyword(label)
+            output_annotations[label] = data
     else:
         output_annotations = {
             return_labels[0]: meta_to_dict(return_hint, flatten_metadata=False)
