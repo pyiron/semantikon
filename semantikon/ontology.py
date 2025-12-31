@@ -599,17 +599,17 @@ def _parse_global_io(
 def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
     g = Graph()
     workflow_node = G.t_ns[G.name] if t_box else G.get_a_node(G.name)
-    for comp in G.nodes.data():
-        data = comp[1].copy()
+    for node_name, data in G.nodes.data():
+        data = data.copy()
         step = data.pop("step")
         if t_box:
-            g.add((G.t_ns[comp[0]], RDF.type, OWL.Class))
+            g.add((G.t_ns[node_name], RDF.type, OWL.Class))
         else:
-            g.add((G.get_a_node(comp[0]), RDF.type, G.t_ns[comp[0]]))
+            g.add((G.get_a_node(node_name), RDF.type, G.t_ns[node_name]))
         assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
         if step == "node":
             g += _wf_node_to_graph(
-                node_name=comp[0],
+                node_name=node_name,
                 data=data,
                 G=G,
                 t_box=t_box,
@@ -617,7 +617,7 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
         else:
             g += _wf_io_to_graph(
                 step=step,
-                node_name=comp[0],
+                node_name=node_name,
                 data=data,
                 G=G,
                 t_box=t_box,
