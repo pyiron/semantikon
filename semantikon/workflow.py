@@ -110,7 +110,9 @@ def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, di
     if (counts is not None and counts == 1) or isinstance(output_vars, str):
         if not isinstance(output_vars, str):
             output_vars = "output"
-        return {output_hints.get("label", output_vars): cast(dict, output_hints)}
+        return {
+            cast(dict, output_hints).get("label", output_vars): cast(dict, output_hints)
+        }
     assert isinstance(output_vars, tuple), output_vars
     assert counts is None or len(output_vars) >= counts, output_vars
     if output_hints == {}:
