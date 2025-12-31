@@ -116,7 +116,12 @@ def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, di
         return {key: {} for key in output_vars}
     else:
         assert counts is None or len(output_hints) >= counts
-        return {hint.get("label", key): hint for key, hint in zip(output_vars, output_hints)}
+        result = {
+            hint.get("label", key): hint
+            for key, hint in zip(output_vars, output_hints)
+        }
+        assert len(result) == len(output_vars), (result, output_vars, output_hints)
+        return result
 
 
 def _get_node_dict(
@@ -270,9 +275,9 @@ def get_ports(
         )
         for key, value in inspect.signature(func).parameters.items()
     }
+    outputs = Outputs(**{k: Output(label=k, **v) for k, v in output_annotations.items()})
     return (
         Inputs(**{k: Input(label=k, **v) for k, v in input_annotations.items()}),
-        Outputs(**{k: Output(label=k, **v) for k, v in output_annotations.items()}),
     )
 
 
