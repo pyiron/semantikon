@@ -189,13 +189,20 @@ def _append_hash(
     for child in G.successors(node):
         if G.nodes[child]["step"] == "node":
             continue
-        if label is None:
-            label = G.nodes[child].get("label", G.nodes[child]["arg"])
-        G.nodes[child]["hash"] = hash_value + f"@{label}"
+        # Determine the label for this specific child. If no label has been
+        # provided from a parent context, derive it from the child's node data.
+        child_label = label
+        if child_label is None:
+            child_label = G.nodes[child].get("label", G.nodes[child]["arg"])
+        G.nodes[child]["hash"] = hash_value + f"@{child_label}"
         if remove_data and "value" in G.nodes[child]:
             del G.nodes[child]["value"]
         _append_hash(
-            G, child, hash_value=hash_value, label=label, remove_data=remove_data
+            G,
+            child,
+            hash_value=hash_value,
+            label=child_label,
+            remove_data=remove_data,
         )
 
 
