@@ -103,11 +103,11 @@ def _edges_to_output_counts(edges: Iterable[tuple[str, str]]) -> dict[str, int]:
 def _validate_label(label: str, func: Callable) -> None:
     """
     Validate that a label is a valid Python identifier and not a keyword.
-    
+
     Args:
         label: The label to validate
         func: The function being analyzed (used for error messages)
-        
+
     Raises:
         ValueError: If the label is not a valid identifier or is a keyword
     """
@@ -304,9 +304,7 @@ def get_ports(
     else:
         label = return_labels[0]
         _validate_label(label, func)
-        output_annotations = {
-            label: meta_to_dict(return_hint, flatten_metadata=False)
-        }
+        output_annotations = {label: meta_to_dict(return_hint, flatten_metadata=False)}
     input_annotations = {
         key: meta_to_dict(
             type_hints.get(key, value.annotation), value.default, flatten_metadata=False
