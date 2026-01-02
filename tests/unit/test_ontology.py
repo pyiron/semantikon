@@ -391,9 +391,7 @@ class TestOntology(unittest.TestCase):
             G._get_data_node(
                 "my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity"
             ),
-            G._get_data_node(
-                "my_kinetic_energy_workflow-get_speed_0-outputs-speed"
-            ),
+            G._get_data_node("my_kinetic_energy_workflow-get_speed_0-outputs-speed"),
         )
         self.assertNotEqual(
             G._get_data_node(

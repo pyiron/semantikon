@@ -153,7 +153,9 @@ class SemantikonDiGraph(nx.DiGraph):
                 # Determine the label for this specific child
                 child_label = current_label
                 if child_label is None:
-                    child_label = self.nodes[child].get("label", self.nodes[child]["arg"])
+                    child_label = self.nodes[child].get(
+                        "label", self.nodes[child]["arg"]
+                    )
 
                 # Update the hash for the child node
                 self.nodes[child]["hash"] = current_hash + f"@{child_label}"
