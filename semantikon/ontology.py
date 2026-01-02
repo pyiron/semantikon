@@ -576,7 +576,7 @@ def _wf_output_to_graph(
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
-):
+) -> Graph:
     g = Graph()
     if t_box:
         data_node = G.t_ns[G._get_data_node(io=node_name)]
