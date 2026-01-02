@@ -1,7 +1,7 @@
 import copy
 import json
 from dataclasses import asdict, dataclass, is_dataclass
-from functools import cached_property, lru_cache
+from functools import cache, cached_property
 from hashlib import sha256
 from typing import Any, TypeAlias, cast
 
@@ -91,7 +91,7 @@ class SemantikonDiGraph(nx.DiGraph):
     def get_a_node(self, node_name: str) -> BNode:
         return BNode(self.a_ns[node_name])
 
-    @lru_cache
+    @cache
     def _get_data_node(self, io: str) -> BNode:
         while True:
             candidate = list(self.predecessors(io))
