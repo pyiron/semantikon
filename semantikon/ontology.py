@@ -528,9 +528,8 @@ def _wf_input_to_graph(
     t_box: bool,
 ):
     g = Graph()
-    data_node_tag = G._get_data_node(io=node_name)
     if t_box:
-        data_node = G.t_ns[data_node_tag]
+        data_node = G.t_ns[G._get_data_node(io=node_name)]
         if _input_is_connected(node_name, G):
             out = list(G.predecessors(node_name))
             assert len(out) <= 1
@@ -557,7 +556,7 @@ def _wf_input_to_graph(
         if "restrictions" in data:
             g += _restrictions_to_triples(data["restrictions"], data_node=data_node)
     else:
-        data_node = G.get_a_node(data_node_tag)
+        data_node = G.get_a_node(G._get_data_node(io=node_name))
     g += _wf_io_to_graph(
         node_name=node_name,
         data=data,
@@ -577,11 +576,10 @@ def _wf_output_to_graph(
     t_box: bool,
 ):
     g = Graph()
-    data_node_tag = G._get_data_node(io=node_name)
     if t_box:
-        data_node = G.t_ns[data_node_tag]
+        data_node = G.t_ns[G._get_data_node(io=node_name)]
     else:
-        data_node = G.get_a_node(data_node_tag)
+        data_node = G.get_a_node(G._get_data_node(io=node_name))
         if "units" in data:
             g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
         if "uri" in data:
@@ -610,7 +608,6 @@ def _wf_io_to_graph(
     t_box: bool,
 ) -> Graph:
     node = G.t_ns[node_name] if t_box else G.get_a_node(node_name)
-    data_node_tag = G._get_data_node(io=node_name)
     g = Graph()
     if data.get("label") is not None:
         g.add((node, RDFS.label, Literal(data["label"])))
@@ -621,12 +618,12 @@ def _wf_io_to_graph(
         g.add((node, RDFS.subClassOf, io_assignment))
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
     else:
-        g.add((data_node, RDF.type, G.t_ns[data_node_tag]))
+        g.add((data_node, RDF.type, G.t_ns[G._get_data_node(io=node_name)]))
         g.add((node, has_specified_io, data_node))
         if "value" in data and list(g.objects(data_node, RDF.value)) == []:
             g.add((data_node, RDF.value, Literal(data["value"])))
         if "hash" in data:
-            hash_bnode = BNode(data_node_tag + "_hash")
+            hash_bnode = BNode(G._get_data_node(io=node_name) + "_hash")
             g.add((data_node, SNS.denoted_by, hash_bnode))
             g.add((hash_bnode, RDF.type, SNS.identifier))
             g.add((hash_bnode, RDF.value, Literal(data["hash"])))
