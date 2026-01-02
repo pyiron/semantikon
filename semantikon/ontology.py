@@ -100,7 +100,70 @@ class SemantikonDiGraph(nx.DiGraph):
                 return f"{io}_data"
             io = candidate[0]
 
+    def _append_hash(
+        self,
+        node: str,
+        hash_value: str,
+        label: str | None = None,
+        remove_data: bool = False,
+    ):
+        """
+        Propagates a hash value through the descendants of a given node in a
+        directed graph.
 
+        This function iteratively traverses the descendants of the graph and
+        appends a hash value to each descendant node. The hash value is
+        updated based on the label of each node. Optionally, it can remove
+        specific data (e.g., "value") from the nodes.
+
+        Parameters:
+            node (str): The starting node from which the hash propagation begins.
+            hash_value (str): The initial hash value to propagate through the
+                descendants.
+            label (str | None, optional): A label to use for hash computation.
+                If not provided, the label is derived from the node's data
+                (e.g., "label" or "arg"). Defaults to None.
+            remove_data (bool, optional): If True, removes the "value" field
+                from the nodes' data during the traversal. Defaults to False.
+
+        Notes:
+            - The function uses an iterative approach to avoid recursion,
+                making it suitable for graphs with deep hierarchies.
+            - The hash value for each node is updated in the format:
+                `parent_hash@child_label`.
+
+        Example:
+            Suppose the graph `G` has the following structure:
+                A -> B -> C
+            If `A` has a hash value "hashA" and `B` has a label "labelB", the
+            hash for `B` will be "hashA@labelB". Similarly, the hash for `C`
+            will be "hashA@labelB@labelC".
+
+        """
+        # Use a stack to keep track of nodes to process
+        stack = [(node, hash_value, label)]
+
+        while stack:
+            current_node, current_hash, current_label = stack.pop()
+
+            for child in self.successors(current_node):
+                if self.nodes[child]["step"] == "node":
+                    continue
+
+                # Determine the label for this specific child
+                child_label = current_label
+                if child_label is None:
+                    child_label = self.nodes[child].get("label", self.nodes[child]["arg"])
+
+                # Update the hash for the child node
+                self.nodes[child]["hash"] = current_hash + f"@{child_label}"
+
+                # Optionally remove the "value" data
+                if remove_data and "value" in self.nodes[child]:
+                    del self.nodes[child]["value"]
+
+                # Add the child to the stack for further processing
+                stack.append((child, current_hash, child_label))
 
 
 def _inherit_properties(graph: Graph, n_max: int = 1000):
@@ -190,33 +253,6 @@ def validate_values(
     return validate(g, shacl_graph=shacl)
 
 
-def _append_hash(
-    G: SemantikonDiGraph,
-    node: str,
-    hash_value: str,
-    label: str | None = None,
-    remove_data: bool = False,
-):
-    for child in G.successors(node):
-        if G.nodes[child]["step"] == "node":
-            continue
-        # Determine the label for this specific child. If no label has been
-        # provided from a parent context, derive it from the child's node data.
-        child_label = label
-        if child_label is None:
-            child_label = G.nodes[child].get("label", G.nodes[child]["arg"])
-        G.nodes[child]["hash"] = hash_value + f"@{child_label}"
-        if remove_data and "value" in G.nodes[child]:
-            del G.nodes[child]["value"]
-        _append_hash(
-            G,
-            child,
-            hash_value=hash_value,
-            label=child_label,
-            remove_data=remove_data,
-        )
-
-
 def get_knowledge_graph(
     wf_dict: dict,
     include_t_box: bool = True,
@@ -239,7 +275,7 @@ def get_knowledge_graph(
     if hash_data:
         hashed_dict = get_hashed_node_dict(wf_dict)
         for node, data in hashed_dict.items():
-            _append_hash(G, node, data["hash"], remove_data=remove_data)
+            G._append_hash(node, data["hash"], remove_data=remove_data)
     graph = Graph()
     graph.bind("qudt", str(QUDT))
     graph.bind("unit", "http://qudt.org/vocab/unit/")
