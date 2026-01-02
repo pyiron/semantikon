@@ -388,19 +388,17 @@ class TestOntology(unittest.TestCase):
             msg="dtype should not be deleted after hashing",
         )
         self.assertEqual(
-            onto._get_data_node(
-                "my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity", G
+            G._get_data_node(
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity"
             ),
-            onto._get_data_node(
-                "my_kinetic_energy_workflow-get_speed_0-outputs-speed", G
-            ),
+            G._get_data_node("my_kinetic_energy_workflow-get_speed_0-outputs-speed"),
         )
         self.assertNotEqual(
-            onto._get_data_node(
-                "my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity", G
+            G._get_data_node(
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity"
             ),
-            onto._get_data_node(
-                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output", G
+            G._get_data_node(
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output"
             ),
         )
 

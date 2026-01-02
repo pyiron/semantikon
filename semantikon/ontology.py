@@ -1,7 +1,7 @@
 import copy
 import json
 from dataclasses import asdict, dataclass, is_dataclass
-from functools import cached_property
+from functools import cache, cached_property
 from hashlib import sha256
 from typing import Any, TypeAlias, cast
 
@@ -91,6 +91,82 @@ class SemantikonDiGraph(nx.DiGraph):
     def get_a_node(self, node_name: str) -> BNode:
         return BNode(self.a_ns[node_name])
 
+    @cache
+    def _get_data_node(self, io: str) -> str:
+        while True:
+            candidate = list(self.predecessors(io))
+            assert len(candidate) <= 1
+            if len(candidate) == 0 or self.nodes[candidate[0]]["step"] == "node":
+                return f"{io}_data"
+            io = candidate[0]
+
+    def _append_hash(
+        self,
+        node: str,
+        hash_value: str,
+        label: str | None = None,
+        remove_data: bool = False,
+    ):
+        """
+        Propagates a hash value through the descendants of a given node in a
+        directed graph.
+
+        This function iteratively traverses the descendants of the graph and
+        appends a hash value to each descendant node. The hash value is
+        updated based on the label of each node. Optionally, it can remove
+        specific data (e.g., "value") from the nodes.
+
+        Parameters:
+            node (str): The starting node from which the hash propagation begins.
+            hash_value (str): The initial hash value to propagate through the
+                descendants.
+            label (str | None, optional): A label to use for hash computation.
+                If not provided, the label is derived from the node's data
+                (e.g., "label" or "arg"). Defaults to None.
+            remove_data (bool, optional): If True, removes the "value" field
+                from the nodes' data during the traversal. Defaults to False.
+
+        Notes:
+            - The function uses an iterative approach to avoid recursion,
+                making it suitable for graphs with deep hierarchies.
+            - The hash value for each node is updated in the format:
+                `parent_hash@child_label`.
+
+        Example:
+            Suppose the graph `G` has the following structure:
+                A -> B -> C
+            If `A` has a hash value "hashA" and `B` has a label "labelB", the
+            hash for `B` will be "hashA@labelB". Similarly, the hash for `C`
+            will be "hashA@labelB@labelC".
+
+        """
+        # Use a stack to keep track of nodes to process
+        stack = [(node, hash_value, label)]
+
+        while stack:
+            current_node, current_hash, current_label = stack.pop()
+
+            for child in self.successors(current_node):
+                if self.nodes[child]["step"] == "node":
+                    continue
+
+                # Determine the label for this specific child
+                child_label = current_label
+                if child_label is None:
+                    child_label = self.nodes[child].get(
+                        "label", self.nodes[child]["arg"]
+                    )
+
+                # Update the hash for the child node
+                self.nodes[child]["hash"] = current_hash + f"@{child_label}"
+
+                # Optionally remove the "value" data
+                if remove_data and "value" in self.nodes[child]:
+                    del self.nodes[child]["value"]
+
+                # Add the child to the stack for further processing
+                stack.append((child, current_hash, child_label))
+
 
 def _inherit_properties(graph: Graph, n_max: int = 1000):
     query = f"""\
@@ -179,33 +255,6 @@ def validate_values(
     return validate(g, shacl_graph=shacl)
 
 
-def _append_hash(
-    G: SemantikonDiGraph,
-    node: str,
-    hash_value: str,
-    label: str | None = None,
-    remove_data: bool = False,
-):
-    for child in G.successors(node):
-        if G.nodes[child]["step"] == "node":
-            continue
-        # Determine the label for this specific child. If no label has been
-        # provided from a parent context, derive it from the child's node data.
-        child_label = label
-        if child_label is None:
-            child_label = G.nodes[child].get("label", G.nodes[child]["arg"])
-        G.nodes[child]["hash"] = hash_value + f"@{child_label}"
-        if remove_data and "value" in G.nodes[child]:
-            del G.nodes[child]["value"]
-        _append_hash(
-            G,
-            child,
-            hash_value=hash_value,
-            label=child_label,
-            remove_data=remove_data,
-        )
-
-
 def get_knowledge_graph(
     wf_dict: dict,
     include_t_box: bool = True,
@@ -228,7 +277,7 @@ def get_knowledge_graph(
     if hash_data:
         hashed_dict = get_hashed_node_dict(wf_dict)
         for node, data in hashed_dict.items():
-            _append_hash(G, node, data["hash"], remove_data=remove_data)
+            G._append_hash(node, data["hash"], remove_data=remove_data)
     graph = Graph()
     graph.bind("qudt", str(QUDT))
     graph.bind("unit", "http://qudt.org/vocab/unit/")
@@ -367,14 +416,6 @@ def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
     return False
 
 
-def _get_data_node(io: str, G: SemantikonDiGraph) -> BNode:
-    candidate = list(G.predecessors(io))
-    assert len(candidate) <= 1
-    if len(candidate) == 0 or G.nodes[candidate[0]]["step"] == "node":
-        return f"{io}_data"
-    return _get_data_node(candidate[0], G)
-
-
 def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: str) -> str:
     assert seeked_io.startswith("inputs") or seeked_io.startswith("outputs")
     main_node = ref_io.replace(".", "-").split("-outputs-")[0].split("-inputs-")[0]
@@ -383,7 +424,7 @@ def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: str) -> st
     )
     for io in candidate:
         if io.endswith(seeked_io.replace(".", "-")):
-            return _get_data_node(io=io, G=G)
+            return G._get_data_node(io=io)
     raise ValueError(f"IO {seeked_io} not found in graph")
 
 
@@ -482,29 +523,16 @@ def _restrictions_to_triples(
     return g
 
 
-def _wf_io_to_graph(
-    step: str,
+def _wf_input_to_graph(
     node_name: str,
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
 ) -> Graph:
-    node = G.t_ns[node_name] if t_box else G.get_a_node(node_name)
     g = Graph()
-    if data.get("label") is not None:
-        g.add((node, RDFS.label, Literal(data["label"])))
-    else:
-        g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
-    io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
-    has_specified_io = (
-        SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
-    )
-    data_node_tag = _get_data_node(io=node_name, G=G)
     if t_box:
-        data_node = G.t_ns[data_node_tag]
-        g += _to_owl_restriction(node, has_specified_io, data_node)
-        g.add((node, RDFS.subClassOf, io_assignment))
-        if step == "inputs" and _input_is_connected(node_name, G):
+        data_node = G.t_ns[G._get_data_node(io=node_name)]
+        if _input_is_connected(node_name, G):
             out = list(G.predecessors(node_name))
             assert len(out) <= 1
             if len(out) == 1:
@@ -528,31 +556,83 @@ def _wf_io_to_graph(
                     restriction_type=OWL.allValuesFrom,
                 )
         if "restrictions" in data:
-            assert step == "inputs", "restrictions only valid for inputs"
             g += _restrictions_to_triples(data["restrictions"], data_node=data_node)
+    else:
+        data_node = G.get_a_node(G._get_data_node(io=node_name))
+    g += _wf_io_to_graph(
+        node_name=node_name,
+        data=data,
+        data_node=data_node,
+        G=G,
+        io_assignment=SNS.input_assignment,
+        has_specified_io=SNS.has_specified_input,
+        t_box=t_box,
+    )
+    return g
+
+
+def _wf_output_to_graph(
+    node_name: str,
+    data: dict,
+    G: SemantikonDiGraph,
+    t_box: bool,
+) -> Graph:
+    g = Graph()
+    if t_box:
+        data_node = G.t_ns[G._get_data_node(io=node_name)]
+    else:
+        data_node = G.get_a_node(G._get_data_node(io=node_name))
+        if "units" in data:
+            g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
+        if "uri" in data:
+            bnode = BNode()
+            g.add((bnode, RDF.type, data["uri"]))
+            g.add((data_node, SNS.specifies_value_of, bnode))
+    g += _wf_io_to_graph(
+        node_name=node_name,
+        data=data,
+        data_node=data_node,
+        G=G,
+        io_assignment=SNS.output_assignment,
+        has_specified_io=SNS.has_specified_output,
+        t_box=t_box,
+    )
+    return g
+
+
+def _wf_io_to_graph(
+    node_name: str,
+    data: dict,
+    data_node: BNode | URIRef,
+    G: SemantikonDiGraph,
+    io_assignment: URIRef,
+    has_specified_io: URIRef,
+    t_box: bool,
+) -> Graph:
+    node = G.t_ns[node_name] if t_box else G.get_a_node(node_name)
+    g = Graph()
+    if data.get("label") is not None:
+        g.add((node, RDFS.label, Literal(data["label"])))
+    else:
+        g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
+    if t_box:
+        g += _to_owl_restriction(node, has_specified_io, data_node)
+        g.add((node, RDFS.subClassOf, io_assignment))
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
     else:
-        data_node = G.get_a_node(data_node_tag)
-        g.add((data_node, RDF.type, G.t_ns[data_node_tag]))
+        g.add((data_node, RDF.type, G.t_ns[G._get_data_node(io=node_name)]))
         g.add((node, has_specified_io, data_node))
         if "value" in data and list(g.objects(data_node, RDF.value)) == []:
             g.add((data_node, RDF.value, Literal(data["value"])))
         if "hash" in data:
-            hash_bnode = BNode(data_node_tag + "_hash")
+            hash_bnode = BNode(G._get_data_node(io=node_name) + "_hash")
             g.add((data_node, SNS.denoted_by, hash_bnode))
             g.add((hash_bnode, RDF.type, SNS.identifier))
             g.add((hash_bnode, RDF.value, Literal(data["hash"])))
-        if "units" in data and step == "outputs":
-            g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
-        if "uri" in data and step == "outputs":
-            bnode = BNode()
-            g.add((bnode, RDF.type, data["uri"]))
-            g.add((data_node, SNS.specifies_value_of, bnode))
     triples = data.get("triples", [])
     if triples != [] and not isinstance(triples[0], list | tuple):
         triples = [triples]
     if "derived_from" in data:
-        assert step == "outputs", "derived_from only valid for outputs"
         triples.append(("self", SNS.derives_from, data["derived_from"]))
     if len(triples) > 0:
         g += _translate_triples(
@@ -652,9 +732,15 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
                 G=G,
                 t_box=t_box,
             )
+        elif step == "inputs":
+            g += _wf_input_to_graph(
+                node_name=node_name,
+                data=data,
+                G=G,
+                t_box=t_box,
+            )
         else:
-            g += _wf_io_to_graph(
-                step=step,
+            g += _wf_output_to_graph(
                 node_name=node_name,
                 data=data,
                 G=G,
