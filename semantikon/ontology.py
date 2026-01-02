@@ -92,7 +92,7 @@ class SemantikonDiGraph(nx.DiGraph):
         return BNode(self.a_ns[node_name])
 
     @cache
-    def _get_data_node(self, io: str) -> BNode:
+    def _get_data_node(self, io: str) -> str:
         while True:
             candidate = list(self.predecessors(io))
             assert len(candidate) <= 1
