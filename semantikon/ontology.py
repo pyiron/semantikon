@@ -92,6 +92,17 @@ class SemantikonDiGraph(nx.DiGraph):
         return BNode(self.a_ns[node_name])
 
 
+    def _get_data_node(self, io: str) -> BNode:
+        while True:
+            candidate = list(self.predecessors(io))
+            assert len(candidate) <= 1
+            if len(candidate) == 0 or self.nodes[candidate[0]]["step"] == "node":
+                return f"{io}_data"
+            io = candidate[0]
+
+
+
+
 def _inherit_properties(graph: Graph, n_max: int = 1000):
     query = f"""\
     PREFIX rdfs: <{RDFS}>
@@ -367,15 +378,6 @@ def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
     return False
 
 
-def _get_data_node(io: str, G: SemantikonDiGraph) -> BNode:
-    while True:
-        candidate = list(G.predecessors(io))
-        assert len(candidate) <= 1
-        if len(candidate) == 0 or G.nodes[candidate[0]]["step"] == "node":
-            return f"{io}_data"
-        io = candidate[0]
-
-
 def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: str) -> str:
     assert seeked_io.startswith("inputs") or seeked_io.startswith("outputs")
     main_node = ref_io.replace(".", "-").split("-outputs-")[0].split("-inputs-")[0]
@@ -384,7 +386,7 @@ def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: str) -> st
     )
     for io in candidate:
         if io.endswith(seeked_io.replace(".", "-")):
-            return _get_data_node(io=io, G=G)
+            return G._get_data_node(io=io)
     raise ValueError(f"IO {seeked_io} not found in graph")
 
 
@@ -490,7 +492,7 @@ def _wf_input_to_graph(
     t_box: bool,
 ):
     g = Graph()
-    data_node_tag = _get_data_node(io=node_name, G=G)
+    data_node_tag = G._get_data_node(io=node_name)
     if t_box:
         data_node = G.t_ns[data_node_tag]
         if _input_is_connected(node_name, G):
@@ -539,7 +541,7 @@ def _wf_output_to_graph(
     t_box: bool,
 ):
     g = Graph()
-    data_node_tag = _get_data_node(io=node_name, G=G)
+    data_node_tag = G._get_data_node(io=node_name)
     if t_box:
         data_node = G.t_ns[data_node_tag]
     else:
@@ -572,7 +574,7 @@ def _wf_io_to_graph(
     t_box: bool,
 ) -> Graph:
     node = G.t_ns[node_name] if t_box else G.get_a_node(node_name)
-    data_node_tag = _get_data_node(io=node_name, G=G)
+    data_node_tag = G._get_data_node(io=node_name)
     g = Graph()
     if data.get("label") is not None:
         g.add((node, RDFS.label, Literal(data["label"])))
