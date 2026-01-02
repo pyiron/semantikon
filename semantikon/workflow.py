@@ -100,7 +100,7 @@ def _edges_to_output_counts(edges: Iterable[tuple[str, str]]) -> dict[str, int]:
     return dict(Counter(counts))
 
 
-def _validate_label(label: str, func: Callable) -> None:
+def _validate_label(label: str, func: Callable) -> bool:
     """
     Validate that a label is a valid Python identifier and not a keyword.
 
@@ -117,6 +117,7 @@ def _validate_label(label: str, func: Callable) -> None:
             f"Invalid output label '{label}' for function {func_name}. "
             f"Label must be a valid Python identifier and not a keyword."
         )
+    return True
 
 
 def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, dict]:
@@ -130,22 +131,18 @@ def _get_node_outputs(func: Callable, counts: int | None = None) -> dict[str, di
         if not isinstance(output_vars, str):
             output_vars = "output"
         label = cast(dict, output_hints).get("label", output_vars)
-        _validate_label(label, func)
+        assert _validate_label(label, func)
         return {label: cast(dict, output_hints)}
     assert isinstance(output_vars, tuple), output_vars
     assert counts is None or len(output_vars) >= counts, output_vars
     if output_hints == {}:
-        result = {}
-        for key in output_vars:
-            _validate_label(key, func)
-            result[key] = {}
-        return result
+        return {key: {} for key in output_vars if _validate_label(key, func)}
     else:
         assert counts is None or len(output_hints) >= counts
         result: dict[str, dict] = {}
         for key, hint in zip(output_vars, output_hints):
             label = hint.get("label", key)
-            _validate_label(label, func)
+            assert _validate_label(label, func)
             if label in result:
                 func_name = getattr(func, "__name__", repr(func))
                 raise ValueError(
@@ -299,11 +296,11 @@ def get_ports(
             data = meta_to_dict(ann, flatten_metadata=False)
             if "metadata" in data:
                 label = data["metadata"].to_dictionary().get("label", label)
-            _validate_label(label, func)
+            assert _validate_label(label, func)
             output_annotations[label] = data
     else:
         label = return_labels[0]
-        _validate_label(label, func)
+        assert _validate_label(label, func)
         output_annotations = {label: meta_to_dict(return_hint, flatten_metadata=False)}
     input_annotations = {
         key: meta_to_dict(
