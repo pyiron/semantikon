@@ -368,11 +368,12 @@ def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
 
 
 def _get_data_node(io: str, G: SemantikonDiGraph) -> BNode:
-    candidate = list(G.predecessors(io))
-    assert len(candidate) <= 1
-    if len(candidate) == 0 or G.nodes[candidate[0]]["step"] == "node":
-        return f"{io}_data"
-    return _get_data_node(candidate[0], G)
+    while True:
+        candidate = list(G.predecessors(io))
+        assert len(candidate) <= 1
+        if len(candidate) == 0 or G.nodes[candidate[0]]["step"] == "node":
+            return f"{io}_data"
+        io = candidate[0]
 
 
 def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: str) -> str:
@@ -482,29 +483,17 @@ def _restrictions_to_triples(
     return g
 
 
-def _wf_io_to_graph(
-    step: str,
+def _wf_input_to_graph(
     node_name: str,
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
-) -> Graph:
-    node = G.t_ns[node_name] if t_box else G.get_a_node(node_name)
+):
     g = Graph()
-    if data.get("label") is not None:
-        g.add((node, RDFS.label, Literal(data["label"])))
-    else:
-        g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
-    io_assignment = SNS.input_assignment if step == "inputs" else SNS.output_assignment
-    has_specified_io = (
-        SNS.has_specified_input if step == "inputs" else SNS.has_specified_output
-    )
     data_node_tag = _get_data_node(io=node_name, G=G)
     if t_box:
         data_node = G.t_ns[data_node_tag]
-        g += _to_owl_restriction(node, has_specified_io, data_node)
-        g.add((node, RDFS.subClassOf, io_assignment))
-        if step == "inputs" and _input_is_connected(node_name, G):
+        if _input_is_connected(node_name, G):
             out = list(G.predecessors(node_name))
             assert len(out) <= 1
             if len(out) == 1:
@@ -528,11 +517,72 @@ def _wf_io_to_graph(
                     restriction_type=OWL.allValuesFrom,
                 )
         if "restrictions" in data:
-            assert step == "inputs", "restrictions only valid for inputs"
             g += _restrictions_to_triples(data["restrictions"], data_node=data_node)
-        g.add((data_node, RDFS.subClassOf, SNS.value_specification))
     else:
         data_node = G.get_a_node(data_node_tag)
+    g += _wf_io_to_graph(
+        node_name=node_name,
+        data=data,
+        data_node=data_node,
+        G=G,
+        io_assignment=SNS.input_assignment,
+        has_specified_io=SNS.has_specified_input,
+        t_box=t_box,
+    )
+    return g
+
+
+def _wf_output_to_graph(
+    node_name: str,
+    data: dict,
+    G: SemantikonDiGraph,
+    t_box: bool,
+):
+    g = Graph()
+    data_node_tag = _get_data_node(io=node_name, G=G)
+    if t_box:
+        data_node = G.t_ns[data_node_tag]
+    else:
+        data_node = G.get_a_node(data_node_tag)
+        if "units" in data:
+            g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
+        if "uri" in data:
+            bnode = BNode()
+            g.add((bnode, RDF.type, data["uri"]))
+            g.add((data_node, SNS.specifies_value_of, bnode))
+    g += _wf_io_to_graph(
+        node_name=node_name,
+        data=data,
+        data_node=data_node,
+        G=G,
+        io_assignment=SNS.output_assignment,
+        has_specified_io=SNS.has_specified_output,
+        t_box=t_box,
+    )
+    return g
+
+
+def _wf_io_to_graph(
+    node_name: str,
+    data: dict,
+    data_node: BNode | URIRef,
+    G: SemantikonDiGraph,
+    io_assignment: URIRef,
+    has_specified_io: URIRef,
+    t_box: bool,
+) -> Graph:
+    node = G.t_ns[node_name] if t_box else G.get_a_node(node_name)
+    data_node_tag = _get_data_node(io=node_name, G=G)
+    g = Graph()
+    if data.get("label") is not None:
+        g.add((node, RDFS.label, Literal(data["label"])))
+    else:
+        g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
+    if t_box:
+        g += _to_owl_restriction(node, has_specified_io, data_node)
+        g.add((node, RDFS.subClassOf, io_assignment))
+        g.add((data_node, RDFS.subClassOf, SNS.value_specification))
+    else:
         g.add((data_node, RDF.type, G.t_ns[data_node_tag]))
         g.add((node, has_specified_io, data_node))
         if "value" in data and list(g.objects(data_node, RDF.value)) == []:
@@ -542,17 +592,10 @@ def _wf_io_to_graph(
             g.add((data_node, SNS.denoted_by, hash_bnode))
             g.add((hash_bnode, RDF.type, SNS.identifier))
             g.add((hash_bnode, RDF.value, Literal(data["hash"])))
-        if "units" in data and step == "outputs":
-            g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
-        if "uri" in data and step == "outputs":
-            bnode = BNode()
-            g.add((bnode, RDF.type, data["uri"]))
-            g.add((data_node, SNS.specifies_value_of, bnode))
     triples = data.get("triples", [])
     if triples != [] and not isinstance(triples[0], list | tuple):
         triples = [triples]
     if "derived_from" in data:
-        assert step == "outputs", "derived_from only valid for outputs"
         triples.append(("self", SNS.derives_from, data["derived_from"]))
     if len(triples) > 0:
         g += _translate_triples(
@@ -652,9 +695,15 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
                 G=G,
                 t_box=t_box,
             )
+        elif step == "inputs":
+            g += _wf_input_to_graph(
+                node_name=node_name,
+                data=data,
+                G=G,
+                t_box=t_box,
+            )
         else:
-            g += _wf_io_to_graph(
-                step=step,
+            g += _wf_output_to_graph(
                 node_name=node_name,
                 data=data,
                 G=G,
