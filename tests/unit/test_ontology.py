@@ -1,286 +1,107 @@
 import unittest
 from dataclasses import dataclass
+from pathlib import Path
 from textwrap import dedent
+from typing import Annotated
 
-from graphviz import Digraph
 from pyshacl import validate
-from rdflib import OWL, PROV, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, URIRef
+from rdflib import OWL, RDF, RDFS, SH, Graph, Literal, Namespace
 from rdflib.compare import graph_diff
 
-from semantikon.metadata import SemantikonURI, meta, u
-from semantikon.ontology import (
-    NS,
-    SNS,
-    _bundle_restrictions,
-    _get_edge_dict,
-    _get_precedes,
-    _parse_cancel,
-    _to_intersection,
-    _to_owl_restriction,
-    _units_to_uri,
-    dataclass_to_knowledge_graph,
-    extract_dataclass,
-    get_knowledge_graph,
-    serialize_data,
-    validate_values,
-)
+from semantikon import ontology as onto
+from semantikon.metadata import SemantikonURI, meta
 from semantikon.visualize import visualize
 from semantikon.workflow import workflow
 
-EX = Namespace("http://example.org/")
+EX: Namespace = Namespace("http://example.org/")
+PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
+UNIT: Namespace = Namespace("http://qudt.org/vocab/unit/")
 
 
-def calculate_speed(
-    distance: u(float, units="meter") = 10.0,
-    time: u(float, units="second") = 2.0,
-) -> u(
-    float,
-    units="meter/second",
-    triples=(
-        (EX.somehowRelatedTo, "inputs.time"),
-        (EX.subject, EX.predicate, EX.object),
-        (EX.subject, EX.predicate, None),
-        (None, EX.predicate, EX.object),
-    ),
+prefixes = """
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix obi: <http://purl.obolibrary.org/obo/OBI_> .
+@prefix sns: <http://pyiron.org/ontology/> .
+@prefix ro: <http://purl.obolibrary.org/obo/RO_> .
+@prefix pmd: <https://w3id.org/pmd/co/PMD_> .
+@prefix ex: <http://example.org/> .
+"""
+
+sparql_prefixes = prefixes.replace("@prefix ", "PREFIX ").replace(" .\n", "\n")
+
+
+def get_speed(
+    distance: Annotated[
+        float, {"uri": PMD["0040001"], "units": "meter", "label": "Distance"}
+    ],
+    time: Annotated[float, {"units": "second"}],
+) -> Annotated[float, {"units": "meter/second", "uri": EX.Velocity}]:
+    """some random docstring"""
+    speed = distance / time
+    return speed
+
+
+@meta(uri=EX.get_kinetic_energy)
+def get_kinetic_energy(
+    mass: Annotated[float, {"uri": PMD["0020133"], "units": "kilogram"}],
+    velocity: Annotated[float, {"units": "meter/second", "uri": EX.Velocity}],
+) -> Annotated[float, {"uri": PMD["0020142"], "units": "joule"}]:
+    return 0.5 * mass * velocity**2
+
+
+@workflow
+def my_kinetic_energy_workflow(
+    distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
 ):
+    speed = get_speed(distance, time)
+    kinetic_energy = get_kinetic_energy(mass, speed)
+    return kinetic_energy
+
+
+def get_kinetic_energy_wrong_units(
+    mass: Annotated[float, {"uri": PMD["0020133"], "units": "kilogram"}],
+    velocity: Annotated[float, {"units": "angstrom", "uri": EX.Velocity}],
+) -> Annotated[float, {"uri": PMD["0020142"], "units": "joule"}]:
+    return 0.5 * mass * velocity**2
+
+
+def get_kinetic_energy_wrong_uri(
+    mass: Annotated[float, {"units": "kilogram"}],
+    velocity: Annotated[float, {"units": "meter/second", "uri": EX.WrongURI}],
+) -> Annotated[float, {"uri": PMD["0020142"], "units": "joule"}]:
+    return 0.5 * mass * velocity**2
+
+
+def get_speed_not_annotated(distance, time) -> float:
     return distance / time
 
 
-@workflow
-def get_speed(distance=10.0, time=2.0):
-    speed = calculate_speed(distance, time)
-    return speed
-
-
-def get_time_correct_units(
-    start: u(float, units="second"), end: u(float, units="second")
-) -> u(float, units="second"):
-    return end - start
-
-
-def get_time_incorrect_units(
-    start: u(float, units="nanosecond"), end: u(float, units="nanosecond")
-) -> u(float, units="nanosecond"):
-    return end - start
-
-
-@workflow
-def get_speed_correct_units(start, end, distance):
-    time = get_time_correct_units(start, end)
-    speed = calculate_speed(distance, time)
-    return speed
-
-
-@workflow
-def get_speed_incorrect_units(start, end, distance):
-    time = get_time_incorrect_units(start, end)
-    speed = calculate_speed(distance, time)
-    return speed
-
-
-@meta(uri=EX.Addition, triples=("inputs.a", PROV.wasGeneratedBy, None), used="add")
-def add(a: float, b: float) -> u(float, triples=(EX.HasOperation, EX.Addition)):
-    return a + b
-
-
-def multiply(a: float, b: float) -> u(
-    float,
-    triples=(EX.HasOperation, EX.Multiplication),
-    derived_from="inputs.a",
-):
-    return a * b
-
-
-def correct_analysis(a: u(float, triples=(EX.HasOperation, EX.Addition))) -> float:
+def f_triples(
+    a: float, b: Annotated[float, {"triples": ("self", EX.relatedTo, "inputs.a")}]
+) -> Annotated[
+    float, {"triples": ((EX.hasSomeRelation, "inputs.b")), "derived_from": "inputs.a"}
+]:
     return a
 
 
-def wrong_analysis(a: u(float, triples=(EX.HasOperation, EX.Division))) -> float:
+@workflow
+def wf_triples(a, b):
+    a = f_triples(a, b)
     return a
-
-
-def correct_analysis_owl(
-    a: u(
-        float,
-        restrictions=(
-            (OWL.onProperty, EX.HasOperation),
-            (OWL.someValuesFrom, EX.Addition),
-        ),
-    ),
-) -> float:
-    return a
-
-
-def wrong_analysis_owl(
-    a: u(
-        float,
-        restrictions=(
-            (OWL.onProperty, EX.HasOperation),
-            (OWL.someValuesFrom, EX.Division),
-        ),
-    ),
-) -> float:
-    return a
-
-
-def correct_analysis_sh(
-    a: u(
-        float,
-        restrictions=(
-            (SH.path, EX.HasOperation),
-            (SH.hasValue, EX.Addition),
-        ),
-    ),
-) -> float:
-    return a
-
-
-def wrong_analysis_sh(
-    a: u(
-        float,
-        restrictions=(
-            (SH.path, EX.HasOperation),
-            (SH.hasValue, EX.Division),
-        ),
-    ),
-) -> float:
-    return a
-
-
-def add_one(a: int):
-    result = a + 1
-    return result
-
-
-def add_two(b=10) -> int:
-    result = b + 2
-    return result
-
-
-@workflow
-def add_three(c: int) -> int:
-    one = add_one(a=c)
-    w = add_two(b=one)
-    return w
-
-
-def create_vacancy(
-    structure: str,
-) -> u(
-    str,
-    triples=(EX.hasDefect, EX.vacancy),
-    derived_from="inputs.structure",
-    cancel=(EX.hasState, EX.relaxed),
-):
-    return structure
-
-
-def relax_structure(
-    structure: str,
-) -> u(
-    str,
-    triples=(EX.hasState, EX.relaxed),
-    derived_from="inputs.structure",
-):
-    return structure
-
-
-def get_vacancy_formation_energy(
-    structure: u(
-        str,
-        restrictions=(
-            ((OWL.onProperty, EX.hasDefect), (OWL.someValuesFrom, EX.vacancy)),
-            ((OWL.onProperty, EX.hasState), (OWL.someValuesFrom, EX.relaxed)),
-        ),
-    ),
-):
-    return len(structure)
-
-
-def get_vacancy_formation_energy_fulfills(
-    structure: u(
-        str,
-        triples=(
-            (EX.hasDefect, EX.vacancy),
-            (EX.hasState, EX.relaxed),
-        ),
-    ),
-):
-    return len(structure)
-
-
-@workflow
-def get_correct_analysis(a=1.0, b=2.0, c=3.0):
-    d = add(a=a, b=b)
-    m = multiply(a=d, b=c)
-    analysis = correct_analysis(a=m)
-    return analysis
-
-
-@workflow
-def get_wrong_analysis(a=1.0, b=2.0, c=3.0):
-    d = add(a=a, b=b)
-    m = multiply(a=d, b=c)
-    analysis = wrong_analysis(a=m)
-    return analysis
-
-
-@workflow
-def get_correct_analysis_owl(a=1.0, b=2.0, c=3.0):
-    d = add(a=a, b=b)
-    m = multiply(a=d, b=c)
-    analysis = correct_analysis_owl(a=m)
-    return analysis
-
-
-@workflow
-def get_wrong_analysis_owl(a=1.0, b=2.0, c=3.0):
-    d = add(a=a, b=b)
-    m = multiply(a=d, b=c)
-    analysis = wrong_analysis_owl(a=m)
-    return analysis
-
-
-@workflow
-def get_correct_analysis_sh(a=1.0, b=2.0, c=3.0):
-    d = add(a=a, b=b)
-    m = multiply(a=d, b=c)
-    analysis = correct_analysis_sh(a=m)
-    return analysis
-
-
-@workflow
-def get_wrong_analysis_sh(a=1.0, b=2.0, c=3.0):
-    d = add(a=a, b=b)
-    m = multiply(a=d, b=c)
-    analysis = wrong_analysis_sh(a=m)
-    return analysis
-
-
-@workflow
-def get_macro(c=1):
-    w = add_three(c=c)
-    result = add_one(a=w)
-    return result
-
-
-@workflow
-def get_wrong_order(structure="abc"):
-    relaxed = relax_structure(structure=structure)
-    vac = create_vacancy(structure=relaxed)
-    energy = get_vacancy_formation_energy(structure=vac)
-    return energy
 
 
 class Meal:
     pass
 
 
-def prepare_pizza() -> u(Meal, uri=EX.Pizza):
+def prepare_pizza() -> Annotated[Meal, {"uri": EX.Pizza}]:
     return Meal()
 
 
-def eat(meal: u(Meal, uri=EX.Meal)) -> str:
+def eat(meal: Annotated[Meal, {"uri": EX.Meal}]) -> str:
     return "I am full after eating "
 
 
@@ -291,787 +112,85 @@ def eat_pizza():
     return comment
 
 
+uri_color = SemantikonURI(EX.Color)
+uri_cleaned = SemantikonURI(EX.Cleaned)
+
+
 class Clothes:
     pass
 
 
-def machine_wash(
-    clothes: u(
-        Clothes,
-        uri=EX.Garment,
-        triples=(EX.hasProperty, EX.MachineWashable),
-    ),
-) -> u(
+def wash(
+    clothes: Clothes,
+) -> Annotated[
     Clothes,
-    uri=EX.SomethingElse,
-    triples=(EX.hasProperty, EX.Cleaned),
-    derived_from="inputs.clothes",
-):
+    {"triples": (EX.hasProperty, uri_cleaned), "derived_from": "inputs.clothes"},
+]:
+    ...
     return clothes
 
 
-@workflow
-def clothes_wf(
-    clothes: u(
+def dye(
+    clothes: Clothes, color="blue"
+) -> Annotated[
+    Clothes, {"triples": (EX.hasProperty, uri_color), "derived_from": "inputs.clothes"}
+]:
+    ...
+    return clothes
+
+
+def sell(
+    clothes: Annotated[
         Clothes,
-        uri=EX.Garment,
-        triples=(EX.hasProperty, EX.MachineWashable),
-    ),
-) -> u(Clothes, uri=EX.Garment, derived_from="inputs.clothes"):
-    washed = machine_wash(clothes)
-    return washed
-
-
-def add_onetology(x: u(int, uri=EX.Input)) -> u(int, uri=EX.Output):
-    y = x + 1
-    return y
-
-
-@workflow
-def matching_wrapper(x_outer: u(int, uri=EX.Input)) -> u(int, uri=EX.Output):
-    add = add_onetology(x_outer)
-    return add
-
-
-@workflow
-def mismatching_input(x_outer: u(int, uri=EX.NotInput)) -> u(int, uri=EX.Output):
-    add = add_onetology(x_outer)
-    return add
-
-
-@workflow
-def mismatching_output(x_outer: u(int, uri=EX.Input)) -> u(int, uri=EX.NotOutput):
-    add = add_onetology(x_outer)
-    return add
-
-
-def dont_add_onetology(x: u(int, uri=EX.NotOutput)) -> u(int, uri=EX.NotOutput):
-    y = x
-    return y
-
-
-@workflow
-def mismatching_peers(x_outer: u(int, uri=EX.Input)) -> u(int, uri=EX.NotOutput):
-    add = add_onetology(x_outer)
-    dont_add = dont_add_onetology(add)
-    return dont_add
-
-
-class Foo: ...
-
-
-def upstream(
-    foo: u(Foo, uri=EX.Foo, triples=(EX.alsoHas, EX.Bar)),
-) -> u(Foo, derived_from="inputs.foo"):
-    return foo
-
-
-def downstream(
-    foo: u(
-        Foo,
-        uri=EX.Foo,
-        restrictions=((OWL.onProperty, EX.alsoHas), (OWL.someValuesFrom, EX.Bar)),
-    ),
-) -> u(Foo, derived_from="inputs.foo"):
-    return foo
-
-
-@workflow
-def single(foo: u(Foo, uri=EX.Foo)) -> u(Foo, derived_from="inputs.foo"):
-    up = upstream(foo)
-    dn = downstream(up)
-    return dn
-
-
-@workflow
-def chain(foo: u(Foo, uri=EX.Foo)) -> u(Foo, derived_from="inputs.foo"):
-    up = upstream(foo)
-    dn1 = downstream(up)
-    dn2 = downstream(dn1)
-    return dn2
-
-
-class TestOntology(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.maxDiff = None
-
-    def test_units_with_sparql(self):
-        wf_graph = get_speed.run()
-        for use_uuid in [True, False]:
-            graph = get_knowledge_graph(wf_graph, use_uuid=use_uuid)
-            query_txt = [
-                "PREFIX ex: <http://example.org/>",
-                "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
-                "PREFIX ro: <http://purl.obolibrary.org/obo/RO_>",
-                "PREFIX qudt: <http://qudt.org/schema/qudt/>",
-                "SELECT DISTINCT ?speed ?units",
-                "WHERE {",
-                "    ?output ro:0000057 ?output_tag .",
-                "    ?output_tag rdf:value ?speed .",
-                "    ?output_tag qudt:hasUnit ?units .",
-                "}",
-            ]
-            query = "\n".join(query_txt)
-            results = graph.query(query)
-            self.assertEqual(
-                len(results),
-                3,
-                msg=f"Results: {results.serialize(format='txt').decode()}",
+        {
+            "restrictions": (
+                ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Cleaned)),
+                ((OWL.onProperty, EX.hasProperty), (OWL.someValuesFrom, EX.Color)),
             )
-            result_list = [row[0].value for row in graph.query(query)]
-            self.assertEqual(sorted(result_list), [2.0, 5.0, 10.0])
-        self.assertEqual(
-            _units_to_uri("meter/second"),
-            URIRef("http://qudt.org/vocab/unit/M-PER-SEC"),
-        )
-        self.assertEqual(
-            _units_to_uri(URIRef("http://qudt.org/vocab/unit/M-PER-SEC")),
-            URIRef("http://qudt.org/vocab/unit/M-PER-SEC"),
-        )
-        self.assertEqual(
-            _units_to_uri("http://qudt.org/vocab/unit/M-PER-SEC"),
-            URIRef("http://qudt.org/vocab/unit/M-PER-SEC"),
-        )
+        },
+    ],
+) -> int:
+    ...
+    return 10
 
-    def test_triples(self):
-        graph = get_knowledge_graph(get_speed.run())
-        subj = URIRef("http://example.org/subject")
-        obj = URIRef("http://example.org/object")
-        label = BNode("get_speed-calculate_speed_0-outputs-output")
-        self.assertGreater(
-            len(
-                list(
-                    graph.subjects(
-                        SNS.has_unit, URIRef("http://qudt.org/vocab/unit/M-PER-SEC")
-                    )
-                )
-            ),
-            0,
-        )
-        ex_triple = (
-            None,
-            EX.somehowRelatedTo,
-            BNode("get_speed-calculate_speed_0-inputs-time"),
-        )
-        self.assertTrue(
-            ex_triple in graph,
-            msg=f"Triple {ex_triple} not found {graph.serialize(format='turtle')}",
-        )
-        self.assertTrue((EX.subject, EX.predicate, EX.object) in graph)
-        self.assertTrue((subj, EX.predicate, label) in graph)
-        self.assertTrue((label, EX.predicate, obj) in graph)
 
-    def test_correct_analysis(self):
-        graph = get_knowledge_graph(get_correct_analysis.serialize_workflow())
-        t = validate_values(graph)
-        self.assertEqual(
-            t["missing_triples"],
-            [],
-            msg=f"{t} missing in {graph.serialize()}",
-        )
-        graph = get_knowledge_graph(get_wrong_analysis_owl.serialize_workflow())
-        self.assertEqual(len(validate_values(graph)["missing_triples"]), 1)
-
-    def test_correct_analysis_sh(self):
-        graph = get_knowledge_graph(get_correct_analysis_sh.serialize_workflow())
-        self.assertTrue(validate(graph)[0])
-        graph = get_knowledge_graph(get_wrong_analysis_sh.serialize_workflow())
-        self.assertFalse(validate(graph)[0])
-
-    def test_valid_connections(self):
-        graph = get_knowledge_graph(eat_pizza.serialize_workflow())
-        self.assertEqual(len(validate_values(graph)["incompatible_connections"]), 1)
-        graph.add((EX.Pizza, RDFS.subClassOf, EX.Meal))
-        self.assertEqual(validate_values(graph)["incompatible_connections"], [])
-
-    def test_workflow_edge_validation(self):
-        with self.subTest("Matching"):
-            graph = get_knowledge_graph(matching_wrapper.serialize_workflow())
-            result = validate_values(graph)
-            self.assertEqual(result["missing_triples"], [])
-            self.assertEqual(result["incompatible_connections"], [])
-
-        with self.subTest("Mismatching input"):
-            graph = get_knowledge_graph(mismatching_input.serialize_workflow())
-            result = validate_values(graph)
-            incompatible = [
+def sell_with_shacl(
+    clothes: Annotated[
+        Clothes,
+        {
+            "restrictions": (
                 (
-                    str(a),
-                    str(b),
-                    [str(x) for x in expected],
-                    [str(x) for x in provided],
-                )
-                for (a, b, expected, provided) in result["incompatible_connections"]
-            ]
-            self.assertEqual(
-                incompatible,
-                [
-                    (
-                        "mismatching_input-add_onetology_0-inputs-x",
-                        "mismatching_input-inputs-x_outer",
-                        ["http://example.org/Input"],
-                        ["http://example.org/NotInput"],
-                    )
-                ],
+                    (SH.path, EX.hasProperty),
+                    (SH.minCount, Literal(1)),
+                    (SH["class"], EX.Cleaned),
+                ),
             )
+        },
+    ],
+) -> int:
+    ...
+    return 10
 
-        with self.subTest("Mismatching output"):
-            graph = get_knowledge_graph(mismatching_output.serialize_workflow())
-            result = validate_values(graph)
-            incompatible = [
-                (
-                    str(a),
-                    str(b),
-                    [str(x) for x in expected],
-                    [str(x) for x in provided],
-                )
-                for (a, b, expected, provided) in result["incompatible_connections"]
-            ]
-            self.assertEqual(
-                incompatible,
-                [
-                    (
-                        "mismatching_output-outputs-add",
-                        "mismatching_output-add_onetology_0-outputs-y",
-                        ["http://example.org/NotOutput"],
-                        ["http://example.org/Output"],
-                    )
-                ],
+
+def sell_without_color(
+    clothes: Annotated[
+        Clothes,
+        # Different shape from above
+        {
+            "restrictions": (
+                (OWL.onProperty, EX.hasProperty),
+                (OWL.someValuesFrom, EX.Cleaned),
             )
-
-        with self.subTest("Mismatching peers"):
-            graph = get_knowledge_graph(mismatching_peers.serialize_workflow())
-            result = validate_values(graph)
-            incompatible = [
-                (
-                    str(a),
-                    str(b),
-                    [str(x) for x in expected],
-                    [str(x) for x in provided],
-                )
-                for (a, b, expected, provided) in result["incompatible_connections"]
-            ]
-            self.assertEqual(
-                incompatible,
-                [
-                    (
-                        "mismatching_peers-dont_add_onetology_0-inputs-x",
-                        "mismatching_peers-add_onetology_0-outputs-y",
-                        ["http://example.org/NotOutput"],
-                        ["http://example.org/Output"],
-                    )
-                ],
-            )
-
-        with self.subTest("Externally informed peers"):
-            context = Graph()
-            context.add((EX.Output, RDFS.subClassOf, EX.NotOutput))
-            graph = get_knowledge_graph(
-                wf_dict=mismatching_peers.serialize_workflow(),
-                graph=context,
-            )
-            result = validate_values(graph)
-            self.assertEqual(result["missing_triples"], [])
-            self.assertEqual(result["incompatible_connections"], [])
-
-        with self.subTest("Wrongly informed peers"):
-            context = Graph()
-            context.add((EX.NotOutput, RDFS.subClassOf, EX.Output))  # Reversed
-            # Now we're saying the downstream is expecting a subclass of the upstream,
-            # which the upstream base class is _not_ guaranteeing
-            graph = get_knowledge_graph(
-                wf_dict=mismatching_peers.serialize_workflow(),
-                graph=context,
-            )
-            result = validate_values(graph)
-            incompatible = [
-                (
-                    str(a),
-                    str(b),
-                    [str(x) for x in expected],
-                    [str(x) for x in provided],
-                )
-                for (a, b, expected, provided) in result["incompatible_connections"]
-            ]
-            self.assertEqual(
-                incompatible,
-                [
-                    (
-                        "mismatching_peers-dont_add_onetology_0-inputs-x",
-                        "mismatching_peers-add_onetology_0-outputs-y",
-                        ["http://example.org/NotOutput", "http://example.org/Output"],
-                        ["http://example.org/Output"],
-                    )
-                ],
-            )
-
-    def test_derive_from(self):
-        out_tag = BNode(
-            f"{clothes_wf.__name__}-{machine_wash.__name__}_0-outputs-clothes"
-        )
-        out_global_tag = BNode(f"{clothes_wf.__name__}-outputs-washed")
-
-        with self.subTest("Inherit type"):
-            graph = get_knowledge_graph(clothes_wf.serialize_workflow())
-            out_types = set(graph.objects(out_tag, RDF.type))
-            self.assertNotIn(
-                EX.Garment,
-                out_types,
-                msg="Should not inherit from input",
-            )
-            self.assertIn(
-                EX.SomethingElse,
-                out_types,
-                msg="Should gain from u-specification",
-            )
-
-        with self.subTest("Inherit properties"):
-            graph = get_knowledge_graph(clothes_wf.serialize_workflow())
-            out_properties = set(graph.objects(out_tag, EX.hasProperty))
-            self.assertIn(
-                EX.MachineWashable,
-                out_properties,
-                msg="Should inherit from input",
-            )
-            self.assertIn(
-                EX.Cleaned, out_properties, msg="Should retain from u-specification"
-            )
-
-        with self.subTest("No other types"):
-            graph = get_knowledge_graph(clothes_wf.serialize_workflow())
-            val = validate_values(graph)
-            self.assertListEqual(val["missing_triples"], [])
-            self.assertEqual(
-                val["incompatible_connections"],
-                [(out_global_tag, out_tag, [EX.Garment], [EX.SomethingElse])],
-                msg="Completely unrelated types should be flagged",
-            )
-
-        with self.subTest("No type narrowing"):
-            graph = get_knowledge_graph(clothes_wf.serialize_workflow())
-            graph.add((EX.Garment, RDFS.subClassOf, EX.SomethingElse))
-            val = validate_values(graph)
-            self.assertListEqual(val["missing_triples"], [])
-            self.assertListEqual(
-                val["incompatible_connections"],
-                [
-                    (
-                        out_global_tag,
-                        out_tag,
-                        [EX.Garment, EX.SomethingElse],
-                        [EX.SomethingElse],
-                    )
-                ],
-                msg="Downstream having a broader type than upstream is disallowed",
-            )
-
-        with self.subTest("Type broadening OK"):
-            context = Graph()
-            context.add((EX.SomethingElse, RDFS.subClassOf, EX.Garment))
-            graph = get_knowledge_graph(clothes_wf.serialize_workflow(), graph=context)
-            val = validate_values(graph)
-            self.assertListEqual(val["missing_triples"], [])
-            self.assertListEqual(
-                val["incompatible_connections"],
-                [],
-                msg="Downstream having a narrower type than upstream is fine",
-            )
-
-    def test_uri_restrictions_derived_from_interaction(self):
-        with self.subTest("Single step"):
-            graph = get_knowledge_graph(single.serialize_workflow())
-            val = validate_values(graph)
-            self.assertFalse(
-                val["missing_triples"] or val["incompatible_connections"],
-                msg=f"URI specification, restrictions, and derived_from should all play"
-                f"well together. Expected no validation problems, but got {val}",
-            )
-
-        with self.subTest("Chain steps"):
-            graph = get_knowledge_graph(chain.serialize_workflow())
-            val = validate_values(graph)
-            self.assertFalse(
-                val["missing_triples"] or val["incompatible_connections"],
-                msg=f"URI specification, restrictions, and derived_from should all play"
-                f"well together. Expected no validation problems, but got {val}",
-            )
-
-    def test_macro(self):
-        graph = get_knowledge_graph(get_macro.run())
-        subj = list(
-            graph.subjects(
-                SNS.has_participant,
-                BNode("get_macro-add_three_0-add_one_0-inputs-a-value"),
-            )
-        )
-        self.assertEqual(len(subj), 3)
-        subj = list(
-            graph.subjects(
-                SNS.has_participant,
-                BNode("get_macro-add_three_0-add_two_0-outputs-result-value"),
-            )
-        )
-        self.assertEqual(len(subj), 3)
-        for ii, tag in enumerate(
-            [
-                "add_three_0-add_two_0-outputs-result",
-                "add_three_0-outputs-w",
-                "add_one_0-inputs-a",
-            ]
-        ):
-            with self.subTest(i=ii):
-                self.assertIn(
-                    BNode("get_macro-" + tag), subj, msg=f"{tag} not in {subj}"
-                )
-        inherits_from = [
-            (str(g[1]), str(g[0])) for g in graph.subject_objects(SNS.linksTo)
-        ]
-        get_macro_io_passing = 2
-        get_three_io_passing = 2
-        get_three_internal = 1
-        get_macro_internal = 1
-        expected_inheritance = (
-            get_macro_io_passing
-            + get_three_io_passing
-            + get_three_internal
-            + get_macro_internal
-        )
-        prefix = "get_macro-add_three_0"
-        sub_obj = [
-            ("add_one_0-inputs-a", "inputs-c"),
-            ("outputs-w", "add_two_0-outputs-result"),
-        ]
-        sub_obj = [(prefix + "-" + s, prefix + "-" + o) for s, o in sub_obj]
-        self.assertEqual(len(inherits_from), expected_inheritance)
-        for ii, pair in enumerate(sub_obj):
-            with self.subTest(i=ii):
-                self.assertIn(pair, inherits_from)
-
-    def test_macro_full_comparison(self):
-        txt = dedent(
-            f"""\
-        @prefix ns1: <http://pyiron.org/ontology/> .
-        @prefix prov: <http://www.w3.org/ns/prov#> .
-        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-        @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-        @prefix bfo: <http://purl.obolibrary.org/obo/BFO_> .
-        @prefix iao: <http://purl.obolibrary.org/obo/IAO_> .
-        @prefix ro: <http://purl.obolibrary.org/obo/RO_> .
-
-        _:get_macro-add_one_0-inputs-a a prov:Entity ;
-            ro:0000057 _:get_macro-add_three_0-add_two_0-outputs-result-value .
-
-        _:get_macro-add_three_0-add_one_0-inputs-a a prov:Entity ;
-            ro:0000057 _:get_macro-add_three_0-add_one_0-inputs-a-value .
-
-        _:get_macro-add_three_0-add_two_0-inputs-b a prov:Entity ;
-            ro:0000057 _:get_macro-add_three_0-add_one_0-outputs-result-value .
-
-        _:get_macro-outputs-result a prov:Entity ;
-            ro:0000057 _:get_macro-add_one_0-outputs-result-value .
-
-        _:get_macro-add_one_0-outputs-result a prov:Entity ;
-            ns1:linksTo _:get_macro-outputs-result ;
-            ro:0000057 _:get_macro-add_one_0-outputs-result-value .
-
-        _:get_macro-add_three_0-add_one_0-outputs-result a prov:Entity ;
-            ns1:linksTo _:get_macro-add_three_0-add_two_0-inputs-b ;
-            ro:0000057 _:get_macro-add_three_0-add_one_0-outputs-result-value .
-
-        _:get_macro-add_three_0-add_two_0-outputs-result a prov:Entity ;
-            ns1:linksTo _:get_macro-add_three_0-outputs-w ;
-            ro:0000057 _:get_macro-add_three_0-add_two_0-outputs-result-value .
-
-        _:get_macro-add_three_0-inputs-c a prov:Entity ;
-            ns1:linksTo _:get_macro-add_three_0-add_one_0-inputs-a ;
-            ro:0000057 _:get_macro-add_three_0-add_one_0-inputs-a-value .
-
-        _:get_macro-add_three_0-outputs-w a prov:Entity ;
-            ns1:linksTo _:get_macro-add_one_0-inputs-a ;
-            ro:0000057 _:get_macro-add_three_0-add_two_0-outputs-result-value,
-                _:get_macro-add_three_0-add_two_0-outputs-result-value .
-
-        _:get_macro-add_three_0-add_one_0-inputs-a-value rdf:value 1 .
-
-        _:get_macro-inputs-c a prov:Entity ;
-            ns1:linksTo _:get_macro-add_three_0-inputs-c ;
-            ro:0000057 _:get_macro-add_three_0-add_one_0-inputs-a-value .
-
-        _:get_macro-add_one_0-outputs-result-value rdf:value 5 .
-
-        _:get_macro-add_three_0-add_one_0-outputs-result-value rdf:value 2 .
-
-        _:get_macro-add_three_0-add_two_0-outputs-result-value rdf:value 4 .
-
-        _:get_macro a prov:Activity ;
-            bfo:0000051 _:get_macro-add_one_0,
-                _:get_macro-add_three_0,
-                _:get_macro-outputs-result,
-                _:get_macro-inputs-c .
-
-
-        _:get_macro-add_one_0 a prov:Activity ;
-            bfo:0000051 _:get_macro-add_one_0-outputs-result,
-                _:get_macro-add_one_0-inputs-a .
-
-        _:{add_one.__module__}-add_one-not_defined iao:0000136 _:get_macro-add_one_0 ;
-            iao:0000136 _:get_macro-add_three_0-add_one_0 ;
-            a iao:0000030 .
-
-        _:get_macro-add_three_0-add_one_0 a prov:Activity ;
-            bfo:0000051 _:get_macro-add_three_0-add_one_0-outputs-result,
-                _:get_macro-add_three_0-add_one_0-inputs-a .
-
-        _:get_macro-add_three_0 a prov:Activity ;
-            bfo:0000051 _:get_macro-add_three_0-add_one_0,
-                _:get_macro-add_three_0-add_two_0,
-                _:get_macro-add_three_0-outputs-w,
-                _:get_macro-add_three_0-inputs-c .
-
-        _:{add_three.__module__}-add_three-not_defined iao:0000136 _:get_macro-add_three_0 ;
-            a iao:0000030 .
-
-        _:{get_macro.__module__}-get_macro-not_defined iao:0000136 _:get_macro ;
-            a iao:0000030 .
-
-        _:get_macro-add_three_0 bfo:0000063 _:get_macro-add_one_0 .
-
-        _:get_macro-add_three_0-add_one_0 bfo:0000063 _:get_macro-add_three_0-add_two_0 .
-
-
-        _:get_macro-add_three_0-add_two_0 a prov:Activity ;
-            bfo:0000051 _:get_macro-add_three_0-add_two_0-outputs-result,
-                _:get_macro-add_three_0-add_two_0-inputs-b .
-
-        _:{add_two.__module__}-add_two-not_defined iao:0000136 _:get_macro-add_three_0-add_two_0 ;
-            a iao:0000030 .\n\n"""
-        )
-        ref_graph = Graph()
-        ref_graph.parse(data=txt, format="turtle", publicID="")
-        original_graph = get_knowledge_graph(get_macro.run())
-        graph_to_compare = Graph()
-        graph_to_compare = graph_to_compare.parse(data=original_graph.serialize())
-        _, in_first, in_second = graph_diff(graph_to_compare, ref_graph)
-        with self.subTest("Missing triples"):
-            self.assertEqual(
-                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
-            )
-        with self.subTest("Unexpected triples"):
-            self.assertEqual(
-                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
-            )
-
-    def test_parse_cancel(self):
-        channels = serialize_data(get_wrong_order.serialize_workflow())[1]
-        self.assertTrue(
-            any(
-                "cancel" in channel["extra"]
-                for channel in channels.values()
-                if "extra" in channel
-            )
-        )
-        to_cancel = _parse_cancel(channels)
-        self.assertEqual(len(to_cancel), 1)
-        self.assertEqual(
-            to_cancel[0],
-            (
-                BNode("get_wrong_order-create_vacancy_0-outputs-structure"),
-                URIRef("http://example.org/hasState"),
-                URIRef("http://example.org/relaxed"),
-            ),
-        )
-
-    def test_wrong_order(self):
-        graph = get_knowledge_graph(get_wrong_order.serialize_workflow())
-        missing_triples = [
-            [str(gg) for gg in g] for g in validate_values(graph)["missing_triples"]
-        ]
-        self.assertEqual(
-            missing_triples,
-            [
-                [
-                    "get_wrong_order-get_vacancy_formation_energy_0-inputs-structure",
-                    "http://example.org/hasState",
-                    "http://example.org/relaxed",
-                ]
-            ],
-        )
-
-    def test_serialize_data(self):
-        data = get_macro.run()
-        nodes, channels, edges = serialize_data(data)
-        for key, node in channels.items():
-            self.assertTrue(key.startswith(node[NS.PREFIX]))
-            self.assertIn(node[NS.PREFIX], nodes)
-        self.assertIn("get_macro.add_three_0.inputs.c", channels)
-        for args in edges:
-            self.assertIn(args[0], channels)
-            self.assertIn(args[1], channels)
-
-    def test_visualize(self):
-        data = get_macro.run()
-        graph = get_knowledge_graph(data)
-        self.assertIsInstance(visualize(graph), Digraph)
-        self.assertIsInstance(visualize(graph, simplify_restrictions=True), Digraph)
-        self.assertEqual(len(graph), len(get_knowledge_graph(data)))
-
-    def test_function_referencing(self):
-        graph = get_knowledge_graph(get_correct_analysis_owl.serialize_workflow())
-        self.assertEqual(
-            list(graph.subject_objects(PROV.wasGeneratedBy))[0],
-            (
-                BNode("get_correct_analysis_owl-add_0-inputs-a"),
-                BNode("get_correct_analysis_owl-add_0"),
-            ),
-        )
-        self.assertEqual(
-            list(graph.subject_objects(PROV.used))[0],
-            (
-                BNode("get_correct_analysis_owl-add_0"),
-                BNode("add"),
-            ),
-        )
-
-    def test_units(self):
-        graph = get_knowledge_graph(get_speed_correct_units.serialize_workflow())
-        self.assertEqual(validate_values(graph)["distinct_units"], {})
-        graph = get_knowledge_graph(get_speed_incorrect_units.serialize_workflow())
-        self.assertEqual(
-            list(validate_values(graph)["distinct_units"].keys()),
-            [
-                BNode(
-                    "get_speed_incorrect_units-get_time_incorrect_units_0-outputs-output-value"
-                )
-            ],
-        )
-
-    def test_namespace(self):
-        graph = get_knowledge_graph(
-            add_three.run(c=1), namespace=Namespace("http://www.example.org/")
-        )
-        for s_o in graph.subject_objects():
-            self.assertTrue("http" in s_o[0] or isinstance(s_o[0], Literal))
-            self.assertTrue("http" in s_o[1] or isinstance(s_o[1], Literal))
-
-    def test_precedes(self):
-        wf_dict = get_correct_analysis.serialize_workflow()
-        edge_list = serialize_data(wf_dict)[2]
-        triples = _get_precedes(_get_edge_dict(edge_list))
-        self.assertEqual(triples[0][0], "get_correct_analysis.add_0")
-        self.assertEqual(triples[0][2], "get_correct_analysis.multiply_0")
-        self.assertEqual(triples[1][0], "get_correct_analysis.multiply_0")
-        self.assertEqual(triples[1][2], "get_correct_analysis.correct_analysis_0")
-
-    def test_semantikon_uri(self):
-        my_object = SemantikonURI(EX.Object)
-
-        @workflow
-        def some_workflow(x: u(int, triples=(my_object, EX.hasProperty, "self"))):
-            y = add_onetology(x)
-            return y
-
-        graph = get_knowledge_graph(some_workflow.run(x=1.0))
-        my_object_node = list(graph.subjects(RDF.type, EX.Object))
-        self.assertEqual(len(my_object_node), 1)
-        node = list(graph.objects(my_object_node[0], EX.hasProperty))
-        self.assertEqual(node[0], BNode("some_workflow-inputs-x"))
-
-    def test_to_restrictions(self):
-        # Common reference graph for single target class
-        single_target_text = dedent(
-            """\
-        @prefix owl: <http://www.w3.org/2002/07/owl#> .
-        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-
-        <http://example.org/origin> a owl:Class ;
-            owl:equivalentClass [ a owl:Class ;
-                    owl:intersectionOf ( <http://example.org/my_class> [ a owl:Restriction ;
-                                owl:onProperty <http://example.org/some_predicate> ;
-                                owl:someValuesFrom <http://example.org/destination> ] ) ] .
-        """
-        )
-        g_ref_single = Graph()
-        g_ref_single.parse(data=single_target_text, format="turtle")
-
-        with self.subTest("Single target class as list"):
-            g = _to_owl_restriction(EX["some_predicate"], EX["destination"])
-            restrictions = _bundle_restrictions(g)
-            g += _to_intersection(EX["origin"], [EX["my_class"]] + restrictions)
-            _, in_first, in_second = graph_diff(g, g_ref_single)
-            self.assertEqual(
-                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
-            )
-            self.assertEqual(
-                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
-            )
-
-        with self.subTest("Multiple target classes"):
-            text = dedent(
-                """\
-            @prefix owl: <http://www.w3.org/2002/07/owl#> .
-            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-
-            <http://example.org/origin> a owl:Class ;
-                owl:equivalentClass [ a owl:Class ;
-                        owl:intersectionOf ( <http://example.org/my_class> [ a owl:Restriction ;
-                                    owl:onProperty <http://example.org/some_predicate> ;
-                                    owl:someValuesFrom <http://example.org/dest1> ] [ a owl:Restriction ;
-                                    owl:onProperty <http://example.org/some_predicate> ;
-                                    owl:someValuesFrom <http://example.org/dest2> ] ) ] .
-            """
-            )
-            g_ref = Graph()
-            g_ref.parse(data=text, format="turtle")
-            g = Graph()
-            for cl in [EX["dest1"], EX["dest2"]]:
-                g += _to_owl_restriction(EX["some_predicate"], cl)
-            g += _to_intersection(
-                EX["origin"], [EX["my_class"]] + _bundle_restrictions(g)
-            )
-            _, in_first, in_second = graph_diff(g, g_ref)
-            self.assertEqual(
-                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
-            )
-            self.assertEqual(
-                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
-            )
-
-        with self.subTest("owl:hasValue instead of owl:someValuesFrom"):
-            text = dedent(
-                """\
-            @prefix owl: <http://www.w3.org/2002/07/owl#> .
-            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-
-            <http://example.org/origin> a owl:Class ;
-                owl:equivalentClass [ a owl:Class ;
-                        owl:intersectionOf ( <http://example.org/my_class> [ a owl:Restriction ;
-                                    owl:onProperty <http://example.org/some_predicate> ;
-                                    owl:hasValue <http://example.org/destination> ] ) ] .
-            """
-            )
-            g_ref = Graph()
-            g_ref.parse(data=text, format="turtle")
-            g = _to_owl_restriction(
-                EX["some_predicate"], EX["destination"], OWL.hasValue
-            )
-            restrictions = _bundle_restrictions(g)
-            g += _to_intersection(EX["origin"], [EX["my_class"]] + restrictions)
-            _, in_first, in_second = graph_diff(g, g_ref)
-            self.assertEqual(
-                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
-            )
-            self.assertEqual(
-                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
-            )
+        },
+    ],
+) -> int:
+    ...
+    return 10
 
 
 @dataclass
 class Input:
-    T: u(float, units="kelvin")
+    T: Annotated[float, {"units": "kelvin"}]
     n: int
 
     @dataclass
@@ -1084,81 +203,531 @@ class Input:
 
 @dataclass
 class Output:
-    E: u(float, units="electron_volt")
-    L: u(float, units="angstrom")
+    E: Annotated[float, {"units": "electron_volt", "uri": EX.Energy}]
+    L: Annotated[float, {"units": "nanometer"}]
 
 
-def run_md(inp: Input) -> Output:
-    out = Output(E=1.0, L=2.0)
+def run_md(inp: Input, E=1.0) -> Output:
+    out = Output(E=E, L=2.0)
     return out
 
 
-@workflow
-def get_run_md(inp: Input):
-    result = run_md(inp)
-    return result
+class TestOntology(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.maxDiff = None
+        cls.static_dir = Path(__file__).parent.parent / "static"
 
+    def test_my_kinetic_energy_workflow_graph(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict, include_t_box=False)
 
-class Animal:
-    class Mammal:
-        class Dog:
-            pass
+        with self.subTest("workflow instance exists"):
+            workflows = list(g.subjects(RDF.type, onto.BASE.my_kinetic_energy_workflow))
+            self.assertEqual(len(workflows), 1)
 
-        class Cat:
-            pass
+        wf = workflows[0]
 
-    class Reptile:
-        class Lizard:
-            pass
-
-        class Snake:
-            pass
-
-
-class ForbiddenAnimal:
-    class Mamal:
-        class ForbiddenAnimal:
-            pass
-
-
-class TestDataclass(unittest.TestCase):
-    def test_dataclass(self):
-        wf_dict = get_run_md.run(Input(T=300.0, n=100))
-        graph = get_knowledge_graph(wf_dict)
-        graph = extract_dataclass(graph=graph)
-        i_txt = "get_run_md-run_md_0-inputs-inp"
-        o_txt = "get_run_md-run_md_0-outputs-out"
-        triples = (
-            (BNode(f"{i_txt}-n-value"), RDFS.subClassOf, BNode(f"{i_txt}-value")),
-            (BNode(f"{i_txt}-n-value"), RDF.value, Literal(100)),
-            (BNode(f"{i_txt}-parameters-a-value"), RDF.value, Literal(2)),
-            (BNode(o_txt), SNS.has_participant, BNode(f"{o_txt}-E-value")),
-        )
-        for ii, triple in enumerate(triples):
-            with self.subTest(i=ii):
-                self.assertEqual(
-                    len(list(graph.triples(triple))),
-                    1,
-                    msg=f"{triple} not found in graph: {graph.serialize()}",
+        with self.subTest("workflow has both function executions as parts"):
+            parts = list(g.objects(wf, onto.BFO["0000051"]))
+            ke_calls = [
+                p
+                for p in parts
+                if (
+                    p,
+                    RDF.type,
+                    onto.BASE["my_kinetic_energy_workflow-get_kinetic_energy_0"],
                 )
-        self.assertIsNone(graph.value(BNode(f"{i_txt}-not_dataclass-b-value")))
+                in g
+            ]
+            speed_calls = [
+                p
+                for p in parts
+                if (p, RDF.type, onto.BASE["my_kinetic_energy_workflow-get_speed_0"])
+                in g
+            ]
+            self.assertEqual(len(ke_calls), 1)
+            self.assertEqual(len(speed_calls), 1)
 
-    def test_dataclass_to_knowledge_graph(self):
-        EX = Namespace("http://example.org/")
-        tags = [
-            ("Cat", "Mammal"),
-            ("Lizard", "Reptile"),
-            ("Mammal", "Animal"),
-            ("Dog", "Mammal"),
-            ("Snake", "Reptile"),
-            ("Reptile", "Animal"),
+        ke_call = ke_calls[0]
+        speed_call = speed_calls[0]
+
+        with self.subTest("speed computation precedes kinetic energy computation"):
+            self.assertIn(
+                (speed_call, onto.BFO["0000063"], ke_call),
+                g,
+            )
+
+        with self.subTest("functions are linked to python callables"):
+            self.assertIn(
+                (
+                    ke_call,
+                    onto.RO["0000057"],
+                    onto.BASE[
+                        f"{__name__}-get_kinetic_energy-not_defined".replace(".", "-")
+                    ],
+                ),
+                g,
+            )
+            self.assertIn(
+                (
+                    speed_call,
+                    onto.RO["0000057"],
+                    onto.BASE[f"{__name__}-get_speed-not_defined".replace(".", "-")],
+                ),
+                g,
+            )
+
+        with self.subTest("kinetic energy output data has correct unit"):
+            outputs = list(
+                g.subjects(
+                    RDF.type,
+                    onto.BASE[
+                        "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output_data"
+                    ],
+                )
+            )
+            self.assertEqual(len(outputs), 1)
+            self.assertIn(
+                (
+                    outputs[0],
+                    Namespace("http://qudt.org/schema/qudt/").hasUnit,
+                    Namespace("http://qudt.org/vocab/unit/").J,
+                ),
+                g,
+            )
+        g = onto.get_knowledge_graph(wf_dict)
+        self.assertTrue(onto.validate_values(g)[0])
+
+    def test_to_restrictions(self):
+        # Common reference graph for single target class
+        single_target_text = prefixes + dedent(
+            """\
+        <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
+                    owl:onProperty <http://example.org/some_predicate> ;
+                    owl:someValuesFrom <http://example.org/destination> ],
+                <http://example.org/my_class> .
+        """
+        )
+        g_ref_single = Graph()
+        g_ref_single.parse(data=single_target_text, format="turtle")
+
+        with self.subTest("Single target class as list"):
+            g = onto._to_owl_restriction(
+                EX["origin"], EX["some_predicate"], EX["destination"]
+            )
+            g.add((EX["origin"], RDFS.subClassOf, EX["my_class"]))
+            _, in_first, in_second = graph_diff(g, g_ref_single)
+            self.assertEqual(
+                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
+            )
+            self.assertEqual(
+                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
+            )
+
+        with self.subTest("Multiple target classes"):
+            text = prefixes + dedent(
+                """\
+            <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
+                        owl:onProperty <http://example.org/some_predicate> ;
+                        owl:someValuesFrom <http://example.org/dest1> ],
+                    [ a owl:Restriction ;
+                        owl:onProperty <http://example.org/some_predicate> ;
+                        owl:someValuesFrom <http://example.org/dest2> ],
+                    <http://example.org/my_class> .
+            """
+            )
+            g_ref = Graph()
+            g_ref.parse(data=text, format="turtle")
+            g = Graph()
+            for cl in [EX["dest1"], EX["dest2"]]:
+                g += onto._to_owl_restriction(EX["origin"], EX["some_predicate"], cl)
+            g.add((EX["origin"], RDFS.subClassOf, EX["my_class"]))
+            _, in_first, in_second = graph_diff(g, g_ref)
+            self.assertEqual(
+                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
+            )
+            self.assertEqual(
+                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
+            )
+
+        with self.subTest("owl:hasValue instead of owl:someValuesFrom"):
+            text = prefixes + dedent(
+                """\
+            <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
+                        owl:hasValue <http://example.org/destination> ;
+                        owl:onProperty <http://example.org/some_predicate> ],
+                    <http://example.org/my_class> .
+            """
+            )
+            g_ref = Graph()
+            g_ref.parse(data=text, format="turtle")
+            g = onto._to_owl_restriction(
+                EX["origin"],
+                EX["some_predicate"],
+                EX["destination"],
+                restriction_type=OWL.hasValue,
+            )
+            g.add((EX["origin"], RDFS.subClassOf, EX["my_class"]))
+            _, in_first, in_second = graph_diff(g, g_ref)
+            self.assertEqual(
+                len(in_second), 0, msg=f"Missing triples: {in_second.serialize()}"
+            )
+            self.assertEqual(
+                len(in_first), 0, msg=f"Unexpected triples: {in_first.serialize()}"
+            )
+
+    def test_hash(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        G = onto.serialize_and_convert_to_networkx(wf_dict)
+        self.assertIsInstance(onto._get_graph_hash(G), str)
+        self.assertEqual(len(onto._get_graph_hash(G)), 32)
+        self.assertIn(
+            "dtype",
+            G.nodes["my_kinetic_energy_workflow-get_speed_0-inputs-distance"],
+            msg="dtype should not be deleted after hashing",
+        )
+        self.assertEqual(
+            G._get_data_node(
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity"
+            ),
+            G._get_data_node("my_kinetic_energy_workflow-get_speed_0-outputs-speed"),
+        )
+        self.assertNotEqual(
+            G._get_data_node(
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity"
+            ),
+            G._get_data_node(
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output"
+            ),
+        )
+
+        @workflow
+        def workflow_with_default_values(distance=2, time=1, mass=4):
+            speed = get_speed(distance, time)
+            kinetic_energy = get_kinetic_energy(mass, speed)
+            return kinetic_energy
+
+        wf_dict = workflow_with_default_values.serialize_workflow()
+        wf_dict_run = workflow_with_default_values.run(distance=2, time=1, mass=4)
+        G = onto.serialize_and_convert_to_networkx(wf_dict)
+        G_run = onto.serialize_and_convert_to_networkx(wf_dict_run)
+        self.assertEqual(onto._get_graph_hash(G), onto._get_graph_hash(G_run))
+
+    def test_hash_with_value(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        G = onto.serialize_and_convert_to_networkx(wf_dict)
+        wf_dict = my_kinetic_energy_workflow.run(1, 2, 3)
+        G_run = onto.serialize_and_convert_to_networkx(wf_dict)
+        self.assertEqual(
+            onto._get_graph_hash(G),
+            onto._get_graph_hash(G_run, with_global_inputs=False),
+        )
+        self.assertNotEqual(
+            onto._get_graph_hash(G),
+            onto._get_graph_hash(G_run, with_global_inputs=True),
+        )
+
+    def test_shacl_validation(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict)
+        shacl = onto.owl_restrictions_to_shacl(g)
+        self.assertTrue(validate(g, shacl_graph=shacl)[0])
+
+    def test_derives_from(self):
+        wf_dict = wf_triples.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict, include_a_box=False)
+        query = sparql_prefixes + dedent(
+            """\
+        SELECT ?main_class WHERE {
+            ?derivedFrom owl:someValuesFrom ?input_class .
+            ?derivedFrom owl:onProperty ro:0001000 .
+            ?main_class rdfs:subClassOf ?derivedFrom .
+            ?input_class rdfs:subClassOf obi:0001933 .
+        }
+        """
+        )
+        self.assertEqual(len(g.query(query)), 1)
+        self.assertEqual(
+            list(g.query(query))[0]["main_class"],
+            onto.BASE["wf_triples-f_triples_0-outputs-a_data"],
+        )
+        g = onto.get_knowledge_graph(wf_dict, include_t_box=False)
+        query = sparql_prefixes + dedent(
+            """
+        ASK WHERE {
+            ?output a sns:wf_triples-f_triples_0-outputs-a_data .
+            ?input a sns:wf_triples-inputs-a_data .
+            ?output ro:0001000 ?input .
+        }
+        """
+        )
+        self.assertTrue(g.query(query).askAnswer)
+
+    def test_triples(self):
+        wf_dict = wf_triples.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict, include_t_box=False)
+
+        with self.subTest("workflow instance exists"):
+            workflows = list(g.subjects(RDF.type, onto.BASE.wf_triples))
+            self.assertEqual(len(workflows), 1)
+
+        wf = workflows[0]
+
+        with self.subTest("workflow has a function activity part"):
+            parts = list(g.objects(wf, onto.BFO["0000051"]))
+            fn_activities = [
+                p
+                for p in parts
+                if (
+                    p,
+                    onto.RO["0000057"],
+                    onto.BASE[f"{__name__}-f_triples-not_defined".replace(".", "-")],
+                )
+                in g
+            ]
+            self.assertEqual(len(fn_activities), 1)
+
+        with self.subTest("cross-input data relations preserved"):
+            query = sparql_prefixes + dedent(
+                """
+            ASK WHERE {
+                ?b_data a sns:wf_triples-inputs-b_data .
+                ?a_data a sns:wf_triples-inputs-a_data .
+                ?b_data ex:relatedTo ?a_data .
+            }
+            """
+            )
+            self.assertTrue(g.query(query).askAnswer)
+            query = sparql_prefixes + dedent(
+                """
+            ASK WHERE {
+                ?output a sns:wf_triples-f_triples_0-outputs-a_data .
+                ?input a sns:wf_triples-inputs-b_data .
+                ?output ex:hasSomeRelation ?input .
+            }
+            """
+            )
+            self.assertTrue(g.query(query).askAnswer)
+        g = onto.get_knowledge_graph(wf_dict)
+        self.assertTrue(onto.validate_values(g)[0])
+
+    def test_type_checking(self):
+        wf_dict = eat_pizza.serialize_workflow()
+        graph = onto.get_knowledge_graph(wf_dict)
+        self.assertFalse(onto.validate_values(graph)[0], msg=graph.serialize())
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        graph = onto.get_knowledge_graph(wf_dict)
+        verdict, _, report = onto.validate_values(graph)
+        self.assertTrue(verdict, msg=report)
+
+        @workflow
+        def my_kinetic_energy_workflow_wrong_units(
+            distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
+        ):
+            speed = get_speed(distance, time)
+            kinetic_energy = get_kinetic_energy_wrong_units(mass, speed)
+            return kinetic_energy
+
+        wf_dict = my_kinetic_energy_workflow_wrong_units.serialize_workflow()
+        graph = onto.get_knowledge_graph(wf_dict)
+        self.assertFalse(onto.validate_values(graph)[0])
+
+        @workflow
+        def my_kinetic_energy_workflow_wrong_uri(
+            distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
+        ):
+            speed = get_speed(distance, time)
+            kinetic_energy = get_kinetic_energy_wrong_uri(mass, speed)
+            return kinetic_energy
+
+        wf_dict = my_kinetic_energy_workflow_wrong_uri.serialize_workflow()
+        graph = onto.get_knowledge_graph(wf_dict)
+        self.assertFalse(onto.validate_values(graph)[0])
+
+        @workflow
+        def my_kinetic_energy_workflow_not_annotated(
+            distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
+        ):
+            speed = get_speed_not_annotated(distance, time)
+            kinetic_energy = get_kinetic_energy(mass, speed)
+            return kinetic_energy
+
+        wf_dict = my_kinetic_energy_workflow_not_annotated.serialize_workflow()
+        graph = onto.get_knowledge_graph(wf_dict)
+        self.assertFalse(onto.validate_values(graph, strict_typing=True)[0])
+        self.assertTrue(onto.validate_values(graph, strict_typing=False)[0])
+
+    def test_restrictions(self):
+        @workflow
+        def my_correct_workflow(clothes: Clothes) -> int:
+            dyed_clothes = dye(clothes)
+            washed_clothes = wash(dyed_clothes)
+            money = sell(washed_clothes)
+            return money
+
+        graph = onto.get_knowledge_graph(my_correct_workflow.serialize_workflow())
+        self.assertTrue(onto.validate_values(graph)[0])
+
+        @workflow
+        def my_wrong_workflow(clothes: Clothes) -> int:
+            washed_clothes = wash(clothes)
+            money = sell(washed_clothes)
+            return money
+
+        graph = onto.get_knowledge_graph(my_wrong_workflow.serialize_workflow())
+        self.assertFalse(onto.validate_values(graph)[0])
+
+        @workflow
+        def my_simple_workflow(clothes: Clothes) -> int:
+            washed_clothes = wash(clothes)
+            money = sell_without_color(washed_clothes)
+            return money
+
+        graph = onto.get_knowledge_graph(my_simple_workflow.serialize_workflow())
+        self.assertTrue(onto.validate_values(graph)[0])
+
+        @workflow
+        def my_shacl_workflow(clothes: Clothes) -> int:
+            washed_clothes = wash(clothes)
+            money = sell_with_shacl(washed_clothes)
+            return money
+
+        graph = onto.get_knowledge_graph(my_shacl_workflow.serialize_workflow())
+        verdict, _, report = onto.validate_values(graph)
+        self.assertTrue(verdict, msg=report)
+
+        @workflow
+        def my_shacl_wrong_workflow(clothes: Clothes) -> int:
+            money = sell_with_shacl(clothes)
+            return money
+
+        graph = onto.get_knowledge_graph(my_shacl_wrong_workflow.serialize_workflow())
+        self.assertFalse(onto.validate_values(graph)[0])
+
+    def test_visualize(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict)
+        from graphviz.graphs import Digraph
+
+        self.assertIsInstance(visualize(g), Digraph)
+
+    def test_docstring(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict)
+        bnode = list(g.subjects(RDF.type, onto.SNS.textual_entity))
+        self.assertEqual(len(bnode), 1)
+        self.assertEqual(g.value(bnode[0], RDF.value), Literal("some random docstring"))
+
+    def test_function_metadata(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        graph = onto.get_knowledge_graph(wf_dict)
+        # Check that the main subject exists
+        main_subject = onto.BASE[
+            f"{__name__}-get_kinetic_energy-not_defined".replace(".", "-")
         ]
-        doubles = sorted([(EX[tag[0]], EX[tag[1]]) for tag in tags])
-        graph = dataclass_to_knowledge_graph(Animal, EX)
-        self.maxDiff = None
-        self.assertEqual(sorted(graph.subject_objects(None)), doubles)
-        with self.assertRaises(ValueError):
-            graph = dataclass_to_knowledge_graph(ForbiddenAnimal, EX)
+        self.assertIn((main_subject, RDF.type, onto.IAO["0000591"]), graph)
+        self.assertIn((main_subject, RDFS.label, Literal("get_kinetic_energy")), graph)
+        self.assertIn((main_subject, onto.IAO["0000136"], EX.get_kinetic_energy), graph)
+
+        # Check input specifications
+        input_specifications = list(
+            graph.objects(main_subject, onto.BASE.has_parameter_specification)
+        )
+        self.assertEqual(len(input_specifications), 3)  # 2 inputs and 1 output
+
+        # Check the first input specification (mass)
+        mass_spec = list(graph.subjects(onto.IAO["0000136"], onto.PMD["0020133"]))
+        self.assertEqual(len(mass_spec), 1)
+        self.assertIn((mass_spec[0], RDF.type, onto.BASE.input_specification), graph)
+        self.assertIn((mass_spec[0], RDFS.label, Literal("mass")), graph)
+        self.assertIn(
+            (mass_spec[0], onto.BASE.has_parameter_position, Literal(0)), graph
+        )
+
+        # Check the output specification
+        output_spec = list(graph.subjects(onto.IAO["0000136"], onto.PMD["0020142"]))
+        self.assertEqual(len(output_spec), 1)
+        self.assertIn((output_spec[0], RDF.type, onto.BASE.output_specification), graph)
+        self.assertIn((output_spec[0], RDFS.label, Literal("output")), graph)
+        self.assertIn(
+            (output_spec[0], onto.BASE.has_parameter_position, Literal(0)), graph
+        )
+
+    def test_run(self):
+        wf_dict = my_kinetic_energy_workflow.run(2, 1, 4)
+        g_run = onto.get_knowledge_graph(wf_dict)
+        query = (
+            sparql_prefixes
+            + """
+        SELECT ?node ?value WHERE {
+          ?bnode a ?node ;
+            rdf:value ?value .
+        }
+        """
+        )
+        results = list(g_run.query(query))
+        for tag, value in zip(
+            [
+                "my_kinetic_energy_workflow-inputs-mass_data",
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output_data",
+                "my_kinetic_energy_workflow-inputs-time_data",
+                "my_kinetic_energy_workflow-get_speed_0-outputs-speed_data",
+                "my_kinetic_energy_workflow-inputs-distance_data",
+            ],
+            [4, 8.0, 1, 2.0, 2],
+        ):
+            with self.subTest(f"Checking value for {tag}"):
+                matched = [
+                    (str(row["node"]), row["value"])
+                    for row in results
+                    if str(row["node"]).endswith(tag)
+                ]
+                self.assertEqual(len(matched), 1)
+                self.assertEqual(matched[0][1].toPython(), value)
+        g_run_without_data = onto.get_knowledge_graph(wf_dict, remove_data=True)
+        results = [d[0] for d in g_run_without_data.query(query)]
+        for tag in [
+            "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output_data",
+            "my_kinetic_energy_workflow-get_speed_0-outputs-speed_data",
+        ]:
+            with self.subTest(f"Checking value for {tag}"):
+                self.assertFalse(any(str(r).endswith(tag) for r in results))
+
+    def test_extract_dataclass(self):
+        @workflow
+        def get_run_md(inp: Input, E=1.0):
+            result = run_md(inp)
+            return result
+
+        inp = Input(T=300.0, n=100)
+        wf_dict = get_run_md.run(inp, E=1.0)
+        g = onto.get_knowledge_graph(wf_dict)
+        g_dc = onto.extract_dataclass(g)
+        with self.subTest("temperature data"):
+            for s in g_dc.subjects(RDF.type, onto.BASE["get_run_md-inputs-inp_T_data"]):
+                self.assertIn((s, onto.QUDT.hasUnit, UNIT["K"]), g_dc)
+                self.assertIn((s, RDF.value, Literal(300.0)), g_dc)
+
+        with self.subTest("particle count data"):
+            # Check that the particle count data has the correct value
+            for s in g_dc.subjects(RDF.type, onto.BASE["get_run_md-inputs-inp_n_data"]):
+                self.assertIn((s, RDF.value, Literal(100)), g_dc)
+
+        with self.subTest("energy output data"):
+            for s in g_dc.subjects(
+                RDF.type, onto.BASE["get_run_md-run_md_0-outputs-out_E_data"]
+            ):
+                self.assertIn((s, onto.QUDT.hasUnit, UNIT["EV"]), g_dc)
+                self.assertIn((s, RDF.value, Literal(1.0)), g_dc)
+                self.assertIn((s, onto.OBI["0001927"], None), g_dc)
+
+        with self.subTest("length output data"):
+            for s in g_dc.subjects(
+                RDF.type, onto.BASE["get_run_md-run_md_0-outputs-out_L_data"]
+            ):
+                self.assertIn((s, onto.QUDT.hasUnit, UNIT["NanoM"]), g_dc)
+                self.assertIn((s, RDF.value, Literal(2.0)), g_dc)
 
 
 if __name__ == "__main__":
