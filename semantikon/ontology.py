@@ -7,6 +7,7 @@ from typing import Any, TypeAlias, cast
 
 import networkx as nx
 from flowrep.tools import get_function_metadata
+from flowrep.workflow import get_hashed_node_dict
 from owlrl import DeductiveClosure, RDFS_Semantics
 from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
@@ -47,7 +48,8 @@ class SNS:
     derives_from: URIRef = RO["0001000"]
     software_method: URIRef = IAO["0000591"]
     textual_entity: URIRef = IAO["0000300"]
-    denotes: URIRef = IAO["0000219"]
+    denoted_by: URIRef = IAO["0000235"]
+    identifier: URIRef = IAO["0020000"]
     is_about: URIRef = IAO["0000136"]
     input_specification: URIRef = BASE["input_specification"]
     output_specification: URIRef = BASE["output_specification"]
@@ -177,10 +179,39 @@ def validate_values(
     return validate(g, shacl_graph=shacl)
 
 
+def _append_hash(
+    G: SemantikonDiGraph,
+    node: str,
+    hash_value: str,
+    label: str | None = None,
+    remove_data: bool = False,
+):
+    for child in G.successors(node):
+        if G.nodes[child]["step"] == "node":
+            continue
+        # Determine the label for this specific child. If no label has been
+        # provided from a parent context, derive it from the child's node data.
+        child_label = label
+        if child_label is None:
+            child_label = G.nodes[child].get("label", G.nodes[child]["arg"])
+        G.nodes[child]["hash"] = hash_value + f"@{child_label}"
+        if remove_data and "value" in G.nodes[child]:
+            del G.nodes[child]["value"]
+        _append_hash(
+            G,
+            child,
+            hash_value=hash_value,
+            label=child_label,
+            remove_data=remove_data,
+        )
+
+
 def get_knowledge_graph(
     wf_dict: dict,
     include_t_box: bool = True,
     include_a_box: bool = True,
+    hash_data: bool = True,
+    remove_data: bool = False,
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
@@ -194,6 +225,10 @@ def get_knowledge_graph(
         (rdflib.Graph): graph containing workflow information
     """
     G = serialize_and_convert_to_networkx(wf_dict)
+    if hash_data:
+        hashed_dict = get_hashed_node_dict(wf_dict)
+        for node, data in hashed_dict.items():
+            _append_hash(G, node, data["hash"], remove_data=remove_data)
     graph = Graph()
     graph.bind("qudt", str(QUDT))
     graph.bind("unit", "http://qudt.org/vocab/unit/")
@@ -242,9 +277,14 @@ def _function_to_graph(
         docstring = BNode(f_node + "_docstring")
         g.add((docstring, RDF.type, SNS.textual_entity))
         g.add((docstring, RDF.value, Literal(data["docstring"])))
-        g.add((docstring, SNS.denotes, f_node))
+        g.add((f_node, SNS.denoted_by, docstring))
     if uri is not None:
         g.add((f_node, SNS.is_about, uri))
+    if data.get("hash", "") != "":
+        hash_bnode = BNode(f_node + "_hash")
+        g.add((f_node, SNS.denoted_by, hash_bnode))
+        g.add((hash_bnode, RDF.type, SNS.identifier))
+        g.add((hash_bnode, RDF.value, Literal(data["hash"])))
     for io, io_args in zip(["input", "output"], [input_args, output_args]):
         for arg in io_args:
             arg_node = BNode("_".join([f_node, io, arg["arg"]]))
@@ -497,6 +537,11 @@ def _wf_io_to_graph(
         g.add((node, has_specified_io, data_node))
         if "value" in data and list(g.objects(data_node, RDF.value)) == []:
             g.add((data_node, RDF.value, Literal(data["value"])))
+        if "hash" in data:
+            hash_bnode = BNode(data_node_tag + "_hash")
+            g.add((data_node, SNS.denoted_by, hash_bnode))
+            g.add((hash_bnode, RDF.type, SNS.identifier))
+            g.add((hash_bnode, RDF.value, Literal(data["hash"])))
         if "units" in data and step == "outputs":
             g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
         if "uri" in data and step == "outputs":

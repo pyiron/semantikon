@@ -657,7 +657,8 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_run(self):
-        g_run = onto.get_knowledge_graph(my_kinetic_energy_workflow.run(2, 1, 4))
+        wf_dict = my_kinetic_energy_workflow.run(2, 1, 4)
+        g_run = onto.get_knowledge_graph(wf_dict)
         query = (
             sparql_prefixes
             + """
@@ -686,6 +687,14 @@ class TestOntology(unittest.TestCase):
                 ]
                 self.assertEqual(len(matched), 1)
                 self.assertEqual(matched[0][1].toPython(), value)
+        g_run_without_data = onto.get_knowledge_graph(wf_dict, remove_data=True)
+        results = [d[0] for d in g_run_without_data.query(query)]
+        for tag in [
+            "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output_data",
+            "my_kinetic_energy_workflow-get_speed_0-outputs-speed_data",
+        ]:
+            with self.subTest(f"Checking value for {tag}"):
+                self.assertFalse(any(str(r).endswith(tag) for r in results))
 
     def test_extract_dataclass(self):
         @workflow
