@@ -49,6 +49,12 @@ def my_while_condition(a=10, b=20):
     return a < b
 
 
+def function_with_duplicate_output_labels(
+    a: int, b: int
+) -> tuple[Annotated[int, {"label": "output"}], Annotated[int, {"label": "output"}]]:
+    return a + b, a - b
+
+
 @meta(uri="some URI")
 def complex_function(
     x: u(float, units="meter") = 2.0,
@@ -477,6 +483,27 @@ class TestWorkflow(unittest.TestCase):
             ),
             {"operation_0": 2, "add_0": 1, "multiply_0": 1},
         )
+
+    def test_forbidden_output_labels(self):
+        def test_workflow(a: int, b: int):
+            a, b = function_with_duplicate_output_labels(a, b)
+            return a, b
+
+        with self.assertRaises(ValueError) as cm:
+            swf.get_workflow_dict(test_workflow)
+        self.assertIn(
+            "Duplicate output label 'output' detected for function function_with_duplicate_output_labels",
+            str(cm.exception),
+        )
+
+        def test_workflow_non_identifier_label(
+            a: int, b: int
+        ) -> Annotated[float, {"label": "not an identifier"}]:
+            result = add(a, b)
+            return result
+
+        with self.assertRaises(ValueError):
+            swf.get_workflow_dict(test_workflow_non_identifier_label)
 
 
 if __name__ == "__main__":
