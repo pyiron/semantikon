@@ -24,7 +24,7 @@ classifiers = [
 ]
 dependencies = [
     "graphviz==0.21",
-    "numpy==2.3.3",
+    "numpy==2.4.0",
     "owlrl==7.1.4",
     "pint==0.25.2",
     "rdflib==7.5.0",
