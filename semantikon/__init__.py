@@ -6,3 +6,6 @@ try:
 except importlib.metadata.PackageNotFoundError:
     # Repository clones will register an unknown version
     __version__ = "0.0.0+unknown"
+
+
+from semantikon.api import SemantikonURI, meta, u, get_knowledge_graph, validate_values
