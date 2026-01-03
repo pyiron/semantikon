@@ -33,7 +33,7 @@ You can also install `semantikon` via `conda`:
 conda install -c conda-forge semantikon
 ```
 
-## Overview
+## Quick insight
 
 In the realm of the workflow management systems, there are well defined inputs and outputs for each node. `semantikon` is a Python package to give scientific context to python functions by type annotations and decorators, which can then be translated into an `rdflib` knowledge graph. `semantikon` utilizes [PMD core ontology](https://materialdigital.github.io/core-ontology/) (PMDco), which is based on the [Basic Formal Ontology](https://basic-formal-ontology.org/) (BFO) and [Ontology for Biomedical Investigations](https://obi-ontology.org/) (OBI).
 
