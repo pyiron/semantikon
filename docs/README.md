@@ -61,13 +61,13 @@ In the realm of the workflow management systems, there are well defined inputs a
 You can also type-hint the inputs and outputs of a function using a class, i.e.:
 
 ```python
->>> from semantikon.converter import semantikon_class
+>>> from semantikon.converter import dataclass
 >>> from semantikon.metadata import u
 >>> from rdflib import Namespace
 >>>
 >>> EX = Namespace("http://example.org/")
 >>>
->>> @semantikon_class
+>>> @dataclass
 ... class MyRecord:
 ...     distance: u(float, units="meter", uri=EX.distance)
 ...     time: u(float, units="second", uri=EX.time)

@@ -1,18 +1,15 @@
 import unittest
-from dataclasses import dataclass
 from typing import Annotated
 
-from semantikon.converter import parse_metadata, semantikon_class
+from semantikon.converter import parse_metadata, dataclass
 from semantikon.metadata import u
 
 
-@semantikon_class
 @dataclass
 class Pizza:
     size: Annotated[float, "centimeter"]
     price: int = 30
 
-    @dataclass
     class Topping:
         sauce: str
 
@@ -24,7 +21,6 @@ class Pizza:
         return self.price
 
 
-@semantikon_class
 @dataclass
 class Output:
     total_energy: u(float, units="eV", label="TotalEnergy", associate_to_sample=True)
