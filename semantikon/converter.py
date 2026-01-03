@@ -451,6 +451,14 @@ def dataclass(cls: type) -> type:
     >>> print(Pizza.size)
     >>> print(Pizza.price)
     >>> print(Pizza.Topping.sauce)
+
+    Outputs:
+
+    <class '__main__.Pizza'>
+    <class '__main__.Pizza.Topping'>
+    Annotated[float, 'dimension']
+    Annotated[float, 'money']
+    Annotated[str, 'matter']
     """
     cls = dc(cls)
     for key, value in cls.__dict__.items():
