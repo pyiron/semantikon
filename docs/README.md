@@ -41,7 +41,7 @@ In the realm of the workflow management systems, there are well defined inputs a
 
 ```python
 >>> from rdflib import Namespace
->>> from semantikon.metadata import meta, u
+>>> from semantikon import meta, u
 >>> from semantikon.workflow import workflow
 >>>
 >>> EX = Namespace("http://example.org/")
