@@ -77,7 +77,7 @@ You can also type-hint the inputs and outputs of a function using a class, i.e.:
 
 ```python
 >>> from semantikon.converter import semantikon_class
->>> from semantikon.metadata import u
+>>> from semantikon import u
 >>> from rdflib import Namespace
 >>>
 >>> EX = Namespace("http://example.org/")
