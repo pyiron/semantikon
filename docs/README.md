@@ -55,9 +55,9 @@ In the realm of the workflow management systems, there are well defined inputs a
 >>> 
 >>> 
 >>> def get_kinetic_energy(
-...     mass: u(float, {"units": "kilogram", "uri": EX.Mass}),
-...     velocity: u(float, {"units": "meter/second", "uri": EX.Velocity}),
-... ) -> u(float, {"units": "joule", "uri": EX.KineticEnergy}):
+...     mass: u(float, units="kilogram", uri=EX.Mass),
+...     velocity: u(float, units="meter/second", uri=EX.Velocity),
+... ) -> u(float, units="joule", uri=EX.KineticEnergy):
 ...     return 0.5 * mass * velocity**2
 >>> 
 >>> 
