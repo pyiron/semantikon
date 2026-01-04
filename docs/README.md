@@ -74,7 +74,7 @@ The `workflow` decorator from `semantikon.workflow` allows you to define a workf
 
 ```mermaid
 graph TD
-    get_speed["get_speed (obi:planned_process)"] -- bfo:has_part --> speed["speed (pmdco:output_assignmen5)"]
+    get_speed["get_speed (obi:planned_process)"] -- bfo:has_part --> speed["speed (pmdco:output_assignment)"]
     speed -- pmdco:has_specified_output --> speed_data["speed_data (obi:value_specification)"]
     speed_data -- obi:specifies_value_of --> EX.speed
     speed_data -- qudt:hasUnit --> meter["meter (qudt:unit)"]
