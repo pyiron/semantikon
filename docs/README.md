@@ -84,29 +84,6 @@ graph TD
 
 This is only the first insight into the knowledge graph. You can find the details in the [notebook](../notebooks/knowledge_graph.ipynb) in the `notebooks` folder.
 
-You can also type-hint the inputs and outputs of a function using a class, i.e.:
-
-```python
->>> from semantikon.converter import dataclass
->>> from semantikon import u
->>> from rdflib import Namespace
->>>
->>> EX = Namespace("http://example.org/")
->>>
->>> @dataclass
-... class MyRecord:
-...     distance: u(float, units="meter", uri=EX.distance)
-...     time: u(float, units="second", uri=EX.time)
-...     result: u(float, units="meter/second", label="speed", uri=EX.speed)
->>>
->>> def get_speed(distance: MyRecord.distance, time: MyRecord.time) -> MyRecord.result:
-...     speed = distance / time
-...     return speed
-
-```
-
-This is equivalent to the previous example. Moreover, if you need to modify some parameters, you can use `u` again, e.g. `u(MyRecord.distance, units="kilometer")`.
-
 ### Side tour: unit conversion with `pint`
 
 This part has nothing to do with the knowledge graph, but `semantikon` provides a way to interpret the types of inputs and outputs of a function via a decorator, in order to check consistency of the types and to convert them if necessary. Currently, `semantikon` provides an interpreter for `pint.UnitRegistry` objects. The interpreter is applied in the following way:
