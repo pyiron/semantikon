@@ -41,7 +41,7 @@ In the realm of the workflow management systems, there are well defined inputs a
 
 ```python
 >>> from rdflib import Namespace
->>> from semantikon import meta, u
+>>> from semantikon import u
 >>>
 >>> EX = Namespace("http://example.org/")
 >>>
@@ -54,7 +54,6 @@ In the realm of the workflow management systems, there are well defined inputs a
 ...     return speed
 >>> 
 >>> 
->>> @meta(uri=EX.get_kinetic_energy)
 >>> def get_kinetic_energy(
 ...     mass: u(float, {"units": "kilogram", "uri": EX.Mass}),
 ...     velocity: u(float, {"units": "meter/second", "uri": EX.Velocity}),
