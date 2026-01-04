@@ -74,12 +74,12 @@ The `workflow` decorator from `semantikon.workflow` allows you to define a workf
 
 ```mermaid
 graph TD
-    get_speed[get_speed (obi:planned_process)] -- bfo:has_part -- speed[speed (pmdco:output_assignmen5)]
-    speed -- pmdco:has_specified_output --> speed_data[speed_data (obi:value_specification)]
+    get_speed["get_speed (obi:planned_process)"] -- bfo:has_part -- speed["speed (pmdco:output_assignmen5)"]
+    speed -- pmdco:has_specified_output --> speed_data["speed_data (obi:value_specification)"]
     speed_data -- obi:specifies_value_of --> EX.speed
-    speed_data -- qudt:hasUnit --> meter[meter (qudt:unit)]
+    speed_data -- qudt:hasUnit --> meter["meter (qudt:unit)"]
     velocity -- pmdco:has_specified_input --> speed_data
-    get_kinetic_energy[get_kinetic_energy (obi:planned_process)] -- bfo:has_part -- velocity[velocity (pmdco:input_assignment)]
+    get_kinetic_energy["get_kinetic_energy (obi:planned_process)"] -- bfo:has_part -- velocity["velocity (pmdco:input_assignment)"]
 ```
 
 This is only the first insight into the knowledge graph. You can find the details in the [notebook](../notebooks/knowledge_graph.ipynb) in the `notebooks` folder.
