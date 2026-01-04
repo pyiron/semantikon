@@ -42,7 +42,6 @@ In the realm of the workflow management systems, there are well defined inputs a
 ```python
 >>> from rdflib import Namespace
 >>> from semantikon import meta, u
->>> from semantikon.workflow import workflow
 >>>
 >>> EX = Namespace("http://example.org/")
 >>>
@@ -63,8 +62,6 @@ In the realm of the workflow management systems, there are well defined inputs a
 ...     return 0.5 * mass * velocity**2
 >>> 
 >>> 
->>> # Define a workflow that uses the above functions
->>> @workflow
 >>> def my_kinetic_energy_workflow(
 ...     distance, time, mass
 ... ):
@@ -74,7 +71,7 @@ In the realm of the workflow management systems, there are well defined inputs a
 
 ```
 
-The `workflow` decorator allows you to define a workflow that uses the above functions in semantikon. You can use any workflow management system that can export the workflow in the [`flowrep`](https://github.com/pyiron/flowrep)-format. Via `semantikon.get_knowledge_graph` you can extract a knowledge graph from the workflow. The knowledge graph schematically has the following structure:
+The `workflow` decorator from `semantikon.workflow` allows you to define a workflow that uses the above functions in semantikon. You can use any workflow management system that can export the workflow in the [`flowrep`](https://github.com/pyiron/flowrep)-format. Via `semantikon.get_knowledge_graph` you can extract a knowledge graph from the workflow. The knowledge graph schematically has the following structure:
 
 ```mermaid
 graph TD
@@ -111,7 +108,7 @@ You can also type-hint the inputs and outputs of a function using a class, i.e.:
 
 This is equivalent to the previous example. Moreover, if you need to modify some parameters, you can use `u` again, e.g. `u(MyRecord.distance, units="kilometer")`.
 
-#### Side tour: unit conversion with `pint`
+### Side tour: unit conversion with `pint`
 
 This part has nothing to do with the knowledge graph, but `semantikon` provides a way to interpret the types of inputs and outputs of a function via a decorator, in order to check consistency of the types and to convert them if necessary. Currently, `semantikon` provides an interpreter for `pint.UnitRegistry` objects. The interpreter is applied in the following way:
 
