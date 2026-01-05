@@ -10,7 +10,7 @@ except importlib.metadata.PackageNotFoundError:
 
 from semantikon.api import (
     SemantikonURI,
-    dataclass,
+    semantikon_dataclass,
     get_knowledge_graph,
     meta,
     u,
@@ -19,7 +19,7 @@ from semantikon.api import (
 
 __all__ = [
     "SemantikonURI",
-    "dataclass",
+    "semantikon_dataclass",
     "get_knowledge_graph",
     "meta",
     "u",

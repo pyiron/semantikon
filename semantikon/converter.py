@@ -9,7 +9,6 @@ import sys
 import textwrap
 import warnings
 from copy import deepcopy
-from dataclasses import dataclass as dc
 from functools import update_wrapper, wraps
 from typing import (
     Annotated,
@@ -422,7 +421,7 @@ def get_function_dict(function: Callable | FunctionWithMetadata) -> dict[str, An
     return result
 
 
-def dataclass(cls: type) -> type:
+def semantikon_dataclass(cls: type) -> type:
     """
     A class decorator to append type hints to class attributes.
 
@@ -435,9 +434,9 @@ def dataclass(cls: type) -> type:
     Comments:
 
     >>> from typing import Annotated
-    >>> from semantikon.converter import dataclass
+    >>> from semantikon.converter import semantikon_dataclass
 
-    >>> @dataclass
+    >>> @semantikon_dataclass
     >>> class Pizza:
     ...     price: Annotated[float, "money"]
     ...     size: Annotated[float, "dimension"]
@@ -460,10 +459,10 @@ def dataclass(cls: type) -> type:
     Annotated[float, 'money']
     Annotated[str, 'matter']
     """
-    cls = dc(cls)
+    cls = dataclass(cls)
     for key, value in cls.__dict__.items():
         if isinstance(value, type):
-            setattr(cls, key, dataclass(getattr(cls, key)))
+            setattr(cls, key, semantikon_dataclass(getattr(cls, key)))
     try:
         for key, value in cls.__annotations__.items():
             setattr(cls, key, value)  # Append type hints to attributes
