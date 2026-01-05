@@ -439,11 +439,11 @@ def dataclass(cls: type) -> type:
 
     >>> @dataclass
     >>> class Pizza:
-    >>>     price: Annotated[float, "money"]
-    >>>     size: Annotated[float, "dimension"]
+    ...     price: Annotated[float, "money"]
+    ...     size: Annotated[float, "dimension"]
 
     >>>     class Topping:
-    >>>         sauce: Annotated[str, "matter"]
+    ...         sauce: Annotated[str, "matter"]
 
     >>> append_types(Pizza)
     >>> print(Pizza)
@@ -463,7 +463,7 @@ def dataclass(cls: type) -> type:
     cls = dc(cls)
     for key, value in cls.__dict__.items():
         if isinstance(value, type):
-            dataclass(getattr(cls, key))  # Recursively apply to nested classes
+            setattr(cls, key, dataclass(getattr(cls, key)))
     try:
         for key, value in cls.__annotations__.items():
             setattr(cls, key, value)  # Append type hints to attributes
