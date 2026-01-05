@@ -1,5 +1,5 @@
 import unittest
-from dataclasses import is_dataclass, asdict, astuple
+from dataclasses import asdict, astuple, is_dataclass
 from typing import Annotated
 
 from semantikon.converter import dataclass, parse_metadata
@@ -77,7 +77,7 @@ class TestDataclass(unittest.TestCase):
         self.assertTrue(is_dataclass(instance))
 
         # Check if the instance can be converted to a dictionary
-        self.assertEqual(asdict(instance), {'x': 10, 'y': "hello"})
+        self.assertEqual(asdict(instance), {"x": 10, "y": "hello"})
 
         # Check if the instance can be converted to a tuple
         self.assertEqual(astuple(instance), (10, "hello"))
@@ -179,6 +179,7 @@ class TestDataclass(unittest.TestCase):
         # Check if the custom values are set correctly
         self.assertEqual(custom_instance.x, 100)
         self.assertEqual(custom_instance.y, "custom")
+
 
 if __name__ == "__main__":
     unittest.main()
