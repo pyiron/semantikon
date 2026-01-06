@@ -694,6 +694,30 @@ class TestOntology(unittest.TestCase):
             with self.subTest(f"Checking value for {tag}"):
                 self.assertFalse(any(str(r).endswith(tag) for r in results))
 
+    def test_query_with_uri(self):
+        wf_dict = my_kinetic_energy_workflow.run(1.0, 2.0, 3.0)
+        graph = onto.get_knowledge_graph(wf_dict)
+
+        query = (
+            sparql_prefixes
+            + """
+        SELECT ?distance_value ?e_value WHERE {
+          ?distance_datanode rdf:value ?distance_value .
+          ?distance_datanode obi:0001927 ?distance_bnode .
+          ?distance_bnode a pmd:0040001 .
+          ?input_node obi:0000293 ?distance_datanode .
+          ?workflow_node bfo:0000051 ?input_node .
+          ?workflow_node bfo:0000051 ?output_node .
+          ?output_node obi:0000299 ?e_datanode .
+          ?e_bnode a pmd:0020142 .
+          ?e_datanode obi:0001927 ?e_bnode .
+          ?e_datanode rdf:value ?e_value .
+        }
+        """
+        )
+        data = [d.toPython() for d in list(graph.query(query))[0]]
+        self.assertListEqual(data, [1.0, 0.375])
+
     def test_extract_dataclass(self):
         @workflow
         def get_run_md(inp: Input, E=1.0):
