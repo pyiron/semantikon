@@ -10,9 +10,9 @@ except importlib.metadata.PackageNotFoundError:
 
 from semantikon.api import (
     SemantikonURI,
-    semantikon_dataclass,
     get_knowledge_graph,
     meta,
+    semantikon_dataclass,
     u,
     validate_values,
 )

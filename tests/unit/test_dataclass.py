@@ -2,7 +2,7 @@ import unittest
 from dataclasses import asdict, astuple, is_dataclass
 from typing import Annotated
 
-from semantikon.converter import semantikon_dataclass, parse_metadata
+from semantikon.converter import parse_metadata, semantikon_dataclass
 from semantikon.metadata import u
 
 
