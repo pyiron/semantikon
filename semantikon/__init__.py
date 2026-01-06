@@ -8,10 +8,18 @@ except importlib.metadata.PackageNotFoundError:
     __version__ = "0.0.0+unknown"
 
 
-from semantikon.api import SemantikonURI, get_knowledge_graph, meta, u, validate_values
+from semantikon.api import (
+    SemantikonURI,
+    get_knowledge_graph,
+    meta,
+    semantikon_dataclass,
+    u,
+    validate_values,
+)
 
 __all__ = [
     "SemantikonURI",
+    "semantikon_dataclass",
     "get_knowledge_graph",
     "meta",
     "u",

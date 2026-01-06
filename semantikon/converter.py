@@ -9,6 +9,7 @@ import sys
 import textwrap
 import warnings
 from copy import deepcopy
+from dataclasses import dataclass
 from functools import update_wrapper, wraps
 from typing import (
     Annotated,
@@ -421,7 +422,7 @@ def get_function_dict(function: Callable | FunctionWithMetadata) -> dict[str, An
     return result
 
 
-def semantikon_class(cls: type) -> type:
+def semantikon_dataclass(cls: type) -> type:
     """
     A class decorator to append type hints to class attributes.
 
@@ -434,15 +435,15 @@ def semantikon_class(cls: type) -> type:
     Comments:
 
     >>> from typing import Annotated
-    >>> from semantikon.converter import semantikon_class
+    >>> from semantikon.converter import semantikon_dataclass
 
-    >>> @semantikon_class
+    >>> @semantikon_dataclass
     >>> class Pizza:
-    >>>     price: Annotated[float, "money"]
-    >>>     size: Annotated[float, "dimension"]
+    ...     price: Annotated[float, "money"]
+    ...     size: Annotated[float, "dimension"]
 
     >>>     class Topping:
-    >>>         sauce: Annotated[str, "matter"]
+    ...         sauce: Annotated[str, "matter"]
 
     >>> append_types(Pizza)
     >>> print(Pizza)
@@ -450,10 +451,19 @@ def semantikon_class(cls: type) -> type:
     >>> print(Pizza.size)
     >>> print(Pizza.price)
     >>> print(Pizza.Topping.sauce)
+
+    Outputs:
+
+    <class '__main__.Pizza'>
+    <class '__main__.Pizza.Topping'>
+    Annotated[float, 'dimension']
+    Annotated[float, 'money']
+    Annotated[str, 'matter']
     """
+    cls = dataclass(cls)
     for key, value in cls.__dict__.items():
         if isinstance(value, type):
-            semantikon_class(getattr(cls, key))  # Recursively apply to nested classes
+            setattr(cls, key, semantikon_dataclass(getattr(cls, key)))
     try:
         for key, value in cls.__annotations__.items():
             setattr(cls, key, value)  # Append type hints to attributes
