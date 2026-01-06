@@ -100,7 +100,7 @@ class SemantikonDiGraph(nx.DiGraph):
                 return f"{io}_data"
             io = candidate[0]
 
-    def _append_hash(
+    def append_hash(
         self,
         node: str,
         hash_value: str,
@@ -131,13 +131,6 @@ class SemantikonDiGraph(nx.DiGraph):
                 making it suitable for graphs with deep hierarchies.
             - The hash value for each node is updated in the format:
                 `parent_hash@child_label`.
-
-        Example:
-            Suppose the graph `G` has the following structure:
-                A -> B -> C
-            If `A` has a hash value "hashA" and `B` has a label "labelB", the
-            hash for `B` will be "hashA@labelB". Similarly, the hash for `C`
-            will be "hashA@labelB@labelC".
 
         """
         # Use a stack to keep track of nodes to process
@@ -281,7 +274,7 @@ def get_knowledge_graph(
     if hash_data:
         hashed_dict = get_hashed_node_dict(wf_dict)
         for node, data in hashed_dict.items():
-            G._append_hash(node, data["hash"], remove_data=remove_data)
+            G.append_hash(node, data["hash"], remove_data=remove_data)
     graph = Graph()
     graph.bind("qudt", str(QUDT))
     graph.bind("unit", "http://qudt.org/vocab/unit/")
