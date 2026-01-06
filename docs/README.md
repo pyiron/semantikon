@@ -33,89 +33,60 @@ You can also install `semantikon` via `conda`:
 conda install -c conda-forge semantikon
 ```
 
-## Overview
+## Quick insight
 
-In the realm of the workflow management systems, there are well defined inputs and outputs for each node. `semantikon` is a Python package to give scientific context to node inputs and outputs by providing type hinting and interpreters. Therefore, it consists of two **fully** separate parts: type hinting and interpreters.
+In the realm of the workflow management systems, there are well defined inputs and outputs for each node. `semantikon` is a Python package to give scientific context to python functions by type annotations and decorators, which can then be translated into an `rdflib` knowledge graph. `semantikon` utilizes [PMD core ontology](https://materialdigital.github.io/core-ontology/) (PMDco), which is based on the [Basic Formal Ontology](https://basic-formal-ontology.org/) (BFO) and [Ontology for Biomedical Investigations](https://obi-ontology.org/) (OBI).
 
-### **Type hinting**
-
-`semantikon` provides a way to define types for any number of input parameters and any number of output values for function via type hinting, in particular: data type, unit and ontological type. Type hinting is done with the function `u`, which **requires** the type, and **optionally** you can define the units and the ontological type. The type hinting is done in the following way:
+`semantikon` provides a way to define types for input and output parameters for function via type hinting. Type hinting is done with the function `u`, which **requires** the type, and **optionally** you can define ontological metadata. The type hinting is done in the following way:
 
 ```python
->>> from semantikon.metadata import u
 >>> from rdflib import Namespace
+>>> from semantikon import u
 >>>
 >>> EX = Namespace("http://example.org/")
 >>>
 >>> def get_speed(
-...     distance: u(float, units="meter", uri=EX.distance),
-...     time: u(float, units="second", uri=EX.time),
-... ) -> u(float, units="meter/second", label="speed", uri=EX.speed):
+...     distance: u(float, uri=EX.distance, units="meter"),
+...     time: u(float, uri=EX.time, units="second"),
+... ) -> u(float, uri=EX.speed, units="meter/second", label="speed"):
+...     """some random docstring"""
 ...     speed = distance / time
 ...     return speed
+>>> 
+>>> 
+>>> def get_kinetic_energy(
+...     mass: u(float, units="kilogram", uri=EX.Mass),
+...     velocity: u(float, units="meter/second", uri=EX.Velocity),
+... ) -> u(float, units="joule", uri=EX.KineticEnergy):
+...     return 0.5 * mass * velocity**2
+>>> 
+>>> 
+>>> def my_kinetic_energy_workflow(
+...     distance, time, mass
+... ):
+...     speed = get_speed(distance, time)
+...     kinetic_energy = get_kinetic_energy(mass, speed)
+...     return kinetic_energy
 
 ```
 
-`semantikon`'s type hinting does not require to follow any particular standard. It only needs to be compatible with the interpreter applied (s. below).
+The `workflow` decorator from `semantikon.workflow` allows you to define a workflow that uses the above functions in semantikon. You can use any workflow management system that can export the workflow in the [`flowrep`](https://github.com/pyiron/flowrep)-format. Via `semantikon.get_knowledge_graph` you can extract a knowledge graph from the workflow. The knowledge graph schematically has the following structure:
 
-You can also type-hint the inputs and outputs of a function using a class, i.e.:
-
-```python
->>> from semantikon.converter import semantikon_dataclass
->>> from semantikon.metadata import u
->>> from rdflib import Namespace
->>>
->>> EX = Namespace("http://example.org/")
->>>
->>> @semantikon_dataclass
-... class MyRecord:
-...     distance: u(float, units="meter", uri=EX.distance)
-...     time: u(float, units="second", uri=EX.time)
-...     result: u(float, units="meter/second", label="speed", uri=EX.speed)
->>>
->>> def get_speed(distance: MyRecord.distance, time: MyRecord.time) -> MyRecord.result:
-...     speed = distance / time
-...     return speed
-
+```mermaid
+graph TD
+    get_speed["get_speed (obi:planned_process)"] -- bfo:has_part --> speed["speed (pmdco:output_assignment)"]
+    speed -- pmdco:has_specified_output --> speed_data["speed_data (obi:value_specification)"]
+    speed_data -- obi:specifies_value_of --> EX.speed
+    speed_data -- qudt:hasUnit --> meter["meter (qudt:unit)"]
+    velocity -- pmdco:has_specified_input --> speed_data
+    get_kinetic_energy["get_kinetic_energy (obi:planned_process)"] -- bfo:has_part --> velocity["velocity (pmdco:input_assignment)"]
 ```
 
-This is equivalent to the previous example. Moreover, if you need to modify some parameters, you can use `u` again, e.g. `u(MyRecord.distance, units="kilometer")`.
+This is only the first insight into the knowledge graph. You can find the details in the [notebook](../notebooks/knowledge_graph.ipynb) in the `notebooks` folder.
 
-### **Interpreters**
+### Side tour: unit conversion with `pint`
 
-Interpreters are wrappers or decorators that inspect and process type-hinted metadata at runtime.
-
-#### General interpreter
-
-In order to extract argument information, you can use the functions `parse_input_args` and `parse_output_args`. `parse_input_args` parses the input variables and return a dictionary with the variable names as keys and the variable information as values. `parse_output_args` parses the output variables and returns a dictionary with the variable information if there is a single output variable, or a list of dictionaries if it is a tuple.
-
-Example:
-
-```python
->>> from semantikon.converter import parse_input_args, parse_output_args
->>> from semantikon.metadata import u
->>> from rdflib import Namespace
->>>
->>> EX = Namespace("http://example.org/")
->>>
->>> def get_speed(
-...     distance: u(float, units="meter", uri=EX.distance),
-...     time: u(float, units="second", uri=EX.time),
-... ) -> u(float, units="meter/second", label="speed", uri=EX.speed):
-...     speed = distance / time
-...     return speed
->>>
->>> print(dict(sorted({k: dict(sorted(v.items())) for k, v in parse_input_args(get_speed).items()}.items())))
-{'distance': {'dtype': <class 'float'>, 'units': 'meter', 'uri': rdflib.term.URIRef('http://example.org/distance')}, 'time': {'dtype': <class 'float'>, 'units': 'second', 'uri': rdflib.term.URIRef('http://example.org/time')}}
-
->>> print(dict(sorted(parse_output_args(get_speed).items())))
-{'dtype': <class 'float'>, 'label': 'speed', 'units': 'meter/second', 'uri': rdflib.term.URIRef('http://example.org/speed')}
-
-```
-
-#### Unit conversion with `pint`
-
-`semantikon` provides a way to interpret the types of inputs and outputs of a function via a decorator, in order to check consistency of the types and to convert them if necessary. Currently, `semantikon` provides an interpreter for `pint.UnitRegistry` objects. The interpreter is applied in the following way:
+This part has nothing to do with the knowledge graph, but `semantikon` provides a way to interpret the types of inputs and outputs of a function via a decorator, in order to check consistency of the types and to convert them if necessary. Currently, `semantikon` provides an interpreter for `pint.UnitRegistry` objects. The interpreter is applied in the following way:
 
 ```python
 >>> from semantikon.metadata import u
@@ -147,10 +118,6 @@ Interpreters can distinguish between annotated arguments and non-annotated argum
 
 Regardless of whether type hints are provided, the interpreter acts only when the input values contain units and ontological types. If the input values do not contain units and ontological types, the interpreter will pass the input values to the function as is.
 
-
-#### Knowledge graph
-
-For the creation of knowledge graphs, take a look at the [notebook](../notebooks/knowledge_graph.ipynb) in the `notebooks` folder. It shows how to create a knowledge graph from the type hints of a function and how to visualize it, as well as how to type check using the ontology of your choice.
 
 ## License
 

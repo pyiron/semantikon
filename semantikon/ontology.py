@@ -261,6 +261,7 @@ def get_knowledge_graph(
     include_a_box: bool = True,
     hash_data: bool = True,
     remove_data: bool = False,
+    extract_dataclasses: bool = False,
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
@@ -269,6 +270,9 @@ def get_knowledge_graph(
         wf_dict (dict): dictionary containing workflow information
         include_t_box (bool): if True, include T-Box information
         include_a_box (bool): if True, include A-Box information
+        hash_data (bool): if True, compute and include hash values for data nodes
+        remove_data (bool): if True, remove data values after hashing
+        extract_dataclasses (bool): if True, extract dataclass information into the graph
 
     Returns:
         (rdflib.Graph): graph containing workflow information
@@ -293,6 +297,10 @@ def get_knowledge_graph(
         graph += _nx_to_kg(G, t_box=True)
     if include_a_box:
         graph += _nx_to_kg(G, t_box=False)
+    if extract_dataclasses:
+        graph += extract_dataclass(
+            graph=graph, include_t_box=include_t_box, include_a_box=include_a_box
+        )
     return graph
 
 
