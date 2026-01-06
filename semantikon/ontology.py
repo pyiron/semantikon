@@ -559,6 +559,13 @@ def _wf_input_to_graph(
             g += _restrictions_to_triples(data["restrictions"], data_node=data_node)
     else:
         data_node = G.get_a_node(G._get_data_node(io=node_name))
+        if not _input_is_connected(node_name, G):
+            if "units" in data:
+                g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
+            if "uri" in data:
+                bnode = BNode()
+                g.add((bnode, RDF.type, data["uri"]))
+                g.add((data_node, SNS.specifies_value_of, bnode))
     g += _wf_io_to_graph(
         node_name=node_name,
         data=data,
