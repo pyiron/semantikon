@@ -9,6 +9,7 @@ import sys
 import textwrap
 import warnings
 from copy import deepcopy
+from dataclasses import dataclass
 from functools import update_wrapper, wraps
 from typing import (
     Annotated,
