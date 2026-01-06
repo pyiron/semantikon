@@ -79,6 +79,17 @@ def get_speed_not_annotated(distance, time) -> float:
     return distance / time
 
 
+@dataclass
+class NewSpeedData:
+    distance: Annotated[float, {"uri": PMD["0040001"], "units": "meter"}]
+    time: Annotated[float, {"units": "second"}]
+
+
+def get_speed_with_dataclass(speed_data: NewSpeedData):
+    speed = speed_data.distance / speed_data.time
+    return speed
+
+
 def f_triples(
     a: float, b: Annotated[float, {"triples": ("self", EX.relatedTo, "inputs.a")}]
 ) -> Annotated[
@@ -752,6 +763,44 @@ class TestOntology(unittest.TestCase):
             ):
                 self.assertIn((s, onto.QUDT.hasUnit, UNIT["NanoM"]), g_dc)
                 self.assertIn((s, RDF.value, Literal(2.0)), g_dc)
+
+        @workflow
+        def workflow_with_dataclass(speed_data, mass):
+            speed = get_speed_with_dataclass(speed_data)
+            kinetic_energy = get_kinetic_energy(mass, speed)
+            return kinetic_energy
+
+        speed_data = NewSpeedData(distance=1.0, time=2.0)
+        query = """PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
+            PREFIX ro: <http://purl.obolibrary.org/obo/RO_>
+            PREFIX pmd: <https://w3id.org/pmd/co/PMD_>
+            PREFIX ex: <http://www.example.org/>
+
+            SELECT ?distance_value ?e_value WHERE {
+              ?distance_datanode rdf:value ?distance_value .
+              ?distance_datanode obi:0001927 ?distance_bnode .
+              ?distance_bnode a pmd:0040001 .
+              ?distance_datanode a ?distance_class .
+              ?distance_class rdfs:subClassOf ?speed_data_class .
+              ?speed_data_datanode a ?speed_data_class .
+              ?input_node obi:0000293 ?speed_data_datanode .
+              ?workflow_node bfo:0000051 ?input_node .
+              ?workflow_node bfo:0000051 ?output_node .
+              ?output_node obi:0000299 ?e_datanode .
+              ?e_bnode a pmd:0020142 .
+              ?e_datanode obi:0001927 ?e_bnode .
+              ?e_datanode rdf:value ?e_value .
+            }"""
+
+        wf_dict = workflow_with_dataclass.run(speed_data=speed_data, mass=3)
+        g = onto.get_knowledge_graph(wf_dict, extract_dataclasses=False)
+        self.assertListEqual(list(g.query(query)), [])
+        g = onto.get_knowledge_graph(wf_dict, extract_dataclasses=True)
+        self.assertListEqual(
+            [d.toPython() for d in list(g.query(query))[0]], [1, 0.375]
+        )
 
 
 if __name__ == "__main__":
