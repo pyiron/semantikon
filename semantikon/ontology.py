@@ -13,7 +13,7 @@ from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
-from semantikon.converter import get_function_dict, meta_to_dict
+from semantikon.converter import get_function_dict, meta_to_dict, parse_input_args, parse_output_args
 from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
@@ -313,9 +313,9 @@ def function_to_knowledge_graph(function: Callable):
     input_args = []
     for arg, data in parse_input_args(function).items():
         input_args.append({"arg": arg} | data)
-    data = get_function_dict(get_kinetic_energy)
+    data = get_function_dict(function)
     f_node = BASE["-".join([data["module"], data["qualname"], data["version"]])]
-    return onto._function_to_graph(
+    return _function_to_graph(
         f_node,
         data=data,
         input_args=input_args,
