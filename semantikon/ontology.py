@@ -6,7 +6,6 @@ from hashlib import sha256
 from typing import Any, TypeAlias, cast
 
 import networkx as nx
-from flowrep.tools import get_function_metadata
 from flowrep.workflow import get_hashed_node_dict
 from owlrl import DeductiveClosure, RDFS_Semantics
 from pyshacl import validate
@@ -14,7 +13,7 @@ from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
-from semantikon.converter import meta_to_dict
+from semantikon.converter import get_function_dict, meta_to_dict
 from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
@@ -1053,7 +1052,7 @@ class _WorkflowGraphSerializer:
         assert "function" in wf_dict or wf_dict["type"] != "Function"
 
         if "function" in wf_dict:
-            meta = get_function_metadata(wf_dict["function"], full_metadata=True)
+            meta = get_function_dict(wf_dict["function"])
             meta["identifier"] = ".".join(
                 (meta["module"], meta["qualname"], meta["version"])
             )
