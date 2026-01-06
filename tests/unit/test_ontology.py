@@ -38,7 +38,7 @@ def get_speed(
         float, {"uri": PMD["0040001"], "units": "meter", "label": "Distance"}
     ],
     time: Annotated[float, {"units": "second"}],
-) -> Annotated[float, {"units": "meter/second", "uri": EX.Velocity}]:
+) -> Annotated[float, {"units": "meter/second", "uri": EX.Velocity, "label": "speed"}]:
     """some random docstring"""
     speed = distance / time
     return speed
@@ -48,7 +48,7 @@ def get_speed(
 def get_kinetic_energy(
     mass: Annotated[float, {"uri": PMD["0020133"], "units": "kilogram"}],
     velocity: Annotated[float, {"units": "meter/second", "uri": EX.Velocity}],
-) -> Annotated[float, {"uri": PMD["0020142"], "units": "joule"}]:
+) -> Annotated[float, {"uri": PMD["0020142"], "units": "joule", "label": "kinetic_energy"}]:
     return 0.5 * mass * velocity**2
 
 
@@ -294,7 +294,7 @@ class TestOntology(unittest.TestCase):
                 g.subjects(
                     RDF.type,
                     onto.BASE[
-                        "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output_data"
+                        "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy_data"
                     ],
                 )
             )
@@ -409,7 +409,7 @@ class TestOntology(unittest.TestCase):
                 "my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity"
             ),
             G._get_data_node(
-                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output"
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy"
             ),
         )
 
@@ -660,7 +660,7 @@ class TestOntology(unittest.TestCase):
         output_spec = list(graph.subjects(onto.IAO["0000136"], onto.PMD["0020142"]))
         self.assertEqual(len(output_spec), 1)
         self.assertIn((output_spec[0], RDF.type, onto.BASE.output_specification), graph)
-        self.assertIn((output_spec[0], RDFS.label, Literal("output")), graph)
+        self.assertIn((output_spec[0], RDFS.label, Literal("kinetic_energy")), graph)
         self.assertIn(
             (output_spec[0], onto.BASE.has_parameter_position, Literal(0)), graph
         )
@@ -681,7 +681,7 @@ class TestOntology(unittest.TestCase):
         for tag, value in zip(
             [
                 "my_kinetic_energy_workflow-inputs-mass_data",
-                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output_data",
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy_data",
                 "my_kinetic_energy_workflow-inputs-time_data",
                 "my_kinetic_energy_workflow-get_speed_0-outputs-speed_data",
                 "my_kinetic_energy_workflow-inputs-distance_data",
