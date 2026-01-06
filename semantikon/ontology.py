@@ -563,7 +563,7 @@ def _wf_input_to_graph(
             if "units" in data:
                 g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
             if "uri" in data:
-                bnode = BNode()
+                bnode = BNode(str(data_node) + "_uri")
                 g.add((bnode, RDF.type, data["uri"]))
                 g.add((data_node, SNS.specifies_value_of, bnode))
     g += _wf_io_to_graph(
