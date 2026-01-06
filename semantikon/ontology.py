@@ -336,7 +336,7 @@ def _function_to_graph(
         g.add((hash_bnode, RDF.type, SNS.identifier))
         g.add((hash_bnode, RDF.value, Literal(data["hash"])))
     for io, io_args in zip(["input", "output"], [input_args, output_args]):
-        for arg in io_args:
+        for ii, arg in enumerate(io_args):
             arg_node = BNode("_".join([f_node, io, arg["arg"]]))
             if io == "input":
                 g.add((arg_node, RDF.type, SNS.input_specification))
@@ -345,7 +345,7 @@ def _function_to_graph(
             g.add((arg_node, RDFS.label, Literal(arg["arg"])))
             g.add((f_node, SNS.has_parameter_specification, arg_node))
             g.add(
-                (arg_node, SNS.has_parameter_position, Literal(arg.get("position", 0)))
+                (arg_node, SNS.has_parameter_position, Literal(arg.get("position", ii)))
             )
             if "default" in arg:
                 g.add(
