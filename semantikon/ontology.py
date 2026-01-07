@@ -306,7 +306,7 @@ def get_knowledge_graph(
     return graph
 
 
-def function_to_knowledge_graph(function: Callable):
+def function_to_knowledge_graph(function: Callable) -> Graph:
     output_args = parse_output_args(function)
     if not isinstance(output_args, tuple):
         output_args = (output_args,)
