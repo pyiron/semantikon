@@ -813,9 +813,16 @@ class TestOntology(unittest.TestCase):
             }"""
         )
         self.assertEqual(list(g.query(query))[0][0].toPython(), "get_kinetic_energy")
-        self.assertRaises(
-            AssertionError, onto.function_to_knowledge_graph, prepare_pizza
+        query = (
+            sparql_prefixes
+            + """
+            SELECT ?label WHERE {
+              ?function sns:has_parameter_specification ?bnode .
+              ?bnode rdfs:label ?label
+            }"""
         )
+        g = onto.function_to_knowledge_graph(prepare_pizza)
+        self.assertEqual(list(g.query(query))[0][0].toPython(), "output_0")
 
 
 if __name__ == "__main__":

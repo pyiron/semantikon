@@ -310,11 +310,6 @@ def function_to_knowledge_graph(function: Callable):
     output_args = parse_output_args(function)
     if not isinstance(output_args, tuple):
         output_args = (output_args,)
-    if any(["label" not in out for out in output_args]):
-        raise AssertionError(
-            "'label' must be defined in the type hints, e.g."
-            " typing.Annotated[float, {'label': 'my_label'}]"
-        )
     input_args = []
     for arg, data in parse_input_args(function).items():
         input_args.append({"arg": arg} | data)
@@ -369,7 +364,12 @@ def _function_to_graph(
         g.add((hash_bnode, RDF.value, Literal(data["hash"])))
     for io, io_args in zip(["input", "output"], [input_args, output_args]):
         for ii, arg in enumerate(io_args):
-            arg_name = arg["label"] if "label" in arg else arg["arg"]
+            if "label" in arg:
+                arg_name = arg["label"]
+            elif "arg" in arg:
+                arg_name = arg["arg"]
+            else:
+                arg_name = f"output_{ii}"
             arg_node = BNode("_".join([f_node, io, arg_name]))
             if io == "input":
                 g.add((arg_node, RDF.type, SNS.input_specification))
