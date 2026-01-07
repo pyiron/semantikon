@@ -332,8 +332,8 @@ def function_to_knowledge_graph(function: Callable):
 def _function_to_graph(
     f_node: URIRef,
     data: dict,
-    input_args: list[dict],
-    output_args: list[dict],
+    input_args: list[dict] | tuple[dict],
+    output_args: list[dict] | tuple[dict],
     uri: URIRef | None = None,
 ) -> Graph:
     """
