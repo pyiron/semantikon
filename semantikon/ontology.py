@@ -3,10 +3,9 @@ import json
 from dataclasses import asdict, dataclass, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
-from typing import Any, TypeAlias, cast
+from typing import Any, Callable, TypeAlias, cast
 
 import networkx as nx
-from flowrep.tools import get_function_metadata
 from flowrep.workflow import get_hashed_node_dict
 from owlrl import DeductiveClosure, RDFS_Semantics
 from pyshacl import validate
@@ -14,7 +13,12 @@ from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
-from semantikon.converter import meta_to_dict
+from semantikon.converter import (
+    get_function_dict,
+    meta_to_dict,
+    parse_input_args,
+    parse_output_args,
+)
 from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
@@ -193,7 +197,7 @@ def _extract_shacl_shapes(input_graph: Graph) -> Graph:
     Extract all SHACL NodeShapes and the full subgraph of constraints
     reachable from them.
     """
-    output_graph = Graph()
+    output_graph = _get_bound_graph()
     visited = set()
 
     def copy_subgraph(node):
@@ -248,6 +252,21 @@ def validate_values(
     return validate(g, shacl_graph=shacl)
 
 
+def _get_bound_graph(*args, **kwargs):
+    graph = Graph(*args, **kwargs)
+    graph.bind("qudt", str(QUDT))
+    graph.bind("unit", "http://qudt.org/vocab/unit/")
+    graph.bind("sns", str(BASE))
+    graph.bind("iao", str(IAO))
+    graph.bind("bfo", str(BFO))
+    graph.bind("obi", str(OBI))
+    graph.bind("ro", str(RO))
+    graph.bind("pmdco", str(PMD))
+    graph.bind("schema", str(SCHEMA))
+    graph.bind("stato", str(STATO))
+    return graph
+
+
 def get_knowledge_graph(
     wf_dict: dict,
     include_t_box: bool = True,
@@ -275,17 +294,7 @@ def get_knowledge_graph(
         hashed_dict = get_hashed_node_dict(wf_dict)
         for node, data in hashed_dict.items():
             G.append_hash(node, data["hash"], remove_data=remove_data)
-    graph = Graph()
-    graph.bind("qudt", str(QUDT))
-    graph.bind("unit", "http://qudt.org/vocab/unit/")
-    graph.bind("sns", str(BASE))
-    graph.bind("iao", str(IAO))
-    graph.bind("bfo", str(BFO))
-    graph.bind("obi", str(OBI))
-    graph.bind("ro", str(RO))
-    graph.bind("pmdco", str(PMD))
-    graph.bind("schema", str(SCHEMA))
-    graph.bind("stato", str(STATO))
+    graph = _get_bound_graph()
     if include_t_box:
         graph += _nx_to_kg(G, t_box=True)
     if include_a_box:
@@ -297,11 +306,41 @@ def get_knowledge_graph(
     return graph
 
 
+def function_to_knowledge_graph(function: Callable) -> Graph:
+    """
+    Generate RDF graph from a Python function
+
+    Converts a Python function into a knowledge graph representation using RDF.
+    The graph includes information about the function's inputs, outputs, and metadata.
+
+    Args:
+        function (Callable): Python function to convert into a knowledge graph
+
+    Returns:
+        (rdflib.Graph): graph containing the function's semantic representation
+    """
+    output_args = parse_output_args(function)
+    if not isinstance(output_args, tuple):
+        output_args = (output_args,)
+    input_args = []
+    for arg, data in parse_input_args(function).items():
+        input_args.append({"arg": arg} | data)
+    data = get_function_dict(function)
+    f_node = BASE["-".join([data["module"], data["qualname"], data["version"]])]
+    return _function_to_graph(
+        f_node,
+        data=data,
+        input_args=input_args,
+        output_args=output_args,
+        uri=data.get("uri"),
+    )
+
+
 def _function_to_graph(
     f_node: URIRef,
     data: dict,
-    input_args: list[dict],
-    output_args: list[dict],
+    input_args: list[dict] | tuple[dict, ...],
+    output_args: list[dict] | tuple[dict, ...],
     uri: URIRef | None = None,
 ) -> Graph:
     """
@@ -320,7 +359,7 @@ def _function_to_graph(
     Returns:
         Graph: An RDF graph representing the function and its metadata.
     """
-    g = Graph()
+    g = _get_bound_graph()
     g.add((f_node, RDF.type, SNS.software_method))
     g.add((f_node, RDFS.label, Literal(data["qualname"])))
     if data.get("docstring", "") != "":
@@ -336,16 +375,22 @@ def _function_to_graph(
         g.add((hash_bnode, RDF.type, SNS.identifier))
         g.add((hash_bnode, RDF.value, Literal(data["hash"])))
     for io, io_args in zip(["input", "output"], [input_args, output_args]):
-        for arg in io_args:
-            arg_node = BNode("_".join([f_node, io, arg["arg"]]))
+        for ii, arg in enumerate(io_args):
+            if "label" in arg:
+                arg_name = arg["label"]
+            elif "arg" in arg:
+                arg_name = arg["arg"]
+            else:
+                arg_name = f"output_{ii}"
+            arg_node = BNode("_".join([f_node, io, arg_name]))
             if io == "input":
                 g.add((arg_node, RDF.type, SNS.input_specification))
             else:
                 g.add((arg_node, RDF.type, SNS.output_specification))
-            g.add((arg_node, RDFS.label, Literal(arg["arg"])))
+            g.add((arg_node, RDFS.label, Literal(arg_name)))
             g.add((f_node, SNS.has_parameter_specification, arg_node))
             g.add(
-                (arg_node, SNS.has_parameter_position, Literal(arg.get("position", 0)))
+                (arg_node, SNS.has_parameter_position, Literal(arg.get("position", ii)))
             )
             if "default" in arg:
                 g.add(
@@ -368,7 +413,7 @@ def _wf_node_to_graph(
     G: SemantikonDiGraph,
     t_box: bool,
 ) -> Graph:
-    g = Graph()
+    g = _get_bound_graph()
     if "function" in data:
         f_node = BASE[data["function"]["identifier"].replace(".", "-")]
         if list(g.triples((f_node, None, None))) == [] and t_box:
@@ -448,7 +493,7 @@ def _translate_triples(
             io = _detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)
             return G.t_ns[io] if t_box else G.get_a_node(io)
 
-    g = Graph()
+    g = _get_bound_graph()
     for triple in triples:
         if len(triple) == 2:
             s = data_node
@@ -482,7 +527,7 @@ def _restrictions_to_triples(
     Returns:
         Graph: An RDF graph containing the generated triples.
     """
-    g = Graph()
+    g = _get_bound_graph()
     assert isinstance(restrictions, tuple | list)
     assert isinstance(restrictions[0], tuple | list)
     if not isinstance(restrictions[0][0], tuple | list):
@@ -530,7 +575,7 @@ def _wf_input_to_graph(
     G: SemantikonDiGraph,
     t_box: bool,
 ) -> Graph:
-    g = Graph()
+    g = _get_bound_graph()
     if t_box:
         data_node = G.t_ns[G._get_data_node(io=node_name)]
         if _input_is_connected(node_name, G):
@@ -585,7 +630,7 @@ def _wf_output_to_graph(
     G: SemantikonDiGraph,
     t_box: bool,
 ) -> Graph:
-    g = Graph()
+    g = _get_bound_graph()
     if t_box:
         data_node = G.t_ns[G._get_data_node(io=node_name)]
     else:
@@ -618,7 +663,7 @@ def _wf_io_to_graph(
     t_box: bool,
 ) -> Graph:
     node = G.t_ns[node_name] if t_box else G.get_a_node(node_name)
-    g = Graph()
+    g = _get_bound_graph()
     if data.get("label") is not None:
         g.add((node, RDFS.label, Literal(data["label"])))
     else:
@@ -658,7 +703,7 @@ def _parse_precedes(
     workflow_node: URIRef | BNode,
     t_box: bool,
 ) -> Graph:
-    g = Graph()
+    g = _get_bound_graph()
     for node in G.nodes.data():
         if node[1]["step"] == "node":
             successors = list(_get_successor_nodes(G, node[0]))
@@ -700,7 +745,7 @@ def _parse_global_io(
     workflow_node: URIRef | BNode,
     t_box: bool,
 ) -> Graph:
-    g = Graph()
+    g = _get_bound_graph()
     global_inputs = [
         n for n in G.nodes.data() if G.in_degree(n[0]) == 0 and n[1]["step"] == "inputs"
     ]
@@ -723,7 +768,7 @@ def _parse_global_io(
 
 
 def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
-    g = Graph()
+    g = _get_bound_graph()
     workflow_node = G.t_ns[G.name] if t_box else G.get_a_node(G.name)
     for node_name, data in G.nodes.data():
         data = data.copy()
@@ -811,7 +856,7 @@ class _DataclassTranslator:
         Returns:
             An RDF graph containing the generated triples.
         """
-        g = Graph()
+        g = _get_bound_graph()
 
         self._translate_nested_dataclasses(
             graph=g,
@@ -976,7 +1021,7 @@ def extract_dataclass(
     Returns:
         A new RDF graph containing the extracted triples.
     """
-    out = Graph()
+    out = _get_bound_graph()
     translator = _DataclassTranslator(
         include_t_box=include_t_box,
         include_a_box=include_a_box,
@@ -1053,7 +1098,7 @@ class _WorkflowGraphSerializer:
         assert "function" in wf_dict or wf_dict["type"] != "Function"
 
         if "function" in wf_dict:
-            meta = get_function_metadata(wf_dict["function"], full_metadata=True)
+            meta = get_function_dict(wf_dict["function"])
             meta["identifier"] = ".".join(
                 (meta["module"], meta["qualname"], meta["version"])
             )
@@ -1138,7 +1183,7 @@ def _to_owl_restriction(
     target_class: URIRef,
     restriction_type: URIRef = OWL.someValuesFrom,
 ) -> Graph:
-    g = Graph()
+    g = _get_bound_graph()
     restriction_node = BNode(
         sha256(
             str((base_node, on_property, target_class, restriction_type)).encode(
@@ -1216,7 +1261,7 @@ class _OWLToSHACLConverter:
         """
         self.owl_graph = owl_graph
         self.excluded_nodes = excluded_nodes
-        self.shacl_graph = Graph()
+        self.shacl_graph = _get_bound_graph()
         self.node_shapes: dict[URIRef, BNode] = {}
         self.shacl_graph.bind("sh", str(SH))
         self.shacl_graph.bind("sns", str(BASE))

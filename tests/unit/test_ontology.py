@@ -38,7 +38,7 @@ def get_speed(
         float, {"uri": PMD["0040001"], "units": "meter", "label": "Distance"}
     ],
     time: Annotated[float, {"units": "second"}],
-) -> Annotated[float, {"units": "meter/second", "uri": EX.Velocity}]:
+) -> Annotated[float, {"units": "meter/second", "uri": EX.Velocity, "label": "speed"}]:
     """some random docstring"""
     speed = distance / time
     return speed
@@ -48,7 +48,9 @@ def get_speed(
 def get_kinetic_energy(
     mass: Annotated[float, {"uri": PMD["0020133"], "units": "kilogram"}],
     velocity: Annotated[float, {"units": "meter/second", "uri": EX.Velocity}],
-) -> Annotated[float, {"uri": PMD["0020142"], "units": "joule"}]:
+) -> Annotated[
+    float, {"uri": PMD["0020142"], "units": "joule", "label": "kinetic_energy"}
+]:
     return 0.5 * mass * velocity**2
 
 
@@ -294,7 +296,7 @@ class TestOntology(unittest.TestCase):
                 g.subjects(
                     RDF.type,
                     onto.BASE[
-                        "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output_data"
+                        "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy_data"
                     ],
                 )
             )
@@ -409,7 +411,7 @@ class TestOntology(unittest.TestCase):
                 "my_kinetic_energy_workflow-get_kinetic_energy_0-inputs-velocity"
             ),
             G._get_data_node(
-                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output"
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy"
             ),
         )
 
@@ -660,7 +662,7 @@ class TestOntology(unittest.TestCase):
         output_spec = list(graph.subjects(onto.IAO["0000136"], onto.PMD["0020142"]))
         self.assertEqual(len(output_spec), 1)
         self.assertIn((output_spec[0], RDF.type, onto.BASE.output_specification), graph)
-        self.assertIn((output_spec[0], RDFS.label, Literal("output")), graph)
+        self.assertIn((output_spec[0], RDFS.label, Literal("kinetic_energy")), graph)
         self.assertIn(
             (output_spec[0], onto.BASE.has_parameter_position, Literal(0)), graph
         )
@@ -681,7 +683,7 @@ class TestOntology(unittest.TestCase):
         for tag, value in zip(
             [
                 "my_kinetic_energy_workflow-inputs-mass_data",
-                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output_data",
+                "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy_data",
                 "my_kinetic_energy_workflow-inputs-time_data",
                 "my_kinetic_energy_workflow-get_speed_0-outputs-speed_data",
                 "my_kinetic_energy_workflow-inputs-distance_data",
@@ -771,13 +773,9 @@ class TestOntology(unittest.TestCase):
             return kinetic_energy
 
         speed_data = NewSpeedData(distance=1.0, time=2.0)
-        query = """PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX owl: <http://www.w3.org/2002/07/owl#>
-            PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
-            PREFIX ro: <http://purl.obolibrary.org/obo/RO_>
-            PREFIX pmd: <https://w3id.org/pmd/co/PMD_>
-            PREFIX ex: <http://www.example.org/>
-
+        query = (
+            sparql_prefixes
+            + """
             SELECT ?distance_value ?e_value WHERE {
               ?distance_datanode rdf:value ?distance_value .
               ?distance_datanode obi:0001927 ?distance_bnode .
@@ -793,6 +791,7 @@ class TestOntology(unittest.TestCase):
               ?e_datanode obi:0001927 ?e_bnode .
               ?e_datanode rdf:value ?e_value .
             }"""
+        )
 
         wf_dict = workflow_with_dataclass.run(speed_data=speed_data, mass=3)
         g = onto.get_knowledge_graph(wf_dict, extract_dataclasses=False)
@@ -801,6 +800,29 @@ class TestOntology(unittest.TestCase):
         self.assertListEqual(
             [d.toPython() for d in list(g.query(query))[0]], [1, 0.375]
         )
+
+    def test_function_to_knowledge_graph(self):
+        g = onto.function_to_knowledge_graph(get_speed)
+        g += onto.function_to_knowledge_graph(get_kinetic_energy)
+        query = (
+            sparql_prefixes
+            + """
+            SELECT ?label WHERE {
+              ?function iao:0000136 ex:get_kinetic_energy .
+              ?function rdfs:label ?label
+            }"""
+        )
+        self.assertEqual(list(g.query(query))[0][0].toPython(), "get_kinetic_energy")
+        query = (
+            sparql_prefixes
+            + """
+            SELECT ?label WHERE {
+              ?function sns:has_parameter_specification ?bnode .
+              ?bnode rdfs:label ?label
+            }"""
+        )
+        g = onto.function_to_knowledge_graph(prepare_pizza)
+        self.assertEqual(list(g.query(query))[0][0].toPython(), "output_0")
 
 
 if __name__ == "__main__":
