@@ -771,13 +771,7 @@ class TestOntology(unittest.TestCase):
             return kinetic_energy
 
         speed_data = NewSpeedData(distance=1.0, time=2.0)
-        query = """PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX owl: <http://www.w3.org/2002/07/owl#>
-            PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
-            PREFIX ro: <http://purl.obolibrary.org/obo/RO_>
-            PREFIX pmd: <https://w3id.org/pmd/co/PMD_>
-            PREFIX ex: <http://www.example.org/>
-
+        query = sparql_prefixes + """
             SELECT ?distance_value ?e_value WHERE {
               ?distance_datanode rdf:value ?distance_value .
               ?distance_datanode obi:0001927 ?distance_bnode .
@@ -801,6 +795,16 @@ class TestOntology(unittest.TestCase):
         self.assertListEqual(
             [d.toPython() for d in list(g.query(query))[0]], [1, 0.375]
         )
+
+    def test_function_to_knowledge_graph(self):
+        g = onto.function_to_knowledge_graph(get_speed)
+        g += onto.function_to_knowledge_graph(get_kinetic_energy)
+        query = sparql_prefixes + """
+            SELECT ?label WHERE {
+              ?function iao:0000136 ex:get_kinetic_energy .
+              ?function rdfs:label ?label
+            }"""
+        self.assertEqual(list(g.query(query))[0][0].toPython(), "get_kinetic_energy")
 
 
 if __name__ == "__main__":
