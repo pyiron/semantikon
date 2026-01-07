@@ -13,7 +13,12 @@ from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
-from semantikon.converter import get_function_dict, meta_to_dict, parse_input_args, parse_output_args
+from semantikon.converter import (
+    get_function_dict,
+    meta_to_dict,
+    parse_input_args,
+    parse_output_args,
+)
 from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
