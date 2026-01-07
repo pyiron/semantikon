@@ -813,7 +813,9 @@ class TestOntology(unittest.TestCase):
             }"""
         )
         self.assertEqual(list(g.query(query))[0][0].toPython(), "get_kinetic_energy")
-        self.assertRaises(AssertionError, onto.function_to_knowledge_graph, prepare_pizza)
+        self.assertRaises(
+            AssertionError, onto.function_to_knowledge_graph, prepare_pizza
+        )
 
 
 if __name__ == "__main__":
