@@ -307,6 +307,18 @@ def get_knowledge_graph(
 
 
 def function_to_knowledge_graph(function: Callable) -> Graph:
+    """
+    Generate RDF graph from a Python function
+
+    Converts a Python function into a knowledge graph representation using RDF.
+    The graph includes information about the function's inputs, outputs, and metadata.
+
+    Args:
+        function (Callable): Python function to convert into a knowledge graph
+
+    Returns:
+        (rdflib.Graph): graph containing the function's semantic representation
+    """
     output_args = parse_output_args(function)
     if not isinstance(output_args, tuple):
         output_args = (output_args,)
