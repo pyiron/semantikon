@@ -832,6 +832,7 @@ class TestOntology(unittest.TestCase):
         B = comp.my_kinetic_energy_workflow.get_kinetic_energy_0.outputs.kinetic_energy
         sw = onto.SparqlWriter(graph)
         self.assertEqual(sw.query(A, B), [[1.0, 8.0]])
+        self.assertEqual(sw.query(A), [[1.0]])
         with self.assertRaises(AttributeError):
             _ = comp.non_existing_node
         self.assertIsInstance(comp.my_kinetic_energy_workflow, onto._Node)

@@ -1344,6 +1344,56 @@ def owl_restrictions_to_shacl(
     return converter.convert()
 
 
+class TrieNode:
+    def __init__(self):
+        self.children: Dict[str, "TrieNode"] = {}
+        self.terminal = False
+
+
+class _Node:
+    __slots__ = ("_node", "_path")
+
+    def __init__(self, node: TrieNode, path: Iterable[str]):
+        self._node = node
+        self._path = tuple(path)
+
+    def __getattr__(self, name: str):
+        if name not in self._node.children:
+            raise AttributeError(name)
+        return _Node(self._node.children[name], self._path + (name,))
+
+    def __dir__(self):
+        return sorted(self._node.children.keys())
+
+    def value(self) -> URIRef:
+        return BASE["-".join(self._path)]
+
+
+class Completer(_Node):
+    def __init__(self, values: Iterable[str]):
+        root = TrieNode()
+        for value in values:
+            node = root
+            for part in value.split("-"):
+                node = node.children.setdefault(part, TrieNode())
+            node.terminal = True
+
+        super().__init__(root, ())
+
+
+def query_io_completer(graph: Graph) -> Completer:
+    all_ios = []
+    for pred in ["pmd:0000066", "pmd:0000067"]:
+        query = f"""
+        PREFIX pmd: <https://w3id.org/pmd/co/PMD_>
+        SELECT ?io WHERE {{
+            ?io rdfs:subClassOf {pred} .
+        }}"""
+        all_ios.extend([g[0].split("/")[-1] for g in graph.query(query)])
+    return Completer(all_ios)
+
+
+
 class SparqlWriter:
     def __init__(self, graph: Graph):
         self.graph = graph
@@ -1373,72 +1423,31 @@ class SparqlWriter:
         code = self._hash(uri)
         return f"?t_{code} rdf:value ?{c} .\n?t_{code} a <{uri}> .\n"
 
-    def query(self, A: URIRef, B: URIRef) -> list[list[Any]]:
-        A_data = list(self.G.successors(A))[0]
-        B_data = list(self.G.successors(B))[0]
-        paths = nx.shortest_path(self.G.to_undirected(), A_data, B_data)
+    def query(self, *args) -> list[list[Any]]:
+        data_nodes = []
+        variables = []
+        leaf_conditions = []
+        for ii, arg in enumerate(args):
+            if isinstance(arg, _Node):
+                arg = arg.value()
+            data_nodes.append(list(self.G.successors(arg))[0])
+            var = f"var_{ii}"
+            variables.append(f"?{var}")
+            leaf_conditions.append(self._to_leaf_condition(var, data_nodes[-1]))
         query_text = ""
-        for u, v in zip(paths[:-1], paths[1:]):
-            if self.G.has_edge(u, v):
-                query_text += self.to_query(u, v, self.G.edges[u, v]["predicate"])
-            else:
-                query_text += self.to_query(v, u, self.G.edges[v, u]["predicate"])
-        total_query = (
-            "SELECT ?A ?B WHERE"
-            + "{\n"
-            + self._to_leaf_condition("A", A_data)
-            + query_text
-            + self._to_leaf_condition("B", B_data)
-            + "}"
-        )
+        if len(data_nodes) > 1:
+            for u, v in zip(data_nodes[:-1], data_nodes[1:]):
+                paths = nx.shortest_path(self.G.to_undirected(), u, v)
+                for uu, vv in zip(paths[:-1], paths[1:]):
+                    if self.G.has_edge(uu, vv):
+                        query_text += self.to_query(
+                            uu, vv, self.G.edges[uu, vv]["predicate"]
+                        )
+                    else:
+                        query_text += self.to_query(
+                            vv, uu, self.G.edges[vv, uu]["predicate"]
+                        )
+        total_query = "SELECT " + " ".join(variables) + " WHERE {\n" + query_text + "".join(
+            leaf_conditions
+        ) + "}"
         return [[a.toPython() for a in item] for item in self.graph.query(total_query)]
-
-
-class TrieNode:
-    def __init__(self):
-        self.children: Dict[str, "TrieNode"] = {}
-        self.terminal = False
-
-
-class _Node:
-    __slots__ = ("_node", "_path")
-
-    def __init__(self, node: TrieNode, path: Iterable[str]):
-        self._node = node
-        self._path = tuple(path)
-
-    def __getattr__(self, name: str):
-        if name not in self._node.children:
-            raise AttributeError(name)
-        result = _Node(self._node.children[name], self._path + (name,))
-        if result._node.terminal:
-            return BASE["-".join(result._path)]
-        return result
-
-    def __dir__(self):
-        return sorted(self._node.children.keys())
-
-
-class Completer(_Node):
-    def __init__(self, values: Iterable[str]):
-        root = TrieNode()
-        for value in values:
-            node = root
-            for part in value.split("-"):
-                node = node.children.setdefault(part, TrieNode())
-            node.terminal = True
-
-        super().__init__(root, ())
-
-
-def query_io_completer(graph: Graph) -> Completer:
-    all_ios = []
-    for pred in ["pmd:0000066", "pmd:0000067"]:
-        query = f"""
-        PREFIX pmd: <https://w3id.org/pmd/co/PMD_>
-        SELECT ?io WHERE {{
-            ?io rdfs:subClassOf {pred} .
-        }}"""
-        all_ios.extend([g[0].split("/")[-1] for g in graph.query(query)])
-    return Completer(all_ios)
-
