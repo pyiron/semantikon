@@ -809,7 +809,7 @@ class TestOntology(unittest.TestCase):
             + """
             SELECT ?label WHERE {
               ?function iao:0000136 ex:get_kinetic_energy .
-              ?function rdfs:label ?label
+              ?function rdfs:label ?label .
             }"""
         )
         self.assertEqual(list(g.query(query))[0][0].toPython(), "get_kinetic_energy")
@@ -818,7 +818,7 @@ class TestOntology(unittest.TestCase):
             + """
             SELECT ?label WHERE {
               ?function sns:has_parameter_specification ?bnode .
-              ?bnode rdfs:label ?label
+              ?bnode rdfs:label ?label .
             }"""
         )
         g = onto.function_to_knowledge_graph(prepare_pizza)

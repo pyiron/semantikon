@@ -5,6 +5,7 @@
 import ast
 import inspect
 import re
+import string
 import sys
 import textwrap
 import warnings
@@ -528,3 +529,28 @@ def with_explicit_defaults(**messages) -> Callable:
         return wrapper
 
     return decorator
+
+
+def to_identifier(s: str) -> str:
+    """
+    Convert an arbitrary string into a valid Python identifier by
+    replacing non-identifier characters with underscores.
+
+    Rules applied:
+    - ASCII letters, digits, and underscores are preserved
+    - All other characters are replaced with '_'
+    - If the identifier would start with a digit, prefix it with '_'
+
+    Args:
+        s (str): Input string.
+
+    Returns:
+        str: A valid Python identifier.
+    """
+    allowed = string.ascii_letters + string.digits + "_"
+    result = "".join(c if c in allowed else "_" for c in s)
+
+    if not result or result[0].isdigit():
+        result = "_" + result
+
+    return result
