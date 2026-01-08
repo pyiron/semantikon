@@ -2,7 +2,7 @@ import copy
 import json
 from dataclasses import asdict, dataclass, is_dataclass
 from functools import cache, cached_property
-from hashlib import sha256
+from hashlib import sha256, sha1
 from typing import Any, Callable, TypeAlias, cast
 
 import networkx as nx
@@ -1340,3 +1340,53 @@ def owl_restrictions_to_shacl(
     """
     converter = _OWLToSHACLConverter(owl_graph, excluded_nodes)
     return converter.convert()
+
+
+class SparqlWriter:
+    def __init__(self, graph: Graph):
+        self.graph = graph
+
+    @cached_property
+    def G(self) -> nx.DiGraph:
+        query = """
+        SELECT ?parent ?property ?child WHERE {
+            ?parent rdfs:subClassOf ?bnode .
+            ?bnode a owl:Restriction .
+            ?bnode owl:onProperty ?property .
+            ?bnode owl:someValuesFrom ?child .
+        }"""
+        G = nx.DiGraph()
+        for subj, pred, obj in self.graph.query(query):
+            G.add_edge(subj, obj, predicate=pred)
+        return G
+
+    @staticmethod
+    def _hash(u: str | URIRef) -> str:
+        return sha1(u.encode()).hexdigest()
+
+    def to_query(self, u: URIRef, v: URIRef, predicate: URIRef) -> str:
+        return f"?t_{self._hash(u)} <{predicate}> ?t_{self._hash(v)} .\n"
+
+    def _to_leaf_condition(self, c: str, uri: URIRef) -> str:
+        code = self._hash(uri)
+        return f"?t_{code} rdf:value ?{c} .\n?t_{code} a <{uri}> .\n"
+
+    def query(self, A: URIRef, B: URIRef) -> list[list[Any]]:
+        A_data = list(self.G.successors(A))[0]
+        B_data = list(self.G.successors(B))[0]
+        paths = nx.shortest_path(self.G.to_undirected(), A_data, B_data)
+        query_text = ""
+        for u, v in zip(paths[:-1], paths[1:]):
+            if self.G.has_edge(u, v):
+                query_text += self.to_query(u, v, self.G.edges[u, v]["predicate"])
+            else:
+                query_text += self.to_query(v, u, self.G.edges[v, u]["predicate"])
+        total_query = (
+            f"SELECT ?A ?B WHERE"
+            + "{\n"
+            + self._to_leaf_condition("A", A_data)
+            + query_text
+            + self._to_leaf_condition("B", B_data)
+            + "}"
+        )
+        return [[a.toPython() for a in item] for item in self.graph.query(total_query)]
