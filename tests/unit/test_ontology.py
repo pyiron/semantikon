@@ -830,6 +830,10 @@ class TestOntology(unittest.TestCase):
         comp = onto.query_io_completer(graph)
         A = comp.my_kinetic_energy_workflow.get_speed_0.inputs.time
         B = comp.my_kinetic_energy_workflow.get_kinetic_energy_0.outputs.kinetic_energy
+        self.assertListEqual(
+            dir(comp.my_kinetic_energy_workflow),
+            ["get_kinetic_energy_0", "get_speed_0", "inputs", "outputs"],
+        )
         sw = onto.SparqlWriter(graph)
         self.assertEqual(sw.query(A, B), [[1.0, 8.0]])
         self.assertEqual(sw.query(A), [[1.0]])
