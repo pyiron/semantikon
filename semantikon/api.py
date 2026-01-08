@@ -1,6 +1,11 @@
 from semantikon.converter import semantikon_dataclass
 from semantikon.metadata import SemantikonURI, meta, u
-from semantikon.ontology import SparqlWriter, get_knowledge_graph, query_io_completer, validate_values
+from semantikon.ontology import (
+    SparqlWriter,
+    get_knowledge_graph,
+    query_io_completer,
+    validate_values,
+)
 
 __all__ = [
     "SemantikonURI",

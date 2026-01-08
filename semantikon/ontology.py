@@ -1393,7 +1393,6 @@ def query_io_completer(graph: Graph) -> Completer:
     return Completer(all_ios)
 
 
-
 class SparqlWriter:
     def __init__(self, graph: Graph):
         self.graph = graph
@@ -1447,7 +1446,12 @@ class SparqlWriter:
                         query_text += self.to_query(
                             vv, uu, self.G.edges[vv, uu]["predicate"]
                         )
-        total_query = "SELECT " + " ".join(variables) + " WHERE {\n" + query_text + "".join(
-            leaf_conditions
-        ) + "}"
+        total_query = (
+            "SELECT "
+            + " ".join(variables)
+            + " WHERE {\n"
+            + query_text
+            + "".join(leaf_conditions)
+            + "}"
+        )
         return [[a.toPython() for a in item] for item in self.graph.query(total_query)]
