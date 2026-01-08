@@ -1,9 +1,11 @@
 import copy
 import json
+from collections import defaultdict
 from dataclasses import asdict, dataclass, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
-from typing import Any, Callable, TypeAlias, cast
+from typing import Any, Callable, Dict, Iterable, TypeAlias, cast
+
 
 import networkx as nx
 from flowrep.workflow import get_hashed_node_dict
@@ -1390,3 +1392,53 @@ class SparqlWriter:
             + "}"
         )
         return [[a.toPython() for a in item] for item in self.graph.query(total_query)]
+
+
+class TrieNode:
+    def __init__(self):
+        self.children: Dict[str, "TrieNode"] = {}
+        self.terminal = False
+
+
+class _Node:
+    __slots__ = ("_node", "_path")
+
+    def __init__(self, node: TrieNode, path: Iterable[str]):
+        self._node = node
+        self._path = tuple(path)
+
+    def __getattr__(self, name: str):
+        if name not in self._node.children:
+            raise AttributeError(name)
+        result = _Node(self._node.children[name], self._path + (name,))
+        if result._node.terminal:
+            return BASE["-".join(result._path)]
+        return result
+
+    def __dir__(self):
+        return sorted(self._node.children.keys())
+
+
+class Completer(_Node):
+    def __init__(self, values: Iterable[str]):
+        root = TrieNode()
+        for value in values:
+            node = root
+            for part in value.split("-"):
+                node = node.children.setdefault(part, TrieNode())
+            node.terminal = True
+
+        super().__init__(root, ())
+
+
+def query_io_completer(graph: Graph) -> Completer:
+    all_ios = []
+    for pred in ["pmd:0000066", "pmd:0000067"]:
+        query = f"""
+        PREFIX pmd: <https://w3id.org/pmd/co/PMD_>
+        SELECT ?io WHERE {{
+            ?io rdfs:subClassOf {pred} .
+        }}"""
+        all_ios.extend([g[0].split("/")[-1] for g in graph.query(query)])
+    return Completer(all_ios)
+
