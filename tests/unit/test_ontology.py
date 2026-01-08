@@ -827,7 +827,9 @@ class TestOntology(unittest.TestCase):
     def test_sparql_writer(self):
         wf_dict = my_kinetic_energy_workflow.run(2.0, 1.0, 4.0)
         A = onto.BASE["my_kinetic_energy_workflow-get_speed_0-inputs-time"]
-        B = onto.BASE["my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy"]
+        B = onto.BASE[
+            "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy"
+        ]
         sw = onto.SparqlWriter(onto.get_knowledge_graph(wf_dict))
         self.assertEqual(sw.query(A, B), [[1.0, 8.0]])
 

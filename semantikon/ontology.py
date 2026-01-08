@@ -2,7 +2,7 @@ import copy
 import json
 from dataclasses import asdict, dataclass, is_dataclass
 from functools import cache, cached_property
-from hashlib import sha256, sha1
+from hashlib import sha256
 from typing import Any, Callable, TypeAlias, cast
 
 import networkx as nx
@@ -1362,7 +1362,7 @@ class SparqlWriter:
 
     @staticmethod
     def _hash(u: str | URIRef) -> str:
-        return sha1(u.encode()).hexdigest()
+        return sha256(u.encode()).hexdigest()
 
     def to_query(self, u: URIRef, v: URIRef, predicate: URIRef) -> str:
         return f"?t_{self._hash(u)} <{predicate}> ?t_{self._hash(v)} .\n"
@@ -1382,7 +1382,7 @@ class SparqlWriter:
             else:
                 query_text += self.to_query(v, u, self.G.edges[v, u]["predicate"])
         total_query = (
-            f"SELECT ?A ?B WHERE"
+            "SELECT ?A ?B WHERE"
             + "{\n"
             + self._to_leaf_condition("A", A_data)
             + query_text
