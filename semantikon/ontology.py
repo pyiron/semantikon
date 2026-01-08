@@ -1,6 +1,5 @@
 import copy
 import json
-from collections import defaultdict
 from dataclasses import asdict, dataclass, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
