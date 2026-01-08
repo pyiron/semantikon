@@ -10,8 +10,10 @@ except importlib.metadata.PackageNotFoundError:
 
 from semantikon.api import (
     SemantikonURI,
+    SparqlWriter,
     get_knowledge_graph,
     meta,
+    query_io_completer,
     semantikon_dataclass,
     u,
     validate_values,
@@ -19,9 +21,11 @@ from semantikon.api import (
 
 __all__ = [
     "SemantikonURI",
+    "SparqlWriter",
     "semantikon_dataclass",
     "get_knowledge_graph",
     "meta",
+    "query_io_completer",
     "u",
     "validate_values",
 ]

@@ -3,7 +3,7 @@ import json
 from dataclasses import asdict, dataclass, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
-from typing import Any, Callable, TypeAlias, cast
+from typing import Any, Callable, Dict, Iterable, TypeAlias, cast
 
 import networkx as nx
 from flowrep.workflow import get_hashed_node_dict
@@ -1340,3 +1340,116 @@ def owl_restrictions_to_shacl(
     """
     converter = _OWLToSHACLConverter(owl_graph, excluded_nodes)
     return converter.convert()
+
+
+class TrieNode:
+    def __init__(self):
+        self.children: Dict[str, "TrieNode"] = {}
+        self.terminal = False
+
+
+class _Node:
+    __slots__ = ("_node", "_path")
+
+    def __init__(self, node: TrieNode, path: Iterable[str]):
+        self._node = node
+        self._path = tuple(path)
+
+    def __getattr__(self, name: str):
+        if name not in self._node.children:
+            raise AttributeError(name)
+        return _Node(self._node.children[name], self._path + (name,))
+
+    def __dir__(self):
+        return sorted(self._node.children.keys())
+
+    def value(self) -> URIRef:
+        return BASE["-".join(self._path)]
+
+
+class Completer(_Node):
+    def __init__(self, values: Iterable[str]):
+        root = TrieNode()
+        for value in values:
+            node = root
+            for part in value.split("-"):
+                node = node.children.setdefault(part, TrieNode())
+            node.terminal = True
+
+        super().__init__(root, ())
+
+
+def query_io_completer(graph: Graph) -> Completer:
+    all_ios = []
+    for pred in ["pmd:0000066", "pmd:0000067"]:
+        query = f"""
+        PREFIX pmd: <https://w3id.org/pmd/co/PMD_>
+        SELECT ?io WHERE {{
+            ?io rdfs:subClassOf {pred} .
+        }}"""
+        all_ios.extend([g[0].split("/")[-1] for g in graph.query(query)])
+    return Completer(all_ios)
+
+
+class SparqlWriter:
+    def __init__(self, graph: Graph):
+        self.graph = graph
+
+    @cached_property
+    def G(self) -> nx.DiGraph:
+        query = """
+        SELECT ?parent ?property ?child WHERE {
+            ?parent rdfs:subClassOf ?bnode .
+            ?bnode a owl:Restriction .
+            ?bnode owl:onProperty ?property .
+            ?bnode owl:someValuesFrom ?child .
+        }"""
+        G = nx.DiGraph()
+        for subj, pred, obj in self.graph.query(query):
+            G.add_edge(subj, obj, predicate=pred)
+        return G
+
+    @staticmethod
+    def _hash(u: str | URIRef) -> str:
+        return sha256(u.encode()).hexdigest()
+
+    def to_query(self, u: URIRef, v: URIRef, predicate: URIRef) -> str:
+        return f"?t_{self._hash(u)} <{predicate}> ?t_{self._hash(v)} .\n"
+
+    def _to_leaf_condition(self, c: str, uri: URIRef) -> str:
+        code = self._hash(uri)
+        return f"?t_{code} rdf:value ?{c} .\n?t_{code} a <{uri}> .\n"
+
+    def query(self, *args) -> list[list[Any]]:
+        data_nodes = []
+        variables = []
+        leaf_conditions = []
+        for ii, arg in enumerate(args):
+            if isinstance(arg, _Node):
+                arg = arg.value()
+            data_nodes.append(list(self.G.successors(arg))[0])
+            var = f"var_{ii}"
+            variables.append(f"?{var}")
+            leaf_conditions.append(self._to_leaf_condition(var, data_nodes[-1]))
+        query_text = ""
+        if len(data_nodes) > 1:
+            for u, v in zip(data_nodes[:-1], data_nodes[1:]):
+                paths = nx.shortest_path(self.G.to_undirected(), u, v)
+                for uu, vv in zip(paths[:-1], paths[1:]):
+                    if self.G.has_edge(uu, vv):
+                        query_text += self.to_query(
+                            uu, vv, self.G.edges[uu, vv]["predicate"]
+                        )
+                    else:
+                        query_text += self.to_query(
+                            vv, uu, self.G.edges[vv, uu]["predicate"]
+                        )
+        total_query = (
+            "SELECT "
+            + " ".join(variables)
+            + " WHERE {\n"
+            + query_text
+            + "".join(leaf_conditions)
+            + "}"
+        )
+        return [[a.toPython() for a in item] for item in self.graph.query(total_query)]
