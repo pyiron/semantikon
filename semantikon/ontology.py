@@ -18,6 +18,7 @@ from semantikon.converter import (
     meta_to_dict,
     parse_input_args,
     parse_output_args,
+    to_identifier,
 )
 from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
@@ -1409,47 +1410,37 @@ class SparqlWriter:
             G.add_edge(subj, obj, predicate=pred)
         return G
 
-    @staticmethod
-    def _hash(u: str | URIRef) -> str:
-        return sha256(u.encode()).hexdigest()
-
-    def to_query(self, u: URIRef, v: URIRef, predicate: URIRef) -> str:
-        return f"?t_{self._hash(u)} <{predicate}> ?t_{self._hash(v)} .\n"
-
-    def _to_leaf_condition(self, c: str, uri: URIRef) -> str:
-        code = self._hash(uri)
-        return f"?t_{code} rdf:value ?{c} .\n?t_{code} a <{uri}> .\n"
-
-    def query(self, *args) -> list[list[Any]]:
+    def get_query_graph(self, *args):
+        G = nx.DiGraph()
         data_nodes = []
-        variables = []
-        leaf_conditions = []
         for ii, arg in enumerate(args):
             if isinstance(arg, _Node):
                 arg = arg.value()
             data_nodes.append(list(self.G.successors(arg))[0])
-            var = f"var_{ii}"
-            variables.append(f"?{var}")
-            leaf_conditions.append(self._to_leaf_condition(var, data_nodes[-1]))
+            G.add_node(BNode(data_nodes[-1] + "_value"), output=True)
+            G.add_edge(BNode(data_nodes[-1]), data_nodes[-1], predicate="a")
+            G.add_edge(BNode(data_nodes[-1]), BNode(data_nodes[-1] + "_value"), predicate="rdf:value")
         query_text = ""
         if len(data_nodes) > 1:
             for u, v in zip(data_nodes[:-1], data_nodes[1:]):
                 paths = nx.shortest_path(self.G.to_undirected(), u, v)
                 for uu, vv in zip(paths[:-1], paths[1:]):
                     if self.G.has_edge(uu, vv):
-                        query_text += self.to_query(
-                            uu, vv, self.G.edges[uu, vv]["predicate"]
-                        )
+                        G.add_edge(BNode(uu), BNode(vv), predicate=self.G.edges[uu, vv]["predicate"])
                     else:
-                        query_text += self.to_query(
-                            vv, uu, self.G.edges[vv, uu]["predicate"]
-                        )
-        total_query = (
-            "SELECT "
-            + " ".join(variables)
-            + " WHERE {\n"
-            + query_text
-            + "".join(leaf_conditions)
-            + "}"
-        )
-        return [[a.toPython() for a in item] for item in self.graph.query(total_query)]
+                        G.add_edge(BNode(vv), BNode(uu), predicate=self.G.edges[vv, uu]["predicate"])
+        return G
+
+    def get_query_text(self, *args) -> list[list[Any]]:
+        G = self.get_query_graph(*args)
+        output_args = [f"?{to_identifier(node)}" for node, data in G.nodes.data() if data.get("output", False)]
+        lines = ["SELECT " + " ".join(output_args) + " WHERE {"]
+        for subj, obj, data in G.edges.data():
+            subj, obj = [f"<{e}>" if isinstance(e, URIRef) else f"?{to_identifier(e)}" for e in [subj, obj]]
+            pred = f"<{data['predicate']}>" if isinstance(data["predicate"], URIRef) else data["predicate"]
+            lines.append(f"{subj} {pred} {obj} .")
+        lines.append("}")
+        return "\n".join(lines)
+
+    def query(self, *args):
+        return [[a.toPython() for a in item] for item in self.graph.query(self.get_query_text(*args))]

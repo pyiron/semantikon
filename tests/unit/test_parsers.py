@@ -11,6 +11,7 @@ from semantikon.converter import (
     parse_input_args,
     parse_metadata,
     parse_output_args,
+    to_identifier,
     with_explicit_defaults,
 )
 from semantikon.metadata import meta, u
@@ -272,6 +273,12 @@ class TestParser(unittest.TestCase):
             @with_explicit_defaults()
             def dead_function(a, x=2, y=1):
                 return a + x + y
+
+    def test_to_identifier(self):
+        self.assertEqual(to_identifier("valid_name"), "valid_name")
+        self.assertEqual(to_identifier("123invalid"), "_123invalid")
+        self.assertEqual(to_identifier("invalid-name!"), "invalid_name_")
+        self.assertEqual(to_identifier("name with spaces"), "name_with_spaces")
 
 
 if __name__ == "__main__":
