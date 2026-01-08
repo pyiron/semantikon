@@ -1393,11 +1393,31 @@ def query_io_completer(graph: Graph) -> Completer:
 
 
 class SparqlWriter:
+    """
+    A class for generating and executing SPARQL queries based on a graph structure.
+    """
+
     def __init__(self, graph: Graph):
-        self.graph = graph
+        """
+        Initialize the SparqlWriter with a given RDFLib graph.
+
+        Args:
+            graph (Graph): An RDFLib graph containing the ontology or data to query.
+        """
+        self._graph = graph
 
     @cached_property
     def G(self) -> nx.DiGraph:
+        """
+        Construct a directed graph (DiGraph) representation of the ontology.
+
+        The graph is built by querying the RDFLib graph for subclass relationships
+        and OWL restrictions. Each edge in the graph represents a relationship
+        between a parent and child class, with the predicate stored as edge data.
+
+        Returns:
+            nx.DiGraph: A directed graph representing the ontology structure.
+        """
         query = """
         SELECT ?parent ?property ?child WHERE {
             ?parent rdfs:subClassOf ?bnode .
@@ -1406,11 +1426,25 @@ class SparqlWriter:
             ?bnode owl:someValuesFrom ?child .
         }"""
         G = nx.DiGraph()
-        for subj, pred, obj in self.graph.query(query):
+        for subj, pred, obj in self._graph.query(query):
             G.add_edge(subj, obj, predicate=pred)
         return G
 
-    def get_query_graph(self, *args):
+    def get_query_graph(self, *args) -> nx.DiGraph:
+        """
+        Generate a query graph based on the provided arguments.
+
+        The query graph is a directed graph (DiGraph) where nodes represent
+        data elements and edges represent relationships between them. This graph
+        can be used to generate SPARQL query text.
+
+        Args:
+            *args: A variable number of arguments representing nodes in the graph.
+                   Each argument can be an RDFLib node or a value.
+
+        Returns:
+            nx.DiGraph: A directed graph representing the query structure.
+        """
         G = nx.DiGraph()
         data_nodes = []
         for ii, arg in enumerate(args):
@@ -1443,8 +1477,20 @@ class SparqlWriter:
                         )
         return G
 
-    def get_query_text(self, *args) -> list[list[Any]]:
-        G = self.get_query_graph(*args)
+    @staticmethod
+    def get_query_text(G: nx.DiGraph) -> str:
+        """
+        Convert a query graph into SPARQL query text.
+
+        This method takes a directed graph (DiGraph) representing a query structure
+        and generates the corresponding SPARQL query text.
+
+        Args:
+            G (nx.DiGraph): A directed graph representing the query structure.
+
+        Returns:
+            str: The SPARQL query text.
+        """
         output_args = [
             f"?{to_identifier(node)}"
             for node, data in G.nodes.data()
@@ -1465,8 +1511,21 @@ class SparqlWriter:
         lines.append("}")
         return "\n".join(lines)
 
-    def query(self, *args):
-        return [
-            [a.toPython() for a in item]
-            for item in self.graph.query(self.get_query_text(*args))
-        ]
+    def query(self, *args) -> list[list[Any]]:
+        """
+        Execute a SPARQL query based on the provided arguments.
+
+        This method generates a query graph, converts it into SPARQL query text,
+        and executes the query on the RDFLib graph.
+
+        Args:
+            *args: A variable number of arguments representing nodes in the graph.
+                   Each argument can be an RDFLib node or a value.
+
+        Returns:
+            list[list[Any]]: A list of query results, where each result is a list
+                             of values corresponding to the query's output variables.
+        """
+        G = self.get_query_graph(*args)
+        text = self.get_query_text(G)
+        return [[a.toPython() for a in item] for item in self._graph.query(text)]
