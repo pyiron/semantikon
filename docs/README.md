@@ -110,7 +110,7 @@ This part has nothing to do with the knowledge graph, but `semantikon` provides 
 
 The interpreters check all types and, if necessary, convert them to the expected types **before** the function is executed, in order for all possible errors would be raised before the function execution. The interpreters convert the types in the way that the underlying function would receive the raw values.
 
-In case there are multiple outputs, the type hints are to be passed as a tuple (e.g. `tuple[u(float, "meter"), u(float, "second"))`).
+In case there are multiple outputs, the type hints are to be passed as a tuple (e.g. `tuple[u(float, units="meter"), u(float, units="second"))`).
 
 It is not fully guaranteed as a feature, but relative units as given [on this page](https://pint.readthedocs.io/en/0.10.1/wrapping.html#specifying-relations-between-arguments) can be also used.
 
