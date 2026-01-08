@@ -1419,28 +1419,54 @@ class SparqlWriter:
             data_nodes.append(list(self.G.successors(arg))[0])
             G.add_node(BNode(data_nodes[-1] + "_value"), output=True)
             G.add_edge(BNode(data_nodes[-1]), data_nodes[-1], predicate="a")
-            G.add_edge(BNode(data_nodes[-1]), BNode(data_nodes[-1] + "_value"), predicate="rdf:value")
+            G.add_edge(
+                BNode(data_nodes[-1]),
+                BNode(data_nodes[-1] + "_value"),
+                predicate="rdf:value",
+            )
         query_text = ""
         if len(data_nodes) > 1:
             for u, v in zip(data_nodes[:-1], data_nodes[1:]):
                 paths = nx.shortest_path(self.G.to_undirected(), u, v)
                 for uu, vv in zip(paths[:-1], paths[1:]):
                     if self.G.has_edge(uu, vv):
-                        G.add_edge(BNode(uu), BNode(vv), predicate=self.G.edges[uu, vv]["predicate"])
+                        G.add_edge(
+                            BNode(uu),
+                            BNode(vv),
+                            predicate=self.G.edges[uu, vv]["predicate"],
+                        )
                     else:
-                        G.add_edge(BNode(vv), BNode(uu), predicate=self.G.edges[vv, uu]["predicate"])
+                        G.add_edge(
+                            BNode(vv),
+                            BNode(uu),
+                            predicate=self.G.edges[vv, uu]["predicate"],
+                        )
         return G
 
     def get_query_text(self, *args) -> list[list[Any]]:
         G = self.get_query_graph(*args)
-        output_args = [f"?{to_identifier(node)}" for node, data in G.nodes.data() if data.get("output", False)]
+        output_args = [
+            f"?{to_identifier(node)}"
+            for node, data in G.nodes.data()
+            if data.get("output", False)
+        ]
         lines = ["SELECT " + " ".join(output_args) + " WHERE {"]
         for subj, obj, data in G.edges.data():
-            subj, obj = [f"<{e}>" if isinstance(e, URIRef) else f"?{to_identifier(e)}" for e in [subj, obj]]
-            pred = f"<{data['predicate']}>" if isinstance(data["predicate"], URIRef) else data["predicate"]
+            subj, obj = [
+                f"<{e}>" if isinstance(e, URIRef) else f"?{to_identifier(e)}"
+                for e in [subj, obj]
+            ]
+            pred = (
+                f"<{data['predicate']}>"
+                if isinstance(data["predicate"], URIRef)
+                else data["predicate"]
+            )
             lines.append(f"{subj} {pred} {obj} .")
         lines.append("}")
         return "\n".join(lines)
 
     def query(self, *args):
-        return [[a.toPython() for a in item] for item in self.graph.query(self.get_query_text(*args))]
+        return [
+            [a.toPython() for a in item]
+            for item in self.graph.query(self.get_query_text(*args))
+        ]

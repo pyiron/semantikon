@@ -530,6 +530,7 @@ def with_explicit_defaults(**messages) -> Callable:
 
     return decorator
 
+
 def to_identifier(s: str) -> str:
     """
     Convert an arbitrary string into a valid Python identifier by
