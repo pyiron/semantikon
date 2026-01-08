@@ -5,7 +5,6 @@ from functools import cache, cached_property
 from hashlib import sha256
 from typing import Any, Callable, Dict, Iterable, TypeAlias, cast
 
-
 import networkx as nx
 from flowrep.workflow import get_hashed_node_dict
 from owlrl import DeductiveClosure, RDFS_Semantics
