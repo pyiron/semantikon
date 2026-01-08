@@ -1458,7 +1458,6 @@ class SparqlWriter:
                 BNode(data_nodes[-1] + "_value"),
                 predicate="rdf:value",
             )
-        query_text = ""
         if len(data_nodes) > 1:
             for u, v in zip(data_nodes[:-1], data_nodes[1:]):
                 paths = nx.shortest_path(self.G.to_undirected(), u, v)
