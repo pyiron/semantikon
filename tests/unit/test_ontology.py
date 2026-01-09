@@ -849,10 +849,31 @@ class TestOntology(unittest.TestCase):
         self.assertDictEqual(wf_dict["outputs"], {"kinetic_energy": {}})
         graph = onto.get_knowledge_graph(my_kinetic_energy_workflow.run(2.0, 2.0, 3.0))
         wf_dict = onto.request_values(wf_dict, graph)
-        self.assertDictEqual(wf_dict["outputs"], {"kinetic_energy": {}})
+        self.assertDictEqual(
+            wf_dict["outputs"], {"kinetic_energy": {}}, msg="no known inputs"
+        )
         graph += onto.get_knowledge_graph(my_kinetic_energy_workflow.run(1.0, 2.0, 3.0))
         wf_dict = onto.request_values(wf_dict, graph)
-        self.assertDictEqual(wf_dict["outputs"], {"kinetic_energy": {"value": 0.375}})
+        self.assertDictEqual(
+            wf_dict["outputs"],
+            {"kinetic_energy": {"value": 0.375}},
+            msg="all inputs known because the same simulation was run before",
+        )
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict["inputs"]["distance"]["value"] = 1.0
+        wf_dict["inputs"]["time"]["value"] = 2.0
+        wf_dict["inputs"]["mass"]["value"] = 4.0
+        wf_dict = onto.request_values(wf_dict, graph)
+        self.assertDictEqual(
+            wf_dict["outputs"],
+            {"kinetic_energy": {}},
+            msg="kinetic energy must be unknown because of unknown mass",
+        )
+        self.assertEqual(
+            wf_dict["nodes"]["get_speed_0"]["outputs"]["speed"]["value"],
+            0.5,
+            msg="speed must be known because of known distance and time",
+        )
 
 
 if __name__ == "__main__":
