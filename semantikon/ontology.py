@@ -1562,23 +1562,59 @@ def request_values(wf_dict: dict, graph: Graph) -> dict:
     """
     G = serialize_and_convert_to_networkx(wf_dict)
 
-    query = """SELECT ?v WHERE {
+    # Collect all hashes that need values, along with their target locations.
+    hash_nodes: list[dict[str, Any]] = []
+    hashes: set[str] = set()
+
+    for node, data in G.nodes.data():
+        if data.get("step") == "node":
+            continue
+        if "hash" in data and "value" not in data:
+            node_hash = data["hash"]
+            hashes.add(node_hash)
+            keys = node.split("-")[1:]
+            hash_nodes.append(
+                {
+                    "hash": node_hash,
+                    "keys": keys,
+                }
+            )
+
+    # If there are no hashes to resolve, return early.
+    if not hashes:
+        return wf_dict
+
+    # Build a single SPARQL query that retrieves values for all hashes at once.
+    values_str = " ".join(f"\"{h}\"" for h in hashes)
+    query = f"""
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    PREFIX iao: <http://purl.obolibrary.org/obo/IAO_>
+    SELECT ?h ?v WHERE {{
         ?h_bnode rdf:value ?h .
         ?data_node iao:0000235 ?h_bnode .
         ?data_node rdf:value ?v .
-        FILTER(?h = "HASH_VALUE")
-    }"""
-    for node, data in G.nodes.data():
-        if data["step"] == "node":
+        VALUES ?h {{ {values_str} }}
+    }}
+    """
+
+    # Execute the batched query and build a mapping from hash to value.
+    hash_to_value: dict[str, Any] = {}
+    for row in graph.query(query):
+        h_val = row[0].toPython()
+        v_val = row[1].toPython()
+        # Preserve existing behavior: only the first value per hash is used.
+        if h_val not in hash_to_value:
+            hash_to_value[h_val] = v_val
+
+    # Populate wf_dict with the retrieved values.
+    for item in hash_nodes:
+        h = item["hash"]
+        keys = item["keys"]
+        if h not in hash_to_value:
             continue
-        if "hash" in data and "value" not in data:
-            value = list(graph.query(query.replace("HASH_VALUE", data["hash"])))
-            if len(value) > 0:
-                keys = node.split("-")[1:]
-                if len(keys) == 3:
-                    wf_dict["nodes"][keys[0]][keys[1]][keys[2]]["value"] = value[0][
-                        0
-                    ].toPython()
-                elif len(keys) == 2:
-                    wf_dict[keys[0]][keys[1]]["value"] = value[0][0].toPython()
+        value = hash_to_value[h]
+        if len(keys) == 3:
+            wf_dict["nodes"][keys[0]][keys[1]][keys[2]]["value"] = value
+        elif len(keys) == 2:
+            wf_dict[keys[0]][keys[1]]["value"] = value
     return wf_dict
