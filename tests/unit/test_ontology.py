@@ -877,6 +877,7 @@ class TestOntology(unittest.TestCase):
         graph = onto.get_knowledge_graph(
             my_kinetic_energy_workflow.run(1.0, 2.0, 4.0), remove_data=True
         )
+        wf_dict = onto.request_values(wf_dict, graph)
         self.assertDictEqual(
             wf_dict["outputs"], {"kinetic_energy": {}}, msg="data not stored"
         )
