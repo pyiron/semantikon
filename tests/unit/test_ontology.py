@@ -392,7 +392,7 @@ class TestOntology(unittest.TestCase):
 
     def test_hash(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        G = onto.serialize_and_convert_to_networkx(wf_dict)
+        G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         self.assertIsInstance(onto._get_graph_hash(G), str)
         self.assertEqual(len(onto._get_graph_hash(G)), 32)
         self.assertIn(
@@ -423,15 +423,15 @@ class TestOntology(unittest.TestCase):
 
         wf_dict = workflow_with_default_values.serialize_workflow()
         wf_dict_run = workflow_with_default_values.run(distance=2, time=1, mass=4)
-        G = onto.serialize_and_convert_to_networkx(wf_dict)
-        G_run = onto.serialize_and_convert_to_networkx(wf_dict_run)
+        G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
+        G_run = onto.serialize_and_convert_to_networkx(wf_dict_run, hash_data=False)
         self.assertEqual(onto._get_graph_hash(G), onto._get_graph_hash(G_run))
 
     def test_hash_with_value(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        G = onto.serialize_and_convert_to_networkx(wf_dict)
+        G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         wf_dict = my_kinetic_energy_workflow.run(1, 2, 3)
-        G_run = onto.serialize_and_convert_to_networkx(wf_dict)
+        G_run = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         self.assertEqual(
             onto._get_graph_hash(G),
             onto._get_graph_hash(G_run, with_global_inputs=False),
@@ -840,6 +840,47 @@ class TestOntology(unittest.TestCase):
         with self.assertRaises(AttributeError):
             _ = comp.non_existing_node
         self.assertIsInstance(comp.my_kinetic_energy_workflow, onto._Node)
+
+    def test_request_values(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict["inputs"]["distance"]["value"] = 1.0
+        wf_dict["inputs"]["time"]["value"] = 2.0
+        wf_dict["inputs"]["mass"]["value"] = 3.0
+        self.assertDictEqual(wf_dict["outputs"], {"kinetic_energy": {}})
+        graph = onto.get_knowledge_graph(my_kinetic_energy_workflow.run(2.0, 2.0, 3.0))
+        wf_dict = onto.request_values(wf_dict, graph)
+        self.assertDictEqual(
+            wf_dict["outputs"], {"kinetic_energy": {}}, msg="no known inputs"
+        )
+        graph += onto.get_knowledge_graph(my_kinetic_energy_workflow.run(1.0, 2.0, 3.0))
+        wf_dict = onto.request_values(wf_dict, graph)
+        self.assertDictEqual(
+            wf_dict["outputs"],
+            {"kinetic_energy": {"value": 0.375}},
+            msg="all inputs known because the same simulation was run before",
+        )
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict["inputs"]["distance"]["value"] = 1.0
+        wf_dict["inputs"]["time"]["value"] = 2.0
+        wf_dict["inputs"]["mass"]["value"] = 4.0
+        wf_dict = onto.request_values(wf_dict, graph)
+        self.assertDictEqual(
+            wf_dict["outputs"],
+            {"kinetic_energy": {}},
+            msg="kinetic energy must be unknown because of unknown mass",
+        )
+        self.assertEqual(
+            wf_dict["nodes"]["get_speed_0"]["outputs"]["speed"]["value"],
+            0.5,
+            msg="speed must be known because of known distance and time",
+        )
+        graph = onto.get_knowledge_graph(
+            my_kinetic_energy_workflow.run(1.0, 2.0, 4.0), remove_data=True
+        )
+        wf_dict = onto.request_values(wf_dict, graph)
+        self.assertDictEqual(
+            wf_dict["outputs"], {"kinetic_energy": {}}, msg="data not stored"
+        )
 
 
 if __name__ == "__main__":

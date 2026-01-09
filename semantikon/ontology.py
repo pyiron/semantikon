@@ -290,11 +290,9 @@ def get_knowledge_graph(
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
-    G = serialize_and_convert_to_networkx(wf_dict)
-    if hash_data:
-        hashed_dict = get_hashed_node_dict(wf_dict)
-        for node, data in hashed_dict.items():
-            G.append_hash(node, data["hash"], remove_data=remove_data)
+    G = serialize_and_convert_to_networkx(
+        wf_dict, hash_data=hash_data, remove_data=remove_data
+    )
     graph = _get_bound_graph()
     if include_t_box:
         graph += _nx_to_kg(G, t_box=True)
@@ -679,7 +677,7 @@ def _wf_io_to_graph(
         if "value" in data and list(g.objects(data_node, RDF.value)) == []:
             g.add((data_node, RDF.value, Literal(data["value"])))
         if "hash" in data:
-            hash_bnode = BNode(G._get_data_node(io=node_name) + "_hash")
+            hash_bnode = G.get_a_node(G._get_data_node(io=node_name) + "_hash")
             g.add((data_node, SNS.denoted_by, hash_bnode))
             g.add((hash_bnode, RDF.type, SNS.identifier))
             g.add((hash_bnode, RDF.value, Literal(data["hash"])))
@@ -1174,8 +1172,27 @@ class _WorkflowGraphSerializer:
         return nx.relabel_nodes(G, mapping, copy=True)
 
 
-def serialize_and_convert_to_networkx(wf_dict: dict) -> SemantikonDiGraph:
-    return _WorkflowGraphSerializer(wf_dict).serialize()
+def serialize_and_convert_to_networkx(
+    wf_dict: dict, hash_data: bool = True, remove_data: bool = False
+) -> SemantikonDiGraph:
+    """
+    Serialize a workflow dictionary into a SemantikonDiGraph, optionally
+    hashing node data.
+
+    Args:
+        wf_dict (dict): The workflow dictionary to serialize.
+        hash_data (bool): Whether to hash node data.
+        remove_data (bool): Whether to remove original data after hashing.
+
+    Returns:
+        SemantikonDiGraph: The serialized workflow graph.
+    """
+    G = _WorkflowGraphSerializer(wf_dict).serialize()
+    if hash_data:
+        hashed_dict = get_hashed_node_dict(wf_dict)
+        for node, data in hashed_dict.items():
+            G.append_hash(node, data["hash"], remove_data=remove_data)
+    return G
 
 
 def _to_owl_restriction(
@@ -1528,3 +1545,76 @@ class SparqlWriter:
         G = self.get_query_graph(*args)
         text = self.get_query_text(G)
         return [[a.toPython() for a in item] for item in self._graph.query(text)]
+
+
+def request_values(wf_dict: dict, graph: Graph) -> dict:
+    """
+    Given a workflow dictionary and an RDF graph, this function
+    populates the workflow dictionary with values extracted from the graph
+    based on hash identifiers.
+
+    Args:
+        wf_dict (dict): The workflow dictionary to populate.
+        graph (Graph): The RDF graph containing data nodes.
+
+    Returns:
+        dict: The updated workflow dictionary with populated values.
+    """
+    G = serialize_and_convert_to_networkx(wf_dict)
+
+    # Collect all hashes that need values, along with their target locations.
+    hash_nodes: list[dict[str, Any]] = []
+    hashes: set[str] = set()
+
+    for node, data in G.nodes.data():
+        if data.get("step") == "node":
+            continue
+        if "hash" in data and "value" not in data:
+            node_hash = data["hash"]
+            hashes.add(node_hash)
+            keys = node.split("-")[1:]
+            hash_nodes.append(
+                {
+                    "hash": node_hash,
+                    "keys": keys,
+                }
+            )
+
+    # If there are no hashes to resolve, return early.
+    if not hashes:
+        return wf_dict
+
+    # Build a single SPARQL query that retrieves values for all hashes at once.
+    values_str = " ".join(f'"{h}"' for h in hashes)
+    query = f"""
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    PREFIX iao: <http://purl.obolibrary.org/obo/IAO_>
+    SELECT ?h ?v WHERE {{
+        ?h_bnode rdf:value ?h .
+        ?data_node iao:0000235 ?h_bnode .
+        ?data_node rdf:value ?v .
+        VALUES ?h {{ {values_str} }}
+    }}
+    """
+
+    # Execute the batched query and build a mapping from hash to value.
+    hash_to_value: dict[str, Any] = {}
+    for row in graph.query(query):
+        h_val = row[0].toPython()
+        v_val = row[1].toPython()
+        # Preserve existing behavior: only the first value per hash is used.
+        if h_val not in hash_to_value:
+            hash_to_value[h_val] = v_val
+
+    # Populate wf_dict with the retrieved values.
+    for item in hash_nodes:
+        h = item["hash"]
+        keys = item["keys"]
+        if h not in hash_to_value:
+            continue
+        value = hash_to_value[h]
+        if len(keys) == 3:
+            wf_dict["nodes"][keys[0]][keys[1]][keys[2]]["value"] = value
+        elif len(keys) == 2:
+            wf_dict[keys[0]][keys[1]]["value"] = value
+    return wf_dict

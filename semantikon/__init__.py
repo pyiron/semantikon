@@ -14,6 +14,7 @@ from semantikon.api import (
     get_knowledge_graph,
     meta,
     query_io_completer,
+    request_values,
     semantikon_dataclass,
     u,
     validate_values,
@@ -26,6 +27,7 @@ __all__ = [
     "get_knowledge_graph",
     "meta",
     "query_io_completer",
+    "request_values",
     "u",
     "validate_values",
 ]
