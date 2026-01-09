@@ -4,6 +4,7 @@ from semantikon.ontology import (
     SparqlWriter,
     get_knowledge_graph,
     query_io_completer,
+    request_values,
     validate_values,
 )
 
@@ -14,6 +15,7 @@ __all__ = [
     "get_knowledge_graph",
     "meta",
     "query_io_completer",
+    "request_values",
     "u",
     "validate_values",
 ]
