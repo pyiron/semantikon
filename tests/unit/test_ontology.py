@@ -841,6 +841,19 @@ class TestOntology(unittest.TestCase):
             _ = comp.non_existing_node
         self.assertIsInstance(comp.my_kinetic_energy_workflow, onto._Node)
 
+    def test_request_values(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict["inputs"]["distance"]["value"] = 1.0
+        wf_dict["inputs"]["time"]["value"] = 2.0
+        wf_dict["inputs"]["mass"]["value"] = 3.0
+        self.assertDictEqual(wf_dict["outputs"], {"kinetic_energy": {}})
+        graph = onto.get_knowledge_graph(my_kinetic_energy_workflow.run(2.0, 2.0, 3.0))
+        wf_dict = onto.request_values(wf_dict, graph)
+        self.assertDictEqual(wf_dict["outputs"], {"kinetic_energy": {}})
+        graph += onto.get_knowledge_graph(my_kinetic_energy_workflow.run(1.0, 2.0, 3.0))
+        wf_dict = onto.request_values(wf_dict, graph)
+        self.assertDictEqual(wf_dict["outputs"], {"kinetic_energy": {"value": 0.375}})
+
 
 if __name__ == "__main__":
     unittest.main()

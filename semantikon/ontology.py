@@ -677,7 +677,7 @@ def _wf_io_to_graph(
         if "value" in data and list(g.objects(data_node, RDF.value)) == []:
             g.add((data_node, RDF.value, Literal(data["value"])))
         if "hash" in data:
-            hash_bnode = BNode(G._get_data_node(io=node_name) + "_hash")
+            hash_bnode = G.get_a_node(G._get_data_node(io=node_name) + "_hash")
             g.add((data_node, SNS.denoted_by, hash_bnode))
             g.add((hash_bnode, RDF.type, SNS.identifier))
             g.add((hash_bnode, RDF.value, Literal(data["hash"])))
@@ -1545,3 +1545,40 @@ class SparqlWriter:
         G = self.get_query_graph(*args)
         text = self.get_query_text(G)
         return [[a.toPython() for a in item] for item in self._graph.query(text)]
+
+
+def request_values(wf_dict: dict, graph: Graph) -> dict:
+    """
+    Given a workflow dictionary and an RDF graph, this function
+    populates the workflow dictionary with values extracted from the graph
+    based on hash identifiers.
+
+    Args:
+        wf_dict (dict): The workflow dictionary to populate.
+        graph (Graph): The RDF graph containing data nodes.
+
+    Returns:
+        dict: The updated workflow dictionary with populated values.
+    """
+    G = serialize_and_convert_to_networkx(wf_dict)
+
+    query = """SELECT ?v WHERE {
+        ?h_bnode rdf:value ?h .
+        ?data_node iao:0000235 ?h_bnode .
+        ?data_node rdf:value ?v .
+        FILTER(?h = "HASH_VALUE")
+    }"""
+    for node, data in G.nodes.data():
+        if data["step"] == "node":
+            continue
+        if "hash" in data and "value" not in data:
+            value = list(graph.query(query.replace("HASH_VALUE", data["hash"])))
+            if len(value) > 0:
+                keys = node.split("-")[1:]
+                if len(keys) == 3:
+                    wf_dict["nodes"][keys[0]][keys[1]][keys[2]]["value"] = value[0][
+                        0
+                    ].toPython()
+                elif len(keys) == 2:
+                    wf_dict[keys[0]][keys[1]]["value"] = value[0][0].toPython()
+    return wf_dict
