@@ -874,6 +874,10 @@ class TestOntology(unittest.TestCase):
             0.5,
             msg="speed must be known because of known distance and time",
         )
+        graph = onto.get_knowledge_graph(my_kinetic_energy_workflow.run(1.0, 2.0, 4.0), remove_data=True)
+        self.assertDictEqual(
+            wf_dict["outputs"], {"kinetic_energy": {}}, msg="data not stored"
+        )
 
 
 if __name__ == "__main__":
