@@ -290,11 +290,9 @@ def get_knowledge_graph(
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
-    G = serialize_and_convert_to_networkx(wf_dict)
-    if hash_data:
-        hashed_dict = get_hashed_node_dict(wf_dict)
-        for node, data in hashed_dict.items():
-            G.append_hash(node, data["hash"], remove_data=remove_data)
+    G = serialize_and_convert_to_networkx(
+        wf_dict, hash_data=hash_data, remove_data=remove_data
+    )
     graph = _get_bound_graph()
     if include_t_box:
         graph += _nx_to_kg(G, t_box=True)
@@ -1174,8 +1172,27 @@ class _WorkflowGraphSerializer:
         return nx.relabel_nodes(G, mapping, copy=True)
 
 
-def serialize_and_convert_to_networkx(wf_dict: dict) -> SemantikonDiGraph:
-    return _WorkflowGraphSerializer(wf_dict).serialize()
+def serialize_and_convert_to_networkx(
+    wf_dict: dict, hash_data: bool = True, remove_data: bool = False
+) -> SemantikonDiGraph:
+    """
+    Serialize a workflow dictionary into a SemantikonDiGraph, optionally
+    hashing node data.
+
+    Args:
+        wf_dict (dict): The workflow dictionary to serialize.
+        hash_data (bool): Whether to hash node data.
+        remove_data (bool): Whether to remove original data after hashing.
+
+    Returns:
+        SemantikonDiGraph: The serialized workflow graph.
+    """
+    G = _WorkflowGraphSerializer(wf_dict).serialize()
+    if hash_data:
+        hashed_dict = get_hashed_node_dict(wf_dict)
+        for node, data in hashed_dict.items():
+            G.append_hash(node, data["hash"], remove_data=remove_data)
+    return G
 
 
 def _to_owl_restriction(

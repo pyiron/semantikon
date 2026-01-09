@@ -392,7 +392,7 @@ class TestOntology(unittest.TestCase):
 
     def test_hash(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        G = onto.serialize_and_convert_to_networkx(wf_dict)
+        G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         self.assertIsInstance(onto._get_graph_hash(G), str)
         self.assertEqual(len(onto._get_graph_hash(G)), 32)
         self.assertIn(
@@ -423,15 +423,15 @@ class TestOntology(unittest.TestCase):
 
         wf_dict = workflow_with_default_values.serialize_workflow()
         wf_dict_run = workflow_with_default_values.run(distance=2, time=1, mass=4)
-        G = onto.serialize_and_convert_to_networkx(wf_dict)
-        G_run = onto.serialize_and_convert_to_networkx(wf_dict_run)
+        G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
+        G_run = onto.serialize_and_convert_to_networkx(wf_dict_run, hash_data=False)
         self.assertEqual(onto._get_graph_hash(G), onto._get_graph_hash(G_run))
 
     def test_hash_with_value(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        G = onto.serialize_and_convert_to_networkx(wf_dict)
+        G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         wf_dict = my_kinetic_energy_workflow.run(1, 2, 3)
-        G_run = onto.serialize_and_convert_to_networkx(wf_dict)
+        G_run = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         self.assertEqual(
             onto._get_graph_hash(G),
             onto._get_graph_hash(G_run, with_global_inputs=False),
