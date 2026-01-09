@@ -1585,7 +1585,7 @@ def request_values(wf_dict: dict, graph: Graph) -> dict:
         return wf_dict
 
     # Build a single SPARQL query that retrieves values for all hashes at once.
-    values_str = " ".join(f"\"{h}\"" for h in hashes)
+    values_str = " ".join(f'"{h}"' for h in hashes)
     query = f"""
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX iao: <http://purl.obolibrary.org/obo/IAO_>
