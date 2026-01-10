@@ -1503,7 +1503,9 @@ class SparqlWriter:
     def _get_head_node(self, data_nodes):
         candidates = list(self._graph.subjects(RDFS.subClassOf, SNS.process))
         for node in nx.topological_sort(self.G):
-            if node in candidates and all(nx.has_path(self.G, node, dn) for dn in data_nodes):
+            if node in candidates and all(
+                nx.has_path(self.G, node, dn) for dn in data_nodes
+            ):
                 return node
         raise ValueError("No common head node found")
 
