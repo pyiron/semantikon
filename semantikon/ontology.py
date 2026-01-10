@@ -1546,18 +1546,13 @@ class SparqlWriter:
                 path = nx.shortest_path(self.G, head_node, node)
                 assert len(path) > 1
                 for u, v in zip(path[:-1], path[1:]):
-                    if self.G.has_edge(u, v):
-                        G.add_edge(
-                            self._to_qname(u),
-                            self._to_qname(v),
-                            predicate=self.G.edges[u, v]["predicate"],
-                        )
-                    else:
-                        G.add_edge(
-                            self._to_qname(v),
-                            self._to_qname(u),
-                            predicate=self.G.edges[v, u]["predicate"],
-                        )
+                    if not self.G.has_edge(u, v):
+                        u, v = v, u
+                    G.add_edge(
+                        self._to_qname(u),
+                        self._to_qname(v),
+                        predicate=self.G.edges[u, v]["predicate"],
+                    )
         return G
 
     @staticmethod
