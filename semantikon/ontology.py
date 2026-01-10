@@ -1409,11 +1409,7 @@ class _Node:
         return SparqlGraph(nx.compose(other, qg))
 
     def __radd__(self, other):
-        assert isinstance(other, nx.DiGraph)
-        node = [n for n, d in other.nodes.data() if d.get("requested", False)][-1]
-        sw = SparqlWriter(self._graph)
-        qg = sw.get_query_graph(self, node)
-        return SparqlGraph(nx.compose(other, qg))
+        return self.__add__(other)
 
 
 class Completer(_Node):
@@ -1532,7 +1528,7 @@ class SparqlWriter:
         for ii, arg in enumerate(args):
             if isinstance(arg, _Node):
                 arg = arg.value()
-            if self._is_io_port(arg):
+            while self._is_io_port(arg):
                 arg = list(self.G.successors(arg))[0]
             data_nodes.append(arg)
             G.add_node(self._to_qname(data_nodes[-1] + "_value"), output=True)
