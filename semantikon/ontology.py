@@ -1731,21 +1731,17 @@ def request_values(wf_dict: dict, graph: Graph) -> dict:
     return wf_dict
 
 
-def label_to_uri(graph: Graph, label: str | URIRef) -> list[URIRef]:
+def label_to_uri(graph: Graph, label: str) -> list[URIRef]:
     """
     Convert a human-readable label to its corresponding URIRef in the graph.
 
     Args:
         graph (Graph): The RDF graph to query.
-        label (str | URIRef): The human-readable label or URIRef.
+        label (str): The human-readable label or URIRef.
 
     Returns:
         list[URIRef]: The corresponding URIs from the graph.
     """
-    if isinstance(label, URIRef) or (
-        isinstance(label, str) and label.startswith("http")
-    ):
-        label = graph.qname(URIRef(label)).split(":")[-1]
     query = """SELECT ?s
     WHERE {
       ?s rdfs:label ?label .
