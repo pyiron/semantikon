@@ -9,7 +9,6 @@ from typing import Any, Callable, Dict, Iterable, TypeAlias, cast
 
 import networkx as nx
 from flowrep.workflow import get_hashed_node_dict
-from networkx.algorithms.approximation import steiner_tree
 from owlrl import DeductiveClosure, RDFS_Semantics
 from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
@@ -1501,6 +1500,14 @@ class SparqlWriter:
     def _to_qname(self, term: URIRef) -> str:
         return self._graph.qname(term)
 
+    @cached_property
+    def _get_head_node(self):
+        candidates = list(self._graph.subjects(RDFS.subClassOf, SNS.process))
+        assert len(candidates) > 0, "No head node found"
+        for node in nx.topological_sort(self.G):
+            if node in candidates:
+                return node
+
     def get_query_graph(self, *args) -> nx.DiGraph:
         """
         Generate a query graph based on the provided arguments.
@@ -1533,20 +1540,23 @@ class SparqlWriter:
                 predicate="rdf:value",
             )
         if len(data_nodes) > 1:
-            H = steiner_tree(self.G.to_undirected(), data_nodes)
-            for u, v in H.edges():
-                if self.G.has_edge(u, v):
-                    G.add_edge(
-                        self._to_qname(u),
-                        self._to_qname(v),
-                        predicate=self.G.edges[u, v]["predicate"],
-                    )
-                else:
-                    G.add_edge(
-                        self._to_qname(v),
-                        self._to_qname(u),
-                        predicate=self.G.edges[v, u]["predicate"],
-                    )
+            for node in data_nodes:
+                path = nx.shortest_path(self.G, self._get_head_node, node)
+                if len(path) < 2:
+                    continue
+                for u, v in zip(path[:-1], path[1:]):
+                    if self.G.has_edge(u, v):
+                        G.add_edge(
+                            self._to_qname(u),
+                            self._to_qname(v),
+                            predicate=self.G.edges[u, v]["predicate"],
+                        )
+                    else:
+                        G.add_edge(
+                            self._to_qname(v),
+                            self._to_qname(u),
+                            predicate=self.G.edges[v, u]["predicate"],
+                        )
         return G
 
     @staticmethod

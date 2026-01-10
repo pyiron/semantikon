@@ -849,6 +849,25 @@ class TestOntology(unittest.TestCase):
             _ = comp.non_existing_node
         self.assertIsInstance(comp.my_kinetic_energy_workflow, onto._Node)
 
+        @workflow
+        def only_get_speed_workflow(distance, time):
+            speed = get_speed(distance=distance, time=time)
+            return speed
+
+        graph += onto.get_knowledge_graph(only_get_speed_workflow.run(3.0, 1.5))
+        comp = onto.query_io_completer(graph)
+        A = comp.my_kinetic_energy_workflow.inputs.time
+        B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
+        C = comp.my_kinetic_energy_workflow.inputs.mass
+        self.assertEqual((A + B).query(), [[1.0, 8.0]])
+        self.assertEqual(
+            (A + C + B).query(), [[1.0, 4.0, 8.0]], msg=(A + C + B).to_query_text()
+        )
+        self.assertEqual(A.query(), [[1.0]])
+        self.assertListEqual(
+            dir(comp), ["my_kinetic_energy_workflow", "only_get_speed_workflow"]
+        )
+
     def test_request_values(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
         wf_dict["inputs"]["distance"]["value"] = 1.0
