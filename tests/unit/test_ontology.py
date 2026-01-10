@@ -832,14 +832,16 @@ class TestOntology(unittest.TestCase):
             dir(comp.my_kinetic_energy_workflow.get_speed_0.inputs),
             ["distance", "time"],
         )
-        A = comp.my_kinetic_energy_workflow.get_speed_0.inputs.time
+        A = comp.my_kinetic_energy_workflow.inputs.time
         self.assertEqual(dir(A), ["query", "to_query_text"])
-        B = comp.my_kinetic_energy_workflow.get_kinetic_energy_0.outputs.kinetic_energy
+        B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
+        C = comp.my_kinetic_energy_workflow.inputs.mass
         self.assertListEqual(
             dir(comp.my_kinetic_energy_workflow),
             ["get_kinetic_energy_0", "get_speed_0", "inputs", "outputs"],
         )
         self.assertEqual((A + B).query(graph), [[1.0, 8.0]])
+        self.assertEqual((A + C + B).query(graph), [[1.0, 4.0, 8.0]])
         self.assertEqual(A.query(graph), [[1.0]])
         with self.assertRaises(AttributeError):
             _ = comp.non_existing_node
