@@ -1397,7 +1397,7 @@ class _Node:
     def value(self) -> URIRef:
         return BASE["-".join(self._path)]
 
-    def __rshift__(self, other):
+    def __add__(self, other):
         if isinstance(other, _Node):
             sw = SparqlWriter(self._graph)
             return sw.get_query_graph(self, other)
@@ -1407,7 +1407,7 @@ class _Node:
         qg = sw.get_query_graph(node, self)
         return SparqlGraph(nx.compose(other, qg))
 
-    def __rrshift__(self, other):
+    def __radd__(self, other):
         assert isinstance(other, nx.DiGraph)
         node = [n for n, d in other.nodes.data() if d.get("requested", False)][-1]
         sw = SparqlWriter(self._graph)
