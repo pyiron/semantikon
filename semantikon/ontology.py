@@ -1408,18 +1408,68 @@ class _Node:
 
 @dataclass
 class _QueryHolder:
+    """Container for one or more query nodes bound to an RDF graph.
+
+    This helper encapsulates a collection of `_Node` instances together with
+    the RDFLib :class:`Graph` they belong to and provides a small API for
+    building and executing SPARQL queries.
+
+    Attributes
+    ----------
+    _nodes:
+        List of `_Node` instances that define the pattern of the query to be
+        generated.
+    _graph:
+        The RDFLib :class:`Graph` against which the generated query will be
+        constructed and executed.
+    """
+
     _nodes: list
     _graph: Graph
 
     def to_query_graph(self):
+        """Build the intermediate query graph for the held nodes.
+
+        The query graph is created by delegating to :class:`SparqlWriter`,
+        which inspects the provided RDF graph and the stored nodes.
+
+        Returns
+        -------
+        Graph
+            An RDFLib :class:`Graph` representing the SPARQL query structure.
+        """
         sw = SparqlWriter(self._graph)
         return sw.get_query_graph(*self._nodes)
 
     def to_query_text(self):
+        """Generate a SPARQL query string for the held nodes.
+
+        The method first builds the intermediate query graph via
+        :meth:`to_query_graph` and then converts it to a textual SPARQL
+        representation.
+
+        Returns
+        -------
+        str
+            A SPARQL query string that can be executed against the stored
+            RDFLib :class:`Graph`.
+        """
         G = self.to_query_graph()
         return SparqlWriter.get_query_text(G)
 
     def query(self):
+        """Execute the generated SPARQL query against the stored graph.
+
+        The query text produced by :meth:`to_query_text` is run with
+        :meth:`Graph.query`, and each bound value in the result set is
+        converted to a native Python object via its ``toPython`` method.
+
+        Returns
+        -------
+        list[list[Any]]
+            A list of result rows, where each row is a list of converted
+            Python values corresponding to the query variables.
+        """
         text = self.to_query_text()
         return [[a.toPython() for a in item] for item in self._graph.query(text)]
 
