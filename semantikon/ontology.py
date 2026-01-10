@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, Iterable, TypeAlias, cast
 
 import networkx as nx
 from flowrep.workflow import get_hashed_node_dict
+from networkx.algorithms.approximation import steiner_tree
 from owlrl import DeductiveClosure, RDFS_Semantics
 from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
@@ -1386,30 +1387,47 @@ class _Node:
             return ["query", "to_query_text"]
         return sorted(self._node.children.keys())
 
-    def query(self, graph: Graph) -> list[list[Any]]:
-        text = self.to_query_text()
-        return [[a.toPython() for a in item] for item in graph.query(text)]
+    def query(self) -> list[list[Any]]:
+        qn = _QueryHolder([self], self._graph)
+        return qn.query()
 
     def to_query_text(self) -> str:
-        sw = SparqlWriter(self._graph)
-        qg = sw.get_query_graph(self)
-        return SparqlWriter.get_query_text(qg)
+        qn = _QueryHolder([self], self._graph)
+        return qn.to_query_text()
 
     def value(self) -> URIRef:
         return BASE["-".join(self._path)]
 
     def __add__(self, other):
         if isinstance(other, _Node):
-            sw = SparqlWriter(self._graph)
-            return sw.get_query_graph(self, other)
-        assert isinstance(other, nx.DiGraph)
-        node = [n for n, d in other.nodes.data() if d.get("requested", False)][-1]
-        sw = SparqlWriter(self._graph)
-        qg = sw.get_query_graph(node, self)
-        return SparqlGraph(nx.compose(other, qg))
+            nodes = [self, other]
+        else:
+            assert isinstance(other, _QueryHolder)
+            nodes = [self] + other._nodes
+        return _QueryHolder(nodes, self._graph)
 
     def __radd__(self, other):
-        return self.__add__(other)
+        assert isinstance(other, _QueryHolder)
+        nodes = other._nodes + [self]
+        return _QueryHolder(nodes, self._graph)
+
+
+@dataclass
+class _QueryHolder:
+    _nodes: list
+    _graph: Graph
+
+    def to_query_graph(self):
+        sw = SparqlWriter(self._graph)
+        return sw.get_query_graph(*self._nodes)
+
+    def to_query_text(self):
+        G = self.to_query_graph()
+        return SparqlWriter.get_query_text(G)
+
+    def query(self):
+        text = self.to_query_text()
+        return [[a.toPython() for a in item] for item in self._graph.query(text)]
 
 
 class Completer(_Node):
@@ -1434,31 +1452,6 @@ def query_io_completer(graph: Graph) -> Completer:
         }}"""
         all_ios.extend([g[0].split("/")[-1] for g in graph.query(query)])
     return Completer(all_ios, graph)
-
-
-class SparqlGraph(nx.DiGraph):
-    def to_query_text(self) -> str:
-        """
-        Convert the SparqlGraph into SPARQL query text.
-
-        Returns:
-            str: The SPARQL query text.
-        """
-        return SparqlWriter.get_query_text(self)
-
-    def query(self, graph: Graph) -> list[list[Any]]:
-        """
-        Execute the SPARQL query represented by the SparqlGraph on the given graph.
-
-        Args:
-            graph (Graph): An RDFLib graph to execute the query against.
-
-        Returns:
-            list[list[Any]]: A list of query results, where each result is a list
-                             of values corresponding to the query's output variables.
-        """
-        text = self.to_query_text()
-        return [[a.toPython() for a in item] for item in graph.query(text)]
 
 
 class SparqlWriter:
@@ -1523,7 +1516,7 @@ class SparqlWriter:
         Returns:
             nx.DiGraph: A directed graph representing the query structure.
         """
-        G = SparqlGraph()
+        G = nx.DiGraph()
         data_nodes = []
         for ii, arg in enumerate(args):
             if isinstance(arg, _Node):
@@ -1531,8 +1524,8 @@ class SparqlWriter:
             while self._is_io_port(arg):
                 arg = list(self.G.successors(arg))[0]
             data_nodes.append(arg)
-            G.add_node(self._to_qname(data_nodes[-1] + "_value"), output=True)
-            G.add_node(data_nodes[-1], requested=True)
+            G.add_node(self._to_qname(data_nodes[-1] + "_value"), output=ii)
+            G.add_node(data_nodes[-1])
             G.add_edge(self._to_qname(data_nodes[-1]), data_nodes[-1], predicate="a")
             G.add_edge(
                 self._to_qname(data_nodes[-1]),
@@ -1540,21 +1533,20 @@ class SparqlWriter:
                 predicate="rdf:value",
             )
         if len(data_nodes) > 1:
-            for u, v in zip(data_nodes[:-1], data_nodes[1:]):
-                paths = nx.shortest_path(self.G.to_undirected(), u, v)
-                for uu, vv in zip(paths[:-1], paths[1:]):
-                    if self.G.has_edge(uu, vv):
-                        G.add_edge(
-                            self._to_qname(uu),
-                            self._to_qname(vv),
-                            predicate=self.G.edges[uu, vv]["predicate"],
-                        )
-                    else:
-                        G.add_edge(
-                            self._to_qname(vv),
-                            self._to_qname(uu),
-                            predicate=self.G.edges[vv, uu]["predicate"],
-                        )
+            H = steiner_tree(self.G.to_undirected(), data_nodes)
+            for u, v in H.edges():
+                if self.G.has_edge(u, v):
+                    G.add_edge(
+                        self._to_qname(u),
+                        self._to_qname(v),
+                        predicate=self.G.edges[u, v]["predicate"],
+                    )
+                else:
+                    G.add_edge(
+                        self._to_qname(v),
+                        self._to_qname(u),
+                        predicate=self.G.edges[v, u]["predicate"],
+                    )
         return G
 
     @staticmethod
@@ -1572,10 +1564,11 @@ class SparqlWriter:
             str: The SPARQL query text.
         """
         output_args = [
-            f"?{to_identifier(node)}"
+            [data["output"], f"?{to_identifier(node)}"]
             for node, data in G.nodes.data()
-            if data.get("output", False)
+            if "output" in data
         ]
+        output_args = [x for _, x in sorted(output_args, key=lambda pair: pair[0])]
         lines = ["SELECT " + " ".join(output_args) + " WHERE {"]
         for subj, obj, data in G.edges.data():
             subj, obj = [
