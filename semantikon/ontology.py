@@ -88,7 +88,11 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
 class SemantikonDiGraph(nx.DiGraph):
     @cached_property
     def t_ns(self):
-        h = _get_graph_hash(self, with_global_inputs=False)
+        h = (
+            "W" + _get_graph_hash(self, with_global_inputs=False)[:8]
+            if self.graph["prefix"] is None
+            else self.graph["prefix"]
+        )
         return Namespace(BASE + h + "_")
 
     @cached_property
@@ -278,6 +282,7 @@ def get_knowledge_graph(
     hash_data: bool = True,
     remove_data: bool = False,
     extract_dataclasses: bool = False,
+    prefix: str | None = None,
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
@@ -294,7 +299,7 @@ def get_knowledge_graph(
         (rdflib.Graph): graph containing workflow information
     """
     G = serialize_and_convert_to_networkx(
-        wf_dict, hash_data=hash_data, remove_data=remove_data
+        wf_dict, hash_data=hash_data, remove_data=remove_data, prefix=prefix
     )
     graph = _get_bound_graph()
     if include_t_box:
@@ -1059,11 +1064,12 @@ class _WorkflowGraphSerializer:
     Serializes a workflow dictionary into a SemantikonDiGraph.
     """
 
-    def __init__(self, wf_dict: dict):
+    def __init__(self, wf_dict: dict, prefix: str | None = None):
         self.wf_dict = wf_dict
         self.node_dict: dict = {}
         self.channel_dict: dict = {}
         self.edge_list: list[list[str]] = []
+        self.prefix = prefix
 
     # -----------------------------
     # String utilities
@@ -1131,7 +1137,7 @@ class _WorkflowGraphSerializer:
     # -----------------------------
 
     def _build_graph(self) -> SemantikonDiGraph:
-        G = SemantikonDiGraph()
+        G = SemantikonDiGraph(prefix=self.prefix)
 
         self._add_channels(G)
         self._add_nodes(G)
@@ -1176,7 +1182,10 @@ class _WorkflowGraphSerializer:
 
 
 def serialize_and_convert_to_networkx(
-    wf_dict: dict, hash_data: bool = True, remove_data: bool = False
+    wf_dict: dict,
+    hash_data: bool = True,
+    remove_data: bool = False,
+    prefix: str | None = None,
 ) -> SemantikonDiGraph:
     """
     Serialize a workflow dictionary into a SemantikonDiGraph, optionally
@@ -1190,7 +1199,7 @@ def serialize_and_convert_to_networkx(
     Returns:
         SemantikonDiGraph: The serialized workflow graph.
     """
-    G = _WorkflowGraphSerializer(wf_dict).serialize()
+    G = _WorkflowGraphSerializer(wf_dict, prefix=prefix).serialize()
     if hash_data:
         hashed_dict = get_hashed_node_dict(wf_dict)
         for node, data in hashed_dict.items():
@@ -1496,17 +1505,16 @@ class Completer(_Node):
 
 
 def query_io_completer(graph: Graph) -> Completer:
-    translation_dict = {}
+    all_ios = []
     for pred in ["pmd:0000066", "pmd:0000067"]:
         query = f"""
         PREFIX pmd: <https://w3id.org/pmd/co/PMD_>
-        SELECT ?io ?label WHERE {{
+        SELECT ?io WHERE {{
             ?io rdfs:subClassOf {pred} .
-            ?io rdfs:label ?label .
         }}"""
         for g in graph.query(query):
-            translation_dict[g[1]] = g[0]
-    return Completer(list(translation_dict.keys()), graph)
+            all_ios.append(g[0].split("/")[-1])
+    return Completer(all_ios, graph)
 
 
 class SparqlWriter:
@@ -1719,7 +1727,18 @@ def request_values(wf_dict: dict, graph: Graph) -> dict:
             wf_dict[keys[0]][keys[1]]["value"] = value
     return wf_dict
 
-def label_to_uri(graph: Graph, label: str | URIRef) -> str:
+
+def label_to_uri(graph: Graph, label: str | URIRef) -> tuple[URIRef]:
+    """
+    Convert a human-readable label to its corresponding URIRef in the graph.
+
+    Args:
+        graph (Graph): The RDF graph to query.
+        label (str | URIRef): The human-readable label or URIRef.
+
+    Returns:
+        str: The corresponding URIRef in the graph.
+    """
     if isinstance(label, URIRef) or label.startswith("http"):
         label = graph.qname(URIRef(label)).split(":")[-1]
     query = f"""SELECT ?s
@@ -1729,5 +1748,5 @@ def label_to_uri(graph: Graph, label: str | URIRef) -> str:
       FILTER(?label = "{label}")
     }}"""
     result = list(graph.query(query))
-    assert len(result) == 1, f"Found {len(result)} results for label {label}"
-    return result[0][0]
+    assert len(result) > 0, f"No result found for {label}"
+    return result[0]

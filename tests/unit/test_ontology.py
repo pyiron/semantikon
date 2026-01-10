@@ -233,10 +233,10 @@ class TestOntology(unittest.TestCase):
 
     def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        g = onto.get_knowledge_graph(wf_dict)
+        g = onto.get_knowledge_graph(wf_dict, prefix="T")
 
         with self.subTest("workflow instance exists"):
-            uri = onto.label_to_uri(g, "my_kinetic_energy_workflow")
+            uri = onto.label_to_uri(g, "my_kinetic_energy_workflow")[0]
             workflows = list(g.subjects(RDF.type, uri))
             self.assertEqual(len(workflows), 1)
 
@@ -246,9 +246,9 @@ class TestOntology(unittest.TestCase):
             parts = list(g.objects(wf, onto.BFO["0000051"]))
             uri = onto.label_to_uri(
                 g, "my_kinetic_energy_workflow-get_kinetic_energy_0"
-            )
+            )[0]
             ke_calls = [p for p in parts if (p, RDF.type, uri) in g]
-            uri = onto.label_to_uri(g, "my_kinetic_energy_workflow-get_speed_0")
+            uri = onto.label_to_uri(g, "my_kinetic_energy_workflow-get_speed_0")[0]
             speed_calls = [p for p in parts if (p, RDF.type, uri) in g]
             self.assertEqual(len(ke_calls), 1)
             self.assertEqual(len(speed_calls), 1)
@@ -286,10 +286,7 @@ class TestOntology(unittest.TestCase):
             outputs = list(
                 g.subjects(
                     RDF.type,
-                    onto.label_to_uri(
-                        g,
-                        "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy_data"
-                    ),
+                    onto.BASE["T_my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy_data"],
                 )
             )
             self.assertEqual(len(outputs), 1)
@@ -441,7 +438,7 @@ class TestOntology(unittest.TestCase):
 
     def test_derives_from(self):
         wf_dict = wf_triples.serialize_workflow()
-        g = onto.get_knowledge_graph(wf_dict, include_a_box=False)
+        g = onto.get_knowledge_graph(wf_dict, include_a_box=False, prefix="T")
         query = sparql_prefixes + dedent(
             """\
         SELECT ?main_class WHERE {
@@ -455,14 +452,14 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(len(g.query(query)), 1)
         self.assertEqual(
             list(g.query(query))[0]["main_class"],
-            onto.BASE["wf_triples-f_triples_0-outputs-a_data"],
+            onto.BASE["T_wf_triples-f_triples_0-outputs-a_data"],
         )
-        g = onto.get_knowledge_graph(wf_dict, include_t_box=False)
+        g = onto.get_knowledge_graph(wf_dict, include_t_box=False, prefix="T")
         query = sparql_prefixes + dedent(
             """
         ASK WHERE {
-            ?output a sns:wf_triples-f_triples_0-outputs-a_data .
-            ?input a sns:wf_triples-inputs-a_data .
+            ?output a sns:T_wf_triples-f_triples_0-outputs-a_data .
+            ?input a sns:T_wf_triples-inputs-a_data .
             ?output ro:0001000 ?input .
         }
         """
@@ -471,10 +468,10 @@ class TestOntology(unittest.TestCase):
 
     def test_triples(self):
         wf_dict = wf_triples.serialize_workflow()
-        g = onto.get_knowledge_graph(wf_dict, include_t_box=False)
+        g = onto.get_knowledge_graph(wf_dict, include_t_box=False, prefix="T")
 
         with self.subTest("workflow instance exists"):
-            workflows = list(g.subjects(RDF.type, onto.BASE.wf_triples))
+            workflows = list(g.subjects(RDF.type, onto.BASE.T_wf_triples))
             self.assertEqual(len(workflows), 1)
 
         wf = workflows[0]
@@ -497,8 +494,8 @@ class TestOntology(unittest.TestCase):
             query = sparql_prefixes + dedent(
                 """
             ASK WHERE {
-                ?b_data a sns:wf_triples-inputs-b_data .
-                ?a_data a sns:wf_triples-inputs-a_data .
+                ?b_data a sns:T_wf_triples-inputs-b_data .
+                ?a_data a sns:T_wf_triples-inputs-a_data .
                 ?b_data ex:relatedTo ?a_data .
             }
             """
@@ -507,8 +504,8 @@ class TestOntology(unittest.TestCase):
             query = sparql_prefixes + dedent(
                 """
             ASK WHERE {
-                ?output a sns:wf_triples-f_triples_0-outputs-a_data .
-                ?input a sns:wf_triples-inputs-b_data .
+                ?output a sns:T_wf_triples-f_triples_0-outputs-a_data .
+                ?input a sns:T_wf_triples-inputs-b_data .
                 ?output ex:hasSomeRelation ?input .
             }
             """
@@ -818,19 +815,19 @@ class TestOntology(unittest.TestCase):
 
     def test_sparql_writer(self):
         wf_dict = my_kinetic_energy_workflow.run(2.0, 1.0, 4.0)
-        graph = onto.get_knowledge_graph(wf_dict)
+        graph = onto.get_knowledge_graph(wf_dict, prefix="T")
         comp = onto.query_io_completer(graph)
         self.assertEqual(
-            dir(comp.my_kinetic_energy_workflow.get_speed_0.inputs),
+            dir(comp.T_my_kinetic_energy_workflow.get_speed_0.inputs),
             ["distance", "time"],
         )
-        A = comp.my_kinetic_energy_workflow.inputs.time
+        A = comp.T_my_kinetic_energy_workflow.inputs.time
         self.assertEqual(dir(A), ["query", "to_query_text"])
-        B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
-        C = comp.my_kinetic_energy_workflow.inputs.mass
-        D = comp.my_kinetic_energy_workflow.inputs.distance
+        B = comp.T_my_kinetic_energy_workflow.outputs.kinetic_energy
+        C = comp.T_my_kinetic_energy_workflow.inputs.mass
+        D = comp.T_my_kinetic_energy_workflow.inputs.distance
         self.assertListEqual(
-            dir(comp.my_kinetic_energy_workflow),
+            dir(comp.T_my_kinetic_energy_workflow),
             ["get_kinetic_energy_0", "get_speed_0", "inputs", "outputs"],
         )
         self.assertEqual((A + B).query(), [[1.0, 8.0]])
@@ -844,27 +841,27 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(list(graph.query(A.to_query_text()))[0][0].toPython(), 1.0)
         with self.assertRaises(AttributeError):
             _ = comp.non_existing_node
-        self.assertIsInstance(comp.my_kinetic_energy_workflow, onto._Node)
+        self.assertIsInstance(comp.T_my_kinetic_energy_workflow, onto._Node)
 
         @workflow
         def only_get_speed_workflow(distance, time):
             speed = get_speed(distance=distance, time=time)
             return speed
 
-        graph += onto.get_knowledge_graph(only_get_speed_workflow.run(3.0, 1.5))
+        graph += onto.get_knowledge_graph(only_get_speed_workflow.run(3.0, 1.5), prefix="T")
         comp = onto.query_io_completer(graph)
-        A = comp.my_kinetic_energy_workflow.inputs.time
-        B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
-        C = comp.my_kinetic_energy_workflow.inputs.mass
+        A = comp.T_my_kinetic_energy_workflow.inputs.time
+        B = comp.T_my_kinetic_energy_workflow.outputs.kinetic_energy
+        C = comp.T_my_kinetic_energy_workflow.inputs.mass
         self.assertEqual((A + B).query(), [[1.0, 8.0]])
         self.assertEqual(
             (A + C + B).query(), [[1.0, 4.0, 8.0]], msg=(A + C + B).to_query_text()
         )
         self.assertEqual(A.query(), [[1.0]])
         self.assertListEqual(
-            dir(comp), ["my_kinetic_energy_workflow", "only_get_speed_workflow"]
+            dir(comp), ["T_my_kinetic_energy_workflow", "T_only_get_speed_workflow"]
         )
-        E = comp.only_get_speed_workflow.inputs.distance
+        E = comp.T_only_get_speed_workflow.inputs.distance
         with self.assertRaises(ValueError) as context:
             _ = (A + E).query()
         self.assertEqual(str(context.exception), "No common head node found")
@@ -910,6 +907,13 @@ class TestOntology(unittest.TestCase):
         self.assertDictEqual(
             wf_dict["outputs"], {"kinetic_energy": {}}, msg="data not stored"
         )
+
+    def test_label_to_uri(self):
+        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        g = onto.get_knowledge_graph(wf_dict)
+        uri = onto.label_to_uri(g, "my_kinetic_energy_workflow")[0]
+        label = str(g.value(uri, RDFS.label))
+        self.assertEqual(label, "my_kinetic_energy_workflow")
 
 
 if __name__ == "__main__":
