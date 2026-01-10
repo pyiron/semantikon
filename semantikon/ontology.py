@@ -1397,17 +1397,12 @@ class _Node:
     def value(self) -> URIRef:
         return BASE["-".join(self._path)]
 
-    def __add__(self, other):
+    def __add__(self, other) -> _QueryHolder:
         if isinstance(other, _Node):
             nodes = [self, other]
         else:
             assert isinstance(other, _QueryHolder)
             nodes = [self] + other._nodes
-        return _QueryHolder(nodes, self._graph)
-
-    def __radd__(self, other):
-        assert isinstance(other, _QueryHolder)
-        nodes = other._nodes + [self]
         return _QueryHolder(nodes, self._graph)
 
 
@@ -1427,6 +1422,14 @@ class _QueryHolder:
     def query(self):
         text = self.to_query_text()
         return [[a.toPython() for a in item] for item in self._graph.query(text)]
+
+    def __add__(self, other) -> _QueryHolder:
+        if isinstance(other, _Node):
+            nodes = self._nodes + [other]
+        else:
+            assert isinstance(other, _QueryHolder)
+            nodes = self._nodes + other._nodes
+        return _QueryHolder(nodes, self._graph)
 
 
 class Completer(_Node):

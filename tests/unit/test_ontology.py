@@ -836,6 +836,7 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(dir(A), ["query", "to_query_text"])
         B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
         C = comp.my_kinetic_energy_workflow.inputs.mass
+        D = comp.my_kinetic_energy_workflow.inputs.distance
         self.assertListEqual(
             dir(comp.my_kinetic_energy_workflow),
             ["get_kinetic_energy_0", "get_speed_0", "inputs", "outputs"],
@@ -845,6 +846,8 @@ class TestOntology(unittest.TestCase):
             (A + C + B).query(), [[1.0, 4.0, 8.0]], msg=(A + C + B).to_query_text()
         )
         self.assertEqual((A + (C + B)).query(), [[1.0, 4.0, 8.0]])
+        self.assertEqual((A + C + D + B).query(), [[1.0, 4.0, 2.0, 8.0]])
+        self.assertEqual(((A + C) + (D + B)).query(), [[1.0, 4.0, 2.0, 8.0]])
         self.assertEqual(A.query(), [[1.0]])
         self.assertEqual(list(graph.query(A.to_query_text()))[0][0].toPython(), 1.0)
         with self.assertRaises(AttributeError):
@@ -869,11 +872,11 @@ class TestOntology(unittest.TestCase):
         self.assertListEqual(
             dir(comp), ["my_kinetic_energy_workflow", "only_get_speed_workflow"]
         )
-        D = comp.only_get_speed_workflow.inputs.distance
+        E = comp.only_get_speed_workflow.inputs.distance
         with self.assertRaises(ValueError) as context:
-            _ = (A + D).query()
+            _ = (A + E).query()
         self.assertEqual(str(context.exception), "No common head node found")
-        self.assertEqual(D.query(), [[3.0]])
+        self.assertEqual(E.query(), [[3.0]])
 
     def test_request_values(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
