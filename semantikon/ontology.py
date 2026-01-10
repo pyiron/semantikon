@@ -1509,6 +1509,9 @@ class SparqlWriter:
             for p in [SNS.input_assignment, SNS.output_assignment]
         )
 
+    def _to_qname(self, term: URIRef) -> str:
+        return self._graph.qname(term)
+
     def get_query_graph(self, *args) -> nx.DiGraph:
         """
         Generate a query graph based on the provided arguments.
@@ -1532,12 +1535,12 @@ class SparqlWriter:
             if self._is_io_port(arg):
                 arg = list(self.G.successors(arg))[0]
             data_nodes.append(arg)
-            G.add_node(BNode(data_nodes[-1] + "_value"), output=True)
+            G.add_node(self._to_qname(data_nodes[-1] + "_value"), output=True)
             G.add_node(data_nodes[-1], requested=True)
-            G.add_edge(BNode(data_nodes[-1]), data_nodes[-1], predicate="a")
+            G.add_edge(self._to_qname(data_nodes[-1]), data_nodes[-1], predicate="a")
             G.add_edge(
-                BNode(data_nodes[-1]),
-                BNode(data_nodes[-1] + "_value"),
+                self._to_qname(data_nodes[-1]),
+                self._to_qname(data_nodes[-1] + "_value"),
                 predicate="rdf:value",
             )
         if len(data_nodes) > 1:
@@ -1546,14 +1549,14 @@ class SparqlWriter:
                 for uu, vv in zip(paths[:-1], paths[1:]):
                     if self.G.has_edge(uu, vv):
                         G.add_edge(
-                            BNode(uu),
-                            BNode(vv),
+                            self._to_qname(uu),
+                            self._to_qname(vv),
                             predicate=self.G.edges[uu, vv]["predicate"],
                         )
                     else:
                         G.add_edge(
-                            BNode(vv),
-                            BNode(uu),
+                            self._to_qname(vv),
+                            self._to_qname(uu),
                             predicate=self.G.edges[vv, uu]["predicate"],
                         )
         return G
