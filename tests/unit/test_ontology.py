@@ -828,18 +828,55 @@ class TestOntology(unittest.TestCase):
         wf_dict = my_kinetic_energy_workflow.run(2.0, 1.0, 4.0)
         graph = onto.get_knowledge_graph(wf_dict)
         comp = onto.query_io_completer(graph)
-        A = comp.my_kinetic_energy_workflow.get_speed_0.inputs.time
-        B = comp.my_kinetic_energy_workflow.get_kinetic_energy_0.outputs.kinetic_energy
+        self.assertEqual(
+            dir(comp.my_kinetic_energy_workflow.get_speed_0.inputs),
+            ["distance", "time"],
+        )
+        A = comp.my_kinetic_energy_workflow.inputs.time
+        self.assertEqual(dir(A), ["query", "to_query_text"])
+        B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
+        C = comp.my_kinetic_energy_workflow.inputs.mass
+        D = comp.my_kinetic_energy_workflow.inputs.distance
         self.assertListEqual(
             dir(comp.my_kinetic_energy_workflow),
             ["get_kinetic_energy_0", "get_speed_0", "inputs", "outputs"],
         )
-        sw = onto.SparqlWriter(graph)
-        self.assertEqual(sw.query(A, B), [[1.0, 8.0]])
-        self.assertEqual(sw.query(A), [[1.0]])
+        self.assertEqual((A + B).query(), [[1.0, 8.0]])
+        self.assertEqual(
+            (A + C + B).query(), [[1.0, 4.0, 8.0]], msg=(A + C + B).to_query_text()
+        )
+        self.assertEqual((A + (C + B)).query(), [[1.0, 4.0, 8.0]])
+        self.assertEqual((A + C + D + B).query(), [[1.0, 4.0, 2.0, 8.0]])
+        self.assertEqual(((A + C) + (D + B)).query(), [[1.0, 4.0, 2.0, 8.0]])
+        self.assertEqual(A.query(), [[1.0]])
+        self.assertEqual(list(graph.query(A.to_query_text()))[0][0].toPython(), 1.0)
         with self.assertRaises(AttributeError):
             _ = comp.non_existing_node
         self.assertIsInstance(comp.my_kinetic_energy_workflow, onto._Node)
+
+        @workflow
+        def only_get_speed_workflow(distance, time):
+            speed = get_speed(distance=distance, time=time)
+            return speed
+
+        graph += onto.get_knowledge_graph(only_get_speed_workflow.run(3.0, 1.5))
+        comp = onto.query_io_completer(graph)
+        A = comp.my_kinetic_energy_workflow.inputs.time
+        B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
+        C = comp.my_kinetic_energy_workflow.inputs.mass
+        self.assertEqual((A + B).query(), [[1.0, 8.0]])
+        self.assertEqual(
+            (A + C + B).query(), [[1.0, 4.0, 8.0]], msg=(A + C + B).to_query_text()
+        )
+        self.assertEqual(A.query(), [[1.0]])
+        self.assertListEqual(
+            dir(comp), ["my_kinetic_energy_workflow", "only_get_speed_workflow"]
+        )
+        E = comp.only_get_speed_workflow.inputs.distance
+        with self.assertRaises(ValueError) as context:
+            _ = (A + E).query()
+        self.assertEqual(str(context.exception), "No common head node found")
+        self.assertEqual(E.query(), [[3.0]])
 
     def test_request_values(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()

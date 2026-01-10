@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import json
 from dataclasses import asdict, dataclass, is_dataclass
@@ -1367,26 +1369,121 @@ class TrieNode:
 
 
 class _Node:
-    __slots__ = ("_node", "_path")
+    __slots__ = ("_node", "_path", "_graph")
 
-    def __init__(self, node: TrieNode, path: Iterable[str]):
+    def __init__(self, node: TrieNode, path: Iterable[str], graph: Graph):
         self._node = node
         self._path = tuple(path)
+        self._graph = graph
 
     def __getattr__(self, name: str):
         if name not in self._node.children:
             raise AttributeError(name)
-        return _Node(self._node.children[name], self._path + (name,))
+        return _Node(self._node.children[name], self._path + (name,), self._graph)
 
     def __dir__(self):
+        if self._node.terminal:
+            return ["query", "to_query_text"]
         return sorted(self._node.children.keys())
+
+    def query(self) -> list[list[Any]]:
+        qn = _QueryHolder([self], self._graph)
+        return qn.query()
+
+    def to_query_text(self) -> str:
+        qn = _QueryHolder([self], self._graph)
+        return qn.to_query_text()
 
     def value(self) -> URIRef:
         return BASE["-".join(self._path)]
 
+    def __add__(self, other) -> _QueryHolder:
+        if isinstance(other, _Node):
+            nodes = [self, other]
+        else:
+            assert isinstance(other, _QueryHolder)
+            nodes = [self] + other._nodes
+        return _QueryHolder(nodes, self._graph)
+
+
+@dataclass
+class _QueryHolder:
+    """Container for one or more query nodes bound to an RDF graph.
+
+    This helper encapsulates a collection of `_Node` instances together with
+    the RDFLib :class:`Graph` they belong to and provides a small API for
+    building and executing SPARQL queries.
+
+    Attributes
+    ----------
+    _nodes:
+        List of `_Node` instances that define the pattern of the query to be
+        generated.
+    _graph:
+        The RDFLib :class:`Graph` against which the generated query will be
+        constructed and executed.
+    """
+
+    _nodes: list[_Node]
+    _graph: Graph
+
+    def to_query_graph(self):
+        """Build the intermediate query graph for the held nodes.
+
+        The query graph is created by delegating to :class:`SparqlWriter`,
+        which inspects the provided RDF graph and the stored nodes.
+
+        Returns
+        -------
+        Graph
+            An RDFLib :class:`Graph` representing the SPARQL query structure.
+        """
+        sw = SparqlWriter(self._graph)
+        return sw.get_query_graph(*self._nodes)
+
+    def to_query_text(self):
+        """Generate a SPARQL query string for the held nodes.
+
+        The method first builds the intermediate query graph via
+        :meth:`to_query_graph` and then converts it to a textual SPARQL
+        representation.
+
+        Returns
+        -------
+        str
+            A SPARQL query string that can be executed against the stored
+            RDFLib :class:`Graph`.
+        """
+        G = self.to_query_graph()
+        return SparqlWriter.get_query_text(G)
+
+    def query(self):
+        """Execute the generated SPARQL query against the stored graph.
+
+        The query text produced by :meth:`to_query_text` is run with
+        :meth:`Graph.query`, and each bound value in the result set is
+        converted to a native Python object via its ``toPython`` method.
+
+        Returns
+        -------
+        list[list[Any]]
+            A list of result rows, where each row is a list of converted
+            Python values corresponding to the query variables.
+        """
+        text = self.to_query_text()
+        return [[a.toPython() for a in item] for item in self._graph.query(text)]
+
+    def __add__(self, other) -> _QueryHolder:
+        if isinstance(other, _Node):
+            nodes = self._nodes + [other]
+        else:
+            assert isinstance(other, _QueryHolder)
+            nodes = self._nodes + other._nodes
+        return _QueryHolder(nodes, self._graph)
+
 
 class Completer(_Node):
-    def __init__(self, values: Iterable[str]):
+    def __init__(self, values: Iterable[str], graph: Graph):
         root = TrieNode()
         for value in values:
             node = root
@@ -1394,7 +1491,7 @@ class Completer(_Node):
                 node = node.children.setdefault(part, TrieNode())
             node.terminal = True
 
-        super().__init__(root, ())
+        super().__init__(root, (), graph)
 
 
 def query_io_completer(graph: Graph) -> Completer:
@@ -1406,7 +1503,7 @@ def query_io_completer(graph: Graph) -> Completer:
             ?io rdfs:subClassOf {pred} .
         }}"""
         all_ios.extend([g[0].split("/")[-1] for g in graph.query(query)])
-    return Completer(all_ios)
+    return Completer(all_ios, graph)
 
 
 class SparqlWriter:
@@ -1447,6 +1544,24 @@ class SparqlWriter:
             G.add_edge(subj, obj, predicate=pred)
         return G
 
+    def _is_io_port(self, node: URIRef) -> bool:
+        return any(
+            (node, RDFS.subClassOf, p) in self._graph
+            for p in [SNS.input_assignment, SNS.output_assignment]
+        )
+
+    def _to_qname(self, term: URIRef) -> str:
+        return self._graph.qname(term)
+
+    def _get_head_node(self, data_nodes):
+        candidates = list(self._graph.subjects(RDFS.subClassOf, SNS.process))
+        for node in nx.topological_sort(self.G):
+            if node in candidates and all(
+                nx.has_path(self.G, node, dn) for dn in data_nodes
+            ):
+                return node
+        raise ValueError("No common head node found")
+
     def get_query_graph(self, *args) -> nx.DiGraph:
         """
         Generate a query graph based on the provided arguments.
@@ -1467,30 +1582,30 @@ class SparqlWriter:
         for ii, arg in enumerate(args):
             if isinstance(arg, _Node):
                 arg = arg.value()
-            data_nodes.append(list(self.G.successors(arg))[0])
-            G.add_node(BNode(data_nodes[-1] + "_value"), output=True)
-            G.add_edge(BNode(data_nodes[-1]), data_nodes[-1], predicate="a")
+            while self._is_io_port(arg):
+                arg = list(self.G.successors(arg))[0]
+            data_nodes.append(arg)
+            G.add_node(self._to_qname(data_nodes[-1] + "_value"), output=ii)
+            G.add_node(data_nodes[-1])
+            G.add_edge(self._to_qname(data_nodes[-1]), data_nodes[-1], predicate="a")
             G.add_edge(
-                BNode(data_nodes[-1]),
-                BNode(data_nodes[-1] + "_value"),
+                self._to_qname(data_nodes[-1]),
+                self._to_qname(data_nodes[-1] + "_value"),
                 predicate="rdf:value",
             )
         if len(data_nodes) > 1:
-            for u, v in zip(data_nodes[:-1], data_nodes[1:]):
-                paths = nx.shortest_path(self.G.to_undirected(), u, v)
-                for uu, vv in zip(paths[:-1], paths[1:]):
-                    if self.G.has_edge(uu, vv):
-                        G.add_edge(
-                            BNode(uu),
-                            BNode(vv),
-                            predicate=self.G.edges[uu, vv]["predicate"],
-                        )
-                    else:
-                        G.add_edge(
-                            BNode(vv),
-                            BNode(uu),
-                            predicate=self.G.edges[vv, uu]["predicate"],
-                        )
+            head_node = self._get_head_node(data_nodes)
+            for node in data_nodes:
+                path = nx.shortest_path(self.G, head_node, node)
+                assert len(path) > 1
+                for u, v in zip(path[:-1], path[1:]):
+                    if not self.G.has_edge(u, v):
+                        u, v = v, u
+                    G.add_edge(
+                        self._to_qname(u),
+                        self._to_qname(v),
+                        predicate=self.G.edges[u, v]["predicate"],
+                    )
         return G
 
     @staticmethod
@@ -1507,11 +1622,12 @@ class SparqlWriter:
         Returns:
             str: The SPARQL query text.
         """
-        output_args = [
-            f"?{to_identifier(node)}"
+        output_with_ind = [
+            [data["output"], f"?{to_identifier(node)}"]
             for node, data in G.nodes.data()
-            if data.get("output", False)
+            if "output" in data
         ]
+        output_args = [x for _, x in sorted(output_with_ind, key=lambda pair: pair[0])]
         lines = ["SELECT " + " ".join(output_args) + " WHERE {"]
         for subj, obj, data in G.edges.data():
             subj, obj = [
@@ -1526,25 +1642,6 @@ class SparqlWriter:
             lines.append(f"{subj} {pred} {obj} .")
         lines.append("}")
         return "\n".join(lines)
-
-    def query(self, *args) -> list[list[Any]]:
-        """
-        Execute a SPARQL query based on the provided arguments.
-
-        This method generates a query graph, converts it into SPARQL query text,
-        and executes the query on the RDFLib graph.
-
-        Args:
-            *args: A variable number of arguments representing nodes in the graph.
-                   Each argument can be an RDFLib node or a value.
-
-        Returns:
-            list[list[Any]]: A list of query results, where each result is a list
-                             of values corresponding to the query's output variables.
-        """
-        G = self.get_query_graph(*args)
-        text = self.get_query_text(G)
-        return [[a.toPython() for a in item] for item in self._graph.query(text)]
 
 
 def request_values(wf_dict: dict, graph: Graph) -> dict:
