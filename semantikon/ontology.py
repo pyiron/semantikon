@@ -1728,7 +1728,7 @@ def request_values(wf_dict: dict, graph: Graph) -> dict:
     return wf_dict
 
 
-def label_to_uri(graph: Graph, label: str | URIRef) -> tuple[URIRef]:
+def label_to_uri(graph: Graph, label: str | URIRef) -> list[URIRef]:
     """
     Convert a human-readable label to its corresponding URIRef in the graph.
 
@@ -1749,4 +1749,4 @@ def label_to_uri(graph: Graph, label: str | URIRef) -> tuple[URIRef]:
     }}"""
     result = list(graph.query(query))
     assert len(result) > 0, f"No result found for {label}"
-    return result[0]
+    return [r[0] for r in result]
