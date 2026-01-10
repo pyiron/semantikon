@@ -1739,7 +1739,7 @@ def label_to_uri(graph: Graph, label: str | URIRef) -> tuple[URIRef]:
     Returns:
         str: The corresponding URIRef in the graph.
     """
-    if isinstance(label, URIRef) or label.startswith("http"):
+    if isinstance(label, URIRef) or (isinstance(label, str) and label.startswith("http")):
         label = graph.qname(URIRef(label)).split(":")[-1]
     query = f"""SELECT ?s
     WHERE {{
