@@ -828,15 +828,20 @@ class TestOntology(unittest.TestCase):
         wf_dict = my_kinetic_energy_workflow.run(2.0, 1.0, 4.0)
         graph = onto.get_knowledge_graph(wf_dict)
         comp = onto.query_io_completer(graph)
+        self.assertEqual(
+            dir(comp.my_kinetic_energy_workflow.get_speed_0.inputs),
+            ["distance", "time"],
+        )
         A = comp.my_kinetic_energy_workflow.get_speed_0.inputs.time
+        self.assertEqual(dir(A), ["query", "to_query_text"])
         B = comp.my_kinetic_energy_workflow.get_kinetic_energy_0.outputs.kinetic_energy
         self.assertListEqual(
             dir(comp.my_kinetic_energy_workflow),
             ["get_kinetic_energy_0", "get_speed_0", "inputs", "outputs"],
         )
-        sw = onto.SparqlWriter(graph)
-        self.assertEqual(sw.query(A, B), [[1.0, 8.0]])
-        self.assertEqual(sw.query(A), [[1.0]])
+        G = A >> B
+        self.assertEqual(G.query(graph), [[1.0, 8.0]])
+        self.assertEqual(A.query(graph), [[1.0]])
         with self.assertRaises(AttributeError):
             _ = comp.non_existing_node
         self.assertIsInstance(comp.my_kinetic_energy_workflow, onto._Node)

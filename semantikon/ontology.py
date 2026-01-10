@@ -1,3 +1,4 @@
+from __future__ import annotations
 import copy
 import json
 from dataclasses import asdict, dataclass, is_dataclass
@@ -1367,26 +1368,55 @@ class TrieNode:
 
 
 class _Node:
-    __slots__ = ("_node", "_path")
+    __slots__ = ("_node", "_path", "_graph")
 
-    def __init__(self, node: TrieNode, path: Iterable[str]):
+    def __init__(self, node: TrieNode, path: Iterable[str], graph: Graph):
         self._node = node
         self._path = tuple(path)
+        self._graph = graph
 
     def __getattr__(self, name: str):
         if name not in self._node.children:
             raise AttributeError(name)
-        return _Node(self._node.children[name], self._path + (name,))
+        return _Node(self._node.children[name], self._path + (name,), self._graph)
 
     def __dir__(self):
+        if self._node.terminal:
+            return ["query", "to_query_text"]
         return sorted(self._node.children.keys())
+
+    def query(self, graph: Graph) -> SparqlGraph:
+        text = self.to_query_text()
+        return [[a.toPython() for a in item] for item in graph.query(text)]
+
+    def to_query_text(self) -> str:
+        sw = SparqlWriter(self._graph)
+        qg = sw.get_query_graph(self)
+        return SparqlWriter.get_query_text(qg)
 
     def value(self) -> URIRef:
         return BASE["-".join(self._path)]
 
+    def __rshift__(self, other):
+        if isinstance(other, _Node):
+            sw = SparqlWriter(self._graph)
+            return sw.get_query_graph(self, other)
+        assert isinstance(other, nx.DiGraph)
+        node = [n for n, d in other.nodes.data() if d.get("requested", False)][-1]
+        sw = SparqlWriter(self._graph)
+        qg = sw.get_query_graph(node, self)
+        return SparqlGraph(nx.compose(other, qg))
+
+    def __rrshift__(self, other):
+        assert isinstance(other, nx.DiGraph)
+        node = [n for n, d in other.nodes.data() if d.get("requested", False)][-1]
+        sw = SparqlWriter(self._graph)
+        qg = sw.get_query_graph(self, node)
+        return SparqlGraph(nx.compose(other, qg))
+
 
 class Completer(_Node):
-    def __init__(self, values: Iterable[str]):
+    def __init__(self, values: Iterable[str], graph: Graph):
         root = TrieNode()
         for value in values:
             node = root
@@ -1394,7 +1424,7 @@ class Completer(_Node):
                 node = node.children.setdefault(part, TrieNode())
             node.terminal = True
 
-        super().__init__(root, ())
+        super().__init__(root, (), graph)
 
 
 def query_io_completer(graph: Graph) -> Completer:
@@ -1406,7 +1436,32 @@ def query_io_completer(graph: Graph) -> Completer:
             ?io rdfs:subClassOf {pred} .
         }}"""
         all_ios.extend([g[0].split("/")[-1] for g in graph.query(query)])
-    return Completer(all_ios)
+    return Completer(all_ios, graph)
+
+
+class SparqlGraph(nx.DiGraph):
+    def to_query_text(self) -> str:
+        """
+        Convert the SparqlGraph into SPARQL query text.
+
+        Returns:
+            str: The SPARQL query text.
+        """
+        return SparqlWriter.get_query_text(self)
+
+    def query(self, graph: Graph) -> list[list[Any]]:
+        """
+        Execute the SPARQL query represented by the SparqlGraph on the given graph.
+
+        Args:
+            graph (Graph): An RDFLib graph to execute the query against.
+
+        Returns:
+            list[list[Any]]: A list of query results, where each result is a list
+                             of values corresponding to the query's output variables.
+        """
+        text = self.to_query_text()
+        return [[a.toPython() for a in item] for item in graph.query(text)]
 
 
 class SparqlWriter:
@@ -1447,6 +1502,12 @@ class SparqlWriter:
             G.add_edge(subj, obj, predicate=pred)
         return G
 
+    def _is_io_port(self, node: URIRef) -> bool:
+        return any(
+            (node, RDFS.subClassOf, p) in self._graph
+            for p in [SNS.input_assignment, SNS.output_assignment]
+        )
+
     def get_query_graph(self, *args) -> nx.DiGraph:
         """
         Generate a query graph based on the provided arguments.
@@ -1462,13 +1523,16 @@ class SparqlWriter:
         Returns:
             nx.DiGraph: A directed graph representing the query structure.
         """
-        G = nx.DiGraph()
+        G = SparqlGraph()
         data_nodes = []
         for ii, arg in enumerate(args):
             if isinstance(arg, _Node):
                 arg = arg.value()
-            data_nodes.append(list(self.G.successors(arg))[0])
+            if self._is_io_port(arg):
+                arg = list(self.G.successors(arg))[0]
+            data_nodes.append(arg)
             G.add_node(BNode(data_nodes[-1] + "_value"), output=True)
+            G.add_node(data_nodes[-1], requested=True)
             G.add_edge(BNode(data_nodes[-1]), data_nodes[-1], predicate="a")
             G.add_edge(
                 BNode(data_nodes[-1]),
@@ -1526,25 +1590,6 @@ class SparqlWriter:
             lines.append(f"{subj} {pred} {obj} .")
         lines.append("}")
         return "\n".join(lines)
-
-    def query(self, *args) -> list[list[Any]]:
-        """
-        Execute a SPARQL query based on the provided arguments.
-
-        This method generates a query graph, converts it into SPARQL query text,
-        and executes the query on the RDFLib graph.
-
-        Args:
-            *args: A variable number of arguments representing nodes in the graph.
-                   Each argument can be an RDFLib node or a value.
-
-        Returns:
-            list[list[Any]]: A list of query results, where each result is a list
-                             of values corresponding to the query's output variables.
-        """
-        G = self.get_query_graph(*args)
-        text = self.get_query_text(G)
-        return [[a.toPython() for a in item] for item in self._graph.query(text)]
 
 
 def request_values(wf_dict: dict, graph: Graph) -> dict:
