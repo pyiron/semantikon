@@ -1544,8 +1544,7 @@ class SparqlWriter:
             head_node = self._get_head_node(data_nodes)
             for node in data_nodes:
                 path = nx.shortest_path(self.G, head_node, node)
-                if len(path) < 2:
-                    continue
+                assert len(path) > 1
                 for u, v in zip(path[:-1], path[1:]):
                     if self.G.has_edge(u, v):
                         G.add_edge(
