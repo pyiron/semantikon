@@ -1424,7 +1424,7 @@ class _QueryHolder:
         constructed and executed.
     """
 
-    _nodes: list
+    _nodes: list[_Node]
     _graph: Graph
 
     def to_query_graph(self):
