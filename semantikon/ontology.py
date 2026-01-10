@@ -1741,12 +1741,11 @@ def label_to_uri(graph: Graph, label: str | URIRef) -> list[URIRef]:
     """
     if isinstance(label, URIRef) or (isinstance(label, str) and label.startswith("http")):
         label = graph.qname(URIRef(label)).split(":")[-1]
-    query = f"""SELECT ?s
-    WHERE {{
+    query = """SELECT ?s
+    WHERE {
       ?s rdfs:label ?label .
       ?s a owl:Class .
-      FILTER(?label = "{label}")
-    }}"""
-    result = list(graph.query(query))
+    }"""
+    result = list(graph.query(query, initBindings={"label": Literal(label)}))
     assert len(result) > 0, f"No result found for {label}"
     return [r[0] for r in result]
