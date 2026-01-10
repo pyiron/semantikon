@@ -1563,12 +1563,12 @@ class SparqlWriter:
         Returns:
             str: The SPARQL query text.
         """
-        output_args = [
+        output_with_ind = [
             [data["output"], f"?{to_identifier(node)}"]
             for node, data in G.nodes.data()
             if "output" in data
         ]
-        output_args = [x for _, x in sorted(output_args, key=lambda pair: pair[0])]
+        output_args = [x for _, x in sorted(output_with_ind, key=lambda pair: pair[0])]
         lines = ["SELECT " + " ".join(output_args) + " WHERE {"]
         for subj, obj, data in G.edges.data():
             subj, obj = [
