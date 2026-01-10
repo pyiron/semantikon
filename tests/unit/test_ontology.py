@@ -233,32 +233,23 @@ class TestOntology(unittest.TestCase):
 
     def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        g = onto.get_knowledge_graph(wf_dict, include_t_box=False)
+        g = onto.get_knowledge_graph(wf_dict)
 
         with self.subTest("workflow instance exists"):
-            workflows = list(g.subjects(RDF.type, onto.BASE.my_kinetic_energy_workflow))
+            uri = onto.label_to_uri(g, "my_kinetic_energy_workflow")
+            workflows = list(g.subjects(RDF.type, uri))
             self.assertEqual(len(workflows), 1)
 
         wf = workflows[0]
 
         with self.subTest("workflow has both function executions as parts"):
             parts = list(g.objects(wf, onto.BFO["0000051"]))
-            ke_calls = [
-                p
-                for p in parts
-                if (
-                    p,
-                    RDF.type,
-                    onto.BASE["my_kinetic_energy_workflow-get_kinetic_energy_0"],
-                )
-                in g
-            ]
-            speed_calls = [
-                p
-                for p in parts
-                if (p, RDF.type, onto.BASE["my_kinetic_energy_workflow-get_speed_0"])
-                in g
-            ]
+            uri = onto.label_to_uri(
+                g, "my_kinetic_energy_workflow-get_kinetic_energy_0"
+            )
+            ke_calls = [p for p in parts if (p, RDF.type, uri) in g]
+            uri = onto.label_to_uri(g, "my_kinetic_energy_workflow-get_speed_0")
+            speed_calls = [p for p in parts if (p, RDF.type, uri) in g]
             self.assertEqual(len(ke_calls), 1)
             self.assertEqual(len(speed_calls), 1)
 
@@ -295,9 +286,10 @@ class TestOntology(unittest.TestCase):
             outputs = list(
                 g.subjects(
                     RDF.type,
-                    onto.BASE[
+                    onto.label_to_uri(
+                        g,
                         "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy_data"
-                    ],
+                    ),
                 )
             )
             self.assertEqual(len(outputs), 1)

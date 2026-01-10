@@ -88,7 +88,8 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
 class SemantikonDiGraph(nx.DiGraph):
     @cached_property
     def t_ns(self):
-        return BASE
+        h = _get_graph_hash(self, with_global_inputs=False)
+        return Namespace(BASE + h + "_")
 
     @cached_property
     def a_ns(self):
@@ -426,21 +427,23 @@ def _wf_node_to_graph(
                 uri=data.get("uri"),
             )
     if t_box:
+        node = G.t_ns[node_name]
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
                 g += _to_owl_restriction(
-                    G.t_ns[node_name],
+                    node,
                     SNS.has_part,
                     G.t_ns[item],
                 )
         g.add((G.t_ns[node_name], RDFS.subClassOf, SNS.process))
         if "function" in data:
             g += _to_owl_restriction(
-                G.t_ns[node_name],
+                node,
                 SNS.has_participant,
                 f_node,
                 restriction_type=OWL.hasValue,
             )
+        g.add((node, RDFS.label, Literal(node_name)))
     else:
         node = G.get_a_node(node_name)
         g.add((node, RDF.type, G.t_ns[node_name]))
@@ -665,10 +668,7 @@ def _wf_io_to_graph(
 ) -> Graph:
     node = G.t_ns[node_name] if t_box else G.get_a_node(node_name)
     g = _get_bound_graph()
-    if data.get("label") is not None:
-        g.add((node, RDFS.label, Literal(data["label"])))
-    else:
-        g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
+    g.add((node, RDFS.label, Literal(node_name)))
     if t_box:
         g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.subClassOf, io_assignment))
@@ -804,6 +804,7 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
     if t_box:
         g.add((workflow_node, RDF.type, OWL.Class))
         g.add((workflow_node, RDFS.subClassOf, SNS.process))
+        g.add((workflow_node, RDFS.label, Literal(G.name)))
     else:
         g.add((workflow_node, RDF.type, G.t_ns[G.name]))
     g += _parse_precedes(G=G, workflow_node=workflow_node, t_box=t_box)
@@ -1495,15 +1496,17 @@ class Completer(_Node):
 
 
 def query_io_completer(graph: Graph) -> Completer:
-    all_ios = []
+    translation_dict = {}
     for pred in ["pmd:0000066", "pmd:0000067"]:
         query = f"""
         PREFIX pmd: <https://w3id.org/pmd/co/PMD_>
-        SELECT ?io WHERE {{
+        SELECT ?io ?label WHERE {{
             ?io rdfs:subClassOf {pred} .
+            ?io rdfs:label ?label .
         }}"""
-        all_ios.extend([g[0].split("/")[-1] for g in graph.query(query)])
-    return Completer(all_ios, graph)
+        for g in graph.query(query):
+            translation_dict[g[1]] = g[0]
+    return Completer(list(translation_dict.keys()), graph)
 
 
 class SparqlWriter:
@@ -1715,3 +1718,16 @@ def request_values(wf_dict: dict, graph: Graph) -> dict:
         elif len(keys) == 2:
             wf_dict[keys[0]][keys[1]]["value"] = value
     return wf_dict
+
+def label_to_uri(graph: Graph, label: str | URIRef) -> str:
+    if isinstance(label, URIRef) or label.startswith("http"):
+        label = graph.qname(URIRef(label)).split(":")[-1]
+    query = f"""SELECT ?s
+    WHERE {{
+      ?s rdfs:label ?label .
+      ?s a owl:Class .
+      FILTER(?label = "{label}")
+    }}"""
+    result = list(graph.query(query))
+    assert len(result) == 1, f"Found {len(result)} results for label {label}"
+    return result[0][0]
