@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import copy
 import json
 from dataclasses import asdict, dataclass, is_dataclass
@@ -1385,7 +1386,7 @@ class _Node:
             return ["query", "to_query_text"]
         return sorted(self._node.children.keys())
 
-    def query(self, graph: Graph) -> SparqlGraph:
+    def query(self, graph: Graph) -> list[list[Any]]:
         text = self.to_query_text()
         return [[a.toPython() for a in item] for item in graph.query(text)]
 
