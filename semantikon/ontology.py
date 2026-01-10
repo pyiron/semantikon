@@ -294,6 +294,8 @@ def get_knowledge_graph(
         hash_data (bool): if True, compute and include hash values for data nodes
         remove_data (bool): if True, remove data values after hashing
         extract_dataclasses (bool): if True, extract dataclass information into the graph
+        prefix (str | None): prefix to use for the workflow namespace.
+            If None, a hash-based prefix is generated.
 
     Returns:
         (rdflib.Graph): graph containing workflow information
@@ -1739,7 +1741,9 @@ def label_to_uri(graph: Graph, label: str | URIRef) -> list[URIRef]:
     Returns:
         list[URIRef]: The corresponding URIs from the graph.
     """
-    if isinstance(label, URIRef) or (isinstance(label, str) and label.startswith("http")):
+    if isinstance(label, URIRef) or (
+        isinstance(label, str) and label.startswith("http")
+    ):
         label = graph.qname(URIRef(label)).split(":")[-1]
     query = f"""SELECT ?s
     WHERE {{
