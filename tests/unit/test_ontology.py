@@ -286,7 +286,9 @@ class TestOntology(unittest.TestCase):
             outputs = list(
                 g.subjects(
                     RDF.type,
-                    onto.BASE["T_my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy_data"],
+                    onto.BASE[
+                        "T_my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy_data"
+                    ],
                 )
             )
             self.assertEqual(len(outputs), 1)
@@ -848,7 +850,9 @@ class TestOntology(unittest.TestCase):
             speed = get_speed(distance=distance, time=time)
             return speed
 
-        graph += onto.get_knowledge_graph(only_get_speed_workflow.run(3.0, 1.5), prefix="T")
+        graph += onto.get_knowledge_graph(
+            only_get_speed_workflow.run(3.0, 1.5), prefix="T"
+        )
         comp = onto.query_io_completer(graph)
         A = comp.T_my_kinetic_energy_workflow.inputs.time
         B = comp.T_my_kinetic_energy_workflow.outputs.kinetic_energy
