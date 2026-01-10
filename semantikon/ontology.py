@@ -1197,6 +1197,7 @@ def serialize_and_convert_to_networkx(
         wf_dict (dict): The workflow dictionary to serialize.
         hash_data (bool): Whether to hash node data.
         remove_data (bool): Whether to remove original data after hashing.
+        prefix (str | None): Optional prefix for node names.
 
     Returns:
         SemantikonDiGraph: The serialized workflow graph.
