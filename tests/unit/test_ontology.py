@@ -867,6 +867,11 @@ class TestOntology(unittest.TestCase):
         self.assertListEqual(
             dir(comp), ["my_kinetic_energy_workflow", "only_get_speed_workflow"]
         )
+        D = comp.only_get_speed_workflow.inputs.distance
+        with self.assertRaises(ValueError) as context:
+            _ = (A + D).query()
+        self.assertEqual(str(context.exception), "No common head node found")
+        self.assertEqual(D.query(), [[3.0]])
 
     def test_request_values(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()

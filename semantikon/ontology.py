@@ -1500,13 +1500,12 @@ class SparqlWriter:
     def _to_qname(self, term: URIRef) -> str:
         return self._graph.qname(term)
 
-    @cached_property
-    def _get_head_node(self):
+    def _get_head_node(self, data_nodes):
         candidates = list(self._graph.subjects(RDFS.subClassOf, SNS.process))
-        assert len(candidates) > 0, "No head node found"
         for node in nx.topological_sort(self.G):
-            if node in candidates:
+            if node in candidates and all(nx.has_path(self.G, node, dn) for dn in data_nodes):
                 return node
+        raise ValueError("No common head node found")
 
     def get_query_graph(self, *args) -> nx.DiGraph:
         """
@@ -1540,8 +1539,9 @@ class SparqlWriter:
                 predicate="rdf:value",
             )
         if len(data_nodes) > 1:
+            head_node = self._get_head_node(data_nodes)
             for node in data_nodes:
-                path = nx.shortest_path(self.G, self._get_head_node, node)
+                path = nx.shortest_path(self.G, head_node, node)
                 if len(path) < 2:
                     continue
                 for u, v in zip(path[:-1], path[1:]):
