@@ -843,6 +843,10 @@ class TestOntology(unittest.TestCase):
         self.assertEqual((A & C & D & B).query(), [[1.0, 4.0, 2.0, 8.0]])
         self.assertEqual(((A & C) & (D & B)).query(), [[1.0, 4.0, 2.0, 8.0]])
         self.assertEqual(A.query(), [[1.0]])
+        A_dash = A.value()  # A is now URIRef instead of _Node
+        self.assertEqual((A & (C & B)).query(), [[1.0, 4.0, 8.0]])
+        self.assertEqual((A & C & D & B).query(), [[1.0, 4.0, 2.0, 8.0]])
+        self.assertEqual(((A & C) & (D & B)).query(), [[1.0, 4.0, 2.0, 8.0]])
         self.assertEqual(list(graph.query(A.to_query_text()))[0][0].toPython(), 1.0)
         with self.assertRaises(AttributeError):
             _ = comp.non_existing_node
