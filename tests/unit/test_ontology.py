@@ -257,10 +257,7 @@ class TestOntology(unittest.TestCase):
         speed_call = speed_calls[0]
 
         with self.subTest("speed computation precedes kinetic energy computation"):
-            self.assertIn(
-                (speed_call, onto.BFO["0000063"], ke_call),
-                g,
-            )
+            self.assertIn((speed_call, onto.BFO["0000063"], ke_call), g)
 
         with self.subTest("functions are linked to python callables"):
             self.assertIn(
@@ -283,23 +280,19 @@ class TestOntology(unittest.TestCase):
             )
 
         with self.subTest("kinetic energy output data has correct unit"):
-            outputs = list(
-                g.subjects(
-                    RDF.type,
-                    onto.BASE[
-                        "T_my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy_data"
-                    ],
-                )
-            )
-            self.assertEqual(len(outputs), 1)
-            self.assertIn(
-                (
-                    outputs[0],
-                    Namespace("http://qudt.org/schema/qudt/").hasUnit,
-                    Namespace("http://qudt.org/vocab/unit/").J,
-                ),
-                g,
-            )
+            query = f"""
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX qudt: <http://qudt.org/schema/qudt/>
+            PREFIX unit: <http://qudt.org/vocab/unit/>
+            PREFIX pmd: <{onto.BASE}>
+            PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
+
+            ASK {{
+                ?output a pmd:T_my_kinetic_energy_workflow-outputs-kinetic_energy .
+                ?output obi:0000299 ?data .
+                ?data qudt:hasUnit unit:J .
+            }}"""
+            self.assertTrue(g.query(query).askAnswer)
         g = onto.get_knowledge_graph(wf_dict)
         self.assertTrue(onto.validate_values(g)[0])
 
@@ -495,7 +488,7 @@ class TestOntology(unittest.TestCase):
         with self.subTest("cross-input data relations preserved"):
             query = sparql_prefixes + dedent(
                 """
-            ASK WHERE {
+            ASK {
                 ?b_data a sns:T_wf_triples-inputs-b_data .
                 ?a_data a sns:T_wf_triples-inputs-a_data .
                 ?b_data ex:relatedTo ?a_data .
@@ -505,7 +498,7 @@ class TestOntology(unittest.TestCase):
             self.assertTrue(g.query(query).askAnswer)
             query = sparql_prefixes + dedent(
                 """
-            ASK WHERE {
+            ASK {
                 ?output a sns:T_wf_triples-f_triples_0-outputs-a_data .
                 ?input a sns:T_wf_triples-inputs-b_data .
                 ?output ex:hasSomeRelation ?input .
