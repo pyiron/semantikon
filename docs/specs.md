@@ -14,7 +14,7 @@ The semantikon representation of a workflow is a **nested dictionary** with the 
 - `type` (required): It must be "Workflow" (otherwise "Function" for the atomic nodes)
 - `function` (optional): The underlying python function and its metadata (see below)
 
-### Inputs Outputs
+### Inputs and Outputs
 
 The input and output arguments must be given by a dictionary whose key is the argument name in the case of the input, and a label in the case of the output. The value must be given by a dictionary, which can in principle contain anything (or nothing). Following arguments can be currently understood by `semantikon` (all optional):
 
