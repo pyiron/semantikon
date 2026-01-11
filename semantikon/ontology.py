@@ -960,7 +960,11 @@ class _DataclassTranslator:
             field_node: Field class.
             metadata: Parsed annotation metadata.
         """
-        graph.add((field_node, RDFS.subClassOf, parent))
+        graph += _to_owl_restriction(
+            base_node=parent,
+            on_property=SNS.has_part,
+            target_class=field_node,
+        )
 
         if "units" in metadata:
             graph += _to_owl_restriction(

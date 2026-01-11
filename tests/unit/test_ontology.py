@@ -772,7 +772,10 @@ class TestOntology(unittest.TestCase):
               ?distance_datanode obi:0001927 ?distance_bnode .
               ?distance_bnode a pmd:0040001 .
               ?distance_datanode a ?distance_class .
-              ?distance_class rdfs:subClassOf ?speed_data_class .
+              ?speed_data_class rdfs:subClassOf ?has_part_bnode .
+              ?has_part_bnode owl:someValuesFrom ?distance_class .
+              ?has_part_bnode owl:onProperty bfo:0000051 .
+              ?has_part_bnode a owl:Restriction .
               ?speed_data_datanode a ?speed_data_class .
               ?input_node obi:0000293 ?speed_data_datanode .
               ?workflow_node bfo:0000051 ?input_node .
