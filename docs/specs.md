@@ -2,7 +2,7 @@
 
 ## semantikon representation
 
-#### Workflow
+### Workflow
 
 The semantikon representation of a workflow is a **nested dictionary** with the following entries on the top level (which is the main workflow level):
 
@@ -14,7 +14,7 @@ The semantikon representation of a workflow is a **nested dictionary** with the 
 - `type` (required): It must be "Workflow" (otherwise "Function" for the atomic nodes)
 - `function` (optional): The underlying python function and its metadata (see below)
 
-#### Inputs Outputs
+### Inputs Outputs
 
 The input and output arguments must be given by a dictionary whose key is the argument name in the case of the input, and a label in the case of the output. The value must be given by a dictionary, which can in principle contain anything (or nothing). Following arguments can be currently understood by `semantikon` (all optional):
 
@@ -26,7 +26,7 @@ The input and output arguments must be given by a dictionary whose key is the ar
 - `units`: QUDT URI or str that can be understood by pint (and will be later translated to pint URI)
 - `derived_from`: To indicate that (typically) an output is derived from an input. For example painting a car where the output is basically the same car as the input with a different color.
 
-#### Atomic node
+### Atomic node
 An atomic node is represented by a dictionary whose key represents the name of the node and the value is given by a dictionary containing the following arguments:
 
 - `inputs` (required): Input arguments and their metadata (see above)
@@ -34,11 +34,11 @@ An atomic node is represented by a dictionary whose key represents the name of t
 - `type` (required): "Function" for an atomic node
 - `function` (required): Underlying python function (note: **required** for an atomic node)
 
-#### Edges
+### Edges
 
 Edges are represented by list of lists containing the source node and the target node, which is given in the format `io.arg_name` (for the workflow inputs or outputs) or `atomic_node_name.io.arg_name`.
 
-#### Function
+### Function
 
 `function` is the function object itself or a dictionary with the following arguments:
 
