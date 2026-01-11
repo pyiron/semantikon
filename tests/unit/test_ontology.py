@@ -772,7 +772,10 @@ class TestOntology(unittest.TestCase):
               ?distance_datanode obi:0001927 ?distance_bnode .
               ?distance_bnode a pmd:0040001 .
               ?distance_datanode a ?distance_class .
-              ?distance_class rdfs:subClassOf ?speed_data_class .
+              ?speed_data_class rdfs:subClassOf ?has_part_bnode .
+              ?has_part_bnode owl:someValuesFrom ?distance_class .
+              ?has_part_bnode owl:onProperty bfo:0000051 .
+              ?has_part_bnode a owl:Restriction .
               ?speed_data_datanode a ?speed_data_class .
               ?input_node obi:0000293 ?speed_data_datanode .
               ?workflow_node bfo:0000051 ?input_node .
@@ -832,14 +835,18 @@ class TestOntology(unittest.TestCase):
             dir(comp.T_my_kinetic_energy_workflow),
             ["get_kinetic_energy_0", "get_speed_0", "inputs", "outputs"],
         )
-        self.assertEqual((A + B).query(), [[1.0, 8.0]])
+        self.assertEqual((A & B).query(), [[1.0, 8.0]])
         self.assertEqual(
-            (A + C + B).query(), [[1.0, 4.0, 8.0]], msg=(A + C + B).to_query_text()
+            (A & C & B).query(), [[1.0, 4.0, 8.0]], msg=(A & C & B).to_query_text()
         )
-        self.assertEqual((A + (C + B)).query(), [[1.0, 4.0, 8.0]])
-        self.assertEqual((A + C + D + B).query(), [[1.0, 4.0, 2.0, 8.0]])
-        self.assertEqual(((A + C) + (D + B)).query(), [[1.0, 4.0, 2.0, 8.0]])
+        self.assertEqual((A & (C & B)).query(), [[1.0, 4.0, 8.0]])
+        self.assertEqual((A & C & D & B).query(), [[1.0, 4.0, 2.0, 8.0]])
+        self.assertEqual(((A & C) & (D & B)).query(), [[1.0, 4.0, 2.0, 8.0]])
         self.assertEqual(A.query(), [[1.0]])
+        A_dash = A.value()  # A is now URIRef instead of _Node
+        self.assertEqual((A_dash & (C & B)).query(), [[1.0, 4.0, 8.0]])
+        self.assertEqual((A_dash & C & D & B).query(), [[1.0, 4.0, 2.0, 8.0]])
+        self.assertEqual(((A_dash & C) & (D & B)).query(), [[1.0, 4.0, 2.0, 8.0]])
         self.assertEqual(list(graph.query(A.to_query_text()))[0][0].toPython(), 1.0)
         with self.assertRaises(AttributeError):
             _ = comp.non_existing_node
@@ -857,17 +864,15 @@ class TestOntology(unittest.TestCase):
         A = comp.T_my_kinetic_energy_workflow.inputs.time
         B = comp.T_my_kinetic_energy_workflow.outputs.kinetic_energy
         C = comp.T_my_kinetic_energy_workflow.inputs.mass
-        self.assertEqual((A + B).query(), [[1.0, 8.0]])
-        self.assertEqual(
-            (A + C + B).query(), [[1.0, 4.0, 8.0]], msg=(A + C + B).to_query_text()
-        )
+        self.assertEqual((A & B).query(), [[1.0, 8.0]])
+        self.assertEqual((A & C & B).query(), [[1.0, 4.0, 8.0]])
         self.assertEqual(A.query(), [[1.0]])
         self.assertListEqual(
             dir(comp), ["T_my_kinetic_energy_workflow", "T_only_get_speed_workflow"]
         )
         E = comp.T_only_get_speed_workflow.inputs.distance
         with self.assertRaises(ValueError) as context:
-            _ = (A + E).query()
+            _ = (A & E).query()
         self.assertEqual(str(context.exception), "No common head node found")
         self.assertEqual(E.query(), [[3.0]])
 
