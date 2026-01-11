@@ -62,7 +62,7 @@ Here are the corresponding predicates:
 - **has_part** (`http://purl.obolibrary.org/obo/BFO_0000051`): **process** to **input** and **output assignment**
 - **has_participant** (`http://purl.obolibrary.org/obo/RO_0000057`): **input** and **output assignment** to **value specification**
 
-Diagramatically, the nodes and predicates given above are connected as follows:
+Diagrammatically, the nodes and predicates given above are connected as follows:
 ```mermaid
 graph LR
 process_1[Process 1] -- has_part --> ia[Input assignment] -- has_participant --> vs[Value specification]
