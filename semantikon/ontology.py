@@ -88,7 +88,12 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
 class SemantikonDiGraph(nx.DiGraph):
     @cached_property
     def t_ns(self):
-        return BASE
+        h = (
+            "W" + _get_graph_hash(self, with_global_inputs=False)[:8]
+            if self.graph["prefix"] is None
+            else self.graph["prefix"]
+        )
+        return Namespace(BASE + h + "_")
 
     @cached_property
     def a_ns(self):
@@ -277,6 +282,7 @@ def get_knowledge_graph(
     hash_data: bool = True,
     remove_data: bool = False,
     extract_dataclasses: bool = False,
+    prefix: str | None = None,
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
@@ -288,12 +294,14 @@ def get_knowledge_graph(
         hash_data (bool): if True, compute and include hash values for data nodes
         remove_data (bool): if True, remove data values after hashing
         extract_dataclasses (bool): if True, extract dataclass information into the graph
+        prefix (str | None): prefix to use for the workflow namespace.
+            If None, a hash-based prefix is generated.
 
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
     G = serialize_and_convert_to_networkx(
-        wf_dict, hash_data=hash_data, remove_data=remove_data
+        wf_dict, hash_data=hash_data, remove_data=remove_data, prefix=prefix
     )
     graph = _get_bound_graph()
     if include_t_box:
@@ -426,21 +434,23 @@ def _wf_node_to_graph(
                 uri=data.get("uri"),
             )
     if t_box:
+        node = G.t_ns[node_name]
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
                 g += _to_owl_restriction(
-                    G.t_ns[node_name],
+                    node,
                     SNS.has_part,
                     G.t_ns[item],
                 )
         g.add((G.t_ns[node_name], RDFS.subClassOf, SNS.process))
         if "function" in data:
             g += _to_owl_restriction(
-                G.t_ns[node_name],
+                node,
                 SNS.has_participant,
                 f_node,
                 restriction_type=OWL.hasValue,
             )
+        g.add((node, RDFS.label, Literal(node_name)))
     else:
         node = G.get_a_node(node_name)
         g.add((node, RDF.type, G.t_ns[node_name]))
@@ -665,10 +675,7 @@ def _wf_io_to_graph(
 ) -> Graph:
     node = G.t_ns[node_name] if t_box else G.get_a_node(node_name)
     g = _get_bound_graph()
-    if data.get("label") is not None:
-        g.add((node, RDFS.label, Literal(data["label"])))
-    else:
-        g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
+    g.add((node, RDFS.label, Literal(node_name)))
     if t_box:
         g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.subClassOf, io_assignment))
@@ -804,6 +811,7 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
     if t_box:
         g.add((workflow_node, RDF.type, OWL.Class))
         g.add((workflow_node, RDFS.subClassOf, SNS.process))
+        g.add((workflow_node, RDFS.label, Literal(G.name)))
     else:
         g.add((workflow_node, RDF.type, G.t_ns[G.name]))
     g += _parse_precedes(G=G, workflow_node=workflow_node, t_box=t_box)
@@ -1058,11 +1066,12 @@ class _WorkflowGraphSerializer:
     Serializes a workflow dictionary into a SemantikonDiGraph.
     """
 
-    def __init__(self, wf_dict: dict):
+    def __init__(self, wf_dict: dict, prefix: str | None = None):
         self.wf_dict = wf_dict
         self.node_dict: dict = {}
         self.channel_dict: dict = {}
         self.edge_list: list[list[str]] = []
+        self.prefix = prefix
 
     # -----------------------------
     # String utilities
@@ -1130,7 +1139,7 @@ class _WorkflowGraphSerializer:
     # -----------------------------
 
     def _build_graph(self) -> SemantikonDiGraph:
-        G = SemantikonDiGraph()
+        G = SemantikonDiGraph(prefix=self.prefix)
 
         self._add_channels(G)
         self._add_nodes(G)
@@ -1175,7 +1184,10 @@ class _WorkflowGraphSerializer:
 
 
 def serialize_and_convert_to_networkx(
-    wf_dict: dict, hash_data: bool = True, remove_data: bool = False
+    wf_dict: dict,
+    hash_data: bool = True,
+    remove_data: bool = False,
+    prefix: str | None = None,
 ) -> SemantikonDiGraph:
     """
     Serialize a workflow dictionary into a SemantikonDiGraph, optionally
@@ -1185,11 +1197,12 @@ def serialize_and_convert_to_networkx(
         wf_dict (dict): The workflow dictionary to serialize.
         hash_data (bool): Whether to hash node data.
         remove_data (bool): Whether to remove original data after hashing.
+        prefix (str | None): Optional prefix for node names.
 
     Returns:
         SemantikonDiGraph: The serialized workflow graph.
     """
-    G = _WorkflowGraphSerializer(wf_dict).serialize()
+    G = _WorkflowGraphSerializer(wf_dict, prefix=prefix).serialize()
     if hash_data:
         hashed_dict = get_hashed_node_dict(wf_dict)
         for node, data in hashed_dict.items():
@@ -1502,7 +1515,8 @@ def query_io_completer(graph: Graph) -> Completer:
         SELECT ?io WHERE {{
             ?io rdfs:subClassOf {pred} .
         }}"""
-        all_ios.extend([g[0].split("/")[-1] for g in graph.query(query)])
+        for g in graph.query(query):
+            all_ios.append(g[0].split("/")[-1])
     return Completer(all_ios, graph)
 
 
@@ -1715,3 +1729,24 @@ def request_values(wf_dict: dict, graph: Graph) -> dict:
         elif len(keys) == 2:
             wf_dict[keys[0]][keys[1]]["value"] = value
     return wf_dict
+
+
+def label_to_uri(graph: Graph, label: str) -> list[URIRef]:
+    """
+    Convert a human-readable label to its corresponding URIRef in the graph.
+
+    Args:
+        graph (Graph): The RDF graph to query.
+        label (str): The human-readable label or URIRef.
+
+    Returns:
+        list[URIRef]: The corresponding URIs from the graph.
+    """
+    query = """SELECT ?s
+    WHERE {
+      ?s rdfs:label ?label .
+      ?s a owl:Class .
+    }"""
+    result = list(graph.query(query, initBindings={"label": Literal(label)}))
+    assert len(result) > 0, f"No result found for {label}"
+    return [r[0] for r in result]
