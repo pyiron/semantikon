@@ -893,6 +893,7 @@ class _DataclassTranslator:
             if self.include_a_box:
                 self._emit_abox(
                     graph=g,
+                    parent=a_node,
                     field_node=a_field,
                     field_class=t_field,
                     metadata=metadata,
@@ -985,6 +986,7 @@ class _DataclassTranslator:
         self,
         *,
         graph: Graph,
+        parent: BNode,
         field_node: BNode,
         field_class: URIRef,
         metadata: dict,
@@ -1000,6 +1002,7 @@ class _DataclassTranslator:
             metadata: Parsed annotation metadata.
             value: Python value of the field.
         """
+        graph.add((parent, SNS.has_part, field_node))
         graph.add((field_node, RDF.type, field_class))
 
         if "units" in metadata:
@@ -1413,13 +1416,17 @@ class _Node:
     def value(self) -> URIRef:
         return BASE["-".join(self._path)]
 
-    def __add__(self, other) -> _QueryHolder:
-        if isinstance(other, _Node):
+    def __and__(self, other: _Node | URIRef | _QueryHolder) -> _QueryHolder:
+        if isinstance(other, _Node) or isinstance(other, URIRef):
             nodes = [self, other]
         else:
             assert isinstance(other, _QueryHolder)
             nodes = [self] + other._nodes
         return _QueryHolder(nodes, self._graph)
+
+    def __rand__(self, other: URIRef) -> _QueryHolder:
+        assert isinstance(other, URIRef), type(other)
+        return _QueryHolder([other, self], self._graph)
 
 
 @dataclass
@@ -1489,13 +1496,17 @@ class _QueryHolder:
         text = self.to_query_text()
         return [[a.toPython() for a in item] for item in self._graph.query(text)]
 
-    def __add__(self, other) -> _QueryHolder:
-        if isinstance(other, _Node):
+    def __and__(self, other: _Node | URIRef | _QueryHolder) -> _QueryHolder:
+        if isinstance(other, _Node) or isinstance(other, URIRef):
             nodes = self._nodes + [other]
         else:
             assert isinstance(other, _QueryHolder)
             nodes = self._nodes + other._nodes
         return _QueryHolder(nodes, self._graph)
+
+    def __rand__(self, other: URIRef) -> _QueryHolder:
+        assert isinstance(other, URIRef)
+        return _QueryHolder([other] + self._nodes, self._graph)
 
 
 class Completer(_Node):
