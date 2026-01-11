@@ -683,7 +683,7 @@ def _wf_io_to_graph(
     else:
         g.add((data_node, RDF.type, G.t_ns[G._get_data_node(io=node_name)]))
         g.add((node, has_specified_io, data_node))
-        if "value" in data and list(g.objects(data_node, RDF.value)) == []:
+        if "value" in data and g.value(data_node, RDF.value) is None:
             g.add((data_node, RDF.value, Literal(data["value"])))
         if "hash" in data:
             hash_bnode = G.get_a_node(G._get_data_node(io=node_name) + "_hash")
@@ -1041,12 +1041,11 @@ def extract_dataclass(
         if not is_dataclass(py_value):
             continue
 
-        t_nodes = list(graph.objects(subj, RDF.type))
-        assert len(t_nodes) == 1
+        t_node = graph.value(subj, RDF.type, any=False)
 
         out += translator.translate(
             a_node=subj,
-            t_node=t_nodes[0],
+            t_node=t_node,
             value=py_value,
             dtype=type(py_value),
         )
