@@ -115,7 +115,7 @@ sns:data_node rdfs:subClassOf [ a owl:Restriction ;
 If defined for the output or input is not connected:
 
 ```turtle
-_:datanode qudt:hasUnit unit:J .
+:datanode qudt:hasUnit unit:J .
 ```
 
 Note that instead of `owl:allValuesFrom`, `owl:hasValue` is used for the units, because units are expected to be named individuals (i.e. instances) and not classes.
