@@ -25,7 +25,7 @@ The input and output arguments must be given by a dictionary whose key is the ar
 - `uri`: URIRef of what the argument represents (must be a class)
 - `triples`: A double, a triple or a list/tuple of doubles or triples. See below for the syntax
 - `restrictions`: owl-type restrictions. See below for the syntax
-- `units`: URI or str that can be understood by pint (and will be later translated to QUDT URI)
+- `units`: URI or str that can be understood by pint in which case it is translated to the corresponding QUDT URI
 - `derived_from`: To indicate that (typically) an output is derived from an input. For example painting a car where the output is basically the same car as the input with a different color.
 
 ### Atomic node
@@ -98,7 +98,7 @@ sns:data_node rdfs:subClassOf [ a owl:Restriction ;
             owl:onProperty obi:0001927 ] .
 ```
 
-Accordingly, if the URI is defined for the output argument, it would be translated to:
+If the URI is defined for the output argument or if the input argument is not connected, it would be added to the data node instance:
 
 ```turtle
 :data_node obi:0001927 [ a ex:uri ] .
@@ -112,13 +112,13 @@ sns:data_node rdfs:subClassOf [ a owl:Restriction ;
             owl:onProperty qudt:hasUnit ] .
 ```
 
-If defined for the output:
+If defined for the output or input is not connected:
 
 ```turtle
 _:datanode qudt:hasUnit unit:J .
 ```
 
-Note that instead of `owl:someValuesFrom`, `owl:hasValue` is used for the units, because units are expected to be named individuals (i.e. instances) and not classes.
+Note that instead of `owl:allValuesFrom`, `owl:hasValue` is used for the units, because units are expected to be named individuals (i.e. instances) and not classes.
 
 Restrictions still missing
 
@@ -126,7 +126,7 @@ Restrictions still missing
 
 To be added
 
-## Ontologic validation
+## Analysis
 
 To be added
 
@@ -134,4 +134,10 @@ To be added
 
 To be added
 
-### Running
+### Running reasoner
+
+To be added
+
+### Automatic generation of SPARQL queries
+
+To be added
