@@ -120,7 +120,7 @@ _:datanode qudt:hasUnit unit:J .
 
 Note that instead of `owl:allValuesFrom`, `owl:hasValue` is used for the units, because units are expected to be named individuals (i.e. instances) and not classes.
 
-Restrictions still missing
+Restrictions can be defined only for input arguments. If defined for output arguments, they are ignored. They can be expressed as OWL restrictions or SHACL shapes. In both cases doubles are expected, where the subject node (blank node) is automatically generated inside `semantikon` and appended. The blank node is attached to the data node via `rdfs:subClassOf` in case of OWL, or `sh:targetClass` in case of SHACL.
 
 ### Handling of `derived_from`
 
