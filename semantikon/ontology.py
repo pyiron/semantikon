@@ -680,6 +680,8 @@ def _wf_io_to_graph(
         g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.subClassOf, io_assignment))
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
+        if "hash" in data:
+            g += _to_owl_restriction(data_node, SNS.denoted_by, SNS.identifier)
     else:
         g.add((data_node, RDF.type, G.t_ns[G._get_data_node(io=node_name)]))
         g.add((node, has_specified_io, data_node))
