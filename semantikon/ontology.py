@@ -1405,7 +1405,9 @@ class _Node:
             return ["query", "to_query_text"]
         return sorted(self._node.children.keys())
 
-    def query(self, optional_values: bool = False, convert_to_python: bool = True) -> list[tuple[Any, ...]]:
+    def query(
+        self, optional_values: bool = False, convert_to_python: bool = True
+    ) -> list[tuple[Any, ...]]:
         """
         Execute a SPARQL query for this node against the bound graph.
 
@@ -1417,7 +1419,9 @@ class _Node:
             list[tuple[Any, ...]]: The query results as a list of tuples.
         """
         qn = _QueryHolder([self], self._graph)
-        return qn.query(optional_values=optional_values, convert_to_python=convert_to_python)
+        return qn.query(
+            optional_values=optional_values, convert_to_python=convert_to_python
+        )
 
     def to_query_text(self) -> str:
         """Generate a SPARQL query string for this node."""
