@@ -873,12 +873,10 @@ class TestOntology(unittest.TestCase):
         A = comp.T_my_kinetic_energy_workflow.inputs.time
         B = comp.T_my_kinetic_energy_workflow.outputs.kinetic_energy
         self.assertListEqual((A & B).query(), [])
-        self.assertListEqual((A & B).query(optional_values=True), [(1.0, None)])
-        self.assertIsNone(
-            (A & B).query(optional_values=True, convert_to_python=False)[0][1]
-        )
-        self.assertListEqual(B.query(optional_values=True), [])
-        self.assertListEqual(B.query(optional_values=True, convert_to_python=False), [])
+        data = (A & B).query(fallback_to_hash=True)
+        self.assertEqual(data[0][0], 1.0)
+        self.assertIsInstance(data[0][1], str)
+        self.assertIsInstance(B.query(fallback_to_hash=True)[0][0], str)
 
     def test_request_values(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import copy
 import json
+from collections import defaultdict
 from dataclasses import asdict, dataclass, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
+import string
 from typing import Any, Callable, Dict, Iterable, TypeAlias, cast
 
 import networkx as nx
@@ -1407,23 +1409,18 @@ class _Node:
             return ["query", "to_query_text"]
         return sorted(self._node.children.keys())
 
-    def query(
-        self, optional_values: bool = False, convert_to_python: bool = True
-    ) -> list[tuple[Any, ...]]:
+    def query(self, fallback_to_hash: bool = False) -> list[tuple[Any, ...]]:
         """
         Execute a SPARQL query for this node against the bound graph.
 
         Args:
-            optional_values (bool): Whether to include optional values in the query.
-            convert_to_python (bool): Whether to convert results to native Python types.
+            fallback_to_hash (bool):
 
         Returns:
             list[tuple[Any, ...]]: The query results as a list of tuples.
         """
         qn = _QueryHolder([self], self._graph)
-        return qn.query(
-            optional_values=optional_values, convert_to_python=convert_to_python
-        )
+        return qn.query(fallback_to_hash=fallback_to_hash)
 
     def to_query_text(self) -> str:
         """Generate a SPARQL query string for this node."""
@@ -1467,20 +1464,20 @@ class _QueryHolder:
     _nodes: list[_Node]
     _graph: Graph
 
-    def to_query_graph(self, optional_values: bool = False) -> Graph:
+    def to_query_graph(self, fallback_to_hash: bool = False) -> Graph:
         """Build the intermediate query graph for the held nodes.
 
         Args:
-            optional_values (bool): Whether to include optional values in the query.
+            fallback_to_hash (bool): Whether to include optional values in the query.
 
         Returns:
             Graph: An RDFLib :class:`Graph` representing the query structure for
                 the held nodes.
         """
         sw = SparqlWriter(self._graph)
-        return sw.get_query_graph(*self._nodes, optional_values=optional_values)
+        return sw.get_query_graph(*self._nodes, fallback_to_hash=fallback_to_hash)
 
-    def to_query_text(self, optional_values: bool = False) -> str:
+    def to_query_text(self, fallback_to_hash: bool = False) -> str:
         """Generate a SPARQL query string for the held nodes.
 
         The method first builds the intermediate query graph via
@@ -1488,17 +1485,15 @@ class _QueryHolder:
         representation.
 
         Args:
-            optional_values (bool): Whether to include optional values in the query.
+            fallback_to_hash (bool): Whether to include optional values in the query.
 
         Returns:
             str: The generated SPARQL query string.
         """
-        G = self.to_query_graph(optional_values=optional_values)
+        G = self.to_query_graph(fallback_to_hash=fallback_to_hash)
         return SparqlWriter.get_query_text(G)
 
-    def query(
-        self, optional_values: bool = False, convert_to_python: bool = True
-    ) -> list[tuple[Any, ...]]:
+    def query(self, fallback_to_hash: bool = False) -> list[tuple[Any, ...]]:
         """Execute the generated SPARQL query against the stored graph.
 
         The query text produced by :meth:`to_query_text` is run with
@@ -1506,15 +1501,12 @@ class _QueryHolder:
         converted to a native Python object via its ``toPython`` method.
 
         Args:
-            optional_values (bool): Whether to include optional values in the query.
-            convert_to_python (bool): Whether to convert results to native Python types.
+            fallback_to_hash (bool):
 
         Returns:
             list[tuple[Any, ...]]: The query results as a list of tuples.
         """
-        text = self.to_query_text(optional_values=optional_values)
-        if not convert_to_python:
-            return list(self._graph.query(text))
+        text = self.to_query_text(fallback_to_hash=fallback_to_hash)
         return [
             tuple([a if a is None else a.toPython() for a in item])
             for item in self._graph.query(text)
@@ -1623,7 +1615,7 @@ class SparqlWriter:
                 return node
         raise ValueError("No common head node found")
 
-    def get_query_graph(self, *args, optional_values: bool = False) -> nx.DiGraph:
+    def get_query_graph(self, *args, fallback_to_hash: bool = False) -> nx.DiGraph:
         """
         Generate a query graph based on the provided arguments.
 
@@ -1634,9 +1626,7 @@ class SparqlWriter:
         Args:
             *args: A variable number of arguments representing nodes in the graph.
                    Each argument can be an RDFLib node or a value.
-            optional_values (bool): Whether to mark value retrieval edges as
-                optional. As a consequence, missing values will not prevent a match
-                and are marked as None in the query results.
+            fallback_to_hash (bool):
 
         Returns:
             nx.DiGraph: A directed graph representing the query structure.
@@ -1650,15 +1640,39 @@ class SparqlWriter:
                 arg = list(self.G.successors(arg))[0]
             data_nodes.append(arg)
             value_node = self._to_qname(data_nodes[-1] + "_value")
-            G.add_node(value_node, output=ii)
+            hash_node = self._to_qname(data_nodes[-1] + "_hash")
+            if fallback_to_hash:
+                G.add_node(value_node, output=string.ascii_lowercase[ii] + "_a")
+                G.add_node(hash_node, output=string.ascii_lowercase[ii] + "_b")
+            else:
+                G.add_node(value_node, output=string.ascii_lowercase[ii])
             G.add_node(data_nodes[-1])
             G.add_edge(self._to_qname(data_nodes[-1]), data_nodes[-1], predicate="a")
-            G.add_edge(
-                self._to_qname(data_nodes[-1]),
-                value_node,
-                predicate="rdf:value",
-                optional=optional_values,
-            )
+            if fallback_to_hash:
+                G.add_edge(
+                    self._to_qname(data_nodes[-1]),
+                    value_node,
+                    predicate="rdf:value",
+                    optional=value_node,
+                )
+                G.add_edge(
+                    self._to_qname(data_nodes[-1]),
+                    hash_node + "_b",
+                    predicate=f"<{SNS.denoted_by}>",
+                    optional=hash_node,
+                )
+                G.add_edge(
+                    hash_node + "_b",
+                    hash_node,
+                    predicate="rdf:value",
+                    optional=hash_node,
+                )
+            else:
+                G.add_edge(
+                    self._to_qname(data_nodes[-1]),
+                    value_node,
+                    predicate="rdf:value",
+                )
         if len(data_nodes) > 1:
             head_node = self._get_head_node(data_nodes)
             for node in data_nodes:
@@ -1701,22 +1715,36 @@ class SparqlWriter:
             )
             return f"{subj} {pred} {obj} ."
 
-        output_with_ind = [
-            [data["output"], f"?{to_identifier(node)}"]
-            for node, data in G.nodes.data()
-            if "output" in data
-        ]
-        output_args = [x for _, x in sorted(output_with_ind, key=lambda pair: pair[0])]
-        optional_lines = []
-        lines = ["SELECT " + " ".join(output_args) + " WHERE {"]
+        output_with_ind = defaultdict(list)
+        for key, value in dict(
+            sorted(
+                {
+                    data["output"]: f"?{to_identifier(node)}"
+                    for node, data in G.nodes.data()
+                    if "output" in data
+                }.items()
+            )
+        ).items():
+            output_with_ind[key.split("_")[0]].append(value)
+        select_line = "SELECT"
+        for key, value in output_with_ind.items():
+            if len(value) == 1:
+                select_line += " " + value[0]
+            else:
+                select_line += " (COALESCE(" + ", ".join(value) + f") AS ?{key})"
+        select_line += " WHERE {"
+        optional_dict = defaultdict(list)
+        lines = [select_line]
         for subj, obj, data in G.edges.data():
-            if data.get("optional", False):
-                optional_lines.append(_to_sparql_line(subj, data["predicate"], obj))
+            if "optional" in data:
+                optional_dict[data["optional"]].append(
+                    _to_sparql_line(subj, data["predicate"], obj)
+                )
             else:
                 lines.append("  " + _to_sparql_line(subj, data["predicate"], obj))
-        if len(optional_lines) > 0:
-            for o_line in optional_lines:
-                lines.append("  OPTIONAL { " + o_line + " }")
+        if len(optional_dict) > 0:
+            for o_line in optional_dict.values():
+                lines.append("  OPTIONAL { " + "\n".join(o_line) + " }")
         lines.append("}")
         return "\n".join(lines)
 
