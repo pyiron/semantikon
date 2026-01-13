@@ -1405,11 +1405,22 @@ class _Node:
             return ["query", "to_query_text"]
         return sorted(self._node.children.keys())
 
-    def query(self) -> list[list[Any]]:
+    def query(self, optional_values: bool = False, convert_to_python: bool = True) -> list[tuple[Any, ...]]:
+        """
+        Execute a SPARQL query for this node against the bound graph.
+
+        Args:
+            optional_values (bool): Whether to include optional values in the query.
+            convert_to_python (bool): Whether to convert results to native Python types.
+
+        Returns:
+            list[tuple[Any, ...]]: The query results as a list of tuples.
+        """
         qn = _QueryHolder([self], self._graph)
-        return qn.query()
+        return qn.query(optional_values=optional_values, convert_to_python=convert_to_python)
 
     def to_query_text(self) -> str:
+        """Generate a SPARQL query string for this node."""
         qn = _QueryHolder([self], self._graph)
         return qn.to_query_text()
 
@@ -1450,51 +1461,58 @@ class _QueryHolder:
     _nodes: list[_Node]
     _graph: Graph
 
-    def to_query_graph(self):
+    def to_query_graph(self, optional_values: bool = False) -> Graph:
         """Build the intermediate query graph for the held nodes.
 
-        The query graph is created by delegating to :class:`SparqlWriter`,
-        which inspects the provided RDF graph and the stored nodes.
+        Args:
+            optional_values (bool): Whether to include optional values in the query.
 
-        Returns
-        -------
-        Graph
-            An RDFLib :class:`Graph` representing the SPARQL query structure.
+        Returns:
+            Graph: An RDFLib :class:`Graph` representing the query structure for
+                the held nodes.
         """
         sw = SparqlWriter(self._graph)
-        return sw.get_query_graph(*self._nodes)
+        return sw.get_query_graph(*self._nodes, optional_values=optional_values)
 
-    def to_query_text(self):
+    def to_query_text(self, optional_values: bool = False) -> str:
         """Generate a SPARQL query string for the held nodes.
 
         The method first builds the intermediate query graph via
         :meth:`to_query_graph` and then converts it to a textual SPARQL
         representation.
 
-        Returns
-        -------
-        str
-            A SPARQL query string that can be executed against the stored
-            RDFLib :class:`Graph`.
+        Args:
+            optional_values (bool): Whether to include optional values in the query.
+
+        Returns:
+            str: The generated SPARQL query string.
         """
-        G = self.to_query_graph()
+        G = self.to_query_graph(optional_values=optional_values)
         return SparqlWriter.get_query_text(G)
 
-    def query(self):
+    def query(
+        self, optional_values: bool = False, convert_to_python: bool = True
+    ) -> list[tuple[Any, ...]]:
         """Execute the generated SPARQL query against the stored graph.
 
         The query text produced by :meth:`to_query_text` is run with
         :meth:`Graph.query`, and each bound value in the result set is
         converted to a native Python object via its ``toPython`` method.
 
-        Returns
-        -------
-        list[list[Any]]
-            A list of result rows, where each row is a list of converted
-            Python values corresponding to the query variables.
+        Args:
+            optional_values (bool): Whether to include optional values in the query.
+            convert_to_python (bool): Whether to convert results to native Python types.
+
+        Returns:
+            list[tuple[Any, ...]]: The query results as a list of tuples.
         """
-        text = self.to_query_text()
-        return [[a.toPython() for a in item] for item in self._graph.query(text)]
+        text = self.to_query_text(optional_values=optional_values)
+        if not convert_to_python:
+            return list(self._graph.query(text))
+        return [
+            tuple([a if a is None else a.toPython() for a in item])
+            for item in self._graph.query(text)
+        ]
 
     def __and__(self, other: _Node | URIRef | _QueryHolder) -> _QueryHolder:
         if isinstance(other, _Node) or isinstance(other, URIRef):
@@ -1522,6 +1540,15 @@ class Completer(_Node):
 
 
 def query_io_completer(graph: Graph) -> Completer:
+    """
+    Create a Completer for input/output ports in the given graph.
+
+    Args:
+        graph (Graph): An RDFLib graph containing the ontology or data to query.
+
+    Returns:
+        Completer: A Completer instance for input/output ports.
+    """
     all_ios = []
     for pred in ["pmd:0000066", "pmd:0000067"]:
         query = f"""
@@ -1590,7 +1617,7 @@ class SparqlWriter:
                 return node
         raise ValueError("No common head node found")
 
-    def get_query_graph(self, *args) -> nx.DiGraph:
+    def get_query_graph(self, *args, optional_values: bool = False) -> nx.DiGraph:
         """
         Generate a query graph based on the provided arguments.
 
@@ -1601,6 +1628,9 @@ class SparqlWriter:
         Args:
             *args: A variable number of arguments representing nodes in the graph.
                    Each argument can be an RDFLib node or a value.
+            optional_values (bool): Whether to mark value retrieval edges as
+                optional. As a consequence, missing values will not prevent a match
+                and are marked as None in the query results.
 
         Returns:
             nx.DiGraph: A directed graph representing the query structure.
@@ -1613,13 +1643,15 @@ class SparqlWriter:
             while self._is_io_port(arg):
                 arg = list(self.G.successors(arg))[0]
             data_nodes.append(arg)
-            G.add_node(self._to_qname(data_nodes[-1] + "_value"), output=ii)
+            value_node = self._to_qname(data_nodes[-1] + "_value")
+            G.add_node(value_node, output=ii)
             G.add_node(data_nodes[-1])
             G.add_edge(self._to_qname(data_nodes[-1]), data_nodes[-1], predicate="a")
             G.add_edge(
                 self._to_qname(data_nodes[-1]),
-                self._to_qname(data_nodes[-1] + "_value"),
+                value_node,
                 predicate="rdf:value",
+                optional=optional_values,
             )
         if len(data_nodes) > 1:
             head_node = self._get_head_node(data_nodes)
@@ -1650,14 +1682,8 @@ class SparqlWriter:
         Returns:
             str: The SPARQL query text.
         """
-        output_with_ind = [
-            [data["output"], f"?{to_identifier(node)}"]
-            for node, data in G.nodes.data()
-            if "output" in data
-        ]
-        output_args = [x for _, x in sorted(output_with_ind, key=lambda pair: pair[0])]
-        lines = ["SELECT " + " ".join(output_args) + " WHERE {"]
-        for subj, obj, data in G.edges.data():
+
+        def _to_sparql_line(subj, pred, obj):
             subj, obj = [
                 f"<{e}>" if isinstance(e, URIRef) else f"?{to_identifier(e)}"
                 for e in [subj, obj]
@@ -1667,7 +1693,24 @@ class SparqlWriter:
                 if isinstance(data["predicate"], URIRef)
                 else data["predicate"]
             )
-            lines.append(f"{subj} {pred} {obj} .")
+            return f"{subj} {pred} {obj} ."
+
+        output_with_ind = [
+            [data["output"], f"?{to_identifier(node)}"]
+            for node, data in G.nodes.data()
+            if "output" in data
+        ]
+        output_args = [x for _, x in sorted(output_with_ind, key=lambda pair: pair[0])]
+        optional_lines = []
+        lines = ["SELECT " + " ".join(output_args) + " WHERE {"]
+        for subj, obj, data in G.edges.data():
+            if data.get("optional", False):
+                optional_lines.append(_to_sparql_line(subj, data["predicate"], obj))
+            else:
+                lines.append("  " + _to_sparql_line(subj, data["predicate"], obj))
+        if len(optional_lines) > 0:
+            for o_line in optional_lines:
+                lines.append("  OPTIONAL { " + o_line + " }")
         lines.append("}")
         return "\n".join(lines)
 
