@@ -410,6 +410,11 @@ class TestOntology(unittest.TestCase):
         G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         G_run = onto.serialize_and_convert_to_networkx(wf_dict_run, hash_data=False)
         self.assertEqual(onto._get_graph_hash(G), onto._get_graph_hash(G_run))
+        G_hash = onto.serialize_and_convert_to_networkx(wf_dict_run, hash_data=True)
+        self.assertDictEqual(
+            {key.split("@")[1]: value for key, value in G_hash.get_hash_dict().items()},
+            {"kinetic_energy": 8.0, "speed": 2.0},
+        )
 
     def test_hash_with_value(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
