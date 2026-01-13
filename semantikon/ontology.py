@@ -119,7 +119,6 @@ class SemantikonDiGraph(nx.DiGraph):
         node: str,
         hash_value: str,
         label: str | None = None,
-        remove_data: bool = False,
     ):
         """
         Propagates a hash value through the descendants of a given node in a
@@ -137,8 +136,6 @@ class SemantikonDiGraph(nx.DiGraph):
             label (str | None, optional): A label to use for hash computation.
                 If not provided, the label is derived from the node's data
                 (e.g., "label" or "arg"). Defaults to None.
-            remove_data (bool, optional): If True, removes the "value" field
-                from the nodes' data during the traversal. Defaults to False.
 
         Notes:
             - The function uses an iterative approach to avoid recursion,
@@ -167,12 +164,30 @@ class SemantikonDiGraph(nx.DiGraph):
                 # Update the hash for the child node
                 self.nodes[child]["hash"] = current_hash + f"@{child_label}"
 
-                # Optionally remove the "value" data
-                if remove_data and "value" in self.nodes[child]:
-                    del self.nodes[child]["value"]
-
                 # Add the child to the stack for further processing
                 stack.append((child, current_hash, child_label))
+
+    def remove_data(self):
+        """
+        Remove 'value' entries from all nodes in the graph.
+        """
+        for _, data in self.nodes.data():
+            if "value" in data and "hash" in data:
+                del data["value"]
+
+    def get_hash_dict(self) -> Dict[str, str]:
+        """
+        Get a dictionary mapping node names to their hash values.
+
+        Returns:
+            Dict[str, str]: A dictionary where keys are node names and values
+                are their corresponding hash values.
+        """
+        hash_dict = {}
+        for _, data in self.nodes.data():
+            if "hash" in data and "value" in data:
+                hash_dict[data["hash"]] = data["value"]
+        return hash_dict
 
 
 def _inherit_properties(graph: Graph, n_max: int = 1000):
@@ -1217,7 +1232,9 @@ def serialize_and_convert_to_networkx(
     if hash_data:
         hashed_dict = get_hashed_node_dict(wf_dict)
         for node, data in hashed_dict.items():
-            G.append_hash(node, data["hash"], remove_data=remove_data)
+            G.append_hash(node, data["hash"])
+        if remove_data:
+            G.remove_data()
     return G
 
 
