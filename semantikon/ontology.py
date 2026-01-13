@@ -1414,7 +1414,9 @@ class _Node:
         Execute a SPARQL query for this node against the bound graph.
 
         Args:
-            fallback_to_hash (bool):
+            fallback_to_hash (bool): If True, missing values would be filled
+                with their hash values, potentially giving the user to look
+                up the data elsewhere.
 
         Returns:
             list[tuple[Any, ...]]: The query results as a list of tuples.
@@ -1468,7 +1470,9 @@ class _QueryHolder:
         """Build the intermediate query graph for the held nodes.
 
         Args:
-            fallback_to_hash (bool): Whether to include optional values in the query.
+            fallback_to_hash (bool): If True, missing values would be filled
+                with their hash values, potentially giving the user to look
+                up the data elsewhere.
 
         Returns:
             Graph: An RDFLib :class:`Graph` representing the query structure for
@@ -1485,7 +1489,9 @@ class _QueryHolder:
         representation.
 
         Args:
-            fallback_to_hash (bool): Whether to include optional values in the query.
+            fallback_to_hash (bool): If True, missing values would be filled
+                with their hash values, potentially giving the user to look
+                up the data elsewhere.
 
         Returns:
             str: The generated SPARQL query string.
@@ -1501,7 +1507,9 @@ class _QueryHolder:
         converted to a native Python object via its ``toPython`` method.
 
         Args:
-            fallback_to_hash (bool):
+            fallback_to_hash (bool): If True, missing values would be filled
+                with their hash values, potentially giving the user to look
+                up the data elsewhere.
 
         Returns:
             list[tuple[Any, ...]]: The query results as a list of tuples.
@@ -1626,7 +1634,9 @@ class SparqlWriter:
         Args:
             *args: A variable number of arguments representing nodes in the graph.
                    Each argument can be an RDFLib node or a value.
-            fallback_to_hash (bool):
+            fallback_to_hash (bool): If True, missing values would be filled
+                with their hash values, potentially giving the user to look
+                up the data elsewhere.
 
         Returns:
             nx.DiGraph: A directed graph representing the query structure.
