@@ -828,18 +828,18 @@ class TestOntology(unittest.TestCase):
             dir(comp.T_my_kinetic_energy_workflow),
             ["get_kinetic_energy_0", "get_speed_0", "inputs", "outputs"],
         )
-        self.assertEqual((A & B).query(), [[1.0, 8.0]])
+        self.assertEqual((A & B).query(), [(1.0, 8.0)])
         self.assertEqual(
-            (A & C & B).query(), [[1.0, 4.0, 8.0]], msg=(A & C & B).to_query_text()
+            (A & C & B).query(), [(1.0, 4.0, 8.0)], msg=(A & C & B).to_query_text()
         )
-        self.assertEqual((A & (C & B)).query(), [[1.0, 4.0, 8.0]])
-        self.assertEqual((A & C & D & B).query(), [[1.0, 4.0, 2.0, 8.0]])
-        self.assertEqual(((A & C) & (D & B)).query(), [[1.0, 4.0, 2.0, 8.0]])
-        self.assertEqual(A.query(), [[1.0]])
+        self.assertEqual((A & (C & B)).query(), [(1.0, 4.0, 8.0)])
+        self.assertEqual((A & C & D & B).query(), [(1.0, 4.0, 2.0, 8.0)])
+        self.assertEqual(((A & C) & (D & B)).query(), [(1.0, 4.0, 2.0, 8.0)])
+        self.assertEqual(A.query(), [(1.0,)])
         A_dash = A.value()  # A is now URIRef instead of _Node
-        self.assertEqual((A_dash & (C & B)).query(), [[1.0, 4.0, 8.0]])
-        self.assertEqual((A_dash & C & D & B).query(), [[1.0, 4.0, 2.0, 8.0]])
-        self.assertEqual(((A_dash & C) & (D & B)).query(), [[1.0, 4.0, 2.0, 8.0]])
+        self.assertEqual((A_dash & (C & B)).query(), [(1.0, 4.0, 8.0)])
+        self.assertEqual((A_dash & C & D & B).query(), [(1.0, 4.0, 2.0, 8.0)])
+        self.assertEqual(((A_dash & C) & (D & B)).query(), [(1.0, 4.0, 2.0, 8.0)])
         self.assertEqual(list(graph.query(A.to_query_text()))[0][0].toPython(), 1.0)
         with self.assertRaises(AttributeError):
             _ = comp.non_existing_node
@@ -857,9 +857,9 @@ class TestOntology(unittest.TestCase):
         A = comp.T_my_kinetic_energy_workflow.inputs.time
         B = comp.T_my_kinetic_energy_workflow.outputs.kinetic_energy
         C = comp.T_my_kinetic_energy_workflow.inputs.mass
-        self.assertEqual((A & B).query(), [[1.0, 8.0]])
-        self.assertEqual((A & C & B).query(), [[1.0, 4.0, 8.0]])
-        self.assertEqual(A.query(), [[1.0]])
+        self.assertEqual((A & B).query(), [(1.0, 8.0)])
+        self.assertEqual((A & C & B).query(), [(1.0, 4.0, 8.0)])
+        self.assertEqual(A.query(), [(1.0,)])
         self.assertListEqual(
             dir(comp), ["T_my_kinetic_energy_workflow", "T_only_get_speed_workflow"]
         )
@@ -867,7 +867,16 @@ class TestOntology(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             _ = (A & E).query()
         self.assertEqual(str(context.exception), "No common head node found")
-        self.assertEqual(E.query(), [[3.0]])
+        self.assertEqual(E.query(), [(3.0,)])
+        graph = onto.get_knowledge_graph(wf_dict, prefix="T", remove_data=True)
+        comp = onto.query_io_completer(graph)
+        A = comp.T_my_kinetic_energy_workflow.inputs.time
+        B = comp.T_my_kinetic_energy_workflow.outputs.kinetic_energy
+        self.assertListEqual((A & B).query(), [])
+        data = (A & B).query(fallback_to_hash=True)
+        self.assertEqual(data[0][0], 1.0)
+        self.assertIsInstance(data[0][1], str)
+        self.assertIsInstance(B.query(fallback_to_hash=True)[0][0], str)
 
     def test_request_values(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
