@@ -73,7 +73,7 @@ def visualize_recipe(graph: Graph) -> Digraph:
     G = _rdflib_to_nx(graph)
     dot = Digraph()
     for node, data in G.nodes.data():
-        dot.node(sha256(node.encode()).hexdigest(), node, **data)
+        dot.node(sha256(node.encode()).hexdigest(), node, **data, shape="box")
     for subj, obj, data in G.edges.data():
         dot.edge(
             sha256(subj.encode()).hexdigest(), sha256(obj.encode()).hexdigest(), **data
