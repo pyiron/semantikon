@@ -6,6 +6,7 @@ from semantikon.ontology import (
     request_values,
     validate_values,
 )
+from semantikon.visualize import visualize_recipe
 
 __all__ = [
     "SemantikonURI",
@@ -16,4 +17,5 @@ __all__ = [
     "request_values",
     "u",
     "validate_values",
+    "visualize_recipe",
 ]
