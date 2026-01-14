@@ -1,6 +1,7 @@
+from hashlib import sha256
+
 import networkx as nx
 from graphviz import Digraph
-from hashlib import sha256
 from rdflib import OWL, RDF, RDFS, Graph, URIRef
 
 
