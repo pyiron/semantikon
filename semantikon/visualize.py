@@ -31,7 +31,7 @@ def _rename_predicate(pred: str) -> str:
         "obi:0000293": "obi:has_specified_input",
         "obi:0000299": "obi:has_specified_output",
         "obi:0001927": "obi:specifies_values_of",
-        "ro:0000057": "pmd:output_assignment",
+        "ro:0000057": "ro:has_participant",
     }
     return edge_dict.get(*2 * [pred])
 
@@ -44,7 +44,7 @@ def _color_predicate(pred: str) -> str:
         "obi:has_specified_input": "darkorange",
         "obi:has_specified_output": "darkcyan",
         "obi:specifies_values_of": "darkviolet",
-        "pmd:output_assignment": "forestgreen",
+        "ro:has_participant": "darkolivegreen",
     }
     return edge_dict.get(pred, "black")
 
