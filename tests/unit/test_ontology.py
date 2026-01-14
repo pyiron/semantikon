@@ -10,7 +10,7 @@ from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
 from semantikon.metadata import SemantikonURI, meta
-from semantikon.visualize import visualize
+from semantikon.visualize import visualize_recipe
 from semantikon.workflow import workflow
 
 EX: Namespace = Namespace("http://example.org/")
@@ -612,7 +612,7 @@ class TestOntology(unittest.TestCase):
         g = onto.get_knowledge_graph(wf_dict)
         from graphviz.graphs import Digraph
 
-        self.assertIsInstance(visualize(g), Digraph)
+        self.assertIsInstance(visualize_recipe(g), Digraph)
 
     def test_docstring(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
