@@ -29,7 +29,7 @@ def _rename_predicate(pred: str) -> str:
         "iao:0000235": "iao:denoted_by",
         "obi:0000293": "obi:has_specified_input",
         "obi:0000299": "obi:has_specified_output",
-        "obi:0001927": "obi:specified_values_of",
+        "obi:0001927": "obi:specifies_values_of",
         "ro:0000057": "pmd:output_assignment",
     }
     return edge_dict.get(*2 * [pred])
