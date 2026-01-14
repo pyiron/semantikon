@@ -17,6 +17,7 @@ from semantikon.api import (
     semantikon_dataclass,
     u,
     validate_values,
+    visualize_recipe,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "request_values",
     "u",
     "validate_values",
+    "visualize_recipe",
 ]
