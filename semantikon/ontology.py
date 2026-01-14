@@ -999,6 +999,7 @@ class _DataclassTranslator:
                 base_node=field_node,
                 on_property=SNS.specifies_value_of,
                 target_class=metadata["uri"],
+                restriction_type=OWL.allValuesFrom,
             )
 
     def _emit_abox(
