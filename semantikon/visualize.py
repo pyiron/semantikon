@@ -1,7 +1,7 @@
 import networkx as nx
 from graphviz import Digraph
 from hashlib import sha256
-from rdflib import Graph, RDFS, URIRef
+from rdflib import OWL, RDF, RDFS, Graph, URIRef
 
 
 def _get_triples(graph: Graph):
@@ -66,6 +66,16 @@ def _get_node_color(comp: str, graph: Graph) -> str:
     return "white"
 
 
+def _is_class(term: URIRef, graph: Graph) -> bool:
+    if (term, RDF.type, OWL.Class) in graph:
+        return True
+    if len(list(graph.objects(term, RDF.type))) > 0:
+        return False
+    if len(list(graph.subjects(OWL.hasValue, term))) > 0:
+        return False
+    return True
+
+
 def _rdflib_to_nx(graph: Graph) -> nx.DiGraph:
     G = nx.DiGraph()
     for subj, pred, obj, style in _get_triples(graph):
@@ -76,7 +86,7 @@ def _rdflib_to_nx(graph: Graph) -> nx.DiGraph:
                 graph.qname(part),
                 fillcolor=_get_node_color(part, graph),
                 style="filled",
-                shape="box",
+                shape="box" if _is_class(part, graph) else "oval",
             )
         label = _rename_predicate(graph.qname(pred))
         color = _color_predicate(label)
