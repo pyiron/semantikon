@@ -35,12 +35,25 @@ def _rename_predicate(pred: str) -> str:
     return edge_dict.get(*2 * [pred])
 
 
+def _color_predicate(pred: str) -> str:
+    edge_dict = {
+        "bfo:has_part": "darkblue",
+        "bfo:precedes": "brown",
+        "iao:denoted_by": "darkgreen",
+        "obi:has_specified_input": "darkorange",
+        "obi:has_specified_output": "darkcyan",
+        "obi:specifies_values_of": "darkviolet",
+        "pmd:output_assignment": "forestgreen",
+    }
+    return edge_dict.get(pred, "black")
+
+
 def _get_node_color(comp: str, graph: Graph) -> str:
     color_dict = {
-        "bfo:0000015": "red",
-        "obi:0001933": "yellow",
-        "pmdco:0000066": "green",
-        "pmdco:0000067": "blue",
+        "bfo:0000015": "lightpink",
+        "obi:0001933": "lightyellow",
+        "pmdco:0000066": "lightgreen",
+        "pmdco:0000067": "lightblue",
     }
     parent_classes = [
         item
@@ -50,7 +63,7 @@ def _get_node_color(comp: str, graph: Graph) -> str:
     for cl in parent_classes:
         if graph.qname(cl) in color_dict:
             return color_dict[graph.qname(cl)]
-    return "black"
+    return "white"
 
 
 def _rdflib_to_nx(graph: Graph) -> nx.DiGraph:
@@ -59,12 +72,21 @@ def _rdflib_to_nx(graph: Graph) -> nx.DiGraph:
         for part in [subj, obj]:
             if part in G.nodes:
                 continue
-            G.add_node(graph.qname(part), color=_get_node_color(part, graph))
+            G.add_node(
+                graph.qname(part),
+                fillcolor=_get_node_color(part, graph),
+                style="filled",
+                shape="box",
+            )
+        label = _rename_predicate(graph.qname(pred))
+        color = _color_predicate(label)
         G.add_edge(
             graph.qname(subj),
             graph.qname(obj),
-            label=_rename_predicate(graph.qname(pred)),
+            label=label,
             style=style,
+            color=color,
+            fontcolor=color,
         )
     return G
 
