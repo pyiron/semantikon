@@ -86,8 +86,8 @@ def _rdflib_to_nx(graph: Graph) -> nx.DiGraph:
             G.add_node(
                 graph.qname(part),
                 fillcolor=_get_node_color(part, graph),
-                style="filled",
-                shape="box" if _is_class(part, graph) else "oval",
+                style="filled" if _is_class(part, graph) else "filled,rounded,dashed",
+                shape="box",
             )
         label = _rename_predicate(graph.qname(pred))
         color = _color_predicate(label)
