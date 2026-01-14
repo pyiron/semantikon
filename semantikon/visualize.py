@@ -1,144 +1,63 @@
-from string import Template
-
+import networkx as nx
 from graphviz import Digraph
-from rdflib import RDF, RDFS, BNode, Literal, URIRef
-
-from semantikon.ontology import SNS
-
-_edge_colors = {
-    "rdf:type": "darkblue",
-    "stato:0000102": "darkgreen",
-    "bfo:0000051": "darkred",
-    "ro:0000057": "brown",
-    "sns:linksTo": "gray",
-    "bfo:0000063": "deeppink",
-    "prov:wasDerivedFrom": "purple",
-}
-
-_id_to_tag = {
-    "stato:0000102": "stato:executes",
-    "bfo:0000051": "bfo:has_part",
-    "ro:0000057": "ro:has_participant",
-    "bfo:0000063": "bfo:precedes",
-}
-
-
-def _short_label(graph, node):
-    """Use graph's prefixes to shorten URIs nicely."""
-    if isinstance(node, URIRef):
-        try:
-            return graph.qname(node)
-        except Exception:
-            return str(node)
-    elif isinstance(node, BNode):
-        return f"_:{str(node)}"
-    elif isinstance(node, Literal):
-        return f'"{str(node)}"'
-    else:
-        return str(node)
-
-
-def _get_value(graph, label, **kwargs):
-    prefix = dict(graph.namespaces()).get(label.split(":")[0])
-    if prefix is not None:
-        return {"prefix": prefix} | kwargs
-    else:
-        return kwargs
-
-
-def _add_color(data_dict, graph, tag, color):
-    label = _short_label(graph, tag)
-    if label not in data_dict:
-        data_dict[label] = _get_value(graph, label) | {"bgcolor": color}
-    else:
-        data_dict[label]["bgcolor"] = color
-
-
-def _get_data(graph):
-    dotted_triples = []
-    data_dict = {}
-    edge_list = []
-    for subj, value in graph.subject_objects(RDF.value):
-        label = _short_label(graph, subj)
-        data_dict[label] = _get_value(graph, label, value=str(value.toPython()))
-
-    for obj in graph.objects(None, RDF.type):
-        _add_color(data_dict, graph, obj, "lightyellow")
-
-    for obj in graph.objects(None, RDFS.subClassOf):
-        _add_color(data_dict, graph, obj, "lightyellow")
-
-    for obj in graph.objects(None, SNS.has_part):
-        _add_color(data_dict, graph, obj, "lightpink")
-
-    for obj in graph.objects(None, SNS.has_participant):
-        _add_color(data_dict, graph, obj, "peachpuff")
-
-    for subj, obj in graph.subject_objects(SNS.executes):
-        _add_color(data_dict, graph, subj, "lightcyan")
-        _add_color(data_dict, graph, obj, "lightgreen")
-
-    for style, g in [("solid", graph), ("dotted", dotted_triples)]:
-        for subj, pred, obj in g:
-            if pred == RDF.value:
-                continue
-            edge = {"edge": []}
-            for tag in [subj, obj]:
-                label = _short_label(graph, tag)
-                if label not in data_dict:
-                    data_dict[label] = _get_value(graph, label)
-                edge["edge"].append(label.replace(":", "_"))
-            edge["label"] = _short_label(graph, pred)
-            edge["style"] = style
-            edge_list.append(edge)
-    return data_dict, edge_list
-
-
-def _to_node(tag, **kwargs):
-    colors = {"prefix": "green", "value": "red"}
-    html = Template(
-        """<<table border="0" cellborder="1" cellspacing="0" cellpadding="4">
-        $rows
-        </table>>"""
-    )
-    bgcolor = kwargs.pop("bgcolor", "white")
-    rows = f"<tr><td align='center' bgcolor='{bgcolor}'>{tag}</td></tr>"
-    for key, value in kwargs.items():
-        color = colors.get(key, "black")
-        rows += f'<tr><td><font point-size="9" color="{color}">{value}</font></td></tr>'
-    return html.substitute(rows=rows)
+from hashlib import sha256
+from rdflib import RDFS, URIRef
 
 
 def visualize(graph, engine="dot"):
-    """
-    Visualize an RDF graph using Graphviz.
-
-    Args:
-        graph: An RDFLib Graph to visualize.
-        engine (str): Graphviz layout engine to use (default: "dot").
-
-    Returns:
-        Digraph: A graphviz Digraph object representing the visualized graph.
-    """
-    dot = Digraph(comment="RDF Graph", format="png", engine=engine)
-    dot.attr(overlap="false")
-    dot.attr(splines="true")
-    dot.attr("node", shape="none", margin="0")
-    data_dict, edge_list = _get_data(graph)
-    for key, value in data_dict.items():
-        if len(value) == 0:
-            dot.node(key.replace(":", "_"), _to_node(key))
-        else:
-            dot.node(key.replace(":", "_"), _to_node(key, **value))
-    for edges in edge_list:
-        color = _edge_colors.get(edges["label"], "black")
-        label = _id_to_tag.get(edges["label"], edges["label"])
+    cl_lst = []
+    color_dict = {
+        "bfo:0000015": "red",
+        "obi:0001933": "yellow",
+        "pmdco:0000066": "green",
+        "pmdco:0000067": "blue",
+    }
+    rest_types = {
+        "tapered": "owl:someValuesFrom",
+        "dashed": "owl:allValuesFrom",
+        "bold": "owl:hasValue",
+    }
+    edge_dict = {
+        "bfo:0000051": "bfo:has_part",
+        "bfo:0000063": "bfo:precedes",
+        "iao:0000235": "iao:denoted_by",
+        "obi:0000293": "obi:has_specified_input",
+        "obi:0000299": "obi:has_specified_output",
+        "obi:0001927": "obi:specified_values_of",
+        "ro:0000057": "pmd:output_assignment",
+    }
+    query = """
+    SELECT ?parent ?property ?child WHERE {
+        ?parent rdfs:subClassOf ?bnode .
+        ?bnode a owl:Restriction .
+        ?bnode owl:onProperty ?property .
+        ?bnode RESTRICTION_TYPE ?child .
+    }"""
+    G = nx.DiGraph()
+    for key, rest in rest_types.items():
+        for subj, pred, obj in graph.query(query.replace("RESTRICTION_TYPE", rest)):
+            for part in [subj, obj]:
+                if part in G.nodes:
+                    continue
+                color = "black"
+                parent_classes = [
+                    item
+                    for item in graph.objects(part, RDFS.subClassOf)
+                    if isinstance(item, URIRef)
+                ]
+                for cl in parent_classes:
+                    if graph.qname(cl) in color_dict:
+                        color = color_dict[graph.qname(cl)]
+                        break
+                G.add_node(graph.qname(part), color=color)
+            pred = graph.qname(pred)
+            pred = edge_dict.get(pred, pred)
+            G.add_edge(graph.qname(subj), graph.qname(obj), label=pred, style=key)
+    dot = Digraph()
+    for node, data in G.nodes.data():
+        dot.node(sha256(node.encode()).hexdigest(), node, **data)
+    for subj, obj, data in G.edges.data():
         dot.edge(
-            edges["edge"][0],
-            edges["edge"][1],
-            label=label,
-            color=color,
-            fontcolor=color,
-            style=edges["style"],
+            sha256(subj.encode()).hexdigest(), sha256(obj.encode()).hexdigest(), **data
         )
     return dot
