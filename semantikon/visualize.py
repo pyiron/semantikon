@@ -50,20 +50,20 @@ def _color_predicate(pred: str) -> str:
 
 
 def _get_node_color(comp: str, graph: Graph) -> str:
-    color_dict = {
+    subclass_dict = {
         "bfo:0000015": "lightpink",
         "obi:0001933": "lightyellow",
         "pmdco:0000066": "lightgreen",
         "pmdco:0000067": "lightblue",
     }
-    parent_classes = [
-        item
-        for item in graph.objects(comp, RDFS.subClassOf)
-        if isinstance(item, URIRef)
-    ]
-    for cl in parent_classes:
-        if graph.qname(cl) in color_dict:
-            return color_dict[graph.qname(cl)]
+    type_dict = {"iao:0000591": "lightsalmon"}
+    for pred, d in zip([RDFS.subClassOf, RDF.type], [subclass_dict, type_dict]):
+        parent_classes = [
+            item for item in graph.objects(comp, pred) if isinstance(item, URIRef)
+        ]
+        for cl in parent_classes:
+            if graph.qname(cl) in d:
+                return d[graph.qname(cl)]
     return "white"
 
 
