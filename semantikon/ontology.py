@@ -42,7 +42,6 @@ BASE: Namespace = Namespace("http://pyiron.org/ontology/")
 class SNS:
     has_part: URIRef = BFO["0000051"]
     part_of: URIRef = BFO["0000050"]
-    participates_in: URIRef = RO["0000056"]
     has_participant: URIRef = RO["0000057"]
     input_assignment: URIRef = PMD["0000066"]
     executes: URIRef = STATO["0000102"]
