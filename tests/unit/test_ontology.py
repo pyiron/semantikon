@@ -289,7 +289,7 @@ class TestOntology(unittest.TestCase):
 
             ASK {{
                 ?output a pmd:T_my_kinetic_energy_workflow-outputs-kinetic_energy .
-                ?output obi:0000299 ?data .
+                ?output ro:0000057 ?data .
                 ?data qudt:hasUnit unit:J .
             }}"""
             self.assertTrue(g.query(query).askAnswer)
@@ -707,10 +707,10 @@ class TestOntology(unittest.TestCase):
           ?distance_datanode rdf:value ?distance_value .
           ?distance_datanode obi:0001927 ?distance_bnode .
           ?distance_bnode a pmd:0040001 .
-          ?input_node obi:0000293 ?distance_datanode .
+          ?input_node ro:0000057 ?distance_datanode .
           ?workflow_node bfo:0000051 ?input_node .
           ?workflow_node bfo:0000051 ?output_node .
-          ?output_node obi:0000299 ?e_datanode .
+          ?output_node ro:0000057 ?e_datanode .
           ?e_bnode a pmd:0020142 .
           ?e_datanode obi:0001927 ?e_bnode .
           ?e_datanode rdf:value ?e_value .
@@ -775,10 +775,10 @@ class TestOntology(unittest.TestCase):
               ?has_part_bnode owl:onProperty bfo:0000051 .
               ?has_part_bnode a owl:Restriction .
               ?speed_data_datanode a ?speed_data_class .
-              ?input_node obi:0000293 ?speed_data_datanode .
+              ?input_node ro:0000057 ?speed_data_datanode .
               ?workflow_node bfo:0000051 ?input_node .
               ?workflow_node bfo:0000051 ?output_node .
-              ?output_node obi:0000299 ?e_datanode .
+              ?output_node ro:0000057 ?e_datanode .
               ?e_bnode a pmd:0020142 .
               ?e_datanode obi:0001927 ?e_bnode .
               ?e_datanode rdf:value ?e_value .
