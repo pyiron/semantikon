@@ -42,8 +42,8 @@ BASE: Namespace = Namespace("http://pyiron.org/ontology/")
 class SNS:
     has_part: URIRef = BFO["0000051"]
     part_of: URIRef = BFO["0000050"]
-    participates_in: URIRef = RO["0000056"]
     has_participant: URIRef = RO["0000057"]
+    concretizes: URIRef = RO["0000059"]
     input_assignment: URIRef = PMD["0000066"]
     executes: URIRef = STATO["0000102"]
     output_assignment: URIRef = PMD["0000067"]
@@ -461,7 +461,7 @@ def _wf_node_to_graph(
         if "function" in data:
             g += _to_owl_restriction(
                 node,
-                SNS.has_participant,
+                SNS.concretizes,
                 f_node,
                 restriction_type=OWL.hasValue,
             )
@@ -474,7 +474,7 @@ def _wf_node_to_graph(
         for out in G.successors(node_name):
             g.add((node, SNS.has_part, G.get_a_node(out)))
         if "function" in data:
-            g.add((node, SNS.has_participant, f_node))
+            g.add((node, SNS.concretizes, f_node))
     return g
 
 

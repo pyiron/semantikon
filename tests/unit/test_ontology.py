@@ -263,7 +263,7 @@ class TestOntology(unittest.TestCase):
             self.assertIn(
                 (
                     ke_call,
-                    onto.RO["0000057"],
+                    onto.RO["0000059"],
                     onto.BASE[
                         f"{__name__}-get_kinetic_energy-not_defined".replace(".", "-")
                     ],
@@ -273,7 +273,7 @@ class TestOntology(unittest.TestCase):
             self.assertIn(
                 (
                     speed_call,
-                    onto.RO["0000057"],
+                    onto.RO["0000059"],
                     onto.BASE[f"{__name__}-get_speed-not_defined".replace(".", "-")],
                 ),
                 g,
@@ -483,7 +483,7 @@ class TestOntology(unittest.TestCase):
                 for p in parts
                 if (
                     p,
-                    onto.RO["0000057"],
+                    onto.RO["0000059"],
                     onto.BASE[f"{__name__}-f_triples-not_defined".replace(".", "-")],
                 )
                 in g

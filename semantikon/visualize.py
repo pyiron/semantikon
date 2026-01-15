@@ -30,6 +30,7 @@ def _rename_predicate(pred: str) -> str:
         "iao:0000235": "iao:denoted_by",
         "obi:0001927": "obi:specifies_values_of",
         "ro:0000057": "ro:has_participant",
+        "ro:0000059": "ro:concretizes",
     }
     return edge_dict.get(*2 * [pred])
 
@@ -41,6 +42,7 @@ def _color_predicate(pred: str) -> str:
         "iao:denoted_by": "darkgreen",
         "obi:specifies_values_of": "darkviolet",
         "ro:has_participant": "darkorange",
+        "ro:concretizes": "darkcyan",
     }
     return edge_dict.get(pred, "black")
 
