@@ -44,8 +44,6 @@ class SNS:
     part_of: URIRef = BFO["0000050"]
     participates_in: URIRef = RO["0000056"]
     has_participant: URIRef = RO["0000057"]
-    has_specified_input: URIRef = OBI["0000293"]
-    has_specified_output: URIRef = OBI["0000299"]
     input_assignment: URIRef = PMD["0000066"]
     executes: URIRef = STATO["0000102"]
     output_assignment: URIRef = PMD["0000067"]
@@ -613,7 +611,7 @@ def _wf_input_to_graph(
                 assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
                 if G.nodes[out[0]]["step"] == "outputs":
                     g += _to_owl_restriction(
-                        G.t_ns[out[0]], SNS.has_specified_output, data_node
+                        G.t_ns[out[0]], SNS.has_participant, data_node
                     )
             if "units" in data:
                 g += _to_owl_restriction(
@@ -646,7 +644,7 @@ def _wf_input_to_graph(
         data_node=data_node,
         G=G,
         io_assignment=SNS.input_assignment,
-        has_specified_io=SNS.has_specified_input,
+        has_specified_io=SNS.has_participant,
         t_box=t_box,
     )
     return g
@@ -675,7 +673,7 @@ def _wf_output_to_graph(
         data_node=data_node,
         G=G,
         io_assignment=SNS.output_assignment,
-        has_specified_io=SNS.has_specified_output,
+        has_specified_io=SNS.has_participant,
         t_box=t_box,
     )
     return g

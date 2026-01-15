@@ -28,8 +28,6 @@ def _rename_predicate(pred: str) -> str:
         "bfo:0000051": "bfo:has_part",
         "bfo:0000063": "bfo:precedes",
         "iao:0000235": "iao:denoted_by",
-        "obi:0000293": "obi:has_specified_input",
-        "obi:0000299": "obi:has_specified_output",
         "obi:0001927": "obi:specifies_values_of",
         "ro:0000057": "ro:has_participant",
     }
@@ -41,10 +39,8 @@ def _color_predicate(pred: str) -> str:
         "bfo:has_part": "darkblue",
         "bfo:precedes": "brown",
         "iao:denoted_by": "darkgreen",
-        "obi:has_specified_input": "darkorange",
-        "obi:has_specified_output": "darkcyan",
         "obi:specifies_values_of": "darkviolet",
-        "ro:has_participant": "darkolivegreen",
+        "ro:has_participant": "darkorange",
     }
     return edge_dict.get(pred, "black")
 
