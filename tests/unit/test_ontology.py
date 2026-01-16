@@ -638,7 +638,7 @@ class TestOntology(unittest.TestCase):
         main_subject = onto.BASE[
             f"{__name__}-get_kinetic_energy-not_defined".replace(".", "-")
         ]
-        self.assertIn((main_subject, RDF.type, onto.IAO["0000591"]), graph)
+        self.assertIn((main_subject, RDF.type, onto.PMD["0000010"]), graph)
         self.assertIn((main_subject, RDFS.label, Literal("get_kinetic_energy")), graph)
         self.assertIn((main_subject, onto.IAO["0000136"], EX.get_kinetic_energy), graph)
 

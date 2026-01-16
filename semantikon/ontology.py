@@ -53,7 +53,7 @@ class SNS:
     value_specification: URIRef = OBI["0001933"]
     specifies_value_of: URIRef = OBI["0001927"]
     derives_from: URIRef = RO["0001000"]
-    software_method: URIRef = IAO["0000591"]
+    workflow_function: URIRef = PMD["0000010"]
     textual_entity: URIRef = IAO["0000300"]
     denoted_by: URIRef = IAO["0000235"]
     identifier: URIRef = IAO["0020000"]
@@ -401,7 +401,7 @@ def _function_to_graph(
         Graph: An RDF graph representing the function and its metadata.
     """
     g = _get_bound_graph()
-    g.add((f_node, RDF.type, SNS.software_method))
+    g.add((f_node, RDF.type, SNS.workflow_function))
     g.add((f_node, RDFS.label, Literal(data["qualname"])))
     if data.get("docstring", "") != "":
         docstring = BNode(f_node + "_docstring")
