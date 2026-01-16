@@ -290,6 +290,20 @@ def _get_bound_graph(*args, **kwargs):
     return graph
 
 
+def _import_pmdco(pmdco_uri: str) -> Graph:
+    g = Graph()
+    bnode = BNode("import_pmdco")
+    g.add((bnode, RDF.type, OWL.Ontology))
+    g.add(
+        (
+            bnode,
+            OWL.imports,
+            URIRef(pmdco_uri),
+        )
+    )
+    return g
+
+
 def get_knowledge_graph(
     wf_dict: dict,
     include_t_box: bool = True,
@@ -298,6 +312,7 @@ def get_knowledge_graph(
     remove_data: bool = False,
     extract_dataclasses: bool = False,
     prefix: str | None = None,
+    pmdco_uri: str = "https://w3id.org/pmd/co/3.0.0-rc2",
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
@@ -319,6 +334,7 @@ def get_knowledge_graph(
         wf_dict, hash_data=hash_data, remove_data=remove_data, prefix=prefix
     )
     graph = _get_bound_graph()
+    graph += _import_pmdco(pmdco_uri=pmdco_uri)
     if include_t_box:
         graph += _nx_to_kg(G, t_box=True)
     if include_a_box:
