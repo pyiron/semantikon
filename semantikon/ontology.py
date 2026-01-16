@@ -64,6 +64,7 @@ class SNS:
     has_parameter_position: URIRef = PMD["0001857"]
     has_default_literal_value: URIRef = PMD["0001877"]
     has_constraint: URIRef = BASE["has_constraint"]
+    has_value: URIRef = PMD["0000006"]
 
 
 ud = UnitsDict()
@@ -405,7 +406,7 @@ def _function_to_graph(
     if data.get("docstring", "") != "":
         docstring = BNode(f_node + "_docstring")
         g.add((docstring, RDF.type, SNS.textual_entity))
-        g.add((docstring, RDF.value, Literal(data["docstring"])))
+        g.add((docstring, SNS.has_value, Literal(data["docstring"])))
         g.add((f_node, SNS.denoted_by, docstring))
     if uri is not None:
         g.add((f_node, SNS.is_about, uri))
@@ -413,7 +414,7 @@ def _function_to_graph(
         hash_bnode = BNode(f_node + "_hash")
         g.add((f_node, SNS.denoted_by, hash_bnode))
         g.add((hash_bnode, RDF.type, SNS.identifier))
-        g.add((hash_bnode, RDF.value, Literal(data["hash"])))
+        g.add((hash_bnode, SNS.has_value, Literal(data["hash"])))
     for io, io_args in zip(["input", "output"], [input_args, output_args]):
         for ii, arg in enumerate(io_args):
             if "label" in arg:
