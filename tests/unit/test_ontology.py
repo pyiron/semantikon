@@ -627,7 +627,9 @@ class TestOntology(unittest.TestCase):
         g = onto.get_knowledge_graph(wf_dict)
         bnode = list(g.subjects(RDF.type, onto.SNS.textual_entity))
         self.assertEqual(len(bnode), 1)
-        self.assertEqual(g.value(bnode[0], RDF.value), Literal("some random docstring"))
+        self.assertEqual(
+            g.value(bnode[0], onto.SNS.has_value), Literal("some random docstring")
+        )
 
     def test_function_metadata(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
