@@ -60,7 +60,6 @@ class SNS:
     is_about: URIRef = IAO["0000136"]
     input_specification: URIRef = PMD["0000014"]
     output_specification: URIRef = PMD["0000015"]
-    has_parameter_specification: URIRef = BASE["has_parameter_specification"]
     has_parameter_position: URIRef = PMD["0001857"]
     has_default_literal_value: URIRef = PMD["0001877"]
     has_constraint: URIRef = BASE["has_constraint"]
@@ -404,7 +403,7 @@ def _function_to_graph(
     g.add((f_node, RDF.type, SNS.workflow_function))
     g.add((f_node, RDFS.label, Literal(data["qualname"])))
     if data.get("docstring", "") != "":
-        docstring = BNode(f_node + "_docstring")
+        docstring = URIRef(f_node + "_docstring")
         g.add((docstring, RDF.type, SNS.textual_entity))
         g.add((docstring, SNS.has_value, Literal(data["docstring"])))
         g.add((f_node, SNS.denoted_by, docstring))
@@ -429,7 +428,7 @@ def _function_to_graph(
             else:
                 g.add((arg_node, RDF.type, SNS.output_specification))
             g.add((arg_node, RDFS.label, Literal(arg_name)))
-            g.add((f_node, SNS.has_parameter_specification, arg_node))
+            g.add((f_node, SNS.has_part, arg_node))
             g.add(
                 (arg_node, SNS.has_parameter_position, Literal(arg.get("position", ii)))
             )

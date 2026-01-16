@@ -644,7 +644,7 @@ class TestOntology(unittest.TestCase):
 
         # Check input specifications
         input_specifications = list(
-            graph.objects(main_subject, onto.BASE.has_parameter_specification)
+            graph.objects(main_subject, onto.SNS.has_part)
         )
         self.assertEqual(len(input_specifications), 3)  # 2 inputs and 1 output
 
@@ -819,7 +819,7 @@ class TestOntology(unittest.TestCase):
             sparql_prefixes
             + """
             SELECT ?label WHERE {
-              ?function sns:has_parameter_specification ?bnode .
+              ?function bfo:0000051 ?bnode .
               ?bnode rdfs:label ?label .
             }"""
         )
