@@ -4,6 +4,14 @@ import networkx as nx
 from graphviz import Digraph
 from rdflib import OWL, RDF, RDFS, Graph, URIRef
 
+subclass_color_dict = {
+    "pmdco:0000011": "lightpink",
+    "obi:0001933": "lightyellow",
+    "pmdco:0000066": "lightgreen",
+    "pmdco:0000067": "lightblue",
+}
+type_color_dict = {"iao:0000591": "lightsalmon"}
+
 
 def _get_triples(graph: Graph):
     rest_types = {
@@ -47,21 +55,26 @@ def _color_predicate(pred: str) -> str:
     return edge_dict.get(pred, "black")
 
 
-def _get_node_color(comp: str, graph: Graph) -> str:
-    subclass_dict = {
-        "pmdco:0000011": "lightpink",
-        "obi:0001933": "lightyellow",
-        "pmdco:0000066": "lightgreen",
-        "pmdco:0000067": "lightblue",
-    }
-    type_dict = {"iao:0000591": "lightsalmon"}
-    for pred, d in zip([RDFS.subClassOf, RDF.type], [subclass_dict, type_dict]):
+def _get_parent_class(comp: str, graph: Graph) -> str:
+    for pred in [RDFS.subClassOf, RDF.type]:
         parent_classes = [
             item for item in graph.objects(comp, pred) if isinstance(item, URIRef)
         ]
         for cl in parent_classes:
-            if graph.qname(cl) in d:
-                return d[graph.qname(cl)]
+            if (
+                graph.qname(cl) in subclass_color_dict
+                or graph.qname(cl) in type_color_dict
+            ):
+                return graph.qname(cl)
+    return ""
+
+
+def _get_node_color(comp: str, graph: Graph) -> str:
+    parent_class = _get_parent_class(comp, graph)
+    if parent_class in subclass_color_dict:
+        return subclass_color_dict[parent_class]
+    if parent_class in type_color_dict:
+        return type_color_dict[parent_class]
     return "white"
 
 
@@ -86,6 +99,7 @@ def _rdflib_to_nx(graph: Graph) -> nx.DiGraph:
                 fillcolor=_get_node_color(part, graph),
                 style="filled" if _is_class(part, graph) else "filled,rounded,dashed",
                 shape="box",
+                parent_class=_get_parent_class(part, graph),
             )
         label = _rename_predicate(graph.qname(pred))
         color = _color_predicate(label)
@@ -100,11 +114,29 @@ def _rdflib_to_nx(graph: Graph) -> nx.DiGraph:
     return G
 
 
+def _to_node(key: str, parent_class: str) -> str:
+    translation = {
+        "pmdco:0000011": "workflow_node",
+        "obi:0001933": "value_specification",
+        "pmdco:0000066": "input_assignment",
+        "pmdco:0000067": "output_assignment",
+        "iao:0000591": "software_method",
+    }
+    text = translation.get(* 2 * [parent_class]) + " / " + parent_class
+    rows = '<<table border="0" cellborder="0" cellspacing="0">'
+    rows += f"<tr><td align='center'><U>{key}</U></td></tr>"
+    if len(parent_class) > 0:
+        rows += f'<tr><td><I>{text}</I></td></tr>'
+    rows += "</table>>"
+    return rows
+
+
 def visualize_recipe(graph: Graph) -> Digraph:
     G = _rdflib_to_nx(graph)
     dot = Digraph()
     for node, data in G.nodes.data():
-        dot.node(sha256(node.encode()).hexdigest(), node, **data)
+        cell = _to_node(node, data.pop("parent_class"))
+        dot.node(sha256(node.encode()).hexdigest(), cell, **data)
     for subj, obj, data in G.edges.data():
         dot.edge(
             sha256(subj.encode()).hexdigest(), sha256(obj.encode()).hexdigest(), **data
