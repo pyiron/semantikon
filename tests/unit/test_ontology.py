@@ -641,19 +641,19 @@ class TestOntology(unittest.TestCase):
         # Check the first input specification (mass)
         mass_spec = list(graph.subjects(onto.IAO["0000136"], onto.PMD["0020133"]))
         self.assertEqual(len(mass_spec), 1)
-        self.assertIn((mass_spec[0], RDF.type, onto.BASE.input_specification), graph)
+        self.assertIn((mass_spec[0], RDF.type, onto.SNS.input_specification), graph)
         self.assertIn((mass_spec[0], RDFS.label, Literal("mass")), graph)
         self.assertIn(
-            (mass_spec[0], onto.BASE.has_parameter_position, Literal(0)), graph
+            (mass_spec[0], onto.SNS.has_parameter_position, Literal(0)), graph
         )
 
         # Check the output specification
         output_spec = list(graph.subjects(onto.IAO["0000136"], onto.PMD["0020142"]))
         self.assertEqual(len(output_spec), 1)
-        self.assertIn((output_spec[0], RDF.type, onto.BASE.output_specification), graph)
+        self.assertIn((output_spec[0], RDF.type, onto.SNS.output_specification), graph)
         self.assertIn((output_spec[0], RDFS.label, Literal("kinetic_energy")), graph)
         self.assertIn(
-            (output_spec[0], onto.BASE.has_parameter_position, Literal(0)), graph
+            (output_spec[0], onto.SNS.has_parameter_position, Literal(0)), graph
         )
 
     def test_run(self):
