@@ -1229,7 +1229,12 @@ def serialize_and_convert_to_networkx(
     """
     G = _WorkflowGraphSerializer(wf_dict, prefix=prefix).serialize()
     if hash_data:
-        hashed_dict = get_hashed_node_dict(wf_dict)
+        try:
+            hashed_dict = get_hashed_node_dict(wf_dict)
+        except Exception as e:
+            raise RuntimeError(
+                "Failed to hash workflow data - use only hashable inputs or set hash_data=False"
+            ) from e
         for node, data in hashed_dict.items():
             G.append_hash(node, data["hash"])
         if remove_data:

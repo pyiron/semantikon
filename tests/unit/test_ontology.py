@@ -225,6 +225,14 @@ def run_md(inp: Input, E=1.0) -> Output:
     return out
 
 
+class Unhashable:
+    pass
+
+
+def get_unhashable(uh: Unhashable):
+    return uh
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -930,6 +938,21 @@ class TestOntology(unittest.TestCase):
         uri = onto.label_to_uri(g, "my_kinetic_energy_workflow")[0]
         label = str(g.value(uri, RDFS.label))
         self.assertEqual(label, "my_kinetic_energy_workflow")
+
+    def test_unhashable(self):
+        @workflow
+        def my_unhashable_inputs(uh):
+            result = get_unhashable(uh)
+            return result
+
+        uh = Unhashable()
+        wf_dict = my_unhashable_inputs.run(uh)
+        with self.assertRaises(RuntimeError) as context:
+            _ = onto.get_knowledge_graph(wf_dict)
+            self.assertEqual(
+                str(context.exception),
+                "Failed to hash workflow data - use only hashable inputs or set hash_data=False",
+            )
 
 
 if __name__ == "__main__":
