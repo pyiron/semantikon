@@ -122,10 +122,10 @@ def _to_node(key: str, parent_class: str) -> str:
         "pmdco:0000067": "output_assignment",
         "iao:0000591": "software_method",
     }
-    text = translation.get(*2 * [parent_class]) + " / " + parent_class
     rows = '<<table border="0" cellborder="0" cellspacing="0">'
     rows += f"<tr><td align='center'><U>{key}</U></td></tr>"
     if len(parent_class) > 0:
+        text = translation.get(parent_class, parent_class) + " / " + parent_class
         rows += f"<tr><td><I>{text}</I></td></tr>"
     rows += "</table>>"
     return rows
