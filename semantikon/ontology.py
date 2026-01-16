@@ -58,11 +58,11 @@ class SNS:
     denoted_by: URIRef = IAO["0000235"]
     identifier: URIRef = IAO["0020000"]
     is_about: URIRef = IAO["0000136"]
-    input_specification: URIRef = BASE["input_specification"]
-    output_specification: URIRef = BASE["output_specification"]
+    input_specification: URIRef = PMD["0000014"]
+    output_specification: URIRef = PMD["0000015"]
     has_parameter_specification: URIRef = BASE["has_parameter_specification"]
-    has_parameter_position: URIRef = BASE["has_parameter_position"]
-    has_default_literal_value: URIRef = BASE["has_default_literal_value"]
+    has_parameter_position: URIRef = PMD["0001857"]
+    has_default_literal_value: URIRef = PMD["0001877"]
     has_constraint: URIRef = BASE["has_constraint"]
 
 
