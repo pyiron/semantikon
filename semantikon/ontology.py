@@ -422,7 +422,7 @@ def _function_to_graph(
                 arg_name = arg["arg"]
             else:
                 arg_name = f"output_{ii}"
-            arg_node = BNode("_".join([f_node, io, arg_name]))
+            arg_node = URIRef("_".join([f_node, io, arg_name]))
             if io == "input":
                 g.add((arg_node, RDF.type, SNS.input_specification))
             else:
