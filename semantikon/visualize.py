@@ -49,7 +49,7 @@ def _color_predicate(pred: str) -> str:
 
 def _get_node_color(comp: str, graph: Graph) -> str:
     subclass_dict = {
-        "bfo:0000015": "lightpink",
+        "pmdco:0000011": "lightpink",
         "obi:0001933": "lightyellow",
         "pmdco:0000066": "lightgreen",
         "pmdco:0000067": "lightblue",

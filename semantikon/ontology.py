@@ -48,7 +48,7 @@ class SNS:
     executes: URIRef = STATO["0000102"]
     output_assignment: URIRef = PMD["0000067"]
     precedes: URIRef = BFO["0000063"]
-    process: URIRef = BFO["0000015"]
+    workflow_node: URIRef = PMD["0000011"]
     continuant: URIRef = BFO["0000002"]
     value_specification: URIRef = OBI["0001933"]
     specifies_value_of: URIRef = OBI["0001927"]
@@ -457,7 +457,7 @@ def _wf_node_to_graph(
                     SNS.has_part,
                     G.t_ns[item],
                 )
-        g.add((G.t_ns[node_name], RDFS.subClassOf, SNS.process))
+        g.add((G.t_ns[node_name], RDFS.subClassOf, SNS.workflow_node))
         if "function" in data:
             g += _to_owl_restriction(
                 node,
@@ -827,7 +827,7 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
 
     if t_box:
         g.add((workflow_node, RDF.type, OWL.Class))
-        g.add((workflow_node, RDFS.subClassOf, SNS.process))
+        g.add((workflow_node, RDFS.subClassOf, SNS.workflow_node))
         g.add((workflow_node, RDFS.label, Literal(G.name)))
     else:
         g.add((workflow_node, RDF.type, G.t_ns[G.name]))
@@ -1632,7 +1632,7 @@ class SparqlWriter:
         return self._graph.qname(term)
 
     def _get_head_node(self, data_nodes):
-        candidates = list(self._graph.subjects(RDFS.subClassOf, SNS.process))
+        candidates = list(self._graph.subjects(RDFS.subClassOf, SNS.workflow_node))
         for node in nx.topological_sort(self.G):
             if node in candidates and all(
                 nx.has_path(self.G, node, dn) for dn in data_nodes
