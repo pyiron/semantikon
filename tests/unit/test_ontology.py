@@ -643,9 +643,7 @@ class TestOntology(unittest.TestCase):
         self.assertIn((main_subject, onto.IAO["0000136"], EX.get_kinetic_energy), graph)
 
         # Check input specifications
-        input_specifications = list(
-            graph.objects(main_subject, onto.SNS.has_part)
-        )
+        input_specifications = list(graph.objects(main_subject, onto.SNS.has_part))
         self.assertEqual(len(input_specifications), 3)  # 2 inputs and 1 output
 
         # Check the first input specification (mass)
