@@ -638,14 +638,12 @@ class TestOntology(unittest.TestCase):
         main_subject = onto.BASE[
             f"{__name__}-get_kinetic_energy-not_defined".replace(".", "-")
         ]
-        self.assertIn((main_subject, RDF.type, onto.IAO["0000591"]), graph)
+        self.assertIn((main_subject, RDF.type, onto.PMD["0000010"]), graph)
         self.assertIn((main_subject, RDFS.label, Literal("get_kinetic_energy")), graph)
         self.assertIn((main_subject, onto.IAO["0000136"], EX.get_kinetic_energy), graph)
 
         # Check input specifications
-        input_specifications = list(
-            graph.objects(main_subject, onto.BASE.has_parameter_specification)
-        )
+        input_specifications = list(graph.objects(main_subject, onto.SNS.has_part))
         self.assertEqual(len(input_specifications), 3)  # 2 inputs and 1 output
 
         # Check the first input specification (mass)
@@ -819,7 +817,7 @@ class TestOntology(unittest.TestCase):
             sparql_prefixes
             + """
             SELECT ?label WHERE {
-              ?function sns:has_parameter_specification ?bnode .
+              ?function bfo:0000051 ?bnode .
               ?bnode rdfs:label ?label .
             }"""
         )
