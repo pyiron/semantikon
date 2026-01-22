@@ -639,7 +639,6 @@ class TestOntology(unittest.TestCase):
             f"{__name__}-get_kinetic_energy-not_defined".replace(".", "-")
         ]
         self.assertIn((main_subject, RDF.type, onto.PMD["0000010"]), graph)
-        self.assertIn((main_subject, RDFS.label, Literal("get_kinetic_energy")), graph)
         self.assertIn((main_subject, onto.IAO["0000136"], EX.get_kinetic_energy), graph)
 
         # Check input specifications
@@ -809,7 +808,8 @@ class TestOntology(unittest.TestCase):
             + """
             SELECT ?label WHERE {
               ?function iao:0000136 ex:get_kinetic_energy .
-              ?function rdfs:label ?label .
+              ?function iao:0000235 ?f_name .
+              ?f_name pmd:0000006 ?label .
             }"""
         )
         self.assertEqual(list(g.query(query))[0][0].toPython(), "get_kinetic_energy")

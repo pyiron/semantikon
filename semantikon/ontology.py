@@ -65,12 +65,9 @@ class SNS:
     has_constraint: URIRef = BASE["has_constraint"]
     has_value: URIRef = PMD["0000006"]
     version_number: URIRef = IAO["0000129"]
-    is_release_of: URIRef = PMD["is_release_of"]
-    has_version_identifier: URIRef = PMD["has_version_identifier"]
-    workflow_function_release: URIRef = PMD["workflow_function_release"]
-    import_path: URIRef = PMD["import_path"]
-    denotes_function: URIRef = PMD["denotes_function"]
-    function_name: URIRef = PMD["function_name"]
+    import_path: URIRef = BASE["import_path"]
+    denotes_function: URIRef = BASE["denotes_function"]
+    function_name: URIRef = BASE["function_name"]
 
 
 ud = UnitsDict()
@@ -408,12 +405,20 @@ def _function_to_graph(
     """
     g = _get_bound_graph()
     g.add((f_node, RDF.type, SNS.workflow_function))
-    g.add((f_node, RDFS.label, Literal(data["qualname"])))
+    f_name = BASE[data["qualname"] + "_function_name"]
+    g.add((f_name, RDF.type, SNS.function_name))
+    g.add((f_name, SNS.has_value, Literal(data["qualname"])))
+    g.add((f_node, SNS.denoted_by, f_name))
+    g.add((
+        f_name,
+        RDFS.label,
+        Literal(f"Function name '{data['qualname']}'"),
+    ))
     if data.get("docstring", "") != "":
         docstring = URIRef(f_node + "_docstring")
         g.add((docstring, RDF.type, SNS.textual_entity))
         g.add((docstring, SNS.has_value, Literal(data["docstring"])))
-        g.add((f_node, SNS.denoted_by, docstring))
+        g.add((docstring, SNS.is_about, f_node))
     if uri is not None:
         g.add((f_node, SNS.is_about, uri))
     if data.get("hash", "") != "":
@@ -421,30 +426,14 @@ def _function_to_graph(
         g.add((f_node, SNS.denoted_by, hash_bnode))
         g.add((hash_bnode, RDF.type, SNS.identifier))
         g.add((hash_bnode, SNS.has_value, Literal(data["hash"])))
-    if data.get("version", "not_defined") != "not_defined":
-        version_bnode = BNode("version_" + str(data["version"]))
-        g.add((version_bnode, RDF.type, SNS.version_number))
-        g.add((version_bnode, SNS.has_value, Literal(data["version"])))
-        g.add((version_bnode, RDFS.label, Literal(f"Version {data['version']}")))
-        release_bnode = BNode(f_node + "_release_" + str(data["version"]))
-        g.add((release_bnode, RDF.type, SNS.workflow_function_release))
-        g.add((release_bnode, SNS.is_release_of, f_node))
-        g.add((release_bnode, SNS.has_version_identifier, version_bnode))
-        g.add(
-            (
-                release_bnode,
-                RDFS.label,
-                Literal(f"{data['qualname']} release {data['version']}"),
-            )
-        )
     if data.get("module", "") != "":
-        import_bnode = BNode(f_node + "_import_path")
-        g.add((import_bnode, RDF.type, SNS.import_path))
-        g.add((import_bnode, SNS.has_value, Literal(data["module"])))
-        g.add((import_bnode, SNS.denotes_function, f_node))
+        module = BASE[data["module"].replace(".", "_")]
+        g.add((module, RDF.type, SNS.import_path))
+        g.add((module, SNS.has_value, Literal(data["module"])))
+        g.add((module, SNS.denotes_function, f_node))
         g.add(
             (
-                import_bnode,
+                module,
                 RDFS.label,
                 Literal(f"Import path for {data['qualname']}"),
             )
