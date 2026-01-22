@@ -64,6 +64,13 @@ class SNS:
     has_default_literal_value: URIRef = PMD["0001877"]
     has_constraint: URIRef = BASE["has_constraint"]
     has_value: URIRef = PMD["0000006"]
+    version_number: URIRef = IAO["0000129"]
+    is_release_of: URIRef = PMD["is_release_of"]
+    has_version_identifier: URIRef = PMD["has_version_identifier"]
+    workflow_function_release: URIRef = PMD["workflow_function_release"]
+    import_path: URIRef = PMD["import_path"]
+    denotes_function: URIRef = PMD["denotes_function"]
+    function_name: URIRef = PMD["function_name"]
 
 
 ud = UnitsDict()
@@ -414,6 +421,34 @@ def _function_to_graph(
         g.add((f_node, SNS.denoted_by, hash_bnode))
         g.add((hash_bnode, RDF.type, SNS.identifier))
         g.add((hash_bnode, SNS.has_value, Literal(data["hash"])))
+    if data.get("version", "not_defined") != "not_defined":
+        version_bnode = BNode("version_" + str(data["version"]))
+        g.add((version_bnode, RDF.type, SNS.version_number))
+        g.add((version_bnode, SNS.has_value, Literal(data["version"])))
+        g.add((version_bnode, RDFS.label, Literal(f"Version {data['version']}")))
+        release_bnode = BNode(f_node + "_release_" + str(data["version"]))
+        g.add((release_bnode, RDF.type, SNS.workflow_function_release))
+        g.add((release_bnode, SNS.is_release_of, f_node))
+        g.add((release_bnode, SNS.has_version_identifier, version_bnode))
+        g.add(
+            (
+                release_bnode,
+                RDFS.label,
+                Literal(f"{data['qualname']} release {data['version']}"),
+            )
+        )
+    if data.get("module", "") != "":
+        import_bnode = BNode(f_node + "_import_path")
+        g.add((import_bnode, RDF.type, SNS.import_path))
+        g.add((import_bnode, SNS.has_value, Literal(data["module"])))
+        g.add((import_bnode, SNS.denotes_function, f_node))
+        g.add(
+            (
+                import_bnode,
+                RDFS.label,
+                Literal(f"Import path for {data['qualname']}"),
+            )
+        )
     for io, io_args in zip(["input", "output"], [input_args, output_args]):
         for ii, arg in enumerate(io_args):
             if "label" in arg:
