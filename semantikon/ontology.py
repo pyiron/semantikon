@@ -409,11 +409,13 @@ def _function_to_graph(
     g.add((f_name, RDF.type, SNS.function_name))
     g.add((f_name, SNS.has_value, Literal(data["qualname"])))
     g.add((f_node, SNS.denoted_by, f_name))
-    g.add((
-        f_name,
-        RDFS.label,
-        Literal(f"Function name '{data['qualname']}'"),
-    ))
+    g.add(
+        (
+            f_name,
+            RDFS.label,
+            Literal(f"Function name '{data['qualname']}'"),
+        )
+    )
     if data.get("docstring", "") != "":
         docstring = URIRef(f_node + "_docstring")
         g.add((docstring, RDF.type, SNS.textual_entity))

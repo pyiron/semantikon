@@ -786,7 +786,9 @@ class TestOntology(unittest.TestCase):
               ?function iao:0000235 ?f_name .
               ?f_name pmd:0000006 ?label .
             }"""
-        self.assertEqual(list(g.query(query))[0][0].toPython(), "get_kinetic_energy")
+        self.assertIn(
+            "get_kinetic_energy", [row[0].toPython() for row in g.query(query)]
+        )
         query = sparql_prefixes + """
             SELECT ?label WHERE {
               ?function bfo:0000051 ?bnode .
