@@ -1246,7 +1246,11 @@ def serialize_and_convert_to_networkx(
     G = _WorkflowGraphSerializer(wf_dict, prefix=prefix).serialize()
     if hash_data:
         try:
-            hashed_dict = get_hashed_node_dict(wf_dict)
+            hashed_dict = {}
+            for key, value in get_hashed_node_dict(wf_dict).items():
+                if not key.startswith(G.name):
+                    key = G.name + "-" + key
+                hashed_dict[key.replace(".", "-")] = value
         except Exception as e:
             raise RuntimeError(
                 "Failed to hash workflow data - use only hashable inputs or set hash_data=False"
