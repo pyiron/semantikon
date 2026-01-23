@@ -306,14 +306,12 @@ class TestOntology(unittest.TestCase):
 
     def test_to_restrictions(self):
         # Common reference graph for single target class
-        single_target_text = prefixes + dedent(
-            """\
+        single_target_text = prefixes + dedent("""\
         <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
                     owl:onProperty <http://example.org/some_predicate> ;
                     owl:someValuesFrom <http://example.org/destination> ],
                 <http://example.org/my_class> .
-        """
-        )
+        """)
         g_ref_single = Graph()
         g_ref_single.parse(data=single_target_text, format="turtle")
 
@@ -331,8 +329,7 @@ class TestOntology(unittest.TestCase):
             )
 
         with self.subTest("Multiple target classes"):
-            text = prefixes + dedent(
-                """\
+            text = prefixes + dedent("""\
             <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
                         owl:onProperty <http://example.org/some_predicate> ;
                         owl:someValuesFrom <http://example.org/dest1> ],
@@ -340,8 +337,7 @@ class TestOntology(unittest.TestCase):
                         owl:onProperty <http://example.org/some_predicate> ;
                         owl:someValuesFrom <http://example.org/dest2> ],
                     <http://example.org/my_class> .
-            """
-            )
+            """)
             g_ref = Graph()
             g_ref.parse(data=text, format="turtle")
             g = Graph()
@@ -357,14 +353,12 @@ class TestOntology(unittest.TestCase):
             )
 
         with self.subTest("owl:hasValue instead of owl:someValuesFrom"):
-            text = prefixes + dedent(
-                """\
+            text = prefixes + dedent("""\
             <http://example.org/origin> rdfs:subClassOf [ a owl:Restriction ;
                         owl:hasValue <http://example.org/destination> ;
                         owl:onProperty <http://example.org/some_predicate> ],
                     <http://example.org/my_class> .
-            """
-            )
+            """)
             g_ref = Graph()
             g_ref.parse(data=text, format="turtle")
             g = onto._to_owl_restriction(
@@ -447,31 +441,27 @@ class TestOntology(unittest.TestCase):
     def test_derives_from(self):
         wf_dict = wf_triples.serialize_workflow()
         g = onto.get_knowledge_graph(wf_dict, include_a_box=False, prefix="T")
-        query = sparql_prefixes + dedent(
-            """\
+        query = sparql_prefixes + dedent("""\
         SELECT ?main_class WHERE {
             ?derivedFrom owl:someValuesFrom ?input_class .
             ?derivedFrom owl:onProperty ro:0001000 .
             ?main_class rdfs:subClassOf ?derivedFrom .
             ?input_class rdfs:subClassOf obi:0001933 .
         }
-        """
-        )
+        """)
         self.assertEqual(len(g.query(query)), 1)
         self.assertEqual(
             list(g.query(query))[0]["main_class"],
             onto.BASE["T_wf_triples-f_triples_0-outputs-a_data"],
         )
         g = onto.get_knowledge_graph(wf_dict, include_t_box=False, prefix="T")
-        query = sparql_prefixes + dedent(
-            """
+        query = sparql_prefixes + dedent("""
         ASK WHERE {
             ?output a sns:T_wf_triples-f_triples_0-outputs-a_data .
             ?input a sns:T_wf_triples-inputs-a_data .
             ?output ro:0001000 ?input .
         }
-        """
-        )
+        """)
         self.assertTrue(g.query(query).askAnswer)
 
     def test_triples(self):
@@ -499,25 +489,21 @@ class TestOntology(unittest.TestCase):
             self.assertEqual(len(fn_activities), 1)
 
         with self.subTest("cross-input data relations preserved"):
-            query = sparql_prefixes + dedent(
-                """
+            query = sparql_prefixes + dedent("""
             ASK {
                 ?b_data a sns:T_wf_triples-inputs-b_data .
                 ?a_data a sns:T_wf_triples-inputs-a_data .
                 ?b_data ex:relatedTo ?a_data .
             }
-            """
-            )
+            """)
             self.assertTrue(g.query(query).askAnswer)
-            query = sparql_prefixes + dedent(
-                """
+            query = sparql_prefixes + dedent("""
             ASK {
                 ?output a sns:T_wf_triples-f_triples_0-outputs-a_data .
                 ?input a sns:T_wf_triples-inputs-b_data .
                 ?output ex:hasSomeRelation ?input .
             }
-            """
-            )
+            """)
             self.assertTrue(g.query(query).askAnswer)
         g = onto.get_knowledge_graph(wf_dict)
         self.assertTrue(onto.validate_values(g)[0])
@@ -666,15 +652,12 @@ class TestOntology(unittest.TestCase):
     def test_run(self):
         wf_dict = my_kinetic_energy_workflow.run(2, 1, 4)
         g_run = onto.get_knowledge_graph(wf_dict)
-        query = (
-            sparql_prefixes
-            + """
+        query = sparql_prefixes + """
         SELECT ?node ?value WHERE {
           ?bnode a ?node ;
             rdf:value ?value .
         }
         """
-        )
         results = list(g_run.query(query))
         for tag, value in zip(
             [
@@ -707,9 +690,7 @@ class TestOntology(unittest.TestCase):
         wf_dict = my_kinetic_energy_workflow.run(1.0, 2.0, 3.0)
         graph = onto.get_knowledge_graph(wf_dict)
 
-        query = (
-            sparql_prefixes
-            + """
+        query = sparql_prefixes + """
         SELECT ?distance_value ?e_value WHERE {
           ?distance_datanode rdf:value ?distance_value .
           ?distance_datanode obi:0001927 ?distance_bnode .
@@ -723,7 +704,6 @@ class TestOntology(unittest.TestCase):
           ?e_datanode rdf:value ?e_value .
         }
         """
-        )
         data = [d.toPython() for d in list(graph.query(query))[0]]
         self.assertListEqual(data, [1.0, 0.375])
 
@@ -769,9 +749,7 @@ class TestOntology(unittest.TestCase):
             return kinetic_energy
 
         speed_data = NewSpeedData(distance=1.0, time=2.0)
-        query = (
-            sparql_prefixes
-            + """
+        query = sparql_prefixes + """
             SELECT ?distance_value ?e_value WHERE {
               ?distance_datanode rdf:value ?distance_value .
               ?distance_datanode obi:0001927 ?distance_bnode .
@@ -790,7 +768,6 @@ class TestOntology(unittest.TestCase):
               ?e_datanode obi:0001927 ?e_bnode .
               ?e_datanode rdf:value ?e_value .
             }"""
-        )
 
         wf_dict = workflow_with_dataclass.run(speed_data=speed_data, mass=3)
         g = onto.get_knowledge_graph(wf_dict, extract_dataclasses=False)
@@ -803,24 +780,18 @@ class TestOntology(unittest.TestCase):
     def test_function_to_knowledge_graph(self):
         g = onto.function_to_knowledge_graph(get_speed)
         g += onto.function_to_knowledge_graph(get_kinetic_energy)
-        query = (
-            sparql_prefixes
-            + """
+        query = sparql_prefixes + """
             SELECT ?label WHERE {
               ?function iao:0000136 ex:get_kinetic_energy .
               ?function iao:0000235 ?f_name .
               ?f_name pmd:0000006 ?label .
             }"""
-        )
         self.assertEqual(list(g.query(query))[0][0].toPython(), "get_kinetic_energy")
-        query = (
-            sparql_prefixes
-            + """
+        query = sparql_prefixes + """
             SELECT ?label WHERE {
               ?function bfo:0000051 ?bnode .
               ?bnode rdfs:label ?label .
             }"""
-        )
         g = onto.function_to_knowledge_graph(prepare_pizza)
         self.assertEqual(list(g.query(query))[0][0].toPython(), "output_0")
 
