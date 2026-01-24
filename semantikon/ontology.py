@@ -408,7 +408,9 @@ def _function_to_graph(
         g.add((docstring, SNS.has_value, Literal(data["docstring"])))
         g.add((f_node, SNS.denoted_by, docstring))
     if uri is not None:
-        g.add((f_node, SNS.is_about, uri))
+        assert isinstance(uri, URIRef)
+        g.add((f_node, SNS.is_about, BNode(uri)))
+        g.add((BNode(uri), RDF.type, uri))
     if data.get("hash", "") != "":
         hash_bnode = BNode(f_node + "_hash")
         g.add((f_node, SNS.denoted_by, hash_bnode))
@@ -437,7 +439,9 @@ def _function_to_graph(
                     (arg_node, SNS.has_default_literal_value, Literal(arg["default"]))
                 )
             if "uri" in arg:
-                g.add((arg_node, SNS.is_about, arg["uri"]))
+                assert isinstance(arg["uri"], URIRef)
+                g.add((arg_node, SNS.is_about, BNode(arg["uri"])))
+                g.add((BNode(arg["uri"]), RDF.type, arg["uri"]))
             if "restrictions" in arg:
                 g += _restrictions_to_triples(
                     arg["restrictions"],
