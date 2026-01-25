@@ -633,26 +633,30 @@ class TestOntology(unittest.TestCase):
 
         # Check the first input specification (mass)
         query = sparql_prefixes + """
-            SELECT ?label WHERE {
+            SELECT ?input WHERE {
               ?input iao:0000136 ?bnode .
-              ?input rdfs:label ?label .
               ?bnode a pmd:0020133 .
             }"""
         mass_spec = list(graph.query(query))
         self.assertEqual(len(mass_spec), 1)
-        self.assertIn((mass_spec[0], RDF.type, onto.SNS.input_specification), graph)
-        self.assertIn((mass_spec[0], RDFS.label, Literal("mass")), graph)
+        self.assertIn((mass_spec[0][0], RDF.type, onto.SNS.input_specification), graph)
+        self.assertIn((mass_spec[0][0], RDFS.label, Literal("mass")), graph)
         self.assertIn(
-            (mass_spec[0], onto.SNS.has_parameter_position, Literal(0)), graph
+            (mass_spec[0][0], onto.SNS.has_parameter_position, Literal(0)), graph
         )
 
         # Check the output specification
-        output_spec = list(graph.subjects(onto.IAO["0000136"], onto.PMD["0020142"]))
+        query = sparql_prefixes + """
+            SELECT ?output WHERE {
+              ?output iao:0000136 ?bnode .
+              ?bnode a pmd:0020142 .
+            }"""
+        output_spec = list(graph.query(query))
         self.assertEqual(len(output_spec), 1)
-        self.assertIn((output_spec[0], RDF.type, onto.SNS.output_specification), graph)
-        self.assertIn((output_spec[0], RDFS.label, Literal("kinetic_energy")), graph)
+        self.assertIn((output_spec[0][0], RDF.type, onto.SNS.output_specification), graph)
+        self.assertIn((output_spec[0][0], RDFS.label, Literal("kinetic_energy")), graph)
         self.assertIn(
-            (output_spec[0], onto.SNS.has_parameter_position, Literal(0)), graph
+            (output_spec[0][0], onto.SNS.has_parameter_position, Literal(0)), graph
         )
 
     def test_run(self):
