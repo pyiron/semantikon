@@ -653,7 +653,9 @@ class TestOntology(unittest.TestCase):
             }"""
         output_spec = list(graph.query(query))
         self.assertEqual(len(output_spec), 1)
-        self.assertIn((output_spec[0][0], RDF.type, onto.SNS.output_specification), graph)
+        self.assertIn(
+            (output_spec[0][0], RDF.type, onto.SNS.output_specification), graph
+        )
         self.assertIn((output_spec[0][0], RDFS.label, Literal("kinetic_energy")), graph)
         self.assertIn(
             (output_spec[0][0], onto.SNS.has_parameter_position, Literal(0)), graph
