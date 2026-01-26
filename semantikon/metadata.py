@@ -42,6 +42,7 @@ def u(
     derived_from: str | Missing = MISSING,
     **extra,
 ) -> Any:
+    units = extra.pop("unit", units)
     presently_requested_metadata = TypeMetadata(
         uri=uri,
         triples=triples,

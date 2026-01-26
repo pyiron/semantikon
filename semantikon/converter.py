@@ -330,7 +330,7 @@ def _get_converter(func: Callable) -> Callable | None:
     args = []
     for value in parse_input_args(func).values():
         if value is not None:
-            args.append(value.get("units", None))
+            args.append(value.get("units", value.get("unit")))
         else:
             args.append(None)
     if any([arg is not None for arg in args]):
@@ -344,7 +344,7 @@ def _get_ret_units(
 ) -> Quantity | None:
     if output == {}:
         return None
-    ret = _to_units_container(output.get("units", None), ureg)
+    ret = _to_units_container(output.get("units", output.get("unit")), ureg)
     names = {key: 1.0 * value.units for key, value in names.items()}
     return ureg.Quantity(1, _replace_units(ret[0], names) if ret[1] else ret[0])
 
