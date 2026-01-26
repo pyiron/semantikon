@@ -107,7 +107,7 @@ def parse_metadata(value: Any) -> TypeMetadata:
     """
     if all(isinstance(d, dict) for d in value.__metadata__):
         merged_dict = {
-            key: value for d in value.__metadata__ for key, value in d.items()
+            key: val for d in value.__metadata__ for key, val in d.items()
         }
         return TypeMetadata(**merged_dict)
     metadata = value.__metadata__[0]
