@@ -648,6 +648,7 @@ def _wf_input_to_graph(
     t_box: bool,
 ) -> Graph:
     g = _get_bound_graph()
+    units = data.get("units", data.get("unit"))
     if t_box:
         data_node = G.t_ns[G._get_data_node(io=node_name)]
         if _input_is_connected(node_name, G):
@@ -659,11 +660,11 @@ def _wf_input_to_graph(
                     g += _to_owl_restriction(
                         G.t_ns[out[0]], SNS.has_participant, data_node
                     )
-            if "units" in data:
+            if units is not None:
                 g += _to_owl_restriction(
                     base_node=data_node,
                     on_property=QUDT.hasUnit,
-                    target_class=_units_to_uri(data["units"]),
+                    target_class=_units_to_uri(units),
                     restriction_type=OWL.hasValue,
                 )
             if "uri" in data:
@@ -678,8 +679,8 @@ def _wf_input_to_graph(
     else:
         data_node = G.get_a_node(G._get_data_node(io=node_name))
         if not _input_is_connected(node_name, G):
-            if "units" in data:
-                g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
+            if units is not None:
+                g.add((data_node, QUDT.hasUnit, _units_to_uri(units)))
             if "uri" in data:
                 bnode = BNode(str(data_node) + "_uri")
                 g.add((bnode, RDF.type, data["uri"]))
@@ -707,8 +708,9 @@ def _wf_output_to_graph(
         data_node = G.t_ns[G._get_data_node(io=node_name)]
     else:
         data_node = G.get_a_node(G._get_data_node(io=node_name))
-        if "units" in data:
-            g.add((data_node, QUDT.hasUnit, _units_to_uri(data["units"])))
+        units = data.get("units", data.get("unit"))
+        if units is not None:
+            g.add((data_node, QUDT.hasUnit, _units_to_uri(units)))
         if "uri" in data:
             bnode = BNode()
             g.add((bnode, RDF.type, data["uri"]))
@@ -1030,11 +1032,12 @@ class _DataclassTranslator:
             target_class=field_node,
         )
 
-        if "units" in metadata:
+        units = metadata.get("units", metadata.get("unit"))
+        if units is not None:
             graph += _to_owl_restriction(
                 base_node=field_node,
                 on_property=QUDT.hasUnit,
-                target_class=_units_to_uri(metadata["units"]),
+                target_class=_units_to_uri(units),
                 restriction_type=OWL.hasValue,
             )
 
@@ -1069,8 +1072,9 @@ class _DataclassTranslator:
         graph.add((parent, SNS.has_part, field_node))
         graph.add((field_node, RDF.type, field_class))
 
-        if "units" in metadata:
-            graph.add((field_node, QUDT.hasUnit, _units_to_uri(metadata["units"])))
+        units = metadata.get("units", metadata.get("unit"))
+        if units is not None:
+            graph.add((field_node, QUDT.hasUnit, _units_to_uri(units)))
 
         if "uri" in metadata:
             bnode = BNode()
