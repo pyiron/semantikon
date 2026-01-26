@@ -498,6 +498,16 @@ def _wf_node_to_graph(
     return g
 
 
+def _output_is_connected(io: str, G: SemantikonDiGraph) -> bool:
+    candidate = list(G.successors(io))
+    if len(candidate) == 1:
+        if G.nodes[candidate[0]]["step"] == "node":
+            return True
+        return _output_is_connected(candidate[0], G)
+    assert len(candidate) == 0
+    return False
+
+
 def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
     candidate = list(G.predecessors(io))
     if len(candidate) == 1:
@@ -598,9 +608,7 @@ def _restrictions_to_triples(
                 g.add((b_node, r[0], r[1]))
         elif is_shacl:
             # Create a SHACL NodeShape
-            shape_node = BNode(
-                "shape_" + sha256(str(r_set).encode()).hexdigest()
-            )
+            shape_node = BNode("shape_" + sha256(str(r_set).encode()).hexdigest())
             if predicate == SNS.has_constraint:
                 g.add((data_node, predicate, shape_node))
             else:
@@ -634,20 +642,20 @@ def _wf_input_to_graph(
                     g += _to_owl_restriction(
                         G.t_ns[out[0]], SNS.has_participant, data_node
                     )
-            if units is not None:
-                g += _to_owl_restriction(
-                    base_node=data_node,
-                    on_property=QUDT.hasUnit,
-                    target_class=_units_to_uri(units),
-                    restriction_type=OWL.hasValue,
-                )
-            if "uri" in data:
-                g += _to_owl_restriction(
-                    data_node,
-                    SNS.specifies_value_of,
-                    data["uri"],
-                    restriction_type=OWL.allValuesFrom,
-                )
+        if units is not None:
+            g += _to_owl_restriction(
+                base_node=data_node,
+                on_property=QUDT.hasUnit,
+                target_class=_units_to_uri(units),
+                restriction_type=OWL.hasValue,
+            )
+        if "uri" in data:
+            g += _to_owl_restriction(
+                data_node,
+                SNS.specifies_value_of,
+                data["uri"],
+                restriction_type=OWL.allValuesFrom,
+            )
         if "restrictions" in data:
             g += _restrictions_to_triples(data["restrictions"], data_node=data_node)
     else:
@@ -680,6 +688,22 @@ def _wf_output_to_graph(
     g = _get_bound_graph()
     if t_box:
         data_node = G.t_ns[G._get_data_node(io=node_name)]
+        if not _output_is_connected(node_name, G):
+            if "uri" in data:
+                g += _to_owl_restriction(
+                    data_node,
+                    SNS.specifies_value_of,
+                    data["uri"],
+                    restriction_type=OWL.allValuesFrom,
+                )
+            units = data.get("units", data.get("unit"))
+            if units is not None:
+                g += _to_owl_restriction(
+                    base_node=data_node,
+                    on_property=QUDT.hasUnit,
+                    target_class=_units_to_uri(units),
+                    restriction_type=OWL.hasValue,
+                )
     else:
         data_node = G.get_a_node(G._get_data_node(io=node_name))
         units = data.get("units", data.get("unit"))
