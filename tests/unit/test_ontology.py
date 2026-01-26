@@ -847,6 +847,7 @@ class TestOntology(unittest.TestCase):
         def only_get_speed_workflow(distance, time):
             speed = get_speed(distance=distance, time=time)
             return speed
+
         graph += onto.get_knowledge_graph(
             only_get_speed_workflow.run(3.0, 1.5), prefix="T"
         )
