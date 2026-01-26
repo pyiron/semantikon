@@ -106,7 +106,9 @@ def parse_metadata(value: Any) -> TypeMetadata:
         `triples`, `uri` and `shape`. See `semantikon.dataclasses.TypeMetadata` for more details.
     """
     if all(isinstance(d, dict) for d in value.__metadata__):
-        merged_dict = {key: value for d in value.__metadata__ for key, value in d.items()}
+        merged_dict = {
+            key: value for d in value.__metadata__ for key, value in d.items()
+        }
         return TypeMetadata(**merged_dict)
     metadata = value.__metadata__[0]
     return TypeMetadata(**{k: v for k, v in zip(metadata[::2], metadata[1::2])})
