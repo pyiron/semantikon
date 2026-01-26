@@ -591,7 +591,7 @@ def _restrictions_to_triples(
             # Create an OWL Restriction
             if predicate is None:
                 predicate = RDFS.subClassOf
-            b_node = BNode("rest_" + sha256(str(r_set).encode("utf-8")).hexdigest())
+            b_node = BNode("rest_" + sha256(str(r_set).encode()).hexdigest())
             g.add((data_node, predicate, b_node))
             g.add((b_node, RDF.type, OWL.Restriction))
             for r in r_set:
@@ -599,7 +599,7 @@ def _restrictions_to_triples(
         elif is_shacl:
             # Create a SHACL NodeShape
             shape_node = BNode(
-                "shape_" + sha256(str(r_set).encode("utf-8")).hexdigest()
+                "shape_" + sha256(str(r_set).encode()).hexdigest()
             )
             if predicate == SNS.has_constraint:
                 g.add((data_node, predicate, shape_node))
@@ -1279,9 +1279,7 @@ def _to_owl_restriction(
     g = _get_bound_graph()
     restriction_node = BNode(
         sha256(
-            str((base_node, on_property, target_class, restriction_type)).encode(
-                "utf-8"
-            )
+            str((base_node, on_property, target_class, restriction_type)).encode()
         ).hexdigest()
     )
 
