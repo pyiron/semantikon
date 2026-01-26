@@ -117,6 +117,7 @@ class TestParser(unittest.TestCase):
         nested = Annotated[with_dict, {"units": "centimeter"}]
         nested_result = parse_metadata(nested).to_dictionary()
         self.assertEqual(nested_result["units"], "centimeter")
+        self.assertEqual(nested_result["label"], "distance")
 
     def test_invalid_u(self):
         with self.assertRaises(TypeError) as context:
