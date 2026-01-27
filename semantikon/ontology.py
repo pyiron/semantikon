@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
-from dataclasses import asdict, dataclass, is_dataclass
+from dataclasses import asdict, dataclass, fields, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
 from typing import Any, Callable, TypeAlias, cast
@@ -935,8 +935,11 @@ class _DataclassTranslator:
             dtype=dtype,
         )
 
+        field_metadata = {f.name: f.metadata for f in fields(dtype)}
+
         for field, annotation in dtype.__annotations__.items():
             metadata = meta_to_dict(annotation)
+            metadata.update(field_metadata.get(field, {}))
 
             t_field = self._to_subkey(t_node, field)
             a_field = self._to_subkey(a_node, field)
