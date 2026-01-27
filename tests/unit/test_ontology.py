@@ -1,5 +1,5 @@
 import unittest
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from textwrap import dedent
 from typing import Annotated
@@ -84,7 +84,7 @@ def get_speed_not_annotated(distance, time) -> float:
 @dataclass
 class NewSpeedData:
     distance: Annotated[float, {"uri": PMD["0040001"], "units": "meter"}]
-    time: Annotated[float, {"units": "second"}]
+    time: float = field(metadata={"units": "second"})
 
 
 def get_speed_with_dataclass(speed_data: NewSpeedData):
