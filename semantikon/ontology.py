@@ -1030,6 +1030,8 @@ class _DataclassTranslator:
             target_class=field_node,
         )
 
+        graph.add((field_node, RDFS.subClassOf, SNS.value_specification))
+
         units = metadata.get("units", metadata.get("unit"))
         if units is not None:
             graph += _to_owl_restriction(
