@@ -4,7 +4,7 @@ import string
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Dict, Iterable
+from typing import Any, Iterable
 
 import networkx as nx
 from rdflib import RDFS, Graph, Literal, URIRef
@@ -109,7 +109,7 @@ def request_values(wf_dict: dict, graph: Graph) -> dict:
 
 class TrieNode:
     def __init__(self):
-        self.children: Dict[str, "TrieNode"] = {}
+        self.children: dict[str, "TrieNode"] = {}
         self.terminal = False
 
 

@@ -5,7 +5,7 @@ import json
 from dataclasses import asdict, dataclass, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
-from typing import Any, Callable, Dict, TypeAlias, cast
+from typing import Any, Callable, TypeAlias, cast
 
 import networkx as nx
 from flowrep.workflow import get_hashed_node_dict
@@ -170,12 +170,12 @@ class SemantikonDiGraph(nx.DiGraph):
             if "value" in data and "hash" in data:
                 del data["value"]
 
-    def get_hash_dict(self) -> Dict[str, str]:
+    def get_hash_dict(self) -> dict[str, str]:
         """
         Get a dictionary mapping node names to their hash values.
 
         Returns:
-            Dict[str, str]: A dictionary where keys are node names and values
+            dict[str, str]: A dictionary where keys are node names and values
                 are their corresponding hash values.
         """
         hash_dict = {}
