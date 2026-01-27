@@ -1,7 +1,7 @@
 import unittest
 from typing import Annotated
 
-from rdflib import OWL, RDF, RDFS, SH, Graph, Literal, Namespace
+from rdflib import RDF, RDFS, Namespace
 
 from semantikon import analysis as asis
 from semantikon import ontology as onto

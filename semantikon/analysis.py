@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import string
 from collections import defaultdict
 from dataclasses import dataclass
@@ -6,7 +7,7 @@ from functools import cached_property
 from typing import Any, Dict, Iterable
 
 import networkx as nx
-from rdflib import OWL, RDFS, Graph, Literal, URIRef
+from rdflib import RDFS, Graph, Literal, URIRef
 
 from semantikon.converter import to_identifier
 from semantikon.ontology import BASE, SNS, serialize_and_convert_to_networkx
