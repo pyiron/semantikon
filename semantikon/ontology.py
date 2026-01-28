@@ -1345,6 +1345,8 @@ def _get_graph_hash(G: SemantikonDiGraph, with_global_inputs: bool = True) -> st
                 G_tmp.nodes[node]["value"] = asdict(G_tmp.nodes[node]["value"])
         if "dtype" in G_tmp.nodes[node]:
             del G_tmp.nodes[node]["dtype"]
+        if "hash" in G_tmp.nodes[node]:
+            del G_tmp.nodes[node]["hash"]
 
     for _, attrs in G_tmp.nodes(data=True):
         attrs["canon"] = json.dumps(attrs, sort_keys=True)
