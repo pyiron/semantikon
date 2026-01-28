@@ -355,6 +355,14 @@ class TestOntology(unittest.TestCase):
                 "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy"
             ),
         )
+        wf_dict_one = my_kinetic_energy_workflow.run(1.0, 2.0, 3.0)
+        wf_dict_two = my_kinetic_energy_workflow.run(4.0, 5.0, 6.0)
+        G_one = onto.serialize_and_convert_to_networkx(wf_dict_one, hash_data=True)
+        G_two = onto.serialize_and_convert_to_networkx(wf_dict_two, hash_data=True)
+        self.assertEqual(
+            onto._get_graph_hash(G_one, with_global_inputs=False),
+            onto._get_graph_hash(G_two, with_global_inputs=False),
+        )
 
         @workflow
         def workflow_with_default_values(distance=2, time=1, mass=4):
