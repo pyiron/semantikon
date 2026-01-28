@@ -760,9 +760,7 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(
             "get_kinetic_energy", [row[0].toPython() for row in g.query(query)][0]
         )
-        self.assertEqual(
-            __name__, [row[1].toPython() for row in g.query(query)][0]
-        )
+        self.assertEqual(__name__, [row[1].toPython() for row in g.query(query)][0])
         query = sparql_prefixes + """
             SELECT ?label WHERE {
               ?function bfo:0000051 ?bnode .
