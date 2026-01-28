@@ -61,6 +61,9 @@ class SNS:
     has_default_literal_value: URIRef = PMD["0001877"]
     has_constraint: URIRef = BASE["has_constraint"]
     has_value: URIRef = PMD["0000006"]
+    version_number: URIRef = IAO["0000129"]
+    import_path: URIRef = PMD["0000101"]
+    function_name: URIRef = PMD["0000100"]
 
 
 ud = UnitsDict()
@@ -398,12 +401,22 @@ def _function_to_graph(
     """
     g = _get_bound_graph()
     g.add((f_node, RDF.type, SNS.workflow_function))
-    g.add((f_node, RDFS.label, Literal(data["qualname"])))
+    f_name = BASE[data["qualname"] + "_function_name"]
+    g.add((f_name, RDF.type, SNS.function_name))
+    g.add((f_name, SNS.has_value, Literal(data["qualname"])))
+    g.add((f_node, SNS.denoted_by, f_name))
+    g.add(
+        (
+            f_name,
+            RDFS.label,
+            Literal(f"Function name '{data['qualname']}'"),
+        )
+    )
     if data.get("docstring", "") != "":
         docstring = URIRef(f_node + "_docstring")
         g.add((docstring, RDF.type, SNS.textual_entity))
         g.add((docstring, SNS.has_value, Literal(data["docstring"])))
-        g.add((f_node, SNS.denoted_by, docstring))
+        g.add((docstring, SNS.is_about, f_node))
     if uri is not None:
         assert isinstance(uri, URIRef)
         g.add((f_node, SNS.is_about, BNode(uri)))
@@ -413,6 +426,11 @@ def _function_to_graph(
         g.add((f_node, SNS.denoted_by, hash_bnode))
         g.add((hash_bnode, RDF.type, SNS.identifier))
         g.add((hash_bnode, SNS.has_value, Literal(data["hash"])))
+    if data.get("module", "") != "":
+        module = BASE[data["module"].replace(".", "_")]
+        g.add((f_node, SNS.denoted_by, module))
+        g.add((module, RDF.type, SNS.import_path))
+        g.add((module, SNS.has_value, Literal(data["module"])))
     for io, io_args in zip(["input", "output"], [input_args, output_args]):
         for ii, arg in enumerate(io_args):
             if "label" in arg:

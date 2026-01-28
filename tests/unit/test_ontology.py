@@ -588,7 +588,6 @@ class TestOntology(unittest.TestCase):
             f"{__name__}-get_kinetic_energy-not_defined".replace(".", "-")
         ]
         self.assertIn((main_subject, RDF.type, onto.PMD["0000010"]), graph)
-        self.assertIn((main_subject, RDFS.label, Literal("get_kinetic_energy")), graph)
 
         # Check input specifications
         input_specifications = list(graph.objects(main_subject, onto.SNS.has_part))
@@ -759,12 +758,20 @@ class TestOntology(unittest.TestCase):
         g = onto.function_to_knowledge_graph(get_speed)
         g += onto.function_to_knowledge_graph(get_kinetic_energy)
         query = sparql_prefixes + """
-            SELECT ?label WHERE {
+            SELECT ?label ?import_path WHERE {
               ?function iao:0000136 ?bnode .
-              ?function rdfs:label ?label .
+              ?function iao:0000235 ?f_name .
+              ?f_name pmd:0000006 ?label .
+              ?f_name a pmd:0000100 .
               ?bnode a ex:get_kinetic_energy .
+              ?function iao:0000235 ?f_module .
+              ?f_module a pmd:0000101 .
+              ?f_module pmd:0000006 ?import_path .
             }"""
-        self.assertEqual(list(g.query(query))[0][0].toPython(), "get_kinetic_energy")
+        self.assertEqual(
+            "get_kinetic_energy", [row[0].toPython() for row in g.query(query)][0]
+        )
+        self.assertEqual(__name__, [row[1].toPython() for row in g.query(query)][0])
         query = sparql_prefixes + """
             SELECT ?label WHERE {
               ?function bfo:0000051 ?bnode .
