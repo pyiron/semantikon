@@ -62,9 +62,8 @@ class SNS:
     has_constraint: URIRef = BASE["has_constraint"]
     has_value: URIRef = PMD["0000006"]
     version_number: URIRef = IAO["0000129"]
-    import_path: URIRef = BASE["import_path"]
-    denotes_function: URIRef = BASE["denotes_function"]
-    function_name: URIRef = BASE["function_name"]
+    import_path: URIRef = PMD["0000101"]
+    function_name: URIRef = PMD["0000100"]
 
 
 ud = UnitsDict()
@@ -429,9 +428,9 @@ def _function_to_graph(
         g.add((hash_bnode, SNS.has_value, Literal(data["hash"])))
     if data.get("module", "") != "":
         module = BASE[data["module"].replace(".", "_")]
+        g.add((f_node, SNS.denoted_by, module))
         g.add((module, RDF.type, SNS.import_path))
         g.add((module, SNS.has_value, Literal(data["module"])))
-        g.add((module, SNS.denotes_function, f_node))
         g.add(
             (
                 module,
