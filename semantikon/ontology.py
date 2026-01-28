@@ -431,13 +431,6 @@ def _function_to_graph(
         g.add((f_node, SNS.denoted_by, module))
         g.add((module, RDF.type, SNS.import_path))
         g.add((module, SNS.has_value, Literal(data["module"])))
-        g.add(
-            (
-                module,
-                RDFS.label,
-                Literal(f"Import path for {data['qualname']}"),
-            )
-        )
     for io, io_args in zip(["input", "output"], [input_args, output_args]):
         for ii, arg in enumerate(io_args):
             if "label" in arg:
