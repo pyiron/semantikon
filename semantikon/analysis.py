@@ -24,7 +24,7 @@ def label_to_uri(graph: Graph, label: str) -> list[URIRef]:
     Returns:
         list[URIRef]: The corresponding URIs from the graph.
     """
-    query = """SELECT ?s
+    query = """SELECT DISTINCT ?s
     WHERE {
       ?s rdfs:label ?label .
       ?s a owl:Class .
@@ -76,7 +76,7 @@ def request_values(wf_dict: dict, graph: Graph) -> dict:
     query = f"""
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX iao: <http://purl.obolibrary.org/obo/IAO_>
-    SELECT ?h ?v WHERE {{
+    SELECT DISTINCT ?h ?v WHERE {{
         ?h_bnode rdf:value ?h .
         ?data_node iao:0000235 ?h_bnode .
         ?data_node rdf:value ?v .
@@ -281,7 +281,7 @@ def query_io_completer(graph: Graph) -> Completer:
     for pred in ["pmd:0000066", "pmd:0000067"]:
         query = f"""
         PREFIX pmd: <https://w3id.org/pmd/co/PMD_>
-        SELECT ?io WHERE {{
+        SELECT DISTINCT ?io WHERE {{
             ?io rdfs:subClassOf {pred} .
         }}"""
         for g in graph.query(query):
@@ -316,7 +316,7 @@ class SparqlWriter:
             nx.DiGraph: A directed graph representing the ontology structure.
         """
         query = """
-        SELECT ?parent ?property ?child WHERE {
+        SELECT DISTINCT ?parent ?property ?child WHERE {
             ?parent rdfs:subClassOf ?bnode .
             ?bnode a owl:Restriction .
             ?bnode owl:onProperty ?property .
@@ -458,7 +458,7 @@ class SparqlWriter:
             )
         ).items():
             output_with_ind[key.split("_")[0]].append(value)
-        select_line = "SELECT"
+        select_line = "SELECT DISTINCT"
         for key, value in output_with_ind.items():
             if len(value) == 1:
                 select_line += " " + value[0]
