@@ -455,8 +455,9 @@ def _function_to_graph(
                 )
             if "uri" in arg:
                 assert isinstance(arg["uri"], URIRef)
-                g.add((arg_node, SNS.is_about, BNode(arg["uri"])))
-                g.add((BNode(arg["uri"]), RDF.type, arg["uri"]))
+                uri_node = BNode(arg_node + "_uri")
+                g.add((arg_node, SNS.is_about, uri_node))
+                g.add((uri_node, RDF.type, arg["uri"]))
             if "restrictions" in arg:
                 g += _restrictions_to_triples(
                     arg["restrictions"],
