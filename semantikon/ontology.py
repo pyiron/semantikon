@@ -1198,7 +1198,7 @@ class _WorkflowGraphSerializer:
             k: v for k, v in wf_dict.items() if k not in {"nodes", "edges"}
         }
 
-        assert "function" in wf_dict or wf_dict["type"] != "Function"
+        assert "function" in wf_dict or wf_dict["type"] != "atomic"
 
         if "function" in wf_dict:
             meta = get_function_dict(wf_dict["function"])
