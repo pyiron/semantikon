@@ -596,8 +596,10 @@ class TestOntology(unittest.TestCase):
         # Check the first input specification (mass)
         query = sparql_prefixes + """
             SELECT ?input WHERE {
-              ?input iao:0000136 ?bnode .
-              ?bnode a pmd:0020133 .
+              ?input a ?bnode .
+              ?bnode a owl:Restriction .
+              ?bnode owl:onProperty iao:0000136 .
+              ?bnode owl:allValuesFrom pmd:0020133 .
             }"""
         mass_spec = list(graph.query(query))
         self.assertEqual(len(mass_spec), 1)
@@ -610,8 +612,10 @@ class TestOntology(unittest.TestCase):
         # Check the output specification
         query = sparql_prefixes + """
             SELECT ?output WHERE {
-              ?output iao:0000136 ?bnode .
-              ?bnode a pmd:0020142 .
+              ?output a ?bnode .
+              ?bnode a owl:Restriction .
+              ?bnode owl:onProperty iao:0000136 .
+              ?bnode owl:allValuesFrom pmd:0020142 .
             }"""
         output_spec = list(graph.query(query))
         self.assertEqual(len(output_spec), 1)
