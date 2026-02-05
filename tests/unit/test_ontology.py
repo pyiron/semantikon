@@ -255,7 +255,7 @@ class TestOntology(unittest.TestCase):
             ?output ro:0000057 ?data .
             ?data qudt:hasUnit unit:J .
         }}"""
-        self.assertTrue(g.query(query).askAnswer)
+        self.assertTrue(g.query(query).askAnswer, msg=g.serialize())
         g = onto.get_knowledge_graph(wf_dict)
         self.assertTrue(onto.validate_values(g)[0])
 
