@@ -624,7 +624,9 @@ def _restrictions_to_triples(
                 g.add((b_node, r[0], r[1]))
         elif is_shacl:
             # Create a SHACL NodeShape
-            shape_node = BNode("shape_" + sha256(str(r_set).encode("utf-8")).hexdigest())
+            shape_node = BNode(
+                "shape_" + sha256(str(r_set).encode("utf-8")).hexdigest()
+            )
             if predicate == SNS.has_constraint:
                 g.add((data_node, predicate, shape_node))
             else:
@@ -1324,7 +1326,9 @@ def _to_owl_restriction(
     g = _get_bound_graph()
     restriction_node = BNode(
         sha256(
-            str((base_node, on_property, target_class, restriction_type)).encode("utf-8")
+            str((base_node, on_property, target_class, restriction_type)).encode(
+                "utf-8"
+            )
         ).hexdigest()
     )
 
@@ -1368,7 +1372,9 @@ class _HashGraph:
             ensure_ascii=False,
         )
 
-    def _get_graph_hash(self, G: SemantikonDiGraph, with_global_inputs: bool = True) -> str:
+    def _get_graph_hash(
+        self, G: SemantikonDiGraph, with_global_inputs: bool = True
+    ) -> str:
         """
         Generate a deterministic hash for a graph, independent of OS,
         Python version, and non-serializable runtime values.
@@ -1404,9 +1410,7 @@ class _HashGraph:
         )
 
 
-def _get_graph_hash(
-    G: SemantikonDiGraph, with_global_inputs: bool = True
-) -> str:
+def _get_graph_hash(G: SemantikonDiGraph, with_global_inputs: bool = True) -> str:
     """
     Generate a hash for a NetworkX graph, making sure that data types and
     values (except for the global ones) because they can often not be
