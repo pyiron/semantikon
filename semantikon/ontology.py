@@ -1382,10 +1382,6 @@ class _HashGraph:
         """
         G_tmp = G.copy()
 
-        # Defensive copy of node attributes
-        for node, attrs in list(G_tmp.nodes(data=True)):
-            G_tmp.nodes[node] = copy.deepcopy(attrs)
-
         for node in G_tmp.nodes:
             attrs = G_tmp.nodes[node]
 
