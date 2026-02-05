@@ -617,14 +617,14 @@ def _restrictions_to_triples(
             # Create an OWL Restriction
             if predicate is None:
                 predicate = RDFS.subClassOf
-            b_node = BNode("rest_" + sha256(str(r_set).encode()).hexdigest())
+            b_node = BNode("rest_" + sha256(str(r_set).encode("utf-8")).hexdigest())
             g.add((data_node, predicate, b_node))
             g.add((b_node, RDF.type, OWL.Restriction))
             for r in r_set:
                 g.add((b_node, r[0], r[1]))
         elif is_shacl:
             # Create a SHACL NodeShape
-            shape_node = BNode("shape_" + sha256(str(r_set).encode()).hexdigest())
+            shape_node = BNode("shape_" + sha256(str(r_set).encode("utf-8")).hexdigest())
             if predicate == SNS.has_constraint:
                 g.add((data_node, predicate, shape_node))
             else:
@@ -1324,7 +1324,7 @@ def _to_owl_restriction(
     g = _get_bound_graph()
     restriction_node = BNode(
         sha256(
-            str((base_node, on_property, target_class, restriction_type)).encode()
+            str((base_node, on_property, target_class, restriction_type)).encode("utf-8")
         ).hexdigest()
     )
 
@@ -1338,7 +1338,75 @@ def _to_owl_restriction(
     return g
 
 
-def _get_graph_hash(G: SemantikonDiGraph, with_global_inputs: bool = True) -> str:
+class _HashGraph:
+    def _normalize(self, obj):
+        """
+        Convert objects into a deterministic, JSON-safe representation.
+        """
+        if is_dataclass(obj):
+            return {k: self._normalize(v) for k, v in asdict(obj).items()}
+        elif isinstance(obj, dict):
+            return {k: self._normalize(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [self._normalize(v) for v in obj]
+        elif isinstance(obj, str):
+            return unicodedata.normalize("NFC", obj)
+        elif isinstance(obj, (int, float, bool)) or obj is None:
+            return obj
+        else:
+            # Explicit, tagged fallback — never implicit str()
+            return {"__repr__": repr(obj)}
+
+    def _canonical_json(self, data: dict) -> str:
+        """
+        Deterministic JSON serialization.
+        """
+        return json.dumps(
+            self._normalize(data),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        )
+
+    def _get_graph_hash(self, G: SemantikonDiGraph, with_global_inputs: bool = True) -> str:
+        """
+        Generate a deterministic hash for a graph, independent of OS,
+        Python version, and non-serializable runtime values.
+        """
+        G_tmp = G.copy()
+
+        # Defensive copy of node attributes
+        for node, attrs in list(G_tmp.nodes(data=True)):
+            G_tmp.nodes[node] = copy.deepcopy(attrs)
+
+        for node in G_tmp.nodes:
+            attrs = G_tmp.nodes[node]
+
+            if "default" in attrs:
+                default = attrs.pop("default")
+                attrs.setdefault("value", default)
+
+            if "value" in attrs:
+                if G_tmp.in_degree(node) > 0 or not with_global_inputs:
+                    del attrs["value"]
+
+            # Always drop runtime / type noise
+            attrs.pop("dtype", None)
+            attrs.pop("hash", None)
+
+        # Canonical label used for WL hashing
+        for _, attrs in G_tmp.nodes(data=True):
+            attrs["canon"] = self._canonical_json(attrs)
+
+        return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(
+            G_tmp,
+            node_attr="canon",
+        )
+
+
+def _get_graph_hash(
+    G: SemantikonDiGraph, with_global_inputs: bool = True
+) -> str:
     """
     Generate a hash for a NetworkX graph, making sure that data types and
     values (except for the global ones) because they can often not be
@@ -1351,28 +1419,8 @@ def _get_graph_hash(G: SemantikonDiGraph, with_global_inputs: bool = True) -> st
     Returns:
         (str): hash of the graph
     """
-    G_tmp = G.copy()
-    for node in G_tmp.nodes:
-        if "default" in G_tmp.nodes[node]:
-            default = G_tmp.nodes[node].pop("default")
-            if "value" not in G_tmp.nodes[node]:
-                G_tmp.nodes[node]["value"] = default
-        if "value" in G_tmp.nodes[node]:
-            if G_tmp.in_degree(node) > 0 or not with_global_inputs:
-                del G_tmp.nodes[node]["value"]
-            elif is_dataclass(G_tmp.nodes[node]["value"]):
-                G_tmp.nodes[node]["value"] = asdict(G_tmp.nodes[node]["value"])
-        if "dtype" in G_tmp.nodes[node]:
-            del G_tmp.nodes[node]["dtype"]
-        if "hash" in G_tmp.nodes[node]:
-            del G_tmp.nodes[node]["hash"]
-
-    for _, attrs in G_tmp.nodes(data=True):
-        attrs["canon"] = json.dumps(attrs, sort_keys=True)
-
-    return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(
-        G_tmp, node_attr="canon"
-    )
+    hasher = _HashGraph()
+    return hasher._get_graph_hash(G, with_global_inputs)
 
 
 def _get_undefined_connections(g, term):
