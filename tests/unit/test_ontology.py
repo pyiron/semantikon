@@ -241,7 +241,7 @@ class TestOntology(unittest.TestCase):
 
     def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        g = onto.get_knowledge_graph(wf_dict, prefix="T")
+        g = onto.get_knowledge_graph(wf_dict)
 
         query = f"""
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -251,7 +251,7 @@ class TestOntology(unittest.TestCase):
         PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
 
         ASK {{
-            ?output a pmd:T_my_kinetic_energy_workflow-outputs-kinetic_energy .
+            ?output a pmd:W3e5cd833_my_kinetic_energy_workflow-outputs-kinetic_energy .
             ?output ro:0000057 ?data .
             ?data qudt:hasUnit unit:J .
         }}"""
