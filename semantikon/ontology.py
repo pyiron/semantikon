@@ -1358,6 +1358,10 @@ class _HashGraph:
             return unicodedata.normalize("NFC", obj)
         elif isinstance(obj, (int, float, bool)) or obj is None:
             return obj
+        elif isinstance(obj, URIRef):
+            return {"__type__": "URIRef", "value": str(obj)}
+        elif isinstance(obj, BNode):
+            return {"__type__": "BNode", "value": str(obj)}
         else:
             # Explicit, tagged fallback — never implicit str()
             return {"__repr__": repr(obj)}
