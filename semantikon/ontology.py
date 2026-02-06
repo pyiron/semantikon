@@ -1363,7 +1363,9 @@ class _HashGraph:
         elif isinstance(obj, (int, float, bool)) or obj is None:
             return obj
         else:
-            raise TypeError(f"Unsupported type for normalization: {type(obj)}")
+            raise TypeError(
+                f"Unsupported type for normalization: {type(obj)} of value {obj}"
+            )
 
     def _canonical_json(self, data: dict) -> str:
         """
@@ -1383,25 +1385,22 @@ class _HashGraph:
         Generate a deterministic hash for a graph, independent of OS,
         Python version, and non-serializable runtime values.
         """
-        G_tmp = G.copy()
+        G_tmp = nx.DiGraph()
 
-        for node in G_tmp.nodes:
-            attrs = G_tmp.nodes[node]
-
-            if "default" in attrs:
-                default = attrs.pop("default")
-                attrs.setdefault("value", default)
-
-            if "value" in attrs:
-                if G_tmp.in_degree(node) > 0 or not with_global_inputs:
-                    del attrs["value"]
-
-            attrs.pop("dtype", None)
-            attrs.pop("hash", None)
-            attrs.pop("function", None)
-
-        for _, attrs in G_tmp.nodes(data=True):
-            attrs["canon"] = self._canonical_json(attrs)
+        for node in G.nodes:
+            attrs = {
+                key: value
+                for key, value in G.nodes[node].items()
+                if key not in {"dtype", "hash", "function", "default", "value"}
+            }
+            if G_tmp.in_degree(node) == 0 and with_global_inputs:
+                if "value" in G.nodes[node]:
+                    attrs["value"] = G.nodes[node]["value"]
+                elif "default" in G.nodes[node]:
+                    attrs["value"] = G.nodes[node]["default"]
+            G_tmp.add_node(node, canon=self._canonical_json(attrs))
+        for u, v in G.edges:
+            G_tmp.add_edge(u, v)
 
         return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(
             G_tmp,
