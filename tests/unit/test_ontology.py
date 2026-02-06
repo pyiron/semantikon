@@ -385,6 +385,10 @@ class TestOntology(unittest.TestCase):
         G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         wf_dict = my_kinetic_energy_workflow.run(1, 2, 3)
         G_run = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
+        self.assertEqual(
+            onto._get_graph_hash(G, with_global_inputs=False),
+            onto._get_graph_hash(G_run, with_global_inputs=False),
+        )
         self.assertNotEqual(
             onto._get_graph_hash(G_run, with_global_inputs=False),
             onto._get_graph_hash(G_run, with_global_inputs=True),
