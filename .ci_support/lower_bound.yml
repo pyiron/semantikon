@@ -6,10 +6,10 @@ dependencies:
 - hatchling =1.27.0
 - hatch-vcs =0.5.0
 - numpy =2.3.0
-- owlrl =7.1.2
+- owlrl =7.1.4
 - pint =0.24
 - rdflib =7.5.0
-- pyshacl =0.30.0
+- pyshacl =0.31.0
 - python =3.11
 - python-graphviz =0.20.3
 - requests =2.28.0
