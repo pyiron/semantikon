@@ -5,7 +5,7 @@ from textwrap import dedent
 from typing import Annotated
 
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, SH, Graph, Literal, Namespace
+from rdflib import OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
@@ -379,6 +379,14 @@ class TestOntology(unittest.TestCase):
             {key.split("@")[1]: value for key, value in G_hash.get_hash_dict().items()},
             {"kinetic_energy": 8.0, "speed": 2.0},
         )
+        with self.assertRaises(TypeError):
+            wf_dict["inputs"]["distance"]["default"] = NewSpeedData
+            G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=True)
+            onto._get_graph_hash(G, with_global_inputs=True)
+        with self.assertRaises(TypeError):
+            wf_dict["inputs"]["distance"]["default"] = BNode()
+            G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=True)
+            onto._get_graph_hash(G, with_global_inputs=True)
 
     def test_hash_with_value(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
