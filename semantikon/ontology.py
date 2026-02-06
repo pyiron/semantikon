@@ -1353,6 +1353,8 @@ class _HashGraph:
             return {k: self._normalize(v) for k, v in asdict(obj).items()}
         elif isinstance(obj, dict):
             return {k: self._normalize(v) for k, v in obj.items()}
+        elif isinstance(obj, IdentifiedNode):
+            return {"__type__": "URIRef", "value": self._normalize(str(obj))}
         elif isinstance(obj, (list, tuple)):
             return [self._normalize(v) for v in obj]
         elif isinstance(obj, str):
@@ -1360,11 +1362,7 @@ class _HashGraph:
         elif isinstance(obj, (int, float, bool)) or obj is None:
             return obj
         else:
-            warning.warn(
-                f"Non-serializable object {obj} of type {type(obj)} encountered during hashing. "
-                "Using its repr string as a fallback, which may lead to non-deterministic hashes."
-            )
-            return {"__repr__": repr(obj)}
+            raise TypeError(f"Unsupported type for normalization: {type(obj)}")
 
     def _canonical_json(self, data: dict) -> str:
         """
@@ -1403,7 +1401,6 @@ class _HashGraph:
 
         for _, attrs in G_tmp.nodes(data=True):
             attrs["canon"] = self._canonical_json(attrs)
-            print(attrs["canon"])
 
         return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(
             G_tmp,
