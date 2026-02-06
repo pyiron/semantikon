@@ -5,7 +5,7 @@ from textwrap import dedent
 from typing import Annotated
 
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, SH, Graph, Literal, Namespace
+from rdflib import OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
@@ -241,7 +241,7 @@ class TestOntology(unittest.TestCase):
 
     def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
-        g = onto.get_knowledge_graph(wf_dict, prefix="T")
+        g = onto.get_knowledge_graph(wf_dict)
 
         query = f"""
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -251,12 +251,11 @@ class TestOntology(unittest.TestCase):
         PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
 
         ASK {{
-            ?output a pmd:T_my_kinetic_energy_workflow-outputs-kinetic_energy .
+            ?output a pmd:W2bc86ad7_my_kinetic_energy_workflow-outputs-kinetic_energy .
             ?output ro:0000057 ?data .
             ?data qudt:hasUnit unit:J .
         }}"""
-        self.assertTrue(g.query(query).askAnswer)
-        g = onto.get_knowledge_graph(wf_dict)
+        self.assertTrue(g.query(query).askAnswer, msg=g.serialize())
         self.assertTrue(onto.validate_values(g)[0])
 
     def test_to_restrictions(self):
@@ -380,6 +379,14 @@ class TestOntology(unittest.TestCase):
             {key.split("@")[1]: value for key, value in G_hash.get_hash_dict().items()},
             {"kinetic_energy": 8.0, "speed": 2.0},
         )
+        with self.assertRaises(TypeError):
+            wf_dict["inputs"]["distance"]["default"] = NewSpeedData
+            G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=True)
+            onto._get_graph_hash(G, with_global_inputs=True)
+        with self.assertRaises(TypeError):
+            wf_dict["inputs"]["distance"]["default"] = BNode()
+            G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=True)
+            onto._get_graph_hash(G, with_global_inputs=True)
 
     def test_hash_with_value(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
@@ -387,11 +394,11 @@ class TestOntology(unittest.TestCase):
         wf_dict = my_kinetic_energy_workflow.run(1, 2, 3)
         G_run = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         self.assertEqual(
-            onto._get_graph_hash(G),
+            onto._get_graph_hash(G, with_global_inputs=False),
             onto._get_graph_hash(G_run, with_global_inputs=False),
         )
         self.assertNotEqual(
-            onto._get_graph_hash(G),
+            onto._get_graph_hash(G_run, with_global_inputs=False),
             onto._get_graph_hash(G_run, with_global_inputs=True),
         )
 
