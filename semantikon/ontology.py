@@ -3,7 +3,6 @@ from __future__ import annotations
 import copy
 import json
 import unicodedata
-import warnings
 from dataclasses import asdict, dataclass, fields, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
