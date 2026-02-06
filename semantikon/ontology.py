@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import unicodedata
+import warnings
 from dataclasses import asdict, dataclass, fields, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
@@ -1358,10 +1359,11 @@ class _HashGraph:
             return unicodedata.normalize("NFC", obj)
         elif isinstance(obj, (int, float, bool)) or obj is None:
             return obj
-        elif isinstance(obj, (URIRef, BNode)):
-            return {"__type__": obj.__class__.__name__, "value": str(obj)}
         else:
-            # Explicit, tagged fallback — never implicit str()
+            warning.warn(
+                f"Non-serializable object {obj} of type {type(obj)} encountered during hashing. "
+                "Using its repr string as a fallback, which may lead to non-deterministic hashes."
+            )
             return {"__repr__": repr(obj)}
 
     def _canonical_json(self, data: dict) -> str:
@@ -1395,14 +1397,13 @@ class _HashGraph:
                 if G_tmp.in_degree(node) > 0 or not with_global_inputs:
                     del attrs["value"]
 
-            # Always drop runtime / type noise
             attrs.pop("dtype", None)
             attrs.pop("hash", None)
             attrs.pop("function", None)
 
-        # Canonical label used for WL hashing
         for _, attrs in G_tmp.nodes(data=True):
             attrs["canon"] = self._canonical_json(attrs)
+            print(attrs["canon"])
 
         return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(
             G_tmp,
