@@ -1353,6 +1353,8 @@ class _HashGraph:
         elif isinstance(obj, dict):
             return {k: self._normalize(v) for k, v in obj.items()}
         elif isinstance(obj, IdentifiedNode):
+            if isinstance(obj, BNode):
+                raise TypeError("Blank nodes cannot be normalized for hashing.")
             return {"__type__": "URIRef", "value": self._normalize(str(obj))}
         elif isinstance(obj, (list, tuple)):
             return [self._normalize(v) for v in obj]
