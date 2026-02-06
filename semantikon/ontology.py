@@ -1344,7 +1344,7 @@ def _to_owl_restriction(
 
 
 class _HashGraph:
-    def _normalize(self, obj):
+    def _normalize(self, obj) -> Any:
         """
         Convert objects into a deterministic, JSON-safe representation.
         """
