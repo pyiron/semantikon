@@ -1393,7 +1393,7 @@ class _HashGraph:
                 for key, value in G.nodes[node].items()
                 if key not in {"dtype", "hash", "function", "default", "value"}
             }
-            if G_tmp.in_degree(node) == 0 and with_global_inputs:
+            if G.in_degree(node) == 0 and with_global_inputs:
                 if "value" in G.nodes[node]:
                     attrs["value"] = G.nodes[node]["value"]
                 elif "default" in G.nodes[node]:

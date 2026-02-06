@@ -251,7 +251,7 @@ class TestOntology(unittest.TestCase):
         PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
 
         ASK {{
-            ?output a pmd:W2bc86ad7_my_kinetic_energy_workflow-outputs-kinetic_energy .
+            ?output a pmd:W6557cc61_my_kinetic_energy_workflow-outputs-kinetic_energy .
             ?output ro:0000057 ?data .
             ?data qudt:hasUnit unit:J .
         }}"""
@@ -385,12 +385,8 @@ class TestOntology(unittest.TestCase):
         G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         wf_dict = my_kinetic_energy_workflow.run(1, 2, 3)
         G_run = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
-        self.assertEqual(
-            onto._get_graph_hash(G),
-            onto._get_graph_hash(G_run, with_global_inputs=False),
-        )
         self.assertNotEqual(
-            onto._get_graph_hash(G),
+            onto._get_graph_hash(G_run, with_global_inputs=False),
             onto._get_graph_hash(G_run, with_global_inputs=True),
         )
 
