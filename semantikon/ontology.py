@@ -1358,7 +1358,7 @@ class _HashGraph:
             return unicodedata.normalize("NFC", obj)
         elif isinstance(obj, (int, float, bool)) or obj is None:
             return obj
-        elif isinstance(obj, IdentifiedNode):
+        elif isinstance(obj, (URIRef, BNode)):
             return {"__type__": obj.__class__.__name__, "value": str(obj)}
         else:
             # Explicit, tagged fallback — never implicit str()
@@ -1398,6 +1398,7 @@ class _HashGraph:
             # Always drop runtime / type noise
             attrs.pop("dtype", None)
             attrs.pop("hash", None)
+            attrs.pop("function", None)
 
         # Canonical label used for WL hashing
         for _, attrs in G_tmp.nodes(data=True):
