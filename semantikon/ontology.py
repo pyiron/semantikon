@@ -1344,11 +1344,11 @@ def _to_owl_restriction(
 
 
 class _HashGraph:
-    def _normalize(self, obj) -> Any:
+    def _normalize(self, obj: Any) -> Any:
         """
         Convert objects into a deterministic, JSON-safe representation.
         """
-        if is_dataclass(obj):
+        if is_dataclass(obj) and not isinstance(obj, type):
             return {k: self._normalize(v) for k, v in asdict(obj).items()}
         elif isinstance(obj, dict):
             return {k: self._normalize(v) for k, v in obj.items()}
