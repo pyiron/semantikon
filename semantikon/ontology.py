@@ -523,7 +523,9 @@ def _output_is_connected(io: str, G: SemantikonDiGraph) -> bool:
         if G.nodes[candidate[0]]["step"] == "node":
             return True
         return _output_is_connected(candidate[0], G)
-    assert len(candidate) == 0
+    elif len(candidate) > 1:
+        assert all(G.nodes[c]["step"] != "node" for c in candidate)
+        return any(_output_is_connected(c, G) for c in candidate)
     return False
 
 
@@ -1217,6 +1219,8 @@ class _WorkflowGraphSerializer:
             for pos, (arg, channel) in enumerate(wf_dict.get(io_type, {}).items()):
                 label = self._remove_us(prefix, io_type, arg)
                 assert "semantikon_type" not in channel
+                if "dtype" in channel:
+                    channel.update(meta_to_dict(channel["dtype"]))
 
                 self.channel_dict[label] = channel | {
                     "semantikon_type": io_type,

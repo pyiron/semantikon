@@ -233,6 +233,14 @@ def get_unhashable(uh: Unhashable):
     return uh
 
 
+def add(a: int, b: int) -> int:
+    return a + b
+
+
+def mul(x: int, y: int) -> int:
+    return x * y
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -805,6 +813,17 @@ class TestOntology(unittest.TestCase):
                 str(context.exception),
                 "Failed to hash workflow data - use only hashable inputs or set hash_data=False",
             )
+
+    def test_multiple_connections(self):
+        @workflow
+        def multiple_connection(a, b):
+            c = add(a, b)
+            d = mul(a, c)
+            e = add(d, c)
+            return e
+
+        # Check that the multiple connections for c do not cause error
+        _ = onto.get_knowledge_graph(multiple_connection.serialize_workflow())
 
 
 if __name__ == "__main__":
