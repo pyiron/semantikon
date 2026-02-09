@@ -819,7 +819,7 @@ class TestOntology(unittest.TestCase):
         def multiple_connection(a, b):
             c = add(a, b)
             d = mul(a, c)
-            e = add(b, c)
+            e = add(d, c)
             return e
 
         # Check that the multiple connections for c do not cause error
