@@ -523,7 +523,9 @@ def _output_is_connected(io: str, G: SemantikonDiGraph) -> bool:
         if G.nodes[candidate[0]]["step"] == "node":
             return True
         return _output_is_connected(candidate[0], G)
-    assert len(candidate) == 0, f"{io} connected to {candidate}"
+    elif len(candidate) > 1:
+        assert all(G.nodes[c]["step"] != "node" for c in candidate)
+        return any(_output_is_connected(c, G) for c in candidate)
     return False
 
 

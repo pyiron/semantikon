@@ -822,7 +822,8 @@ class TestOntology(unittest.TestCase):
             e = add(b, c)
             return e
 
-        G = onto.get_knowledge_graph(multiple_connection.serialize_workflow())
+        # Check that the multiple connections for c do not cause error
+        _ = onto.get_knowledge_graph(multiple_connection.serialize_workflow())
 
 
 if __name__ == "__main__":
