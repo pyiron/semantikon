@@ -27,7 +27,7 @@ dependencies = [
     "numpy==2.4.0",
     "owlrl==7.1.4",
     "pint==0.25.2",
-    "rdflib==7.5.0",
+    "rdflib==7.6.0",
     "pyshacl==0.31.0",
     "requests==2.32.5",
     "typeguard==4.4.4",
