@@ -137,7 +137,7 @@ class _Node:
 
     def __dir__(self):
         if self._node.terminal:
-            return ["query", "to_query_text"]
+            return sorted(self._node.children.keys()) + ["query", "to_query_text"]
         return sorted(self._node.children.keys())
 
     def query(self, fallback_to_hash: bool = False) -> list[tuple[Any, ...]]:
