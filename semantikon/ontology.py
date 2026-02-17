@@ -504,7 +504,7 @@ def _wf_node_to_graph(
                 f_node,
                 restriction_type=OWL.hasValue,
             )
-        g.add((node, RDFS.label, Literal(node_name)))
+        g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
     else:
         node = G.get_a_node(node_name)
         g.add((node, RDF.type, G.t_ns[node_name]))
@@ -759,7 +759,7 @@ def _wf_io_to_graph(
 ) -> Graph:
     node = G.t_ns[node_name] if t_box else G.get_a_node(node_name)
     g = _get_bound_graph()
-    g.add((node, RDFS.label, Literal(node_name)))
+    g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
     if t_box:
         g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.subClassOf, io_assignment))
@@ -1003,7 +1003,7 @@ class _DataclassTranslator:
             A new URIRef or BNode derived from the base node.
         """
         base = str(node).rsplit("_data", 1)[0]
-        return node.__class__(f"{base}_{key}_data")
+        return node.__class__(f"{base}-{key}")
 
     def _translate_nested_dataclasses(
         self,
@@ -1057,6 +1057,7 @@ class _DataclassTranslator:
         )
 
         graph.add((field_node, RDFS.subClassOf, SNS.value_specification))
+        graph.add((field_node, RDFS.label, Literal(field_node.split("-")[-1])))
 
         units = metadata.get("units", metadata.get("unit"))
         if units is not None:
@@ -1097,6 +1098,7 @@ class _DataclassTranslator:
         """
         graph.add((parent, SNS.has_part, field_node))
         graph.add((field_node, RDF.type, field_class))
+        graph.add((field_node, RDFS.label, Literal(field_node.split("-")[-1])))
 
         units = metadata.get("units", metadata.get("unit"))
         if units is not None:
