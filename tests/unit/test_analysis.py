@@ -57,10 +57,10 @@ class TestAnalysis(unittest.TestCase):
         with self.subTest("workflow has both function executions as parts"):
             parts = list(g.objects(wf, onto.BFO["0000051"]))
             uri = asis.label_to_uri(
-                g, "my_kinetic_energy_workflow-get_kinetic_energy_0"
+                g, "get_kinetic_energy_0"
             )[0]
             ke_calls = [p for p in parts if (p, RDF.type, uri) in g]
-            uri = asis.label_to_uri(g, "my_kinetic_energy_workflow-get_speed_0")[0]
+            uri = asis.label_to_uri(g, "get_speed_0")[0]
             speed_calls = [p for p in parts if (p, RDF.type, uri) in g]
             self.assertEqual(len(ke_calls), 1)
             self.assertEqual(len(speed_calls), 1)
@@ -134,19 +134,19 @@ class TestAnalysis(unittest.TestCase):
 
     def test_sparql_writer(self):
         wf_dict = my_kinetic_energy_workflow.run(2.0, 1.0, 4.0)
-        graph = onto.get_knowledge_graph(wf_dict, prefix="T")
+        graph = onto.get_knowledge_graph(wf_dict)
         comp = asis.query_io_completer(graph)
         self.assertEqual(
-            dir(comp.T_my_kinetic_energy_workflow.get_speed_0.inputs),
+            dir(comp.my_kinetic_energy_workflow.get_speed_0.inputs),
             ["distance", "time"],
         )
-        A = comp.T_my_kinetic_energy_workflow.inputs.time
+        A = comp.my_kinetic_energy_workflow.inputs.time
         self.assertEqual(dir(A), ["query", "to_query_text"])
-        B = comp.T_my_kinetic_energy_workflow.outputs.kinetic_energy
-        C = comp.T_my_kinetic_energy_workflow.inputs.mass
-        D = comp.T_my_kinetic_energy_workflow.inputs.distance
+        B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
+        C = comp.my_kinetic_energy_workflow.inputs.mass
+        D = comp.my_kinetic_energy_workflow.inputs.distance
         self.assertListEqual(
-            dir(comp.T_my_kinetic_energy_workflow),
+            dir(comp.my_kinetic_energy_workflow),
             ["get_kinetic_energy_0", "get_speed_0", "inputs", "outputs"],
         )
         self.assertEqual((A & B).query(), [(1.0, 8.0)])
@@ -164,7 +164,7 @@ class TestAnalysis(unittest.TestCase):
         self.assertEqual(list(graph.query(A.to_query_text()))[0][0].toPython(), 1.0)
         with self.assertRaises(AttributeError):
             _ = comp.non_existing_node
-        self.assertIsInstance(comp.T_my_kinetic_energy_workflow, asis._Node)
+        self.assertIsInstance(comp.my_kinetic_energy_workflow, asis._Node)
 
         @workflow
         def only_get_speed_workflow(distance, time):
@@ -175,24 +175,24 @@ class TestAnalysis(unittest.TestCase):
             only_get_speed_workflow.run(3.0, 1.5), prefix="T"
         )
         comp = asis.query_io_completer(graph)
-        A = comp.T_my_kinetic_energy_workflow.inputs.time
-        B = comp.T_my_kinetic_energy_workflow.outputs.kinetic_energy
-        C = comp.T_my_kinetic_energy_workflow.inputs.mass
+        A = comp.my_kinetic_energy_workflow.inputs.time
+        B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
+        C = comp.my_kinetic_energy_workflow.inputs.mass
         self.assertEqual((A & B).query(), [(1.0, 8.0)])
         self.assertEqual((A & C & B).query(), [(1.0, 4.0, 8.0)])
         self.assertEqual(A.query(), [(1.0,)])
         self.assertListEqual(
-            dir(comp), ["T_my_kinetic_energy_workflow", "T_only_get_speed_workflow"]
+            dir(comp), ["my_kinetic_energy_workflow", "only_get_speed_workflow"]
         )
-        E = comp.T_only_get_speed_workflow.inputs.distance
+        E = comp.only_get_speed_workflow.inputs.distance
         with self.assertRaises(ValueError) as context:
             _ = (A & E).query()
         self.assertEqual(str(context.exception), "No common head node found")
         self.assertEqual(E.query(), [(3.0,)])
         graph = onto.get_knowledge_graph(wf_dict, prefix="T", remove_data=True)
         comp = asis.query_io_completer(graph)
-        A = comp.T_my_kinetic_energy_workflow.inputs.time
-        B = comp.T_my_kinetic_energy_workflow.outputs.kinetic_energy
+        A = comp.my_kinetic_energy_workflow.inputs.time
+        B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
         self.assertListEqual((A & B).query(), [])
         data = (A & B).query(fallback_to_hash=True)
         self.assertEqual(data[0][0], 1.0)
