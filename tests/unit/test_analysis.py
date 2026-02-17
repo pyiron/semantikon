@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import dataclass
 from typing import Annotated
 
 from rdflib import RDF, RDFS, Namespace
@@ -12,6 +13,14 @@ EX: Namespace = Namespace("http://example.org/")
 PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
 
 
+@dataclass
+class SpeedData:
+    distance: Annotated[
+        float, {"uri": PMD["0040001"], "units": "meter", "label": "Distance"}
+    ]
+    time: Annotated[float, {"units": "second"}]
+
+
 def get_speed(
     distance: Annotated[
         float, {"uri": PMD["0040001"], "units": "meter", "label": "Distance"}
@@ -20,6 +29,14 @@ def get_speed(
 ) -> Annotated[float, {"units": "meter/second", "uri": EX.Velocity, "label": "speed"}]:
     """some random docstring"""
     speed = distance / time
+    return speed
+
+
+def get_speed_with_dataclass(
+    data: SpeedData,
+) -> Annotated[float, {"units": "meter/second", "uri": EX.Velocity, "label": "speed"}]:
+    """some random docstring"""
+    speed = data.distance / data.time
     return speed
 
 
@@ -187,7 +204,7 @@ class TestAnalysis(unittest.TestCase):
             _ = (A & E).query()
         self.assertEqual(str(context.exception), "No common head node found")
         self.assertEqual(E.query(), [(3.0,)])
-        graph = onto.get_knowledge_graph(wf_dict, prefix="T", remove_data=True)
+        graph = onto.get_knowledge_graph(wf_dict, remove_data=True)
         comp = asis.query_io_completer(graph)
         A = comp.my_kinetic_energy_workflow.inputs.time
         B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
@@ -196,6 +213,22 @@ class TestAnalysis(unittest.TestCase):
         self.assertEqual(data[0][0], 1.0)
         self.assertIsInstance(data[0][1], str)
         self.assertIsInstance(B.query(fallback_to_hash=True)[0][0], str)
+
+    def test_sparql_writer(self):
+        @workflow
+        def workflow_with_dataclass(data: SpeedData, mass):
+            speed = get_speed_with_dataclass(data)
+            kinetic_energy = get_kinetic_energy(mass, speed)
+            return kinetic_energy
+
+        data = SpeedData(distance=1.0, time=2.0)
+        wf_dict = workflow_with_dataclass.run(data, 3.0)
+        graph = onto.get_knowledge_graph(wf_dict, extract_dataclasses=True)
+        comp = asis.query_io_completer(graph)
+        self.assertEqual(
+            comp.workflow_with_dataclass.inputs.data.distance.query(),
+            [(1.0,)],
+        )
 
     def test_label_to_uri(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
