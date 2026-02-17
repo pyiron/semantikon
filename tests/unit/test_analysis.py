@@ -56,9 +56,7 @@ class TestAnalysis(unittest.TestCase):
 
         with self.subTest("workflow has both function executions as parts"):
             parts = list(g.objects(wf, onto.BFO["0000051"]))
-            uri = asis.label_to_uri(
-                g, "get_kinetic_energy_0"
-            )[0]
+            uri = asis.label_to_uri(g, "get_kinetic_energy_0")[0]
             ke_calls = [p for p in parts if (p, RDF.type, uri) in g]
             uri = asis.label_to_uri(g, "get_speed_0")[0]
             speed_calls = [p for p in parts if (p, RDF.type, uri) in g]

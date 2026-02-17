@@ -266,9 +266,7 @@ class _QueryHolder:
 
 
 class Completer(_Node):
-    def __init__(
-        self, uri_dict: dict[str, URIRef], graph: Graph
-    ):
+    def __init__(self, uri_dict: dict[str, URIRef], graph: Graph):
         root = TrieNode()
         for value in uri_dict.keys():
             node = root
@@ -292,6 +290,7 @@ def _get_label_from_port(port, graph) -> list[str]:
         label_list.extend(_get_label_from_port(io_port, graph) + [label.toPython()])
     return label_list
 
+
 def _get_labels(graph):
     query_data_node = """SELECT DISTINCT ?parent ?data_node ?label ?io_class WHERE {
         ?parent rdfs:subClassOf ?bnode .
@@ -308,8 +307,15 @@ def _get_labels(graph):
     io_dict = {SNS.input_assignment: "inputs", SNS.output_assignment: "outputs"}
 
     for port, data_node, label, io_class in graph.query(query_data_node):
-        label_dict["-".join(_get_label_from_port(port, graph) + [io_dict[io_class]] + [label.toPython()])] = data_node
+        label_dict[
+            "-".join(
+                _get_label_from_port(port, graph)
+                + [io_dict[io_class]]
+                + [label.toPython()]
+            )
+        ] = data_node
     return label_dict
+
 
 def _add_child_data_class(graph, label_dict):
     query_data_class = f"""SELECT DISTINCT ?parent ?child ?label WHERE {{
