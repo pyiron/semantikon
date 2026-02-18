@@ -103,7 +103,7 @@ class TestWorkflow(unittest.TestCase):
                 "outputs": {"output": {"dtype": float}},
                 "function": add,
                 "uri": "add",
-                "type": "Function",
+                "type": "atomic",
             },
         )
 
@@ -123,7 +123,7 @@ class TestWorkflow(unittest.TestCase):
                         "qualname": "operation",
                         "version": "not_defined",
                     },
-                    "type": "Function",
+                    "type": "atomic",
                 },
                 "add_0": {
                     "inputs": {
@@ -137,7 +137,7 @@ class TestWorkflow(unittest.TestCase):
                         "version": "not_defined",
                     },
                     "uri": "add",
-                    "type": "Function",
+                    "type": "atomic",
                 },
                 "multiply_0": {
                     "inputs": {
@@ -150,7 +150,7 @@ class TestWorkflow(unittest.TestCase):
                         "qualname": "multiply",
                         "version": "not_defined",
                     },
-                    "type": "Function",
+                    "type": "atomic",
                 },
             },
             "edges": [
@@ -162,11 +162,11 @@ class TestWorkflow(unittest.TestCase):
                 ("multiply_0.outputs.output", "outputs.f"),
             ],
             "label": "example_macro",
-            "type": "Workflow",
+            "type": "workflow",
             "uri": "this macro has metadata",
         }
         wf = example_macro.serialize_workflow()
-        self.assertEqual(wf["type"], "Workflow")
+        self.assertEqual(wf["type"], "workflow")
         smtk_wf = tools.serialize_functions(wf)
         del smtk_wf["function"]
         self.assertEqual(smtk_wf, ref_data)
@@ -191,7 +191,7 @@ class TestWorkflow(unittest.TestCase):
                                 "output_0": {"dtype": float},
                                 "output_1": {"dtype": float},
                             },
-                            "type": "Function",
+                            "type": "atomic",
                         },
                         "add_0": {
                             "function": {
@@ -205,7 +205,7 @@ class TestWorkflow(unittest.TestCase):
                             },
                             "outputs": {"output": {"dtype": float}},
                             "uri": "add",
-                            "type": "Function",
+                            "type": "atomic",
                         },
                         "multiply_0": {
                             "function": {
@@ -218,7 +218,7 @@ class TestWorkflow(unittest.TestCase):
                                 "y": {"dtype": float, "default": 5},
                             },
                             "outputs": {"output": {"dtype": float}},
-                            "type": "Function",
+                            "type": "atomic",
                         },
                     },
                     "edges": [
@@ -230,7 +230,7 @@ class TestWorkflow(unittest.TestCase):
                         ("multiply_0.outputs.output", "outputs.f"),
                     ],
                     "label": "example_macro_0",
-                    "type": "Workflow",
+                    "type": "workflow",
                     "uri": "this macro has metadata",
                 },
                 "add_0": {
@@ -245,7 +245,7 @@ class TestWorkflow(unittest.TestCase):
                     },
                     "outputs": {"output": {"dtype": float}},
                     "uri": "add",
-                    "type": "Function",
+                    "type": "atomic",
                 },
             },
             "edges": [
@@ -256,10 +256,10 @@ class TestWorkflow(unittest.TestCase):
                 ("add_0.outputs.output", "outputs.z"),
             ],
             "label": "example_workflow",
-            "type": "Workflow",
+            "type": "workflow",
         }
         wf = example_workflow.serialize_workflow()
-        self.assertEqual(wf["type"], "Workflow")
+        self.assertEqual(wf["type"], "workflow")
         smtk_wf = tools.serialize_functions(wf)
         del smtk_wf["function"]
         del smtk_wf["nodes"]["example_macro_0"]["function"]
@@ -363,12 +363,12 @@ class TestWorkflow(unittest.TestCase):
         node = swf.get_node(complex_function)
 
         with self.subTest("Node parsing"):
-            self.assertIsInstance(node, swf.Function)
+            self.assertIsInstance(node, swf.Atomic)
             self.assertIsInstance(node.inputs, swf.Inputs)
             self.assertIsInstance(node.outputs, swf.Outputs)
             self.assertIsInstance(node.metadata, swf.CoreMetadata)
-            self.assertEqual(node.type, datastructure.Function.__name__)
-            self.assertEqual(node.label, complex_function.__name__)
+            self.assertEqual(node.type, datastructure.Atomic.__name__.lower())
+            self.assertEqual(node.label, complex_function.__name__.lower())
             self.assertEqual(node.metadata.uri, "some URI")
 
         with self.subTest("Input parsing"):
@@ -406,13 +406,13 @@ class TestWorkflow(unittest.TestCase):
             self.assertEqual(node.inputs.x.metadata.units, "meter")
             self.assertIsInstance(node.outputs, swf.Outputs)
             self.assertIsInstance(node.metadata, swf.CoreMetadata)
-            self.assertEqual(node.type, datastructure.Workflow.__name__)
-            self.assertEqual(node.label, complex_macro.__name__)
+            self.assertEqual(node.type, datastructure.Workflow.__name__.lower())
+            self.assertEqual(node.label, complex_macro.__name__.lower())
             self.assertEqual(node.metadata.uri, "some other URI")
 
         with self.subTest("Graph-node parsing"):
             self.assertIsInstance(node.nodes, swf.Nodes)
-            self.assertIsInstance(node.nodes.complex_function_0, swf.Function)
+            self.assertIsInstance(node.nodes.complex_function_0, swf.Atomic)
             self.assertEqual("complex_function_0", node.nodes.complex_function_0.label)
             self.assertIsInstance(node.edges, swf.Edges)
             self.assertDictEqual(
@@ -434,8 +434,8 @@ class TestWorkflow(unittest.TestCase):
             self.assertEqual(node.inputs.x.metadata.units, "meter")
             self.assertIsInstance(node.outputs, swf.Outputs)
             self.assertIsInstance(node.metadata, swf.CoreMetadata)
-            self.assertEqual(node.type, datastructure.Workflow.__name__)
-            self.assertEqual(node.label, complex_workflow.__name__)
+            self.assertEqual(node.type, datastructure.Workflow.__name__.lower())
+            self.assertEqual(node.label, complex_workflow.__name__.lower())
             self.assertTupleEqual(node.metadata.triples, ("a", "b", "c"))
 
         with self.subTest("Graph-node parsing"):

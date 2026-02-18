@@ -96,7 +96,7 @@ class _Lexical(_VariadicDataclass, Generic[_MetadataType]):
 
     @property
     def type(self) -> str:
-        return self.__class__.__name__
+        return self.__class__.__name__.lower()
 
     def __iter__(self) -> Iterator[tuple[str, Any]]:
         yield "type", self.type
@@ -168,7 +168,7 @@ class _Node(_Lexical[CoreMetadata]):
 
 
 @dataclasses.dataclass(slots=True)
-class Function(_Node):
+class Atomic(_Node):
     function: Callable
 
 

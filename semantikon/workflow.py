@@ -17,9 +17,9 @@ from semantikon.converter import (
 )
 from semantikon.datastructure import (
     MISSING,
+    Atomic,
     CoreMetadata,
     Edges,
-    Function,
     Input,
     Inputs,
     Missing,
@@ -198,7 +198,7 @@ def _get_node_dict(
     if outputs is not None:
         new_outputs = regulate_output_keys(outputs, new_outputs)
     if type_ is None:
-        type_ = "Function"
+        type_ = "atomic"
     data = {
         "inputs": new_inputs,
         "outputs": new_outputs,
@@ -314,7 +314,7 @@ def get_ports(
     )
 
 
-def get_node(func: Callable, label: str | None = None) -> Function | Workflow:
+def get_node(func: Callable, label: str | None = None) -> Atomic | Workflow:
     metadata_dict = (
         func._semantikon_metadata if hasattr(func, "_semantikon_metadata") else MISSING
     )
@@ -332,9 +332,9 @@ def get_node(func: Callable, label: str | None = None) -> Function | Workflow:
 
 def parse_function(
     func: Callable, metadata: CoreMetadata | Missing, label: str | None = None
-) -> Function:
+) -> Atomic:
     inputs, outputs = get_ports(func)
-    return Function(
+    return Atomic(
         label=func.__name__ if label is None else label,
         inputs=inputs,
         outputs=outputs,
@@ -388,7 +388,7 @@ def parse_workflow(
         **{
             k: (
                 get_node(v["function"], label=k)
-                if v["type"] == "Function"
+                if v["type"] == "atomic"
                 else parse_workflow(v)
             )
             for k, v in semantikon_workflow["nodes"].items()
