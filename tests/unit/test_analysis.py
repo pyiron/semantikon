@@ -214,7 +214,7 @@ class TestAnalysis(unittest.TestCase):
         self.assertIsInstance(data[0][1], str)
         self.assertIsInstance(B.query(fallback_to_hash=True)[0][0], str)
 
-    def test_sparql_writer(self):
+    def test_sparql_writer_with_dataclass(self):
         @workflow
         def workflow_with_dataclass(data: SpeedData, mass):
             speed = get_speed_with_dataclass(data)
