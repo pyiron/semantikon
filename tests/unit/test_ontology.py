@@ -828,7 +828,7 @@ class TestOntology(unittest.TestCase):
 
     def test_load_data(self):
         wf_dict = my_kinetic_energy_workflow.run(1.0, 2.0, 3.0)
-        graph = onto.get_knowledge_graph(wf_dict, store_data=True, file_name="test")
+        _ = onto.get_knowledge_graph(wf_dict, store_data=True, file_name="test")
         data = onto.load_data("test.h5")
         self.assertEqual(sorted(data.values()), [0.375, 0.5])
         os.remove("test.h5")
