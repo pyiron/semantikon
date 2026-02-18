@@ -17,3 +17,4 @@ dependencies:
 - flowrep =0.1.10
 - networkx =3.4.2
 - networkx =3.5
+- bagofholding =0.1.0
