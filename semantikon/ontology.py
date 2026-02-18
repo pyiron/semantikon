@@ -8,6 +8,7 @@ from functools import cache, cached_property
 from hashlib import sha256
 from typing import Any, Callable, TypeAlias, cast
 
+import bagofholding
 import networkx as nx
 from flowrep.workflow import get_hashed_node_dict
 from owlrl import DeductiveClosure, RDFS_Semantics
@@ -166,14 +167,6 @@ class SemantikonDiGraph(nx.DiGraph):
                 # Add the child to the stack for further processing
                 stack.append((child, current_hash, child_label))
 
-    def remove_data(self):
-        """
-        Remove 'value' entries from all nodes in the graph.
-        """
-        for _, data in self.nodes.data():
-            if "value" in data and "hash" in data:
-                del data["value"]
-
     def get_hash_dict(self) -> dict[str, str]:
         """
         Get a dictionary mapping node names to their hash values.
@@ -305,6 +298,20 @@ def _import_pmdco(pmdco_uri: str) -> Graph:
     return g
 
 
+def _remove_data(graph: Graph) -> Graph:
+    graph.update("""DELETE {
+            ?data_node rdf:value ?value .
+        }
+        WHERE {
+            ?data_node rdf:value ?value .
+            ?data_node iao:0000235 ?hash_node .
+            ?hash_node a iao:0020000 .
+            ?hash_node rdf:value ?hash .
+        }
+    """)
+    return graph
+
+
 def get_knowledge_graph(
     wf_dict: dict,
     include_t_box: bool = True,
@@ -313,6 +320,8 @@ def get_knowledge_graph(
     remove_data: bool = False,
     extract_dataclasses: bool = False,
     prefix: str | None = None,
+    store_data: bool = False,
+    file_name: str | None = None,
     pmdco_uri: str = "https://w3id.org/pmd/co/3.0.0-rc2",
 ) -> Graph:
     """
@@ -331,9 +340,7 @@ def get_knowledge_graph(
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
-    G = serialize_and_convert_to_networkx(
-        wf_dict, hash_data=hash_data, remove_data=remove_data, prefix=prefix
-    )
+    G = serialize_and_convert_to_networkx(wf_dict, hash_data=hash_data, prefix=prefix)
     graph = _get_bound_graph()
     graph += _import_pmdco(pmdco_uri=pmdco_uri)
     if include_t_box:
@@ -344,7 +351,31 @@ def get_knowledge_graph(
         graph += extract_dataclass(
             graph=graph, include_t_box=include_t_box, include_a_box=include_a_box
         )
+    if store_data:
+        if file_name is not None and not file_name.endswith(".h5"):
+            file_name += ".h5"
+        _store_data(
+            graph, file_name=file_name if file_name else f"{_get_graph_hash(G)}.h5"
+        )
+    if remove_data:
+        graph = _remove_data(graph)
     return graph
+
+
+def _store_data(graph: Graph, file_name: str):
+    query = """SELECT DISTINCT ?hash ?value WHERE {
+        ?data_node rdf:value ?value .
+        ?data_node iao:0000235 ?hash_node .
+        ?hash_node a iao:0020000 .
+        ?hash_node rdf:value ?hash .
+    }"""
+    data_dict = {h.toPython(): v.toPython() for h, v in graph.query(query)}
+    bagofholding.H5Bag.save(data_dict, file_name)
+
+
+def load_data(file_name: str) -> dict:
+    bag = bagofholding.H5Bag(file_name)
+    return bag.load()
 
 
 def function_to_knowledge_graph(function: Callable) -> Graph:
@@ -1290,7 +1321,6 @@ class _WorkflowGraphSerializer:
 def serialize_and_convert_to_networkx(
     wf_dict: dict,
     hash_data: bool = True,
-    remove_data: bool = False,
     prefix: str | None = None,
 ) -> SemantikonDiGraph:
     """
@@ -1300,8 +1330,6 @@ def serialize_and_convert_to_networkx(
     Args:
         wf_dict (dict): The workflow dictionary to serialize.
         hash_data (bool): Whether to hash node data.
-        remove_data (bool): Whether to remove original data after hashing.
-            Data cannot be removed when `hash_data` is False.
         prefix (str | None): Optional prefix for node names.
 
     Returns:
@@ -1321,8 +1349,6 @@ def serialize_and_convert_to_networkx(
             ) from e
         for node, data in hashed_dict.items():
             G.append_hash(node, data["hash"])
-        if remove_data:
-            G.remove_data()
     return G
 
 
