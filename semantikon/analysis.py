@@ -10,7 +10,7 @@ import networkx as nx
 from rdflib import RDFS, Graph, Literal, URIRef
 
 from semantikon.converter import to_identifier
-from semantikon.ontology import BASE, SNS, serialize_and_convert_to_networkx
+from semantikon.ontology import SNS, serialize_and_convert_to_networkx
 
 
 def label_to_uri(graph: Graph, label: str) -> list[URIRef]:
