@@ -17,9 +17,9 @@ from semantikon.converter import (
 )
 from semantikon.datastructure import (
     MISSING,
+    Atomic,
     CoreMetadata,
     Edges,
-    Atomic,
     Input,
     Inputs,
     Missing,
