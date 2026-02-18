@@ -318,7 +318,7 @@ def _get_labels(graph):
 
 
 def _add_child_data_class(graph, label_dict):
-    query_data_class = f"""SELECT DISTINCT ?parent ?child ?label WHERE {{
+    query_data_class = """SELECT DISTINCT ?parent ?child ?label WHERE {{
         ?parent rdfs:subClassOf ?bnode .
         ?bnode a owl:Restriction .
         ?bnode owl:onProperty bfo:0000051 .
