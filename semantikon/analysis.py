@@ -10,7 +10,7 @@ import networkx as nx
 from rdflib import RDFS, Graph, Literal, URIRef
 
 from semantikon.converter import to_identifier
-from semantikon.ontology import BASE, SNS, serialize_and_convert_to_networkx
+from semantikon.ontology import SNS, serialize_and_convert_to_networkx
 
 
 def label_to_uri(graph: Graph, label: str) -> list[URIRef]:
@@ -114,21 +114,30 @@ class TrieNode:
 
 
 class _Node:
-    __slots__ = ("_node", "_path", "_graph")
+    __slots__ = ("_node", "_path", "_graph", "_uri_dict")
 
-    def __init__(self, node: TrieNode, path: Iterable[str], graph: Graph):
+    def __init__(
+        self,
+        node: TrieNode,
+        path: Iterable[str],
+        graph: Graph,
+        uri_dict: dict[str, URIRef],
+    ):
         self._node = node
         self._path = tuple(path)
         self._graph = graph
+        self._uri_dict = uri_dict
 
     def __getattr__(self, name: str):
         if name not in self._node.children:
             raise AttributeError(name)
-        return _Node(self._node.children[name], self._path + (name,), self._graph)
+        return _Node(
+            self._node.children[name], self._path + (name,), self._graph, self._uri_dict
+        )
 
     def __dir__(self):
         if self._node.terminal:
-            return ["query", "to_query_text"]
+            return sorted(self._node.children.keys()) + ["query", "to_query_text"]
         return sorted(self._node.children.keys())
 
     def query(self, fallback_to_hash: bool = False) -> list[tuple[Any, ...]]:
@@ -152,7 +161,8 @@ class _Node:
         return qn.to_query_text()
 
     def value(self) -> URIRef:
-        return BASE["-".join(self._path)]
+        tag = "-".join(self._path)
+        return self._uri_dict[tag]
 
     def __and__(self, other: _Node | URIRef | _QueryHolder) -> _QueryHolder:
         if isinstance(other, _Node) or isinstance(other, URIRef):
@@ -256,15 +266,74 @@ class _QueryHolder:
 
 
 class Completer(_Node):
-    def __init__(self, values: Iterable[str], graph: Graph):
+    def __init__(self, uri_dict: dict[str, URIRef], graph: Graph):
         root = TrieNode()
-        for value in values:
+        for value in uri_dict.keys():
             node = root
             for part in value.split("-"):
                 node = node.children.setdefault(part, TrieNode())
             node.terminal = True
 
-        super().__init__(root, (), graph)
+        super().__init__(root, (), graph, uri_dict)
+
+
+def _get_label_from_port(port, graph) -> list[str]:
+    query_io_node = f"""SELECT DISTINCT ?parent ?label WHERE {{
+        ?parent rdfs:subClassOf ?bnode .
+        ?parent rdfs:label ?label .
+        ?bnode a owl:Restriction .
+        ?bnode owl:onProperty bfo:0000051 .
+        ?bnode owl:someValuesFrom <{port}> .
+    }}"""
+    label_list = []
+    for io_port, label in graph.query(query_io_node):
+        label_list.extend(_get_label_from_port(io_port, graph) + [label.toPython()])
+    return label_list
+
+
+def _get_labels(graph):
+    query_data_node = """SELECT DISTINCT ?parent ?data_node ?label ?io_class WHERE {
+        ?parent rdfs:subClassOf ?bnode .
+        ?parent rdfs:label ?label .
+        ?bnode a owl:Restriction .
+        ?bnode owl:onProperty ro:0000057 .
+        ?bnode owl:someValuesFrom ?data_node .
+        ?parent rdfs:subClassOf ?io_class .
+        ?data_node rdfs:subClassOf obi:0001933 .
+        FILTER (!isBlank(?io_class))
+    }"""
+
+    label_dict = {}
+    io_dict = {SNS.input_assignment: "inputs", SNS.output_assignment: "outputs"}
+
+    for port, data_node, label, io_class in graph.query(query_data_node):
+        label_dict[
+            "-".join(
+                _get_label_from_port(port, graph)
+                + [io_dict[io_class]]
+                + [label.toPython()]
+            )
+        ] = data_node
+    return label_dict
+
+
+def _add_child_data_class(graph, label_dict):
+    query_data_class = """SELECT DISTINCT ?parent ?child ?label WHERE {{
+        ?parent rdfs:subClassOf ?bnode .
+        ?bnode a owl:Restriction .
+        ?bnode owl:onProperty bfo:0000051 .
+        ?bnode owl:someValuesFrom ?child .
+        ?parent rdfs:subClassOf obi:0001933 .
+        ?child rdfs:subClassOf obi:0001933 .
+        ?child rdfs:label ?label .
+    }}"""
+    child_label_dict = {}
+    for parent_uri, child_uri, key in graph.query(query_data_class):
+        for k, v in label_dict.items():
+            if v == parent_uri:
+                child_label_dict[f"{k}-{key}"] = child_uri
+
+    return label_dict | child_label_dict
 
 
 def query_io_completer(graph: Graph) -> Completer:
@@ -277,16 +346,9 @@ def query_io_completer(graph: Graph) -> Completer:
     Returns:
         Completer: A Completer instance for input/output ports.
     """
-    all_ios = []
-    for pred in ["pmd:0000066", "pmd:0000067"]:
-        query = f"""
-        PREFIX pmd: <https://w3id.org/pmd/co/PMD_>
-        SELECT DISTINCT ?io WHERE {{
-            ?io rdfs:subClassOf {pred} .
-        }}"""
-        for g in graph.query(query):
-            all_ios.append(g[0].split("/")[-1])
-    return Completer(all_ios, graph)
+    label_dict = _get_labels(graph)
+    label_dict = _add_child_data_class(graph, label_dict)
+    return Completer(label_dict, graph)
 
 
 class SparqlWriter:

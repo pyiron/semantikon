@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import dataclass
 from typing import Annotated
 
 from rdflib import RDF, RDFS, Namespace
@@ -12,6 +13,14 @@ EX: Namespace = Namespace("http://example.org/")
 PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
 
 
+@dataclass
+class SpeedData:
+    distance: Annotated[
+        float, {"uri": PMD["0040001"], "units": "meter", "label": "Distance"}
+    ]
+    time: Annotated[float, {"units": "second"}]
+
+
 def get_speed(
     distance: Annotated[
         float, {"uri": PMD["0040001"], "units": "meter", "label": "Distance"}
@@ -20,6 +29,14 @@ def get_speed(
 ) -> Annotated[float, {"units": "meter/second", "uri": EX.Velocity, "label": "speed"}]:
     """some random docstring"""
     speed = distance / time
+    return speed
+
+
+def get_speed_with_dataclass(
+    data: SpeedData,
+) -> Annotated[float, {"units": "meter/second", "uri": EX.Velocity, "label": "speed"}]:
+    """some random docstring"""
+    speed = data.distance / data.time
     return speed
 
 
@@ -56,11 +73,9 @@ class TestAnalysis(unittest.TestCase):
 
         with self.subTest("workflow has both function executions as parts"):
             parts = list(g.objects(wf, onto.BFO["0000051"]))
-            uri = asis.label_to_uri(
-                g, "my_kinetic_energy_workflow-get_kinetic_energy_0"
-            )[0]
+            uri = asis.label_to_uri(g, "get_kinetic_energy_0")[0]
             ke_calls = [p for p in parts if (p, RDF.type, uri) in g]
-            uri = asis.label_to_uri(g, "my_kinetic_energy_workflow-get_speed_0")[0]
+            uri = asis.label_to_uri(g, "get_speed_0")[0]
             speed_calls = [p for p in parts if (p, RDF.type, uri) in g]
             self.assertEqual(len(ke_calls), 1)
             self.assertEqual(len(speed_calls), 1)
@@ -134,19 +149,19 @@ class TestAnalysis(unittest.TestCase):
 
     def test_sparql_writer(self):
         wf_dict = my_kinetic_energy_workflow.run(2.0, 1.0, 4.0)
-        graph = onto.get_knowledge_graph(wf_dict, prefix="T")
+        graph = onto.get_knowledge_graph(wf_dict)
         comp = asis.query_io_completer(graph)
         self.assertEqual(
-            dir(comp.T_my_kinetic_energy_workflow.get_speed_0.inputs),
+            dir(comp.my_kinetic_energy_workflow.get_speed_0.inputs),
             ["distance", "time"],
         )
-        A = comp.T_my_kinetic_energy_workflow.inputs.time
+        A = comp.my_kinetic_energy_workflow.inputs.time
         self.assertEqual(dir(A), ["query", "to_query_text"])
-        B = comp.T_my_kinetic_energy_workflow.outputs.kinetic_energy
-        C = comp.T_my_kinetic_energy_workflow.inputs.mass
-        D = comp.T_my_kinetic_energy_workflow.inputs.distance
+        B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
+        C = comp.my_kinetic_energy_workflow.inputs.mass
+        D = comp.my_kinetic_energy_workflow.inputs.distance
         self.assertListEqual(
-            dir(comp.T_my_kinetic_energy_workflow),
+            dir(comp.my_kinetic_energy_workflow),
             ["get_kinetic_energy_0", "get_speed_0", "inputs", "outputs"],
         )
         self.assertEqual((A & B).query(), [(1.0, 8.0)])
@@ -164,7 +179,7 @@ class TestAnalysis(unittest.TestCase):
         self.assertEqual(list(graph.query(A.to_query_text()))[0][0].toPython(), 1.0)
         with self.assertRaises(AttributeError):
             _ = comp.non_existing_node
-        self.assertIsInstance(comp.T_my_kinetic_energy_workflow, asis._Node)
+        self.assertIsInstance(comp.my_kinetic_energy_workflow, asis._Node)
 
         @workflow
         def only_get_speed_workflow(distance, time):
@@ -175,29 +190,45 @@ class TestAnalysis(unittest.TestCase):
             only_get_speed_workflow.run(3.0, 1.5), prefix="T"
         )
         comp = asis.query_io_completer(graph)
-        A = comp.T_my_kinetic_energy_workflow.inputs.time
-        B = comp.T_my_kinetic_energy_workflow.outputs.kinetic_energy
-        C = comp.T_my_kinetic_energy_workflow.inputs.mass
+        A = comp.my_kinetic_energy_workflow.inputs.time
+        B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
+        C = comp.my_kinetic_energy_workflow.inputs.mass
         self.assertEqual((A & B).query(), [(1.0, 8.0)])
         self.assertEqual((A & C & B).query(), [(1.0, 4.0, 8.0)])
         self.assertEqual(A.query(), [(1.0,)])
         self.assertListEqual(
-            dir(comp), ["T_my_kinetic_energy_workflow", "T_only_get_speed_workflow"]
+            dir(comp), ["my_kinetic_energy_workflow", "only_get_speed_workflow"]
         )
-        E = comp.T_only_get_speed_workflow.inputs.distance
+        E = comp.only_get_speed_workflow.inputs.distance
         with self.assertRaises(ValueError) as context:
             _ = (A & E).query()
         self.assertEqual(str(context.exception), "No common head node found")
         self.assertEqual(E.query(), [(3.0,)])
-        graph = onto.get_knowledge_graph(wf_dict, prefix="T", remove_data=True)
+        graph = onto.get_knowledge_graph(wf_dict, remove_data=True)
         comp = asis.query_io_completer(graph)
-        A = comp.T_my_kinetic_energy_workflow.inputs.time
-        B = comp.T_my_kinetic_energy_workflow.outputs.kinetic_energy
+        A = comp.my_kinetic_energy_workflow.inputs.time
+        B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
         self.assertListEqual((A & B).query(), [])
         data = (A & B).query(fallback_to_hash=True)
         self.assertEqual(data[0][0], 1.0)
         self.assertIsInstance(data[0][1], str)
         self.assertIsInstance(B.query(fallback_to_hash=True)[0][0], str)
+
+    def test_sparql_writer_with_dataclass(self):
+        @workflow
+        def workflow_with_dataclass(data: SpeedData, mass):
+            speed = get_speed_with_dataclass(data)
+            kinetic_energy = get_kinetic_energy(mass, speed)
+            return kinetic_energy
+
+        data = SpeedData(distance=1.0, time=2.0)
+        wf_dict = workflow_with_dataclass.run(data, 3.0)
+        graph = onto.get_knowledge_graph(wf_dict, extract_dataclasses=True)
+        comp = asis.query_io_completer(graph)
+        self.assertEqual(
+            comp.workflow_with_dataclass.inputs.data.distance.query(),
+            [(1.0,)],
+        )
 
     def test_label_to_uri(self):
         wf_dict = my_kinetic_energy_workflow.serialize_workflow()
