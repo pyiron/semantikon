@@ -373,7 +373,7 @@ def _store_data(graph: Graph, file_name: str):
     bagofholding.H5Bag.save(data_dict, file_name)
 
 
-def load_data(file_name: str) -> dict:
+def load_data(file_name: str, object_location: str | None) -> dict:
     bag = bagofholding.H5Bag(file_name)
     return bag.load()
 
