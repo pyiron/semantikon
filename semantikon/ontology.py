@@ -373,9 +373,10 @@ def _store_data(graph: Graph, file_name: str):
     bagofholding.H5Bag.save(data_dict, file_name)
 
 
-def load_data(file_name: str, object_location: str | None) -> dict:
+def load_data(file_name: str, object_location: str | None = None) -> dict:
     bag = bagofholding.H5Bag(file_name)
-    return bag.load()
+    p = f"object/{object_location}" if object_location else "object"
+    return bag.load(p)
 
 
 def function_to_knowledge_graph(function: Callable) -> Graph:

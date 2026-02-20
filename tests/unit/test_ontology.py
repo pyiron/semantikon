@@ -831,6 +831,8 @@ class TestOntology(unittest.TestCase):
         _ = onto.get_knowledge_graph(wf_dict, store_data=True, file_name="test")
         data = onto.load_data("test.h5")
         self.assertEqual(sorted(data.values()), [0.375, 0.5])
+        for key, value in data.items():
+            self.assertEqual(onto.load_data("test.h5", object_location=key), value)
         os.remove("test.h5")
 
 
