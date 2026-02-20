@@ -6,6 +6,7 @@ import unicodedata
 from dataclasses import asdict, dataclass, fields, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
+from pathlib import Path
 from typing import Any, Callable, TypeAlias, cast
 
 import bagofholding
@@ -27,6 +28,7 @@ from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
 IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")
+NFDI: Namespace = Namespace("https://nfdi.fiz-karlsruhe.de/ontology/NFDI_")
 QUDT: Namespace = Namespace("http://qudt.org/schema/qudt/")
 RO: Namespace = Namespace("http://purl.obolibrary.org/obo/RO_")
 BFO: Namespace = Namespace("http://purl.obolibrary.org/obo/BFO_")
@@ -63,9 +65,11 @@ class SNS:
     has_default_literal_value: URIRef = PMD["0001877"]
     has_constraint: URIRef = BASE["has_constraint"]
     has_value: URIRef = PMD["0000006"]
+    has_url: URIRef = NFDI["0001008"]
     version_number: URIRef = IAO["0000129"]
     import_path: URIRef = PMD["0000101"]
     function_name: URIRef = PMD["0000100"]
+    file_data_item: URIRef = NFDI["0000027"]
 
 
 ud = UnitsDict()
@@ -362,14 +366,21 @@ def get_knowledge_graph(
     return graph
 
 
-def _store_data(graph: Graph, file_name: str):
-    query = """SELECT DISTINCT ?hash ?value WHERE {
+def _store_data(graph: Graph, file_name: str | Path):
+    query = """SELECT DISTINCT ?data_node ?hash ?value WHERE {
         ?data_node rdf:value ?value .
         ?data_node iao:0000235 ?hash_node .
         ?hash_node a iao:0020000 .
         ?hash_node rdf:value ?hash .
     }"""
-    data_dict = {h.toPython(): v.toPython() for h, v in graph.query(query)}
+    data_dict = {}
+    for n, h, v in graph.query(query):
+        data_dict[h.toPython()] = v.toPython()
+        file_data_item = BNode(str(n) + "_file_data")
+        data_url = str(Path(file_name).absolute().as_uri()) + f"#object/{h}"
+        graph.add((file_data_item, RDF.type, SNS.file_data_item))
+        graph.add((file_data_item, SNS.has_url, Literal(data_url)))
+        graph.add((file_data_item, SNS.is_about, n))
     bagofholding.H5Bag.save(data_dict, file_name)
 
 
