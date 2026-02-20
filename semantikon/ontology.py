@@ -6,8 +6,10 @@ import unicodedata
 from dataclasses import asdict, dataclass, fields, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
+from pathlib import Path
 from typing import Any, Callable, TypeAlias, cast
 
+import bagofholding
 import networkx as nx
 from flowrep.workflow import get_hashed_node_dict
 from owlrl import DeductiveClosure, RDFS_Semantics
@@ -26,6 +28,7 @@ from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
 IAO: Namespace = Namespace("http://purl.obolibrary.org/obo/IAO_")
+NFDI: Namespace = Namespace("https://nfdi.fiz-karlsruhe.de/ontology/NFDI_")
 QUDT: Namespace = Namespace("http://qudt.org/schema/qudt/")
 RO: Namespace = Namespace("http://purl.obolibrary.org/obo/RO_")
 BFO: Namespace = Namespace("http://purl.obolibrary.org/obo/BFO_")
@@ -62,9 +65,11 @@ class SNS:
     has_default_literal_value: URIRef = PMD["0001877"]
     has_constraint: URIRef = BASE["has_constraint"]
     has_value: URIRef = PMD["0000006"]
+    has_url: URIRef = NFDI["0001008"]
     version_number: URIRef = IAO["0000129"]
     import_path: URIRef = PMD["0000101"]
     function_name: URIRef = PMD["0000100"]
+    file_data_item: URIRef = NFDI["0000027"]
 
 
 ud = UnitsDict()
@@ -165,14 +170,6 @@ class SemantikonDiGraph(nx.DiGraph):
 
                 # Add the child to the stack for further processing
                 stack.append((child, current_hash, child_label))
-
-    def remove_data(self):
-        """
-        Remove 'value' entries from all nodes in the graph.
-        """
-        for _, data in self.nodes.data():
-            if "value" in data and "hash" in data:
-                del data["value"]
 
     def get_hash_dict(self) -> dict[str, str]:
         """
@@ -305,6 +302,20 @@ def _import_pmdco(pmdco_uri: str) -> Graph:
     return g
 
 
+def _remove_data(graph: Graph) -> Graph:
+    graph.update("""DELETE {
+            ?data_node rdf:value ?value .
+        }
+        WHERE {
+            ?data_node rdf:value ?value .
+            ?data_node iao:0000235 ?hash_node .
+            ?hash_node a iao:0020000 .
+            ?hash_node rdf:value ?hash .
+        }
+    """)
+    return graph
+
+
 def get_knowledge_graph(
     wf_dict: dict,
     include_t_box: bool = True,
@@ -313,6 +324,8 @@ def get_knowledge_graph(
     remove_data: bool = False,
     extract_dataclasses: bool = False,
     prefix: str | None = None,
+    store_data: bool = False,
+    file_name: str | None = None,
     pmdco_uri: str = "https://w3id.org/pmd/co/3.0.0-rc2",
 ) -> Graph:
     """
@@ -331,9 +344,7 @@ def get_knowledge_graph(
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
-    G = serialize_and_convert_to_networkx(
-        wf_dict, hash_data=hash_data, remove_data=remove_data, prefix=prefix
-    )
+    G = serialize_and_convert_to_networkx(wf_dict, hash_data=hash_data, prefix=prefix)
     graph = _get_bound_graph()
     graph += _import_pmdco(pmdco_uri=pmdco_uri)
     if include_t_box:
@@ -344,7 +355,39 @@ def get_knowledge_graph(
         graph += extract_dataclass(
             graph=graph, include_t_box=include_t_box, include_a_box=include_a_box
         )
+    if store_data:
+        if file_name is not None and not file_name.endswith(".h5"):
+            file_name += ".h5"
+        _store_data(
+            graph, file_name=file_name if file_name else f"{_get_graph_hash(G)}.h5"
+        )
+    if remove_data:
+        graph = _remove_data(graph)
     return graph
+
+
+def _store_data(graph: Graph, file_name: str | Path):
+    query = """SELECT DISTINCT ?data_node ?hash ?value WHERE {
+        ?data_node rdf:value ?value .
+        ?data_node iao:0000235 ?hash_node .
+        ?hash_node a iao:0020000 .
+        ?hash_node rdf:value ?hash .
+    }"""
+    data_dict = {}
+    for n, h, v in graph.query(query):
+        data_dict[h.toPython()] = v.toPython()
+        file_data_item = BNode(str(n) + "_file_data")
+        data_url = str(Path(file_name).absolute().as_uri()) + f"#object/{h}"
+        graph.add((file_data_item, RDF.type, SNS.file_data_item))
+        graph.add((file_data_item, SNS.has_url, Literal(data_url)))
+        graph.add((file_data_item, SNS.is_about, n))
+    bagofholding.H5Bag.save(data_dict, file_name)
+
+
+def load_data(file_name: str, object_location: str | None = None) -> dict:
+    bag = bagofholding.H5Bag(file_name)
+    p = f"object/{object_location}" if object_location else "object"
+    return bag.load(p)
 
 
 def function_to_knowledge_graph(function: Callable) -> Graph:
@@ -1290,7 +1333,6 @@ class _WorkflowGraphSerializer:
 def serialize_and_convert_to_networkx(
     wf_dict: dict,
     hash_data: bool = True,
-    remove_data: bool = False,
     prefix: str | None = None,
 ) -> SemantikonDiGraph:
     """
@@ -1300,8 +1342,6 @@ def serialize_and_convert_to_networkx(
     Args:
         wf_dict (dict): The workflow dictionary to serialize.
         hash_data (bool): Whether to hash node data.
-        remove_data (bool): Whether to remove original data after hashing.
-            Data cannot be removed when `hash_data` is False.
         prefix (str | None): Optional prefix for node names.
 
     Returns:
@@ -1321,8 +1361,6 @@ def serialize_and_convert_to_networkx(
             ) from e
         for node, data in hashed_dict.items():
             G.append_hash(node, data["hash"])
-        if remove_data:
-            G.remove_data()
     return G
 
 
