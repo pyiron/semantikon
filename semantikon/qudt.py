@@ -1,4 +1,5 @@
 import os
+import re
 from collections import defaultdict
 from functools import cached_property
 
@@ -157,7 +158,7 @@ def get_units_dict(graph: Graph) -> dict[str, term.Node]:
     units_dict = {}
     for uri, tag in graph.subject_objects(None):
         units_dict[str(tag)] = uri
-        tag = str(tag).replace("electron volt", "electron_volt")
+        tag = re.sub(r"(?<=[a-zA-Z]) (?=[a-zA-Z])", "_", tag)
         for _ in range(2):
             try:
                 # this is safe and works for both Quantity and Unit
