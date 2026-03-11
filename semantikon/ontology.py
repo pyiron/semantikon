@@ -107,7 +107,7 @@ class SemantikonDiGraph(nx.DiGraph):
         return Namespace(h + "_")
 
     def get_a_node(self, node_name: str) -> BNode:
-        return BNode(self.a_ns[node_name])
+        return self.a_ns[node_name]
 
     @cache
     def _get_data_node(self, io: str) -> str:
