@@ -104,9 +104,9 @@ class SemantikonDiGraph(nx.DiGraph):
     @cached_property
     def a_ns(self):
         h = _get_graph_hash(self, with_global_inputs=True)
-        return Namespace(h + "_")
+        return Namespace(BASE + h + "_")
 
-    def get_a_node(self, node_name: str) -> BNode:
+    def get_a_node(self, node_name: str) -> IdentifiedNode:
         return self.a_ns[node_name]
 
     @cache
