@@ -99,8 +99,8 @@ def meta(
             raise TypeError(f"Expected a callable, got {type(func)}")
         metadata = FunctionMetadata(uri=uri, triples=triples, used=used).to_dictionary()
 
-        func._semantikon_metadata = metadata
-        func.__deepcopy__ = functools.partial(_deepcopy_func, func, metadata)
+        func._semantikon_metadata = metadata  # type: ignore[attr-defined]
+        func.__deepcopy__ = functools.partial(_deepcopy_func, func, metadata)  # type: ignore[attr-defined]
         return func
 
     return decorator
