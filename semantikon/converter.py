@@ -9,15 +9,12 @@ import string
 import sys
 import textwrap
 import warnings
-from copy import deepcopy
 from dataclasses import dataclass
-from functools import update_wrapper, wraps
+from functools import wraps
 from typing import (
     Annotated,
     Any,
     Callable,
-    Generic,
-    TypeVar,
     get_args,
     get_origin,
     get_type_hints,
@@ -47,44 +44,6 @@ __date__ = "Aug 21, 2021"
 
 
 class NotAstNameError(TypeError): ...
-
-
-F = TypeVar("F", bound=Callable[..., object])
-
-
-class FunctionWithMetadata(Generic[F]):
-    """
-    A wrapper class for functions that allows attaching metadata to the function.
-
-    Example:
-    >>> from semantikon.typing import u
-    >>>
-    >>> @u(uri="http://example.com/my_function")
-    >>> def my_function(x):
-    >>>     return x * 2
-    >>>
-    >>> print(my_function._semantikon_metadata)
-
-    Output: {'uri': 'http://example.com/my_function'}
-
-    This information is automatically parsed when knowledge graph is generated.
-    For more info, take a look at semantikon.ontology.get_knowledge_graph.
-    """
-
-    def __init__(self, function: F, metadata: dict[str, object]) -> None:
-        self.function = function
-        self._semantikon_metadata: dict[str, object] = metadata
-        update_wrapper(self, function)  # Copies __name__, __doc__, etc.
-
-    def __call__(self, *args, **kwargs):
-        return self.function(*args, **kwargs)
-
-    def __getattr__(self, item):
-        return getattr(self.function, item)
-
-    def __deepcopy__(self, memo=None):
-        new_func = deepcopy(self.function, memo)
-        return FunctionWithMetadata(new_func, self._semantikon_metadata)
 
 
 def _get_ureg(args: Any, kwargs: dict[str, Any]) -> UnitRegistry | None:
@@ -417,7 +376,7 @@ def units(func: Callable) -> Callable:
     return wrapper
 
 
-def get_function_dict(function: Callable | FunctionWithMetadata) -> dict[str, Any]:
+def get_function_dict(function: Callable) -> dict[str, Any]:
     result = get_function_metadata(function, full_metadata=True)
     if hasattr(function, "_semantikon_metadata"):
         result.update(function._semantikon_metadata)
