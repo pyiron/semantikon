@@ -285,6 +285,7 @@ def _get_bound_graph(*args, **kwargs):
     graph.bind("pmdco", str(PMD))
     graph.bind("schema", str(SCHEMA))
     graph.bind("stato", str(STATO))
+    graph.bind("nfdi", str(NFDI))
     return graph
 
 
