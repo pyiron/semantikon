@@ -100,16 +100,9 @@ def meta(
         metadata = FunctionMetadata(uri=uri, triples=triples, used=used).to_dictionary()
 
         func._semantikon_metadata = metadata  # type: ignore[attr-defined]
-        func.__deepcopy__ = functools.partial(_deepcopy_func, func, metadata)  # type: ignore[attr-defined]
         return func
 
     return decorator
-
-
-def _deepcopy_func(func, metadata, memo=None):
-    new_func = copy.deepcopy(func, memo)
-    new_func._semantikon_metadata = metadata
-    return new_func
 
 
 class SemantikonURI(URIRef):
