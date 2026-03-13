@@ -1,34 +1,14 @@
 import copy
-import dataclasses
-import inspect
 import keyword
 from collections import Counter
-from typing import Any, Callable, Iterable, cast, get_args, get_origin
+from typing import Any, Callable, Iterable, cast
 
 from flowrep import workflow as fwf
 
 from semantikon.converter import (
-    get_annotated_type_hints,
     get_return_expressions,
-    get_return_labels,
-    meta_to_dict,
     parse_input_args,
     parse_output_args,
-)
-from semantikon.datastructure import (
-    MISSING,
-    Atomic,
-    CoreMetadata,
-    Edges,
-    Input,
-    Inputs,
-    Missing,
-    Nodes,
-    Output,
-    Outputs,
-    PortType,
-    TypeMetadata,
-    Workflow,
 )
 
 
@@ -280,129 +260,6 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
     """
     wf = fwf.get_workflow_dict(func, with_function=True, with_io=True)
     return to_semantikon_workflow_dict(wf)
-
-
-def get_ports(
-    func: Callable, separate_return_tuple: bool = True, strict: bool = False
-) -> tuple[Inputs, Outputs]:
-    type_hints = get_annotated_type_hints(func)
-    return_hint = type_hints.pop("return", inspect.Parameter.empty)
-    return_labels = get_return_labels(
-        func, separate_tuple=separate_return_tuple, strict=strict
-    )
-    if get_origin(return_hint) is tuple and separate_return_tuple:
-        output_annotations = {}
-        for label, ann in zip(return_labels, get_args(return_hint)):
-            data = meta_to_dict(ann, flatten_metadata=False)
-            if "metadata" in data:
-                label = data["metadata"].to_dictionary().get("label", label)
-            assert _validate_label(label, func)
-            output_annotations[label] = data
-    else:
-        label = return_labels[0]
-        assert _validate_label(label, func)
-        output_annotations = {label: meta_to_dict(return_hint, flatten_metadata=False)}
-    input_annotations = {
-        key: meta_to_dict(
-            type_hints.get(key, value.annotation), value.default, flatten_metadata=False
-        )
-        for key, value in inspect.signature(func).parameters.items()
-    }
-    return (
-        Inputs(**{k: Input(label=k, **v) for k, v in input_annotations.items()}),
-        Outputs(**{k: Output(label=k, **v) for k, v in output_annotations.items()}),
-    )
-
-
-def get_node(func: Callable, label: str | None = None) -> Atomic | Workflow:
-    metadata_dict = (
-        func._semantikon_metadata if hasattr(func, "_semantikon_metadata") else MISSING
-    )
-    metadata = (
-        metadata_dict
-        if isinstance(metadata_dict, Missing)
-        else CoreMetadata.from_dict(metadata_dict)
-    )
-
-    if isinstance(func, fwf.FunctionWithWorkflow):
-        return parse_workflow(get_workflow_dict(func), metadata)
-    else:
-        return parse_function(func, metadata, label=label)
-
-
-def parse_function(
-    func: Callable, metadata: CoreMetadata | Missing, label: str | None = None
-) -> Atomic:
-    inputs, outputs = get_ports(func)
-    return Atomic(
-        label=func.__name__ if label is None else label,
-        inputs=inputs,
-        outputs=outputs,
-        function=func,
-        metadata=metadata,
-    )
-
-
-def _port_from_dictionary(
-    io_dictionary: dict[str, object], label: str, port_class: type[PortType]
-) -> PortType:
-    """
-    Take a traditional semantikon workflow dictionary's input or output subdictionary
-    and nest the metadata (if any) as a dataclass.
-    """
-    metadata_kwargs = {}
-    for field in dataclasses.fields(TypeMetadata):
-        if field.name in io_dictionary:
-            metadata_kwargs[field.name] = io_dictionary.pop(field.name)
-    if len(metadata_kwargs) > 0:
-        io_dictionary["metadata"] = TypeMetadata.from_dict(metadata_kwargs)
-    io_dictionary["label"] = label
-    return port_class.from_dict(io_dictionary)
-
-
-def _input_from_dictionary(io_dictionary: dict[str, object], label: str) -> Input:
-    return _port_from_dictionary(io_dictionary, label, Input)
-
-
-def _output_from_dictionary(io_dictionary: dict[str, object], label: str) -> Output:
-    return _port_from_dictionary(io_dictionary, label, Output)
-
-
-def parse_workflow(
-    semantikon_workflow: dict[str, Any], metadata: CoreMetadata | Missing = MISSING
-) -> Workflow:
-    label = semantikon_workflow["label"]
-    inputs = Inputs(
-        **{
-            k: _input_from_dictionary(v, label=k)
-            for k, v in semantikon_workflow["inputs"].items()
-        }
-    )
-    outputs = Outputs(
-        **{
-            k: _output_from_dictionary(v, label=k)
-            for k, v in semantikon_workflow["outputs"].items()
-        }
-    )
-    nodes = Nodes(
-        **{
-            k: (
-                get_node(v["function"], label=k)
-                if v["type"] == "atomic"
-                else parse_workflow(v)
-            )
-            for k, v in semantikon_workflow["nodes"].items()
-        }
-    )
-    edges = Edges(**{v: k for k, v in semantikon_workflow["edges"]})
-    return Workflow(
-        label=label,
-        inputs=inputs,
-        outputs=outputs,
-        nodes=nodes,
-        edges=edges,
-        metadata=metadata,
-    )
 
 
 def workflow(func: Callable) -> FunctionWithWorkflow:
