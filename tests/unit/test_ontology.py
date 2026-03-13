@@ -838,7 +838,9 @@ class TestOntology(unittest.TestCase):
 
         # Check that exactly one file data item node exists with the correct type and URL
         file_data_items = list(graph.subjects(RDF.type, onto.NFDI["0000027"]))
-        self.assertEqual(len(file_data_items), 1, msg="Expected exactly one file data item node")
+        self.assertEqual(
+            len(file_data_items), 1, msg="Expected exactly one file data item node"
+        )
         file_data_item = file_data_items[0]
         self.assertIn(
             (file_data_item, onto.NFDI["0001008"], Literal(file_uri)),
@@ -848,7 +850,9 @@ class TestOntology(unittest.TestCase):
 
         # Check that the file data item has an HDF5 format spec as a part
         hdf5_format_nodes = list(graph.subjects(RDF.type, onto.EDAM["format_3590"]))
-        self.assertEqual(len(hdf5_format_nodes), 1, msg="Expected exactly one HDF5 format spec node")
+        self.assertEqual(
+            len(hdf5_format_nodes), 1, msg="Expected exactly one HDF5 format spec node"
+        )
         self.assertIn(
             (file_data_item, onto.BFO["0000051"], hdf5_format_nodes[0]),
             graph,
