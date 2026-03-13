@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from rdflib import BNode, URIRef
 
-from semantikon.converter import FunctionWithMetadata, parse_metadata
+from semantikon.converter import parse_metadata
 from semantikon.datastructure import (
     MISSING,
     FunctionMetadata,
@@ -74,13 +74,31 @@ def meta(
     triples: TriplesLike | Missing = MISSING,
     used: str | URIRef | Missing = MISSING,
 ):
+    """
+    A decorator for functions that allows attaching metadata to the function.
+
+    Example:
+    >>> from semantikon import meta
+    >>>
+    >>> @meta(uri="http://example.com/my_function")
+    >>> def my_function(x):
+    >>>     return x * 2
+    >>>
+    >>> print(my_function._semantikon_metadata)
+
+    Output: {'uri': 'http://example.com/my_function'}
+
+    This information is automatically parsed when knowledge graph is generated.
+    For more info, take a look at semantikon.ontology.get_knowledge_graph.
+    """
+
     def decorator(func: Callable):
         if not callable(func):
             raise TypeError(f"Expected a callable, got {type(func)}")
-        return FunctionWithMetadata(
-            func,
-            FunctionMetadata(triples=triples, uri=uri, used=used).to_dictionary(),
-        )
+        metadata = FunctionMetadata(uri=uri, triples=triples, used=used).to_dictionary()
+
+        func._semantikon_metadata = metadata  # type: ignore[attr-defined]
+        return func
 
     return decorator
 
