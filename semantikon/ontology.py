@@ -32,6 +32,7 @@ NFDI: Namespace = Namespace("https://nfdi.fiz-karlsruhe.de/ontology/NFDI_")
 QUDT: Namespace = Namespace("http://qudt.org/schema/qudt/")
 RO: Namespace = Namespace("http://purl.obolibrary.org/obo/RO_")
 BFO: Namespace = Namespace("http://purl.obolibrary.org/obo/BFO_")
+EDAM: Namespace = Namespace("http://edamontology.org/")
 OBI: Namespace = Namespace("http://purl.obolibrary.org/obo/OBI_")
 PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
 SCHEMA: Namespace = Namespace("http://schema.org/")
@@ -66,6 +67,7 @@ class SNS:
     has_constraint: URIRef = BASE["has_constraint"]
     has_value: URIRef = PMD["0000006"]
     has_url: URIRef = NFDI["0001008"]
+    hdf5: URIRef = EDAM["format_3590"]
     version_number: URIRef = IAO["0000129"]
     import_path: URIRef = PMD["0000101"]
     function_name: URIRef = PMD["0000100"]
@@ -285,6 +287,8 @@ def _get_bound_graph(*args, **kwargs):
     graph.bind("pmdco", str(PMD))
     graph.bind("schema", str(SCHEMA))
     graph.bind("stato", str(STATO))
+    graph.bind("nfdi", str(NFDI))
+    graph.bind("edam", str(EDAM))
     return graph
 
 
@@ -373,14 +377,23 @@ def _store_data(graph: Graph, file_name: str | Path):
         ?hash_node a iao:0020000 .
         ?hash_node rdf:value ?hash .
     }"""
+    file_path = str(Path(file_name).absolute().as_uri())
+    file_path_id = sha256(file_path.encode("utf-8")).hexdigest()
+    file_data_item = BNode(f"file_{file_path_id}")
     data_dict = {}
     for n, h, v in graph.query(query):
         data_dict[h.toPython()] = v.toPython()
-        file_data_item = BNode(str(n) + "_file_data")
-        data_url = str(Path(file_name).absolute().as_uri()) + f"#object/{h}"
-        graph.add((file_data_item, RDF.type, SNS.file_data_item))
-        graph.add((file_data_item, SNS.has_url, Literal(data_url)))
-        graph.add((file_data_item, SNS.is_about, n))
+        if (file_data_item, RDF.type, SNS.file_data_item) not in graph:
+            graph.add((file_data_item, RDF.type, SNS.file_data_item))
+            graph.add((file_data_item, SNS.has_url, Literal(file_path)))
+            data_format_spec = BNode(f"filefmt_{file_path_id}")
+            graph.add((file_data_item, SNS.has_part, data_format_spec))
+            graph.add((data_format_spec, RDF.type, SNS.hdf5))
+        file_part_id = sha256(str(n).encode("utf-8")).hexdigest()
+        file_part = BNode(f"filepart_{file_part_id}")
+        graph.add((file_data_item, SNS.has_part, file_part))
+        graph.add((file_part, SNS.has_url, Literal(f"object/{h}")))
+        graph.add((file_part, SNS.is_about, n))
     bagofholding.H5Bag.save(data_dict, file_name)
 
 
