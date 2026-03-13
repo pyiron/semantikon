@@ -828,11 +828,57 @@ class TestOntology(unittest.TestCase):
 
     def test_load_data(self):
         wf_dict = my_kinetic_energy_workflow.run(1.0, 2.0, 3.0)
-        _ = onto.get_knowledge_graph(wf_dict, store_data=True, file_name="test")
+        graph = onto.get_knowledge_graph(wf_dict, store_data=True, file_name="test")
         data = onto.load_data("test.h5")
         self.assertEqual(sorted(data.values()), [0.375, 0.5])
         for key, value in data.items():
             self.assertEqual(onto.load_data("test.h5", object_location=key), value)
+
+        file_uri = Path("test.h5").absolute().as_uri()
+
+        # Check that exactly one file data item node exists with the correct type and URL
+        file_data_items = list(graph.subjects(RDF.type, onto.NFDI["0000027"]))
+        self.assertEqual(
+            len(file_data_items), 1, msg="Expected exactly one file data item node"
+        )
+        file_data_item = file_data_items[0]
+        self.assertIn(
+            (file_data_item, onto.NFDI["0001008"], Literal(file_uri)),
+            graph,
+            msg="File data item should have has_url pointing to the file URI",
+        )
+
+        # Check that the file data item has an HDF5 format spec as a part
+        hdf5_format_nodes = list(graph.subjects(RDF.type, onto.EDAM["format_3590"]))
+        self.assertEqual(
+            len(hdf5_format_nodes), 1, msg="Expected exactly one HDF5 format spec node"
+        )
+        self.assertIn(
+            (file_data_item, onto.BFO["0000051"], hdf5_format_nodes[0]),
+            graph,
+            msg="File data item should have HDF5 format spec as a part",
+        )
+
+        # Check that each data node with a value has a corresponding file part
+        q = """SELECT DISTINCT ?data_node WHERE {
+            ?data_node rdf:value ?value .
+            ?data_node iao:0000235 ?hash_node .
+            ?hash_node a iao:0020000 .
+        }"""
+        data_nodes = [row[0] for row in graph.query(q)]
+        self.assertEqual(len(data_nodes), 2, msg="Expected two data nodes")
+        for data_node in data_nodes:
+            file_parts = [
+                p
+                for p in graph.objects(file_data_item, onto.BFO["0000051"])
+                if (p, onto.IAO["0000136"], data_node) in graph
+            ]
+            self.assertEqual(
+                len(file_parts),
+                1,
+                msg=f"Expected exactly one file part for data node {data_node}",
+            )
+
         os.remove("test.h5")
 
 
