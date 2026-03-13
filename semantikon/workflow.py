@@ -254,11 +254,12 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
 
 def workflow(func: Callable) -> Callable:
     func = fwf.workflow(func)
-    # Override flowrep bound methods
-    func.serialize_workflow = functools.partial(
+    # Expose new dictionary getter
+    func.get_semantikon_dict = functools.partial(
         to_semantikon_workflow_dict,
         fwf.get_workflow_dict(func, with_function=True, with_io=True),
     )
+    # Override flowrep bound run method (always with_function now)
     func.run = functools.partial(
         run_workflow_dict,
         func,

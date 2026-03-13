@@ -164,7 +164,7 @@ class TestWorkflow(unittest.TestCase):
             "type": "workflow",
             "uri": "this macro has metadata",
         }
-        wf = example_macro.serialize_workflow()
+        wf = example_macro.get_semantikon_dict()
         self.assertEqual(wf["type"], "workflow")
         smtk_wf = tools.serialize_functions(wf)
         del smtk_wf["function"]
@@ -257,7 +257,7 @@ class TestWorkflow(unittest.TestCase):
             "label": "example_workflow",
             "type": "workflow",
         }
-        wf = example_workflow.serialize_workflow()
+        wf = example_workflow.get_semantikon_dict()
         self.assertEqual(wf["type"], "workflow")
         smtk_wf = tools.serialize_functions(wf)
         del smtk_wf["function"]
@@ -265,7 +265,7 @@ class TestWorkflow(unittest.TestCase):
         self.assertEqual(smtk_wf, ref_data)
 
     def test_separate_types(self):
-        old_data = example_workflow.serialize_workflow()
+        old_data = example_workflow.get_semantikon_dict()
         class_dict = swf.separate_types(old_data)[1]
         self.assertEqual(class_dict, {"float": float})
 
@@ -335,7 +335,7 @@ class TestWorkflow(unittest.TestCase):
     def test_edges_to_output_counts(self):
         self.assertDictEqual(
             swf._edges_to_output_counts(
-                example_macro.serialize_workflow()["edges"],
+                example_macro.get_semantikon_dict()["edges"],
             ),
             {"operation_0": 2, "add_0": 1, "multiply_0": 1},
         )

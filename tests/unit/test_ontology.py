@@ -249,7 +249,7 @@ class TestOntology(unittest.TestCase):
         cls.static_dir = Path(__file__).parent.parent / "static"
 
     def test_my_kinetic_energy_workflow_graph(self):
-        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         g = onto.get_knowledge_graph(wf_dict)
 
         query = f"""
@@ -340,7 +340,7 @@ class TestOntology(unittest.TestCase):
             )
 
     def test_hash(self):
-        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         self.assertIsInstance(onto._get_graph_hash(G), str)
         self.assertEqual(len(onto._get_graph_hash(G)), 32)
@@ -378,7 +378,7 @@ class TestOntology(unittest.TestCase):
             kinetic_energy = get_kinetic_energy(mass, speed)
             return kinetic_energy
 
-        wf_dict = workflow_with_default_values.serialize_workflow()
+        wf_dict = workflow_with_default_values.get_semantikon_dict()
         wf_dict_run = workflow_with_default_values.run(distance=2, time=1, mass=4)
         G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         G_run = onto.serialize_and_convert_to_networkx(wf_dict_run, hash_data=False)
@@ -398,7 +398,7 @@ class TestOntology(unittest.TestCase):
             onto._get_graph_hash(G, with_global_inputs=True)
 
     def test_hash_with_value(self):
-        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         wf_dict = my_kinetic_energy_workflow.run(1, 2, 3)
         G_run = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
@@ -412,13 +412,13 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_shacl_validation(self):
-        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         g = onto.get_knowledge_graph(wf_dict)
         shacl = onto.owl_restrictions_to_shacl(g)
         self.assertTrue(validate(g, shacl_graph=shacl)[0])
 
     def test_derives_from(self):
-        wf_dict = wf_triples.serialize_workflow()
+        wf_dict = wf_triples.get_semantikon_dict()
         g = onto.get_knowledge_graph(wf_dict, include_a_box=False, prefix="T")
         query = sparql_prefixes + dedent("""\
         SELECT ?main_class WHERE {
@@ -444,7 +444,7 @@ class TestOntology(unittest.TestCase):
         self.assertTrue(g.query(query).askAnswer)
 
     def test_triples(self):
-        wf_dict = wf_triples.serialize_workflow()
+        wf_dict = wf_triples.get_semantikon_dict()
         g = onto.get_knowledge_graph(wf_dict, include_t_box=False, prefix="T")
 
         with self.subTest("workflow instance exists"):
@@ -488,10 +488,10 @@ class TestOntology(unittest.TestCase):
         self.assertTrue(onto.validate_values(g)[0])
 
     def test_type_checking(self):
-        wf_dict = eat_pizza.serialize_workflow()
+        wf_dict = eat_pizza.get_semantikon_dict()
         graph = onto.get_knowledge_graph(wf_dict)
         self.assertFalse(onto.validate_values(graph)[0], msg=graph.serialize())
-        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         graph = onto.get_knowledge_graph(wf_dict)
         verdict, _, report = onto.validate_values(graph)
         self.assertTrue(verdict, msg=report)
@@ -504,7 +504,7 @@ class TestOntology(unittest.TestCase):
             kinetic_energy = get_kinetic_energy_wrong_units(mass, speed)
             return kinetic_energy
 
-        wf_dict = my_kinetic_energy_workflow_wrong_units.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow_wrong_units.get_semantikon_dict()
         graph = onto.get_knowledge_graph(wf_dict)
         self.assertFalse(onto.validate_values(graph)[0])
 
@@ -516,7 +516,7 @@ class TestOntology(unittest.TestCase):
             kinetic_energy = get_kinetic_energy_wrong_uri(mass, speed)
             return kinetic_energy
 
-        wf_dict = my_kinetic_energy_workflow_wrong_uri.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow_wrong_uri.get_semantikon_dict()
         graph = onto.get_knowledge_graph(wf_dict)
         self.assertFalse(onto.validate_values(graph)[0])
 
@@ -528,7 +528,7 @@ class TestOntology(unittest.TestCase):
             kinetic_energy = get_kinetic_energy(mass, speed)
             return kinetic_energy
 
-        wf_dict = my_kinetic_energy_workflow_not_annotated.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow_not_annotated.get_semantikon_dict()
         graph = onto.get_knowledge_graph(wf_dict)
         self.assertFalse(onto.validate_values(graph, strict_typing=True)[0])
         self.assertTrue(onto.validate_values(graph, strict_typing=False)[0])
@@ -541,7 +541,7 @@ class TestOntology(unittest.TestCase):
             money = sell(washed_clothes)
             return money
 
-        graph = onto.get_knowledge_graph(my_correct_workflow.serialize_workflow())
+        graph = onto.get_knowledge_graph(my_correct_workflow.get_semantikon_dict())
         self.assertTrue(onto.validate_values(graph)[0])
 
         @workflow
@@ -550,7 +550,7 @@ class TestOntology(unittest.TestCase):
             money = sell(washed_clothes)
             return money
 
-        graph = onto.get_knowledge_graph(my_wrong_workflow.serialize_workflow())
+        graph = onto.get_knowledge_graph(my_wrong_workflow.get_semantikon_dict())
         self.assertFalse(onto.validate_values(graph)[0])
 
         @workflow
@@ -559,7 +559,7 @@ class TestOntology(unittest.TestCase):
             money = sell_without_color(washed_clothes)
             return money
 
-        graph = onto.get_knowledge_graph(my_simple_workflow.serialize_workflow())
+        graph = onto.get_knowledge_graph(my_simple_workflow.get_semantikon_dict())
         self.assertTrue(onto.validate_values(graph)[0])
 
         @workflow
@@ -568,7 +568,7 @@ class TestOntology(unittest.TestCase):
             money = sell_with_shacl(washed_clothes)
             return money
 
-        graph = onto.get_knowledge_graph(my_shacl_workflow.serialize_workflow())
+        graph = onto.get_knowledge_graph(my_shacl_workflow.get_semantikon_dict())
         verdict, _, report = onto.validate_values(graph)
         self.assertTrue(verdict, msg=report)
 
@@ -577,18 +577,18 @@ class TestOntology(unittest.TestCase):
             money = sell_with_shacl(clothes)
             return money
 
-        graph = onto.get_knowledge_graph(my_shacl_wrong_workflow.serialize_workflow())
+        graph = onto.get_knowledge_graph(my_shacl_wrong_workflow.get_semantikon_dict())
         self.assertFalse(onto.validate_values(graph)[0])
 
     def test_visualize(self):
-        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         g = onto.get_knowledge_graph(wf_dict)
         from graphviz.graphs import Digraph
 
         self.assertIsInstance(visualize_recipe(g), Digraph)
 
     def test_docstring(self):
-        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         g = onto.get_knowledge_graph(wf_dict)
         bnode = list(g.subjects(RDF.type, onto.SNS.textual_entity))
         self.assertEqual(len(bnode), 1)
@@ -597,7 +597,7 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_function_metadata(self):
-        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         graph = onto.get_knowledge_graph(wf_dict)
         # Check that the main subject exists
         main_subject = onto.BASE[
@@ -824,7 +824,7 @@ class TestOntology(unittest.TestCase):
             return e
 
         # Check that the multiple connections for c do not cause error
-        _ = onto.get_knowledge_graph(multiple_connection.serialize_workflow())
+        _ = onto.get_knowledge_graph(multiple_connection.get_semantikon_dict())
 
     def test_load_data(self):
         wf_dict = my_kinetic_energy_workflow.run(1.0, 2.0, 3.0)

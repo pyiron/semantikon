@@ -61,7 +61,7 @@ def my_kinetic_energy_workflow(
 
 class TestAnalysis(unittest.TestCase):
     def test_my_kinetic_energy_workflow_graph(self):
-        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         g = onto.get_knowledge_graph(wf_dict, prefix="T")
 
         with self.subTest("workflow instance exists"):
@@ -107,7 +107,7 @@ class TestAnalysis(unittest.TestCase):
             )
 
     def test_request_values(self):
-        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         wf_dict["inputs"]["distance"]["value"] = 1.0
         wf_dict["inputs"]["time"]["value"] = 2.0
         wf_dict["inputs"]["mass"]["value"] = 3.0
@@ -124,7 +124,7 @@ class TestAnalysis(unittest.TestCase):
             {"kinetic_energy": {"value": 0.375}},
             msg="all inputs known because the same simulation was run before",
         )
-        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         wf_dict["inputs"]["distance"]["value"] = 1.0
         wf_dict["inputs"]["time"]["value"] = 2.0
         wf_dict["inputs"]["mass"]["value"] = 4.0
@@ -231,7 +231,7 @@ class TestAnalysis(unittest.TestCase):
         )
 
     def test_label_to_uri(self):
-        wf_dict = my_kinetic_energy_workflow.serialize_workflow()
+        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         g = onto.get_knowledge_graph(wf_dict)
         uri = asis.label_to_uri(g, "my_kinetic_energy_workflow")[0]
         label = str(g.value(uri, RDFS.label))
