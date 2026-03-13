@@ -377,12 +377,12 @@ def _store_data(graph: Graph, file_name: str | Path):
         ?hash_node a iao:0020000 .
         ?hash_node rdf:value ?hash .
     }"""
+    file_path = str(Path(file_name).absolute().as_uri())
+    file_path_id = sha256(file_path.encode("utf-8")).hexdigest()
+    file_data_item = BNode(f"file_{file_path_id}")
     data_dict = {}
     for n, h, v in graph.query(query):
         data_dict[h.toPython()] = v.toPython()
-        file_path = str(Path(file_name).absolute().as_uri())
-        file_path_id = sha256(file_path.encode("utf-8")).hexdigest()
-        file_data_item = BNode(f"file_{file_path_id}")
         if (file_data_item, RDF.type, SNS.file_data_item) not in graph:
             graph.add((file_data_item, RDF.type, SNS.file_data_item))
             graph.add((file_data_item, SNS.has_url, Literal(file_path)))
