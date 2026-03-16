@@ -255,15 +255,13 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
 def workflow(func: Callable) -> Callable:
     func = fwf.workflow(func)
     # Expose new dictionary getter
-    func.get_semantikon_dict = functools.partial(
+    func.get_semantikon_dict = functools.partial(  # type: ignore[attr-defined]
         to_semantikon_workflow_dict,
         fwf.get_workflow_dict(func, with_function=True, with_io=True),
     )
-    # Override flowrep bound run method (always with_function now)
-    func.run = functools.partial(
-        run_workflow_dict,
-        func,
-        with_function=True,
+    # Override flowrep bound run method (always with_function)
+    func.run = functools.partial(  # type: ignore[attr-defined]
+        run_workflow_dict, func
     )
     return func
 
@@ -271,6 +269,6 @@ def workflow(func: Callable) -> Callable:
 workflow.__doc__ = fwf.workflow.__doc__
 
 
-def run_workflow_dict(wf_dict, *args, **kwargs) -> dict[str, Any]:
-    executed = fwf.run_workflow_dict(wf_dict, *args, **kwargs)
+def run_workflow_dict(func, *args, **kwargs) -> dict[str, Any]:
+    executed = fwf.run_workflow_dict(func, *args, with_function=True, **kwargs)
     return to_semantikon_workflow_dict(executed)
