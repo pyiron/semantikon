@@ -260,9 +260,7 @@ def workflow(func: Callable) -> Callable:
         fwf.get_workflow_dict(func, with_function=True, with_io=True),
     )
     # Override flowrep bound run method (always with_function)
-    func.run = functools.partial(  # type: ignore[attr-defined]
-        run_workflow_dict, func
-    )
+    func.run = functools.partial(run_workflow_dict, func)  # type: ignore[attr-defined]
     return func
 
 
