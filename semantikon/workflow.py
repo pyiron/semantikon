@@ -5,7 +5,7 @@ from collections import Counter
 from typing import Any, Callable, Iterable, cast
 
 from flowrep import workflow as fwf
-from flowrep.models.api import live, parsers, wfms
+from flowrep.models.api import parsers, schemas, wfms
 
 from semantikon import flowrep_dict
 from semantikon.converter import (
@@ -257,7 +257,7 @@ def _get_semantikon_dict(workflow_func):
     # Assumes *workflow_func* is already a flowrep workflow recipe holder
     return to_semantikon_workflow_dict(
         flowrep_dict.live_to_dict(
-            live.Workflow.from_recipe(workflow_func.flowrep_recipe),
+            schemas.Workflow.from_recipe(workflow_func.flowrep_recipe),
             with_io=True,
             with_function=True,
         )
