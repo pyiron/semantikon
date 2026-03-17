@@ -1,4 +1,5 @@
 import copy
+import functools
 import keyword
 from collections import Counter
 from typing import Any, Callable, Iterable, cast
@@ -10,17 +11,6 @@ from semantikon.converter import (
     parse_input_args,
     parse_output_args,
 )
-
-
-class FunctionWithWorkflow(fwf.FunctionWithWorkflow):
-    def run(self, *args, **kwargs) -> dict[str, Any]:
-        return to_semantikon_workflow_dict(
-            super().run(*args, with_function=True, **kwargs)
-        )
-
-    def serialize_workflow(self) -> dict:
-        wf_dict = self._serialize_workflow(with_function=True, with_io=True)
-        return to_semantikon_workflow_dict(wf_dict)
 
 
 def separate_types(
@@ -262,9 +252,21 @@ def get_workflow_dict(func: Callable) -> dict[str, object]:
     return to_semantikon_workflow_dict(wf)
 
 
-def workflow(func: Callable) -> FunctionWithWorkflow:
-    func_with_metadata = FunctionWithWorkflow(func)
-    return func_with_metadata
+def workflow(func: Callable) -> Callable:
+    func = fwf.workflow(func)
+    # Expose new dictionary getter
+    func.get_semantikon_dict = functools.partial(  # type: ignore[attr-defined]
+        to_semantikon_workflow_dict,
+        fwf.get_workflow_dict(func, with_function=True, with_io=True),
+    )
+    # Override flowrep bound run method (always with_function)
+    func.run = functools.partial(run_workflow_dict, func)  # type: ignore[attr-defined]
+    return func
 
 
 workflow.__doc__ = fwf.workflow.__doc__
+
+
+def run_workflow_dict(func, *args, **kwargs) -> dict[str, Any]:
+    executed = fwf.run_workflow_dict(func, *args, with_function=True, **kwargs)
+    return to_semantikon_workflow_dict(executed)
