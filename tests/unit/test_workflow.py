@@ -346,11 +346,12 @@ class TestWorkflow(unittest.TestCase):
             return a, b
 
         with self.assertRaises(ValueError) as cm:
-            swf.get_workflow_dict(test_workflow)
+            swf.workflow(test_workflow)
         self.assertIn(
-            "Duplicate output label 'output' detected for function function_with_duplicate_output_labels",
+            "must have unique elements. Duplicates:",
             str(cm.exception),
         )
+        self.assertIn("output", str(cm.exception))
 
         def test_workflow_non_identifier_label(
             a: int, b: int
@@ -358,8 +359,9 @@ class TestWorkflow(unittest.TestCase):
             result = add(a, b)
             return result
 
-        with self.assertRaises(ValueError):
-            swf.get_workflow_dict(test_workflow_non_identifier_label)
+        with self.assertRaises(ValueError) as cm:
+            swf.workflow(test_workflow_non_identifier_label)
+        self.assertIn("Label must be a valid Python identifier", str(cm.exception))
 
 
 if __name__ == "__main__":

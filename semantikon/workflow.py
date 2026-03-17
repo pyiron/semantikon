@@ -5,7 +5,9 @@ from collections import Counter
 from typing import Any, Callable, Iterable, cast
 
 from flowrep import workflow as fwf
+from flowrep.models.api import live, parsers, wfms
 
+from semantikon import flowrep_dict
 from semantikon.converter import (
     get_return_expressions,
     parse_input_args,
@@ -237,27 +239,11 @@ def to_semantikon_workflow_dict(data: dict, output_counts: int | None = None) ->
     return data
 
 
-def get_workflow_dict(func: Callable) -> dict[str, object]:
-    """
-    Get a dictionary representation of the workflow for a given function.
-
-    Args:
-        func (Callable): The function to be analyzed.
-
-    Returns:
-        dict: A dictionary representation of the workflow, including inputs,
-            outputs, nodes, edges, and label.
-    """
-    wf = fwf.get_workflow_dict(func, with_function=True, with_io=True)
-    return to_semantikon_workflow_dict(wf)
-
-
 def workflow(func: Callable) -> Callable:
-    func = fwf.workflow(func)
+    func = parsers.workflow(func)
     # Expose new dictionary getter
     func.get_semantikon_dict = functools.partial(  # type: ignore[attr-defined]
-        to_semantikon_workflow_dict,
-        fwf.get_workflow_dict(func, with_function=True, with_io=True),
+        _get_semantikon_dict, func
     )
     # Override flowrep bound run method (always with_function)
     func.run = functools.partial(run_workflow_dict, func)  # type: ignore[attr-defined]
@@ -267,6 +253,18 @@ def workflow(func: Callable) -> Callable:
 workflow.__doc__ = fwf.workflow.__doc__
 
 
-def run_workflow_dict(func, *args, **kwargs) -> dict[str, Any]:
-    executed = fwf.run_workflow_dict(func, *args, with_function=True, **kwargs)
-    return to_semantikon_workflow_dict(executed)
+def _get_semantikon_dict(workflow_func):
+    # Assumes *workflow_func* is already a flowrep workflow recipe holder
+    return to_semantikon_workflow_dict(
+        flowrep_dict.live_to_dict(
+            live.Workflow.from_recipe(workflow_func.flowrep_recipe),
+            with_io=True,
+            with_function=True,
+        )
+    )
+
+
+def run_workflow_dict(func, **kwargs) -> dict[str, Any]:
+    executed = wfms.run_recipe(func.flowrep_recipe, **kwargs)
+    wf_dict = flowrep_dict.live_to_dict(executed, with_io=True, with_function=True)
+    return to_semantikon_workflow_dict(wf_dict)

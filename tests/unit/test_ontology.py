@@ -242,6 +242,102 @@ def mul(x: int, y: int) -> int:
     return x * y
 
 
+@workflow
+def multiple_connection(a, b):
+    c = add(a, b)
+    d = mul(a, c)
+    e = add(d, c)
+    return e
+
+
+@workflow
+def get_run_md(inp: Input, E=1.0):
+    result = run_md(inp)
+    return result
+
+
+@workflow
+def workflow_with_default_values(distance=2, time=1, mass=4):
+    speed = get_speed(distance, time)
+    kinetic_energy = get_kinetic_energy(mass, speed)
+    return kinetic_energy
+
+
+@workflow
+def my_correct_workflow(clothes: Clothes) -> int:
+    dyed_clothes = dye(clothes)
+    washed_clothes = wash(dyed_clothes)
+    money = sell(washed_clothes)
+    return money
+
+
+@workflow
+def my_wrong_workflow(clothes: Clothes) -> int:
+    washed_clothes = wash(clothes)
+    money = sell(washed_clothes)
+    return money
+
+
+@workflow
+def my_simple_workflow(clothes: Clothes) -> int:
+    washed_clothes = wash(clothes)
+    money = sell_without_color(washed_clothes)
+    return money
+
+
+@workflow
+def my_shacl_workflow(clothes: Clothes) -> int:
+    washed_clothes = wash(clothes)
+    money = sell_with_shacl(washed_clothes)
+    return money
+
+
+@workflow
+def my_shacl_wrong_workflow(clothes: Clothes) -> int:
+    money = sell_with_shacl(clothes)
+    return money
+
+
+@workflow
+def my_kinetic_energy_workflow_wrong_units(
+    distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
+):
+    speed = get_speed(distance, time)
+    kinetic_energy = get_kinetic_energy_wrong_units(mass, speed)
+    return kinetic_energy
+
+
+@workflow
+def my_kinetic_energy_workflow_wrong_uri(
+    distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
+):
+    speed = get_speed(distance, time)
+    kinetic_energy = get_kinetic_energy_wrong_uri(mass, speed)
+    return kinetic_energy
+
+
+@workflow
+def my_kinetic_energy_workflow_not_annotated(
+    distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
+):
+    speed = get_speed_not_annotated(distance, time)
+    kinetic_energy = get_kinetic_energy(mass, speed)
+    return kinetic_energy
+
+
+@workflow
+def workflow_with_dataclass(speed_data, mass):
+    speed = get_speed_with_dataclass(speed_data)
+    kinetic_energy = get_kinetic_energy(mass, speed)
+    return kinetic_energy
+
+
+@workflow
+def my_unhashable_inputs(uh):
+    result = get_unhashable(uh)
+    return result
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -363,20 +459,14 @@ class TestOntology(unittest.TestCase):
                 "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy"
             ),
         )
-        wf_dict_one = my_kinetic_energy_workflow.run(1.0, 2.0, 3.0)
-        wf_dict_two = my_kinetic_energy_workflow.run(4.0, 5.0, 6.0)
+        wf_dict_one = my_kinetic_energy_workflow.run(distance=1.0, time=2.0, mass=3.0)
+        wf_dict_two = my_kinetic_energy_workflow.run(distance=4.0, time=5.0, mass=6.0)
         G_one = onto.serialize_and_convert_to_networkx(wf_dict_one, hash_data=True)
         G_two = onto.serialize_and_convert_to_networkx(wf_dict_two, hash_data=True)
         self.assertEqual(
             onto._get_graph_hash(G_one, with_global_inputs=False),
             onto._get_graph_hash(G_two, with_global_inputs=False),
         )
-
-        @workflow
-        def workflow_with_default_values(distance=2, time=1, mass=4):
-            speed = get_speed(distance, time)
-            kinetic_energy = get_kinetic_energy(mass, speed)
-            return kinetic_energy
 
         wf_dict = workflow_with_default_values.get_semantikon_dict()
         wf_dict_run = workflow_with_default_values.run(distance=2, time=1, mass=4)
@@ -400,7 +490,7 @@ class TestOntology(unittest.TestCase):
     def test_hash_with_value(self):
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
-        wf_dict = my_kinetic_energy_workflow.run(1, 2, 3)
+        wf_dict = my_kinetic_energy_workflow.run(distance=1, time=2, mass=3)
         G_run = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         self.assertEqual(
             onto._get_graph_hash(G, with_global_inputs=False),
@@ -496,37 +586,13 @@ class TestOntology(unittest.TestCase):
         verdict, _, report = onto.validate_values(graph)
         self.assertTrue(verdict, msg=report)
 
-        @workflow
-        def my_kinetic_energy_workflow_wrong_units(
-            distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
-        ):
-            speed = get_speed(distance, time)
-            kinetic_energy = get_kinetic_energy_wrong_units(mass, speed)
-            return kinetic_energy
-
         wf_dict = my_kinetic_energy_workflow_wrong_units.get_semantikon_dict()
         graph = onto.get_knowledge_graph(wf_dict)
         self.assertFalse(onto.validate_values(graph)[0])
 
-        @workflow
-        def my_kinetic_energy_workflow_wrong_uri(
-            distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
-        ):
-            speed = get_speed(distance, time)
-            kinetic_energy = get_kinetic_energy_wrong_uri(mass, speed)
-            return kinetic_energy
-
         wf_dict = my_kinetic_energy_workflow_wrong_uri.get_semantikon_dict()
         graph = onto.get_knowledge_graph(wf_dict)
         self.assertFalse(onto.validate_values(graph)[0])
-
-        @workflow
-        def my_kinetic_energy_workflow_not_annotated(
-            distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
-        ):
-            speed = get_speed_not_annotated(distance, time)
-            kinetic_energy = get_kinetic_energy(mass, speed)
-            return kinetic_energy
 
         wf_dict = my_kinetic_energy_workflow_not_annotated.get_semantikon_dict()
         graph = onto.get_knowledge_graph(wf_dict)
@@ -534,48 +600,18 @@ class TestOntology(unittest.TestCase):
         self.assertTrue(onto.validate_values(graph, strict_typing=False)[0])
 
     def test_restrictions(self):
-        @workflow
-        def my_correct_workflow(clothes: Clothes) -> int:
-            dyed_clothes = dye(clothes)
-            washed_clothes = wash(dyed_clothes)
-            money = sell(washed_clothes)
-            return money
-
         graph = onto.get_knowledge_graph(my_correct_workflow.get_semantikon_dict())
         self.assertTrue(onto.validate_values(graph)[0])
-
-        @workflow
-        def my_wrong_workflow(clothes: Clothes) -> int:
-            washed_clothes = wash(clothes)
-            money = sell(washed_clothes)
-            return money
 
         graph = onto.get_knowledge_graph(my_wrong_workflow.get_semantikon_dict())
         self.assertFalse(onto.validate_values(graph)[0])
 
-        @workflow
-        def my_simple_workflow(clothes: Clothes) -> int:
-            washed_clothes = wash(clothes)
-            money = sell_without_color(washed_clothes)
-            return money
-
         graph = onto.get_knowledge_graph(my_simple_workflow.get_semantikon_dict())
         self.assertTrue(onto.validate_values(graph)[0])
-
-        @workflow
-        def my_shacl_workflow(clothes: Clothes) -> int:
-            washed_clothes = wash(clothes)
-            money = sell_with_shacl(washed_clothes)
-            return money
 
         graph = onto.get_knowledge_graph(my_shacl_workflow.get_semantikon_dict())
         verdict, _, report = onto.validate_values(graph)
         self.assertTrue(verdict, msg=report)
-
-        @workflow
-        def my_shacl_wrong_workflow(clothes: Clothes) -> int:
-            money = sell_with_shacl(clothes)
-            return money
 
         graph = onto.get_knowledge_graph(my_shacl_wrong_workflow.get_semantikon_dict())
         self.assertFalse(onto.validate_values(graph)[0])
@@ -644,7 +680,7 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_run(self):
-        wf_dict = my_kinetic_energy_workflow.run(2, 1, 4)
+        wf_dict = my_kinetic_energy_workflow.run(distance=2, time=1, mass=4)
         g_run = onto.get_knowledge_graph(wf_dict)
         query = sparql_prefixes + """
         SELECT ?node ?value WHERE {
@@ -681,7 +717,7 @@ class TestOntology(unittest.TestCase):
                 self.assertFalse(any(str(r).endswith(tag) for r in results))
 
     def test_query_with_uri(self):
-        wf_dict = my_kinetic_energy_workflow.run(1.0, 2.0, 3.0)
+        wf_dict = my_kinetic_energy_workflow.run(distance=1.0, time=2.0, mass=3.0)
         graph = onto.get_knowledge_graph(wf_dict)
 
         query = sparql_prefixes + """
@@ -702,13 +738,8 @@ class TestOntology(unittest.TestCase):
         self.assertListEqual(data, [1.0, 0.375])
 
     def test_extract_dataclass(self):
-        @workflow
-        def get_run_md(inp: Input, E=1.0):
-            result = run_md(inp)
-            return result
-
         inp = Input(T=300.0, n=100)
-        wf_dict = get_run_md.run(inp, E=1.0)
+        wf_dict = get_run_md.run(inp=inp, E=1.0)
         g = onto.get_knowledge_graph(wf_dict)
         g_dc = onto.extract_dataclass(g)
         with self.subTest("temperature data"):
@@ -735,12 +766,6 @@ class TestOntology(unittest.TestCase):
             ):
                 self.assertIn((s, onto.QUDT.hasUnit, UNIT["NanoM"]), g_dc)
                 self.assertIn((s, RDF.value, Literal(2.0)), g_dc)
-
-        @workflow
-        def workflow_with_dataclass(speed_data, mass):
-            speed = get_speed_with_dataclass(speed_data)
-            kinetic_energy = get_kinetic_energy(mass, speed)
-            return kinetic_energy
 
         speed_data = NewSpeedData(distance=1.0, time=2.0)
         query = sparql_prefixes + """
@@ -801,13 +826,8 @@ class TestOntology(unittest.TestCase):
         self.assertEqual(list(g.query(query))[0][0].toPython(), "output_0")
 
     def test_unhashable(self):
-        @workflow
-        def my_unhashable_inputs(uh):
-            result = get_unhashable(uh)
-            return result
-
         uh = Unhashable()
-        wf_dict = my_unhashable_inputs.run(uh)
+        wf_dict = my_unhashable_inputs.run(uh=uh)
         with self.assertRaises(RuntimeError) as context:
             _ = onto.get_knowledge_graph(wf_dict)
             self.assertEqual(
@@ -816,18 +836,12 @@ class TestOntology(unittest.TestCase):
             )
 
     def test_multiple_connections(self):
-        @workflow
-        def multiple_connection(a, b):
-            c = add(a, b)
-            d = mul(a, c)
-            e = add(d, c)
-            return e
 
         # Check that the multiple connections for c do not cause error
         _ = onto.get_knowledge_graph(multiple_connection.get_semantikon_dict())
 
     def test_load_data(self):
-        wf_dict = my_kinetic_energy_workflow.run(1.0, 2.0, 3.0)
+        wf_dict = my_kinetic_energy_workflow.run(distance=1.0, time=2.0, mass=3.0)
         graph = onto.get_knowledge_graph(wf_dict, store_data=True, file_name="test")
         data = onto.load_data("test.h5")
         self.assertEqual(sorted(data.values()), [0.375, 0.5])
