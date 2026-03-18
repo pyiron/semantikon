@@ -258,7 +258,7 @@ def _output_ports_to_dict(
 # ---------------------------------------------------------------------------
 
 def get_hashed_node_dict(workflow_dict: dict[str, dict]) -> dict[str, Any]:
-    G = get_workflow_graph(workflow_dict)
+    G = _get_workflow_graph(workflow_dict)
     hash_dict = {}
 
     for node in list(nx.topological_sort(G)):
@@ -307,7 +307,7 @@ def get_hashed_node_dict(workflow_dict: dict[str, dict]) -> dict[str, Any]:
     return hash_dict
 
 
-def get_workflow_graph(workflow_dict: dict[str, Any]) -> nx.DiGraph:
+def _get_workflow_graph(workflow_dict: dict[str, Any]) -> nx.DiGraph:
     """
     Convert a workflow dictionary into a directed graph representation.
 
@@ -345,7 +345,7 @@ def get_workflow_graph(workflow_dict: dict[str, Any]) -> nx.DiGraph:
     for key, node in workflow_dict["nodes"].items():
         assert node["type"] in ["atomic", "workflow"]
         if node["type"] == "workflow":
-            child_G = get_workflow_graph(node)
+            child_G = _get_workflow_graph(node)
             for child_key in list(child_G.graph.keys()):
                 new_key = f"{key}/{child_key}" if child_key != "" else key
                 child_G.graph[new_key] = child_G.graph[child_key]
@@ -423,7 +423,7 @@ def _get_missing_edges(edge_list: list[tuple[str, str]]) -> list[tuple[str, str]
     return edge_list + extra_edges
 
 
-def simple_run(G: nx.DiGraph) -> nx.DiGraph:
+def _simple_run(G: nx.DiGraph) -> nx.DiGraph:
     for node in nx.topological_sort(G):
         data = G.nodes[node]
         if data["step"] == "node":
@@ -488,7 +488,7 @@ class GNode:
         return self.io is not None
 
 
-def graph_to_wf_dict(G: nx.DiGraph) -> dict:
+def _graph_to_wf_dict(G: nx.DiGraph) -> dict:
     """
     Convert a directed graph representation of a workflow into a workflow
     dictionary.

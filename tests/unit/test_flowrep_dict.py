@@ -325,11 +325,11 @@ class TestDigraphConverters(unittest.TestCase):
             with_io=False,
             with_function=True,
         )
-        G = flowrep_dict.get_workflow_graph(wf_dict)
+        G = flowrep_dict._get_workflow_graph(wf_dict)
         self.assertIsInstance(G, nx.DiGraph)
         with self.assertRaises(ValueError):
-            G = flowrep_dict.get_workflow_graph(wf_dict)
-            _ = flowrep_dict.simple_run(G)
+            G = flowrep_dict._get_workflow_graph(wf_dict)
+            _ = flowrep_dict._simple_run(G)
 
         wf_dict = flowrep_dict.live_to_dict(
             live.recipe2live(
@@ -340,19 +340,19 @@ class TestDigraphConverters(unittest.TestCase):
         )
         wf_dict["inputs"] = {"a": {"value": 1}, "b": {"default": 2}}
         wf_dict["nodes"]["add_0"]["inputs"] = {"y": {"metadata": "something"}}
-        G = flowrep_dict.get_workflow_graph(wf_dict)
+        G = flowrep_dict._get_workflow_graph(wf_dict)
         self.assertDictEqual(
             G.nodes["add_0:inputs@y"],
             {"metadata": "something", "position": 0, "step": "input"},
         )
-        G = flowrep_dict.simple_run(G)
+        G = flowrep_dict._simple_run(G)
         self.assertDictEqual(G.nodes["outputs@z"], {"step": "output", "value": 12})
-        rev_edges = flowrep_dict.graph_to_wf_dict(G)["edges"]
+        rev_edges = flowrep_dict._graph_to_wf_dict(G)["edges"]
         self.assertEqual(
             sorted(rev_edges),
             sorted(wf_dict["edges"]),
         )
-        rev_macro_edges = flowrep_dict.graph_to_wf_dict(G)["nodes"]["example_macro_0"]["edges"]
+        rev_macro_edges = flowrep_dict._graph_to_wf_dict(G)["nodes"]["example_macro_0"]["edges"]
         self.assertEqual(
             sorted(rev_macro_edges),
             sorted(wf_dict["nodes"]["example_macro_0"]["edges"]),
