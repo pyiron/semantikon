@@ -1,7 +1,9 @@
 """Tests for the live → nested-dict converter."""
 
+import dataclasses
 import unittest
 
+import networkx as nx
 from flowrep.models import live, wfms
 from flowrep.models.parsers import workflow_parser
 
@@ -31,6 +33,56 @@ def _diamond_workflow(a: int, b: int = 1) -> int:
     n = library.negate(a)
     result = library.my_mul(s, n)
     return result
+
+
+
+def operation(x: float, y: float) -> tuple[float, float]:
+    return x + y, x - y
+
+
+def add(x: float = 2.0, y: float = 1) -> float:
+    return x + y
+
+
+def multiply(x: float, y: float = 5) -> float:
+    return x * y
+
+
+@workflow_parser.workflow
+def workflow_with_data(a=10, b=20):
+    x = add(a, b)
+    y = multiply(x, b)
+    return x, y
+
+
+@workflow_parser.workflow
+def example_macro(a=10, b=20):
+    c, d = operation(a, b)
+    e = add(c, y=d)
+    f = multiply(e)
+    return f
+
+
+@workflow_parser.workflow
+def example_workflow(a=10, b=20):
+    y = example_macro(a, b)
+    z = add(y, b)
+    return z
+
+
+@dataclasses.dataclass
+class TestClass:
+    a: int = 10
+    b: int = 20
+
+
+def some_function(test: TestClass):
+    return test
+
+@workflow_parser.workflow
+def workflow_with_class(test: TestClass):
+    test = some_function(test)
+    return test
 
 
 class TestAtomicToDict(unittest.TestCase):
@@ -261,6 +313,112 @@ class TestRoundTripConsistency(unittest.TestCase):
         )
         for port_d in d["outputs"].values():
             self.assertIn("value", port_d)
+
+
+class TestDigraphConverters(unittest.TestCase):
+    def test_wf_dict_to_graph(self):
+        # wf_dict = example_workflow.get_flowrep_dict()
+        wf_dict = flowrep_dict.live_to_dict(
+            live.recipe2live(
+                example_workflow.flowrep_recipe
+            ),
+            with_io=False,
+            with_function=True,
+        )
+        G = flowrep_dict.get_workflow_graph(wf_dict)
+        self.assertIsInstance(G, nx.DiGraph)
+        with self.assertRaises(ValueError):
+            G = flowrep_dict.get_workflow_graph(wf_dict)
+            _ = flowrep_dict.simple_run(G)
+
+        wf_dict = flowrep_dict.live_to_dict(
+            live.recipe2live(
+                example_workflow.flowrep_recipe
+            ),
+            with_io=True,
+            with_function=True,
+        )
+        wf_dict["inputs"] = {"a": {"value": 1}, "b": {"default": 2}}
+        wf_dict["nodes"]["add_0"]["inputs"] = {"y": {"metadata": "something"}}
+        G = flowrep_dict.get_workflow_graph(wf_dict)
+        self.assertDictEqual(
+            G.nodes["add_0:inputs@y"],
+            {"metadata": "something", "position": 0, "step": "input"},
+        )
+        G = flowrep_dict.simple_run(G)
+        self.assertDictEqual(G.nodes["outputs@z"], {"step": "output", "value": 12})
+        rev_edges = flowrep_dict.graph_to_wf_dict(G)["edges"]
+        self.assertEqual(
+            sorted(rev_edges),
+            sorted(wf_dict["edges"]),
+        )
+        rev_macro_edges = flowrep_dict.graph_to_wf_dict(G)["nodes"]["example_macro_0"]["edges"]
+        self.assertEqual(
+            sorted(rev_macro_edges),
+            sorted(wf_dict["nodes"]["example_macro_0"]["edges"]),
+        )
+
+    def test_get_hashed_node_dict(self):
+
+        # workflow_dict = workflow_with_data.run(a=10, b=20)
+        workflow_dict = flowrep_dict.live_to_dict(
+            wfms.run_recipe(workflow_with_data.flowrep_recipe, a=10, b=20),
+            with_io=True,
+            with_function=True,
+        )
+        hashed_dict = flowrep_dict.get_hashed_node_dict(workflow_dict)
+        for node in hashed_dict.values():
+            self.assertIn("hash", node)
+            self.assertIsInstance(node["hash"], str)
+            self.assertEqual(len(node["hash"]), 64)
+        self.assertTrue(
+            hashed_dict["multiply_0"]["inputs"]["x"].endswith(
+                hashed_dict["add_0"]["hash"] + "@output"
+            )
+        )
+
+        # workflow_dict = workflow_with_data.get_flowrep_dict()
+        workflow_dict = flowrep_dict.live_to_dict(
+            live.recipe2live(workflow_with_data.flowrep_recipe),
+            with_io=True,
+            with_function=True,
+        )
+        hashed_dict = flowrep_dict.get_hashed_node_dict(workflow_dict)
+        for node in hashed_dict.values():
+            self.assertNotIn("hash", node)
+        workflow_dict["inputs"] = {"a": {"value": 10}, "b": {"value": 20}}
+        # workflow_dict_run = workflow_with_data.run(a=10, b=20)
+        workflow_dict_run = flowrep_dict.live_to_dict(
+            wfms.run_recipe(workflow_with_data.flowrep_recipe, a=10, b=20),
+            with_io=True,
+            with_function=True,
+        )
+        self.assertDictEqual(
+            flowrep_dict.get_hashed_node_dict(workflow_dict),
+            flowrep_dict.get_hashed_node_dict(workflow_dict_run),
+        )
+
+        # workflow_dict = example_workflow.run(a=10, b=20)
+        workflow_dict = flowrep_dict.live_to_dict(
+            wfms.run_recipe(example_workflow.flowrep_recipe, a=10, b=20),
+            with_io=True,
+            with_function=True,
+        )
+        hashed_dict = flowrep_dict.get_hashed_node_dict(workflow_dict)
+        self.assertIn("example_macro_0.operation_0", hashed_dict)
+
+        test_instance = TestClass()
+        # workflow_dict = workflow_with_class.run(test=test_instance)
+        workflow_dict = flowrep_dict.live_to_dict(
+            wfms.run_recipe(workflow_with_class.flowrep_recipe, test=test_instance),
+            with_io=True,
+            with_function=True,
+        )
+        hashed_dict = flowrep_dict.get_hashed_node_dict(workflow_dict)
+        for node in hashed_dict.values():
+            self.assertIn("hash", node)
+            self.assertIsInstance(node["hash"], str)
+            self.assertEqual(len(node["hash"]), 64)
 
 
 if __name__ == "__main__":
