@@ -135,6 +135,13 @@ def _workflow_to_dict(
     return result
 
 
+def _infer_label(recipe: workflow_model.WorkflowNode) -> str:
+    """Best-effort label from a workflow recipe's reference."""
+    if recipe.reference is not None:
+        return recipe.reference.info.fully_qualified_name.rsplit(".", 1)[-1]
+    return ""
+
+
 # ---------------------------------------------------------------------------
 # Edge conversion
 # ---------------------------------------------------------------------------
@@ -211,6 +218,20 @@ def _port_dict(value, annotation, default=live.NOT_DATA):
     return d
 
 
+def _unwrap_annotated(annotation: Any) -> Any:
+    """
+    Strip ``Annotated`` wrappers, returning just the base type.
+
+    Semantic metadata (``uri``, ``units``, ``triples``, …) embedded in
+    ``Annotated`` extras belongs to *semantikon*, not to the flowrep dict.
+    Storing the full ``Annotated`` type as ``"dtype"`` would cause
+    ``meta_to_dict`` to double-extract that metadata in a wrong context.
+    """
+    if get_origin(annotation) is Annotated:
+        return get_args(annotation)[0]
+    return annotation
+
+
 def _input_ports_to_dict(
     ports: Mapping[str, live.InputPort],
 ) -> dict[str, dict[str, Any]]:
@@ -236,24 +257,3 @@ def _output_ports_to_dict(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _unwrap_annotated(annotation: Any) -> Any:
-    """
-    Strip ``Annotated`` wrappers, returning just the base type.
-
-    Semantic metadata (``uri``, ``units``, ``triples``, …) embedded in
-    ``Annotated`` extras belongs to *semantikon*, not to the flowrep dict.
-    Storing the full ``Annotated`` type as ``"dtype"`` would cause
-    ``meta_to_dict`` to double-extract that metadata in a wrong context.
-    """
-    if get_origin(annotation) is Annotated:
-        return get_args(annotation)[0]
-    return annotation
-
-
-def _infer_label(recipe: workflow_model.WorkflowNode) -> str:
-    """Best-effort label from a workflow recipe's reference."""
-    if recipe.reference is not None:
-        return recipe.reference.info.fully_qualified_name.rsplit(".", 1)[-1]
-    return ""
