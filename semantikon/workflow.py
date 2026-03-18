@@ -223,8 +223,6 @@ def to_semantikon_workflow_dict(data: dict, output_counts: int | None = None) ->
                 type_=data["type"],
             )
         )
-    elif "test" in data:
-        data["test"] = _get_node_dict(function=data["test"]["function"])
     if "nodes" in data:
         assert "edges" in data, data
         counts = _edges_to_output_counts(data["edges"])
