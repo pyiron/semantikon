@@ -42,8 +42,7 @@ from typing import Annotated, Any, cast, get_args, get_origin
 import networkx as nx
 from pyiron_snippets import retrieve
 
-from flowrep.models import edge_models, live
-from flowrep.models.nodes import workflow_model
+from flowrep.models.api import live, nodes as node_schemas, schemas
 
 
 def live_to_dict(
@@ -66,13 +65,13 @@ def live_to_dict(
         A nested dictionary matching the structure of the legacy
         ``get_workflow_dict`` output.
     """
-    if isinstance(node, live.Atomic):
+    if isinstance(node, schemas.Atomic):
         return _atomic_to_dict(node, with_io=with_io, with_function=with_function)
-    if isinstance(node, live.Workflow):
+    if isinstance(node, schemas.Workflow):
         return _workflow_to_dict(
             node, with_io=with_io, with_function=with_function, label=label
         )
-    if isinstance(node, live.FlowControl):
+    if isinstance(node, schemas.FlowControl):
         raise NotImplementedError(
             "FlowControl → dict conversion is not yet implemented.  "
             "The legacy format flattens body-workflow children into the "
@@ -87,7 +86,7 @@ def live_to_dict(
 
 
 def _atomic_to_dict(
-    node: live.Atomic,
+    node: schemas.Atomic,
     *,
     with_io: bool,
     with_function: bool,
@@ -108,14 +107,14 @@ def _atomic_to_dict(
 
 
 def _workflow_to_dict(
-    node: live.Workflow,
+    node: schemas.Workflow,
     *,
     with_io: bool,
     with_function: bool,
     label: str | None,
 ) -> dict[str, Any]:
     recipe = node.recipe
-    assert isinstance(recipe, workflow_model.WorkflowNode)
+    assert isinstance(recipe, node_schemas.WorkflowNode)
 
     result: dict[str, Any] = {
         "type": "workflow",
@@ -144,7 +143,7 @@ def _workflow_to_dict(
     return result
 
 
-def _infer_label(recipe: workflow_model.WorkflowNode) -> str:
+def _infer_label(recipe: node_schemas.WorkflowNode) -> str:
     """Best-effort label from a workflow recipe's reference."""
     if recipe.reference is not None:
         return recipe.reference.info.fully_qualified_name.rsplit(".", 1)[-1]
@@ -156,7 +155,7 @@ def _infer_label(recipe: workflow_model.WorkflowNode) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _workflow_edges(recipe: workflow_model.WorkflowNode) -> list[tuple[str, str]]:
+def _workflow_edges(recipe: node_schemas.WorkflowNode) -> list[tuple[str, str]]:
     """Flatten typed edge objects into ``("src", "tgt")`` string tuples."""
     edges: list[tuple[str, str]] = []
 
@@ -187,7 +186,7 @@ def _workflow_edges(recipe: workflow_model.WorkflowNode) -> list[tuple[str, str]
 
     # Child output → workflow output  (or passthrough from workflow input)
     for target, source in recipe.output_edges.items():
-        if isinstance(source, edge_models.InputSource):
+        if isinstance(source, schemas.InputSource):
             edges.append(
                 (
                     f"inputs.{source.port}",
@@ -210,13 +209,13 @@ def _workflow_edges(recipe: workflow_model.WorkflowNode) -> list[tuple[str, str]
 # ---------------------------------------------------------------------------
 
 
-def _port_dict(value, annotation, default=live.NOT_DATA):
+def _port_dict(value, annotation, default=schemas.NOT_DATA):
     d = {}
-    if not isinstance(value, live.NotData):
+    if not isinstance(value, schemas.NotData):
         d["value"] = value
     if annotation is not None:
         d["dtype"] = _unwrap_annotated(annotation)
-    if not isinstance(default, live.NotData):
+    if not isinstance(default, schemas.NotData):
         d["default"] = default
     return d
 

@@ -5,15 +5,13 @@ import math
 import unittest
 
 import networkx as nx
-from flowrep.models import live, wfms
-from flowrep.models.parsers import workflow_parser
 
-from flowrep_static import library
-
+from flowrep.models.api import live, parsers, schemas, wfms
 
 from semantikon import flowrep_dict
 
 
+@parsers.atomic
 def my_add(a, b):
     return a + b
 
@@ -22,18 +20,31 @@ def my_mul(a, b):
     return a * b
 
 
+@parsers.atomic
 def negate(x):
     return -x
 
 
 # Reuse the diamond recipe from the test suite — it has a reference, so we get
 # annotations and defaults on the live Workflow.
-@workflow_parser.workflow
+@parsers.workflow
 def _diamond_workflow(a: int, b: int = 1) -> int:
-    s = library.my_add(a, b)
-    n = library.negate(a)
-    result = library.my_mul(s, n)
+    s = my_add(a, b)
+    n = negate(a)
+    result = my_mul(s, n)
     return result
+
+
+@parsers.atomic
+def increment(x, step=1):
+    return x + step
+
+
+@parsers.atomic
+def divmod_func(a: float, b: float) -> tuple[float, float]:
+    quotient = a // b
+    remainder = a % b
+    return quotient, remainder
 
 
 def operation(x: float, y: float) -> tuple[float, float]:
@@ -48,14 +59,14 @@ def multiply(x: float, y: float = 5) -> float:
     return x * y
 
 
-@workflow_parser.workflow
+@parsers.workflow
 def workflow_with_data(a=10, b=20):
     x = add(a, b)
     y = multiply(x, b)
     return x, y
 
 
-@workflow_parser.workflow
+@parsers.workflow
 def example_macro(a=10, b=20):
     c, d = operation(a, b)
     e = add(c, y=d)
@@ -63,7 +74,7 @@ def example_macro(a=10, b=20):
     return f
 
 
-@workflow_parser.workflow
+@parsers.workflow
 def example_workflow(a=10, b=20):
     y = example_macro(a, b)
     z = add(y, b)
@@ -80,7 +91,7 @@ def some_function(test: TestClass):
     return test
 
 
-@workflow_parser.workflow
+@parsers.workflow
 def workflow_with_class(test: TestClass):
     test = some_function(test)
     return test
@@ -93,7 +104,7 @@ def example_function(x):
 
 class TestAtomicToDict(unittest.TestCase):
     def test_basic_structure(self):
-        node = live.Atomic.from_recipe(library.my_add.flowrep_recipe)
+        node = schemas.Atomic.from_recipe(my_add.flowrep_recipe)
         d = flowrep_dict.live_to_dict(node)
         self.assertEqual(d["type"], "atomic")
         self.assertIn("function", d)
@@ -104,12 +115,12 @@ class TestAtomicToDict(unittest.TestCase):
         self.assertNotIn("outputs", d)
 
     def test_with_function(self):
-        node = live.Atomic.from_recipe(library.my_add.flowrep_recipe)
+        node = schemas.Atomic.from_recipe(my_add.flowrep_recipe)
         d = flowrep_dict.live_to_dict(node, with_function=True)
         self.assertTrue(callable(d["function"]))
 
     def test_with_io_pre_run(self):
-        node = live.Atomic.from_recipe(library.my_add.flowrep_recipe)
+        node = schemas.Atomic.from_recipe(my_add.flowrep_recipe)
         d = flowrep_dict.live_to_dict(node, with_io=True)
         self.assertIn("inputs", d)
         self.assertIn("outputs", d)
@@ -120,20 +131,20 @@ class TestAtomicToDict(unittest.TestCase):
         self.assertNotIn("value", d["outputs"]["output"])
 
     def test_with_io_post_run(self):
-        node = wfms.run_recipe(library.my_add.flowrep_recipe, a=3, b=4)
+        node = wfms.run_recipe(my_add.flowrep_recipe, a=3, b=4)
         d = flowrep_dict.live_to_dict(node, with_io=True)
         self.assertEqual(d["inputs"]["a"]["value"], 3)
         self.assertEqual(d["inputs"]["b"]["value"], 4)
         self.assertEqual(d["outputs"]["output"]["value"], 7)
 
     def test_defaults_included(self):
-        node = live.Atomic.from_recipe(library.increment.flowrep_recipe)
+        node = schemas.Atomic.from_recipe(increment.flowrep_recipe)
         d = flowrep_dict.live_to_dict(node, with_io=True)
         self.assertEqual(d["inputs"]["step"]["default"], 1)
         self.assertNotIn("default", d["inputs"]["x"])
 
     def test_multi_output(self):
-        node = wfms.run_recipe(library.divmod_func.flowrep_recipe, a=17, b=5)
+        node = wfms.run_recipe(divmod_func.flowrep_recipe, a=17, b=5)
         d = flowrep_dict.live_to_dict(node, with_io=True)
         self.assertIn("quotient", d["outputs"])
         self.assertIn("remainder", d["outputs"])
@@ -144,7 +155,7 @@ class TestAtomicToDict(unittest.TestCase):
 class TestWorkflowToDict(unittest.TestCase):
     def test_basic_structure(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = live.Workflow.from_recipe(recipe)
+        node = schemas.Workflow.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node)
         self.assertEqual(d["type"], "workflow")
         self.assertIn("nodes", d)
@@ -155,19 +166,19 @@ class TestWorkflowToDict(unittest.TestCase):
 
     def test_label_inferred_from_reference(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = live.Workflow.from_recipe(recipe)
+        node = schemas.Workflow.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node)
         self.assertEqual(d["label"], "_diamond_workflow")
 
     def test_label_override(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = live.Workflow.from_recipe(recipe)
+        node = schemas.Workflow.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node, label="my_label")
         self.assertEqual(d["label"], "my_label")
 
     def test_child_nodes_present(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = live.Workflow.from_recipe(recipe)
+        node = schemas.Workflow.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node)
         self.assertIn("my_add_0", d["nodes"])
         self.assertIn("negate_0", d["nodes"])
@@ -177,7 +188,7 @@ class TestWorkflowToDict(unittest.TestCase):
 
     def test_edges_cover_all_recipe_edges(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = live.Workflow.from_recipe(recipe)
+        node = schemas.Workflow.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node)
         edges = d["edges"]
         # Should have input_edges + sibling edges + output_edges
@@ -188,7 +199,7 @@ class TestWorkflowToDict(unittest.TestCase):
 
     def test_edge_format(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = live.Workflow.from_recipe(recipe)
+        node = schemas.Workflow.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node)
         for src, tgt in d["edges"]:
             self.assertIsInstance(src, str)
@@ -199,7 +210,7 @@ class TestWorkflowToDict(unittest.TestCase):
 
     def test_with_io_pre_run(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = live.Workflow.from_recipe(recipe)
+        node = schemas.Workflow.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node, with_io=True)
         self.assertIn("inputs", d)
         self.assertIn("outputs", d)
@@ -227,7 +238,7 @@ class TestWorkflowToDict(unittest.TestCase):
 
     def test_with_function_on_workflow(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = live.Workflow.from_recipe(recipe)
+        node = schemas.Workflow.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node, with_function=True)
         # Top-level workflow should have the resolved function
         self.assertIn("function", d)
@@ -238,7 +249,7 @@ class TestWorkflowToDict(unittest.TestCase):
 
     def test_without_function_uses_metadata(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = live.Workflow.from_recipe(recipe)
+        node = schemas.Workflow.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node, with_function=False)
         # Top-level: no "function" key (no with_function, reference exists but
         # we only add it when with_function=True)
@@ -251,7 +262,7 @@ class TestWorkflowToDict(unittest.TestCase):
         """Every port referenced in an edge should correspond to a real node or
         the workflow's own inputs/outputs."""
         recipe = _diamond_workflow.flowrep_recipe
-        node = live.Workflow.from_recipe(recipe)
+        node = schemas.Workflow.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node, with_io=True)
 
         valid_prefixes = {"inputs", "outputs"} | set(d["nodes"].keys())
@@ -264,28 +275,25 @@ class TestWorkflowToDict(unittest.TestCase):
 
 class TestFlowControlStub(unittest.TestCase):
     def test_raises_not_implemented(self):
-        from flowrep.models.nodes import for_model, helper_models
-        from flowrep.models import edge_models
-
-        recipe = for_model.ForNode(
+        recipe = schemas.ForNode(
             inputs=["xs"],
             outputs=["ys"],
-            body_node=helper_models.LabeledNode(
-                label="body", node=library.negate.flowrep_recipe
+            body_node=schemas.LabeledNode(
+                label="body", node=negate.flowrep_recipe
             ),
             input_edges={
-                edge_models.TargetHandle(
+                schemas.TargetHandle(
                     node="body", port="x"
-                ): edge_models.InputSource(port="xs")
+                ): schemas.InputSource(port="xs")
             },
             output_edges={
-                edge_models.OutputTarget(port="ys"): edge_models.SourceHandle(
+                schemas.OutputTarget(port="ys"): schemas.SourceHandle(
                     node="body", port="output_0"
                 )
             },
             nested_ports=["x"],
         )
-        fc = live.FlowControl.from_recipe(recipe)
+        fc = schemas.FlowControl.from_recipe(recipe)
         with self.assertRaises(NotImplementedError):
             flowrep_dict.live_to_dict(fc)
 
@@ -295,7 +303,9 @@ class TestRoundTripConsistency(unittest.TestCase):
 
     def test_pre_and_post_run_same_keys(self):
         recipe = _diamond_workflow.flowrep_recipe
-        pre = flowrep_dict.live_to_dict(live.Workflow.from_recipe(recipe), with_io=True)
+        pre = flowrep_dict.live_to_dict(
+            schemas.Workflow.from_recipe(recipe), with_io=True
+        )
         post = flowrep_dict.live_to_dict(
             wfms.run_recipe(recipe, a=3, b=7), with_io=True
         )
@@ -308,7 +318,9 @@ class TestRoundTripConsistency(unittest.TestCase):
 
     def test_pre_run_no_values(self):
         recipe = _diamond_workflow.flowrep_recipe
-        d = flowrep_dict.live_to_dict(live.Workflow.from_recipe(recipe), with_io=True)
+        d = flowrep_dict.live_to_dict(
+            schemas.Workflow.from_recipe(recipe), with_io=True
+        )
         for port_d in d["outputs"].values():
             self.assertNotIn("value", port_d)
 
