@@ -28,7 +28,7 @@ Edge string format
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Annotated, Any, get_args, get_origin
 
 from pyiron_snippets import retrieve
 
@@ -205,7 +205,7 @@ def _port_dict(value, annotation, default=live.NOT_DATA):
     if not isinstance(value, live.NotData):
         d["value"] = value
     if annotation is not None:
-        d["dtype"] = annotation
+        d["dtype"] = _unwrap_annotated(annotation)
     if not isinstance(default, live.NotData):
         d["default"] = default
     return d
@@ -236,6 +236,20 @@ def _output_ports_to_dict(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _unwrap_annotated(annotation: Any) -> Any:
+    """
+    Strip ``Annotated`` wrappers, returning just the base type.
+
+    Semantic metadata (``uri``, ``units``, ``triples``, …) embedded in
+    ``Annotated`` extras belongs to *semantikon*, not to the flowrep dict.
+    Storing the full ``Annotated`` type as ``"dtype"`` would cause
+    ``meta_to_dict`` to double-extract that metadata in a wrong context.
+    """
+    if get_origin(annotation) is Annotated:
+        return get_args(annotation)[0]
+    return annotation
 
 
 def _infer_label(recipe: workflow_model.WorkflowNode) -> str:
