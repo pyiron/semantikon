@@ -4,7 +4,6 @@ import keyword
 from collections import Counter
 from typing import Any, Callable, Iterable, cast
 
-from flowrep import workflow as fwf
 from flowrep.models.api import parsers, schemas, wfms
 
 from semantikon import flowrep_dict
@@ -246,9 +245,6 @@ def workflow(func: Callable) -> Callable:
     # Override flowrep bound run method (always with_function)
     func.run = functools.partial(run_workflow_dict, func)  # type: ignore[attr-defined]
     return func
-
-
-workflow.__doc__ = fwf.workflow.__doc__
 
 
 def _get_semantikon_dict(workflow_func):
