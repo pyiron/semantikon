@@ -35,7 +35,6 @@ def _diamond_workflow(a: int, b: int = 1) -> int:
     return result
 
 
-
 def operation(x: float, y: float) -> tuple[float, float]:
     return x + y, x - y
 
@@ -78,6 +77,7 @@ class TestClass:
 
 def some_function(test: TestClass):
     return test
+
 
 @workflow_parser.workflow
 def workflow_with_class(test: TestClass):
@@ -319,9 +319,7 @@ class TestDigraphConverters(unittest.TestCase):
     def test_wf_dict_to_graph(self):
         # wf_dict = example_workflow.get_flowrep_dict()
         wf_dict = flowrep_dict.live_to_dict(
-            live.recipe2live(
-                example_workflow.flowrep_recipe
-            ),
+            live.recipe2live(example_workflow.flowrep_recipe),
             with_io=False,
             with_function=True,
         )
@@ -332,9 +330,7 @@ class TestDigraphConverters(unittest.TestCase):
             _ = flowrep_dict._simple_run(G)
 
         wf_dict = flowrep_dict.live_to_dict(
-            live.recipe2live(
-                example_workflow.flowrep_recipe
-            ),
+            live.recipe2live(example_workflow.flowrep_recipe),
             with_io=True,
             with_function=True,
         )
@@ -352,7 +348,9 @@ class TestDigraphConverters(unittest.TestCase):
             sorted(rev_edges),
             sorted(wf_dict["edges"]),
         )
-        rev_macro_edges = flowrep_dict._graph_to_wf_dict(G)["nodes"]["example_macro_0"]["edges"]
+        rev_macro_edges = flowrep_dict._graph_to_wf_dict(G)["nodes"]["example_macro_0"][
+            "edges"
+        ]
         self.assertEqual(
             sorted(rev_macro_edges),
             sorted(wf_dict["nodes"]["example_macro_0"]["edges"]),

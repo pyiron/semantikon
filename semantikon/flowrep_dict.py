@@ -257,6 +257,7 @@ def _output_ports_to_dict(
 # Consumers
 # ---------------------------------------------------------------------------
 
+
 def get_hashed_node_dict(workflow_dict: dict[str, dict]) -> dict[str, Any]:
     G = _get_workflow_graph(workflow_dict)
     hash_dict = {}
@@ -288,7 +289,9 @@ def get_hashed_node_dict(workflow_dict: dict[str, dict]) -> dict[str, Any]:
                 hash_dict_tmp["node"]["connected_inputs"].append(inp_name)
             elif "value" in data:
                 if dataclasses.is_dataclass(data["value"]):
-                    hash_dict_tmp["inputs"][inp_name] = dataclasses.asdict(data["value"])
+                    hash_dict_tmp["inputs"][inp_name] = dataclasses.asdict(
+                        data["value"]
+                    )
                 else:
                     hash_dict_tmp["inputs"][inp_name] = data["value"]
             else:
