@@ -1,9 +1,8 @@
 import unittest
 from typing import Annotated
 
-from flowrep import tools
-
 import semantikon.workflow as swf
+from semantikon import flowrep_dict
 from semantikon.metadata import meta, u
 
 
@@ -166,7 +165,7 @@ class TestWorkflow(unittest.TestCase):
         }
         wf = example_macro.get_semantikon_dict()
         self.assertEqual(wf["type"], "workflow")
-        smtk_wf = tools.serialize_functions(wf)
+        smtk_wf = flowrep_dict.serialize_functions(wf)
         del smtk_wf["function"]
         self.assertEqual(smtk_wf, ref_data)
 
@@ -259,7 +258,7 @@ class TestWorkflow(unittest.TestCase):
         }
         wf = example_workflow.get_semantikon_dict()
         self.assertEqual(wf["type"], "workflow")
-        smtk_wf = tools.serialize_functions(wf)
+        smtk_wf = flowrep_dict.serialize_functions(wf)
         del smtk_wf["function"]
         del smtk_wf["nodes"]["example_macro_0"]["function"]
         self.assertEqual(smtk_wf, ref_data)

@@ -27,17 +27,21 @@ Edge string format
 
 from __future__ import annotations
 
+import collections
+import copy
 import dataclasses
 import hashlib
+import importlib
+import inspect
 import json
 import re
-from collections.abc import Mapping
+import textwrap
+from collections.abc import Callable, Mapping
 from typing import Annotated, Any, cast, get_args, get_origin
 
 import networkx as nx
 from pyiron_snippets import retrieve
 
-from flowrep import tools
 from flowrep.models import edge_models, live
 from flowrep.models.nodes import workflow_model
 
@@ -90,7 +94,7 @@ def _atomic_to_dict(
 ) -> dict[str, Any]:
     result: dict[str, Any] = {"type": "atomic"}
     result["function"] = (
-        node.function if with_function else tools.get_function_metadata(node.function)
+        node.function if with_function else get_function_metadata(node.function)
     )
     if with_io:
         result["inputs"] = _input_ports_to_dict(node.input_ports)
@@ -278,7 +282,7 @@ def get_hashed_node_dict(workflow_dict: dict[str, dict]) -> dict[str, Any]:
                 G.nodes[out].get("label", out.split("@")[-1])
                 for out in G.successors(node)
             ],
-            "node": tools.get_function_metadata(G.nodes[node]["function"]),
+            "node": get_function_metadata(G.nodes[node]["function"]),
         }
         hash_dict_tmp["node"]["connected_inputs"] = []
         for inp in G.predecessors(node):
@@ -502,7 +506,7 @@ def _graph_to_wf_dict(G: nx.DiGraph) -> dict:
     Returns:
         dict: The dictionary representation of the workflow.
     """
-    wf_dict = tools.dict_to_recursive_dd({})
+    wf_dict = dict_to_recursive_dd({})
 
     for node, metadata in list(G.nodes.data()):
         gn = GNode(node)
@@ -558,4 +562,132 @@ def _graph_to_wf_dict(G: nx.DiGraph) -> dict:
                 d = d["nodes"][n]
         for k, v in value.items():
             d[k] = v
-    return tools.recursive_dd_to_dict(wf_dict)
+    return recursive_dd_to_dict(wf_dict)
+
+
+# ---------------------------------------------------------------------------
+# Tools
+# ---------------------------------------------------------------------------
+
+
+def serialize_functions(data: dict[str, Any]) -> dict[str, Any]:
+    """
+    Separate functions from the data dictionary and store them in a function
+    dictionary. The functions inside the data dictionary will be replaced by
+    their name (which would for example make it easier to hash it)
+
+    Args:
+        data (dict[str, Any]): The data dictionary containing nodes and
+            functions.
+
+    Returns:
+        tuple: A tuple containing the modified data dictionary and the
+            function dictionary.
+    """
+    data = copy.deepcopy(data)
+    if "nodes" in data:
+        for key, node in data["nodes"].items():
+            data["nodes"][key] = serialize_functions(node)
+    elif "function" in data and not isinstance(data["function"], str):
+        data["function"] = get_function_metadata(data["function"])
+    if "test" in data and not isinstance(data["test"]["function"], str):
+        data["test"]["function"] = get_function_metadata(data["test"]["function"])
+    return data
+
+
+def _get_version_from_module(module_name: str) -> str:
+    base_module_name = module_name.split(".")[0]
+    base_module = importlib.import_module(base_module_name)
+    return getattr(base_module, "__version__", "not_defined")
+
+
+def get_function_metadata(
+    cls: Callable | dict[str, str], full_metadata: bool = False
+) -> dict[str, str]:
+    """
+    Get metadata for a given function or class.
+
+    Args:
+        cls (Callable | dict[str, str]): The function or class to get metadata for.
+        full_metadata (bool): Whether to include full metadata including hash,
+            docstring, and name.
+
+    Returns:
+        dict[str, str]: A dictionary containing the metadata of the function or class.
+    """
+    if isinstance(cls, dict) and "module" in cls and "qualname" in cls:
+        return cls
+    data = {
+        "module": cls.__module__,
+        "qualname": cls.__qualname__,
+    }
+
+    data["version"] = _get_version_from_module(data["module"])
+    if not full_metadata:
+        return data
+    data["hash"] = hash_function(cls)
+    data["docstring"] = cls.__doc__ or ""
+    data["name"] = cls.__name__
+    return data
+
+
+def hash_function(fn: Callable) -> str:
+    """
+    Hash a function based on its source code or signature.
+
+    For regular functions, the hash is based on the dedented source code.
+    For other callables (built-ins, methods, etc.), the hash is based on
+    the module, qualified name, and signature. If source code is unavailable
+    for a function, falls back to signature-based hashing.
+
+    Args:
+        fn (Callable): The function to hash.
+
+    Returns:
+        str: A stable hash string in the format "function_name:hash_hex".
+    """
+
+    if inspect.isfunction(fn):
+        try:
+            source_code = inspect.getsource(fn)
+            source_code = textwrap.dedent(
+                source_code.replace("\r\n", "\n").replace("\r", "\n")
+            )
+        except (OSError, TypeError):
+            # Fall back to signature for functions where source is unavailable
+            source_code = f"{fn.__module__}:{fn.__qualname__}:{inspect.signature(fn)}"
+    else:
+        source_code = f"{fn.__module__}:{fn.__qualname__}:{inspect.signature(fn)}"
+    source_code_hash = hashlib.sha256(source_code.encode("utf-8")).hexdigest()
+    name = getattr(fn, "__name__", "unknown")
+    return name + ":" + source_code_hash
+
+
+def recursive_defaultdict() -> collections.defaultdict:
+    """
+    Create a recursively nested collections.defaultdict.
+
+    Example:
+    >>> d = recursive_defaultdict()
+    >>> d['a']['b']['c'] = 1
+    >>> print(d)
+
+    Output: 1
+    """
+    return collections.defaultdict(recursive_defaultdict)
+
+
+def dict_to_recursive_dd(d: dict | collections.defaultdict) -> collections.defaultdict:
+    """Convert a regular dict to a recursively nested collections.defaultdict."""
+    if isinstance(d, dict) and not isinstance(d, collections.defaultdict):
+        return collections.defaultdict(
+            recursive_defaultdict, {k: dict_to_recursive_dd(v) for k, v in d.items()}
+        )
+    return d
+
+
+def recursive_dd_to_dict(d: dict | collections.defaultdict) -> dict:
+    """Convert a recursively nested collections.defaultdict to a regular dict."""
+    if isinstance(d, collections.defaultdict):
+        return {k: recursive_dd_to_dict(v) for k, v in d.items()}
+    return d
