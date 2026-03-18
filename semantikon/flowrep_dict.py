@@ -201,12 +201,6 @@ def _workflow_edges(recipe: workflow_model.WorkflowNode) -> list[tuple[str, str]
 # ---------------------------------------------------------------------------
 
 
-def _sanitized_output_name(name: str, outputs):
-    if name == "output_0" and len(outputs) == 1:
-        return "output"
-    return name
-
-
 def _port_dict(value, annotation, default=live.NOT_DATA):
     d = {}
     if not isinstance(value, live.NotData):
