@@ -42,7 +42,7 @@ from typing import Annotated, Any, cast, get_args, get_origin
 import networkx as nx
 from pyiron_snippets import retrieve
 
-from flowrep.models.api import live, nodes as node_schemas, schemas
+from flowrep.models.api import live, schemas
 
 
 def live_to_dict(
@@ -114,7 +114,7 @@ def _workflow_to_dict(
     label: str | None,
 ) -> dict[str, Any]:
     recipe = node.recipe
-    assert isinstance(recipe, node_schemas.WorkflowNode)
+    assert isinstance(recipe, schemas.WorkflowNode)
 
     result: dict[str, Any] = {
         "type": "workflow",
@@ -143,7 +143,7 @@ def _workflow_to_dict(
     return result
 
 
-def _infer_label(recipe: node_schemas.WorkflowNode) -> str:
+def _infer_label(recipe: schemas.WorkflowNode) -> str:
     """Best-effort label from a workflow recipe's reference."""
     if recipe.reference is not None:
         return recipe.reference.info.fully_qualified_name.rsplit(".", 1)[-1]
@@ -155,7 +155,7 @@ def _infer_label(recipe: node_schemas.WorkflowNode) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _workflow_edges(recipe: node_schemas.WorkflowNode) -> list[tuple[str, str]]:
+def _workflow_edges(recipe: schemas.WorkflowNode) -> list[tuple[str, str]]:
     """Flatten typed edge objects into ``("src", "tgt")`` string tuples."""
     edges: list[tuple[str, str]] = []
 
