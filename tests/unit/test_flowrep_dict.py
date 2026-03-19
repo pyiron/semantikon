@@ -5,7 +5,6 @@ import math
 import unittest
 
 import networkx as nx
-
 from flowrep.models.api import live, parsers, schemas, wfms
 
 from semantikon import flowrep_dict

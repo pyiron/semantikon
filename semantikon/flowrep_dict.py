@@ -40,9 +40,8 @@ from collections.abc import Callable, Mapping
 from typing import Annotated, Any, cast, get_args, get_origin
 
 import networkx as nx
-from pyiron_snippets import retrieve
-
 from flowrep.models.api import live, schemas
+from pyiron_snippets import retrieve
 
 
 def live_to_dict(
