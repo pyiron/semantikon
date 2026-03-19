@@ -278,13 +278,11 @@ class TestFlowControlStub(unittest.TestCase):
         recipe = schemas.ForNode(
             inputs=["xs"],
             outputs=["ys"],
-            body_node=schemas.LabeledNode(
-                label="body", node=negate.flowrep_recipe
-            ),
+            body_node=schemas.LabeledNode(label="body", node=negate.flowrep_recipe),
             input_edges={
-                schemas.TargetHandle(
-                    node="body", port="x"
-                ): schemas.InputSource(port="xs")
+                schemas.TargetHandle(node="body", port="x"): schemas.InputSource(
+                    port="xs"
+                )
             },
             output_edges={
                 schemas.OutputTarget(port="ys"): schemas.SourceHandle(
