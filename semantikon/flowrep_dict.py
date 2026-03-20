@@ -158,12 +158,19 @@ def _workflow_edges(recipe: schemas.WorkflowNode) -> list[tuple[str, str]]:
     """Flatten typed edge objects into ``("src", "tgt")`` string tuples."""
     edges: list[tuple[str, str]] = []
 
-    needs_output_sanitization = {
+    needs_output_sanitization: set[str | None] = {
         # semantikon uses "output" instead of "outputs_0" for default of one return
         label
         for label, child in recipe.nodes.items()
         if len(child.outputs) == 1 and child.outputs[0] == "output_0"
     }
+    if len(recipe.nodes) == 1 and recipe.outputs[0] == "output_0":
+        needs_output_sanitization.add(None)  # OutputTargets force .node to be None
+
+    def _sanitize_port_label(handle) -> str:
+        if handle.node in needs_output_sanitization:
+            return "output"
+        return handle.port
 
     # Workflow input → child input
     for target, source in recipe.input_edges.items():
@@ -178,7 +185,7 @@ def _workflow_edges(recipe: schemas.WorkflowNode) -> list[tuple[str, str]]:
     for target, source in recipe.edges.items():
         edges.append(
             (
-                f"{source.node}.outputs.{'output' if source.node in needs_output_sanitization else source.port}",
+                f"{source.node}.outputs.{_sanitize_port_label(source)}",
                 f"{target.node}.inputs.{target.port}",
             )
         )
@@ -189,14 +196,14 @@ def _workflow_edges(recipe: schemas.WorkflowNode) -> list[tuple[str, str]]:
             edges.append(
                 (
                     f"inputs.{source.port}",
-                    f"outputs.{'output' if target.node in needs_output_sanitization else target.port}",
+                    f"outputs.{_sanitize_port_label(target)}",
                 )
             )
         else:
             edges.append(
                 (
-                    f"{source.node}.outputs.{'output' if source.node in needs_output_sanitization else source.port}",
-                    f"outputs.{target.port}",
+                    f"{source.node}.outputs.{_sanitize_port_label(source)}",
+                    f"outputs.{_sanitize_port_label(target)}",
                 )
             )
 

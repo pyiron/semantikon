@@ -101,6 +101,55 @@ def example_function(x):
     return x * 2
 
 
+@parsers.atomic
+def identity(x):
+    return x
+
+
+def _inner_workflow_with_output_0() -> schemas.WorkflowNode:
+    """A workflow whose sole output is named ``output_0``.
+
+    This is unusual (the workflow parser names outputs from return variables),
+    but perfectly valid for manually constructed recipes.
+    """
+    return schemas.WorkflowNode(
+        inputs=["x"],
+        outputs=["output_0"],
+        nodes={"identity_0": identity.flowrep_recipe},
+        input_edges={
+            schemas.TargetHandle(node="identity_0", port="x"): schemas.InputSource(
+                port="x"
+            ),
+        },
+        edges={},
+        output_edges={
+            schemas.OutputTarget(port="output_0"): schemas.SourceHandle(
+                node="identity_0", port="x"
+            ),
+        },
+    )
+
+
+def _parent_workflow(inner: schemas.WorkflowNode) -> schemas.WorkflowNode:
+    """A workflow that wraps *inner* and reads its ``output_0`` port."""
+    return schemas.WorkflowNode(
+        inputs=["x"],
+        outputs=["result"],
+        nodes={"inner_0": inner},
+        input_edges={
+            schemas.TargetHandle(node="inner_0", port="x"): schemas.InputSource(
+                port="x"
+            ),
+        },
+        edges={},
+        output_edges={
+            schemas.OutputTarget(port="result"): schemas.SourceHandle(
+                node="inner_0", port="output_0"
+            ),
+        },
+    )
+
+
 class TestAtomicToDict(unittest.TestCase):
     def test_basic_structure(self):
         node = schemas.Atomic.from_recipe(my_add.flowrep_recipe)
@@ -501,6 +550,62 @@ class TestTools(unittest.TestCase):
         self.assertEqual(
             len(hash_result), 82
         )  # "dynamic_test_func:" + 64 char hex hash
+
+
+class TestOutputSanitizationConsistency(unittest.TestCase):
+    """Edges and output dicts must agree on port names after sanitization."""
+
+    def test_wfms_runs_fine(self):
+        """The recipe itself is well-formed and executes correctly."""
+        inner = _inner_workflow_with_output_0()
+        parent = _parent_workflow(inner)
+        node = wfms.run_recipe(parent, x=42)
+        self.assertEqual(node.output_ports["result"].value, 42)
+
+    def test_inner_dict_edges_consistent_with_outputs(self):
+        """The inner workflow's edges and outputs dict must use the same name."""
+        inner = _inner_workflow_with_output_0()
+        inner_live = schemas.Workflow.from_recipe(inner)
+        d = flowrep_dict.live_to_dict(inner_live, with_io=True, with_function=True)
+
+        # The outputs dict uses "output"
+        self.assertIn("output", d["outputs"])
+        self.assertNotIn("output_0", d["outputs"])
+
+        # Edges must also reference "outputs.output", not "outputs.output_0"
+        output_edge_targets = [
+            tgt for _, tgt in d["edges"] if tgt.startswith("outputs.")
+        ]
+        self.assertIn("outputs.output", output_edge_targets)
+        self.assertNotIn("outputs.output_0", output_edge_targets)
+
+    def test_nested_dict_produces_single_inner_output_node(self):
+        """get_workflow_graph must create exactly one output node per port."""
+        inner = _inner_workflow_with_output_0()
+        parent = _parent_workflow(inner)
+        parent_live = schemas.Workflow.from_recipe(parent)
+        d = flowrep_dict.live_to_dict(parent_live, with_io=True, with_function=True)
+        G = flowrep_dict._get_workflow_graph(d)
+
+        inner_output_nodes = [n for n in G.nodes if n.startswith("inner_0:outputs@")]
+        output_names = [n.split("@")[-1] for n in inner_output_nodes]
+        self.assertEqual(
+            output_names,
+            ["output"],
+            msg="Should be exactly one inner output node named 'output'",
+        )
+
+    def test_nested_dict_runs_via_simple_run(self):
+        """The full dict → nx graph → simple_run path must produce the right value."""
+        inner = _inner_workflow_with_output_0()
+        parent = _parent_workflow(inner)
+        parent_live = schemas.Workflow.from_recipe(parent)
+        d = flowrep_dict.live_to_dict(parent_live, with_io=True, with_function=True)
+        d["inputs"]["x"]["value"] = 42
+
+        G = flowrep_dict._get_workflow_graph(d)
+        G = flowrep_dict._simple_run(G)
+        self.assertEqual(G.nodes["outputs@result"]["value"], 42)
 
 
 if __name__ == "__main__":
