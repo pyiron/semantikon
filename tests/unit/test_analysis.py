@@ -59,6 +59,19 @@ def my_kinetic_energy_workflow(
     return kinetic_energy
 
 
+@workflow
+def workflow_with_dataclass(data: SpeedData, mass):
+    speed = get_speed_with_dataclass(data)
+    kinetic_energy = get_kinetic_energy(mass, speed)
+    return kinetic_energy
+
+
+@workflow
+def only_get_speed_workflow(distance, time):
+    speed = get_speed(distance=distance, time=time)
+    return speed
+
+
 class TestAnalysis(unittest.TestCase):
     def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
@@ -112,12 +125,16 @@ class TestAnalysis(unittest.TestCase):
         wf_dict["inputs"]["time"]["value"] = 2.0
         wf_dict["inputs"]["mass"]["value"] = 3.0
         self.assertDictEqual(wf_dict["outputs"], {"kinetic_energy": {}})
-        graph = onto.get_knowledge_graph(my_kinetic_energy_workflow.run(2.0, 2.0, 3.0))
+        graph = onto.get_knowledge_graph(
+            my_kinetic_energy_workflow.run(distance=2.0, time=2.0, mass=3.0)
+        )
         wf_dict = asis.request_values(wf_dict, graph)
         self.assertDictEqual(
             wf_dict["outputs"], {"kinetic_energy": {}}, msg="no known inputs"
         )
-        graph += onto.get_knowledge_graph(my_kinetic_energy_workflow.run(1.0, 2.0, 3.0))
+        graph += onto.get_knowledge_graph(
+            my_kinetic_energy_workflow.run(distance=1.0, time=2.0, mass=3.0)
+        )
         wf_dict = asis.request_values(wf_dict, graph)
         self.assertDictEqual(
             wf_dict["outputs"],
@@ -140,7 +157,8 @@ class TestAnalysis(unittest.TestCase):
             msg="speed must be known because of known distance and time",
         )
         graph = onto.get_knowledge_graph(
-            my_kinetic_energy_workflow.run(1.0, 2.0, 4.0), remove_data=True
+            my_kinetic_energy_workflow.run(distance=1.0, time=2.0, mass=4.0),
+            remove_data=True,
         )
         wf_dict = asis.request_values(wf_dict, graph)
         self.assertDictEqual(
@@ -148,7 +166,7 @@ class TestAnalysis(unittest.TestCase):
         )
 
     def test_sparql_writer(self):
-        wf_dict = my_kinetic_energy_workflow.run(2.0, 1.0, 4.0)
+        wf_dict = my_kinetic_energy_workflow.run(distance=2.0, time=1.0, mass=4.0)
         graph = onto.get_knowledge_graph(wf_dict)
         comp = asis.query_io_completer(graph)
         self.assertEqual(
@@ -181,13 +199,8 @@ class TestAnalysis(unittest.TestCase):
             _ = comp.non_existing_node
         self.assertIsInstance(comp.my_kinetic_energy_workflow, asis._Node)
 
-        @workflow
-        def only_get_speed_workflow(distance, time):
-            speed = get_speed(distance=distance, time=time)
-            return speed
-
         graph += onto.get_knowledge_graph(
-            only_get_speed_workflow.run(3.0, 1.5), prefix="T"
+            only_get_speed_workflow.run(distance=3.0, time=1.5), prefix="T"
         )
         comp = asis.query_io_completer(graph)
         A = comp.my_kinetic_energy_workflow.inputs.time
@@ -215,14 +228,8 @@ class TestAnalysis(unittest.TestCase):
         self.assertIsInstance(B.query(fallback_to_hash=True)[0][0], str)
 
     def test_sparql_writer_with_dataclass(self):
-        @workflow
-        def workflow_with_dataclass(data: SpeedData, mass):
-            speed = get_speed_with_dataclass(data)
-            kinetic_energy = get_kinetic_energy(mass, speed)
-            return kinetic_energy
-
         data = SpeedData(distance=1.0, time=2.0)
-        wf_dict = workflow_with_dataclass.run(data, 3.0)
+        wf_dict = workflow_with_dataclass.run(data=data, mass=3.0)
         graph = onto.get_knowledge_graph(wf_dict, extract_dataclasses=True)
         comp = asis.query_io_completer(graph)
         self.assertEqual(
