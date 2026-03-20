@@ -159,7 +159,7 @@ def _workflow_edges(recipe: schemas.WorkflowNode) -> list[tuple[str, str]]:
     edges: list[tuple[str, str]] = []
 
     needs_output_sanitization = {
-        # semantikon uses "output" instead of "outputs_0" for default of one return
+        # semantikon uses "output" instead of "output_0" for default of one return
         label
         for label, child in recipe.nodes.items()
         if len(child.outputs) == 1 and child.outputs[0] == "output_0"
