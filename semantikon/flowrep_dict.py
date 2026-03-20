@@ -570,17 +570,17 @@ def _graph_to_wf_dict(G: nx.DiGraph) -> dict:
 
 def serialize_functions(data: dict[str, Any]) -> dict[str, Any]:
     """
-    Separate functions from the data dictionary and store them in a function
-    dictionary. The functions inside the data dictionary will be replaced by
-    their name (which would for example make it easier to hash it)
+    Return a deep-copied version of the data dictionary with any function
+    objects replaced by their serialized metadata.
 
     Args:
         data (dict[str, Any]): The data dictionary containing nodes and
             functions.
 
     Returns:
-        tuple: A tuple containing the modified data dictionary and the
-            function dictionary.
+        dict[str, Any]: The modified data dictionary where function objects
+            (e.g. in ``"function"`` or ``"test"["function"]`` fields) have
+            been replaced by the result of :func:`get_function_metadata`.
     """
     data = copy.deepcopy(data)
     if "nodes" in data:
