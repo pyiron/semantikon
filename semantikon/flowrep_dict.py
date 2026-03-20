@@ -57,7 +57,7 @@ def live_to_dict(
         node: The live node to convert (pre- or post-run).
         with_io: Include ``"inputs"`` / ``"outputs"`` port dictionaries.
         with_function: Store raw callables (``True``) or
-            :func:`tools.get_function_metadata` dicts (``False``).
+            :func:`get_function_metadata` dicts (``False``).
         label: Override the inferred label.
 
     Returns:
