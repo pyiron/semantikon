@@ -622,8 +622,12 @@ def get_function_metadata(
     Returns:
         dict[str, str]: A dictionary containing the metadata of the function or class.
     """
-    if isinstance(cls, dict) and "module" in cls and "qualname" in cls:
-        return cls
+    if isinstance(cls, dict):
+        if "module" in cls and "qualname" in cls:
+            return cls
+        else:
+            raise ValueError(f"Got a dict, but it doesn't look like metadata: {cls}")
+
     data = {
         "module": cls.__module__,
         "qualname": cls.__qualname__,

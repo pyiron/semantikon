@@ -651,6 +651,10 @@ class TestGetFunctionMetadata(unittest.TestCase):
             "probably be nice if this test failed.",
         )
 
+    def test_non_metadata_dict_raises(self):
+        with self.assertRaisesRegex(ValueError, "it doesn't look like metadata"):
+            flowrep_dict.get_function_metadata({"foo": "bar"})
+
 
 if __name__ == "__main__":
     unittest.main()
