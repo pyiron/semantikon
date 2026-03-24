@@ -479,7 +479,7 @@ class TestDigraphConverters(unittest.TestCase):
         # _passthrough_workflow returns both the raw input x and the negated y,
         # producing an edge (inputs.x, outputs.x) that has node_list == [] on both ends.
         wf_dict = flowrep_dict.live_to_dict(
-            _passthrough_workflow.flowrep_recipe,
+            schemas.Workflow.from_recipe(_passthrough_workflow.flowrep_recipe),
             with_io=True,
             with_function=True,
         )
