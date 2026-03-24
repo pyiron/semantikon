@@ -476,8 +476,9 @@ def _function_to_graph(
         g.add((docstring, SNS.is_about, f_node))
     if uri is not None:
         assert isinstance(uri, URIRef)
-        g.add((f_node, SNS.is_about, uri))
-        g.add((uri, RDF.type, uri))
+        instance_iri = URIRef(f"{f_node}_instance")
+        g.add((f_node, SNS.is_about, instance_iri))
+        g.add((instance_iri, RDF.type, uri))
     if data.get("hash", "") != "":
         hash_bnode = f_node + "_hash"
         g.add((f_node, SNS.denoted_by, hash_bnode))
