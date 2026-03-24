@@ -480,7 +480,7 @@ def _function_to_graph(
         g.add((f_node, SNS.is_about, instance_iri))
         g.add((instance_iri, RDF.type, uri))
     if data.get("hash", "") != "":
-        hash_bnode = f_node + "_hash"
+        hash_bnode = URIRef(f_node + "_hash")
         g.add((f_node, SNS.denoted_by, hash_bnode))
         g.add((hash_bnode, RDF.type, SNS.identifier))
         g.add((hash_bnode, SNS.has_value, Literal(data["hash"])))
