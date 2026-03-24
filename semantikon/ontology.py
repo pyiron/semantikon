@@ -194,7 +194,7 @@ def _inherit_properties(graph: Graph, n_max: int = 1000):
     PREFIX rdf: <{RDF}>
     PREFIX owl: <{OWL}>
     PREFIX ro: <{RO}>
-    PREFIX sns: <{SNS}>
+    PREFIX pmdco: <{PMD}>
     INSERT {{
         ?subject ?p ?o .
     }}
@@ -203,7 +203,7 @@ def _inherit_properties(graph: Graph, n_max: int = 1000):
         ?target ?p ?o .
         FILTER(?p != ro:0001000)
         FILTER(?p != rdfs:label)
-        FILTER(?p != pmd:has_value)
+        FILTER(?p != pmdco:0000006)
         FILTER(?p != rdf:type)
         FILTER(?p != owl:sameAs)
     }}
@@ -309,13 +309,13 @@ def _import_pmdco(pmdco_uri: str) -> Graph:
 
 def _remove_data(graph: Graph) -> Graph:
     graph.update("""DELETE {
-            ?data_node pmd:has_value ?value .
+            ?data_node pmdco:0000006 ?value .
         }
         WHERE {
-            ?data_node pmd:has_value ?value .
+            ?data_node pmdco:0000006 ?value .
             ?data_node iao:0000235 ?hash_node .
             ?hash_node a iao:0020000 .
-            ?hash_node pmd:has_value ?hash .
+            ?hash_node pmdco:0000006 ?hash .
         }
     """)
     return graph
@@ -373,10 +373,10 @@ def get_knowledge_graph(
 
 def _store_data(graph: Graph, file_name: str | Path):
     query = """SELECT DISTINCT ?data_node ?hash ?value WHERE {
-        ?data_node pmd:has_value ?value .
+        ?data_node pmdco:0000006 ?value .
         ?data_node iao:0000235 ?hash_node .
         ?hash_node a iao:0020000 .
-        ?hash_node pmd:has_value ?hash .
+        ?hash_node pmdco:0000006 ?hash .
     }"""
     file_path = str(Path(file_name).absolute().as_uri())
     file_path_id = sha256(file_path.encode("utf-8")).hexdigest()
