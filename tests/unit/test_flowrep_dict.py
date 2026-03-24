@@ -397,6 +397,26 @@ class TestRoundTripConsistency(unittest.TestCase):
             self.assertIn("value", port_d)
 
 
+class TestUnwrapAnnotated(unittest.TestCase):
+    def test_plain_annotation_returned_unchanged(self):
+        result = flowrep_dict._unwrap_annotated(float)
+        self.assertIs(result, float)
+
+    def test_annotated_type_is_stripped_to_base(self):
+        from typing import Annotated
+
+        result = flowrep_dict._unwrap_annotated(Annotated[int, "some-uri"])
+        self.assertIs(result, int)
+
+    def test_port_dict_strips_annotated(self):
+        """_port_dict calls _unwrap_annotated; check the dtype is the bare type."""
+        from typing import Annotated
+
+        d = flowrep_dict._port_dict(42, Annotated[int, "some-uri"])
+        self.assertIs(d["dtype"], int)
+        self.assertEqual(d["value"], 42)
+
+
 class TestDigraphConverters(unittest.TestCase):
     def test_wf_dict_to_graph(self):
         # wf_dict = example_workflow.get_flowrep_dict()
@@ -437,6 +457,36 @@ class TestDigraphConverters(unittest.TestCase):
             sorted(rev_macro_edges),
             sorted(wf_dict["nodes"]["example_macro_0"]["edges"]),
         )
+
+    def test_simple_run_skips_nodes_with_prepopulated_outputs(self):
+        """_simple_run must not recompute a node whose output ports already have values."""
+        # A post-run workflow dict already has values on all output ports.
+        wf_dict = flowrep_dict.live_to_dict(
+            wfms.run_recipe(workflow_with_data.flowrep_recipe, a=10, b=20),
+            with_io=True,
+            with_function=True,
+        )
+        G = flowrep_dict._get_workflow_graph(wf_dict)
+        # Confirm that output ports are pre-populated (triggering the continue branch).
+        self.assertIn("value", G.nodes["add_0:outputs@output"])
+        # _simple_run should succeed and preserve existing values unchanged.
+        G_result = flowrep_dict._simple_run(G)
+        self.assertEqual(G_result.nodes["outputs@x"]["value"], 30)
+        self.assertEqual(G_result.nodes["outputs@y"]["value"], 600)
+
+    def test_graph_to_wf_dict_passthrough_edge(self):
+        """_graph_to_wf_dict must correctly round-trip edges between workflow-level I/O."""
+        # _passthrough_workflow returns both the raw input x and the negated y,
+        # producing an edge (inputs.x, outputs.x) that has node_list == [] on both ends.
+        wf_dict = flowrep_dict.live_to_dict(
+            schemas.Workflow.from_recipe(_passthrough_workflow.flowrep_recipe),
+            with_io=True,
+            with_function=True,
+        )
+        G = flowrep_dict._get_workflow_graph(wf_dict)
+        rev = flowrep_dict._graph_to_wf_dict(G)
+        self.assertIn(("inputs.x", "outputs.x"), rev["edges"])
+        self.assertEqual(sorted(rev["edges"]), sorted(wf_dict["edges"]))
 
     def test_get_hashed_node_dict(self):
 
@@ -654,6 +704,35 @@ class TestGetFunctionMetadata(unittest.TestCase):
     def test_non_metadata_dict_raises(self):
         with self.assertRaisesRegex(ValueError, "it doesn't look like metadata"):
             flowrep_dict.get_function_metadata({"foo": "bar"})
+
+
+class TestSerializeFunctions(unittest.TestCase):
+    def test_callable_in_function_field_is_replaced(self):
+        """A callable stored as 'function' is converted to a metadata dict."""
+        data = {"type": "atomic", "function": add}
+        result = flowrep_dict.serialize_functions(data)
+        self.assertIsInstance(result["function"], dict)
+        self.assertIn("module", result["function"])
+        # Original dict is not mutated (deep copy).
+        self.assertTrue(callable(data["function"]))
+
+    def test_string_function_field_is_left_unchanged(self):
+        """A string 'function' value must not be replaced."""
+        data = {"type": "atomic", "function": "already_serialized"}
+        result = flowrep_dict.serialize_functions(data)
+        self.assertEqual(result["function"], "already_serialized")
+
+    def test_nested_workflow_nodes_are_recursed(self):
+        """Functions inside nested 'nodes' dicts are also serialized."""
+        data = {
+            "type": "workflow",
+            "nodes": {"add_0": {"type": "atomic", "function": add}},
+            "edges": [],
+        }
+        result = flowrep_dict.serialize_functions(data)
+        self.assertIsInstance(result["nodes"]["add_0"]["function"], dict)
+        # Original is not mutated.
+        self.assertTrue(callable(data["nodes"]["add_0"]["function"]))
 
 
 if __name__ == "__main__":
