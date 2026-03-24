@@ -34,6 +34,12 @@ def _diamond_workflow(a: int, b: int = 1) -> int:
     return result
 
 
+@parsers.workflow
+def _passthrough_workflow(x):
+    y = negate(x)
+    return x, y
+
+
 @parsers.atomic
 def increment(x, step=1):
     return x + step
@@ -250,6 +256,12 @@ class TestWorkflowToDict(unittest.TestCase):
             len(recipe.input_edges) + len(recipe.edges) + len(recipe.output_edges)
         )
         self.assertEqual(len(edges), n_expected)
+
+    def test_passthrough_edges(self):
+        recipe = _passthrough_workflow.flowrep_recipe
+        node = schemas.Workflow.from_recipe(recipe)
+        d = flowrep_dict.live_to_dict(node)
+        self.assertIn(("inputs.x", "outputs.x"), d["edges"])
 
     def test_edge_format(self):
         recipe = _diamond_workflow.flowrep_recipe

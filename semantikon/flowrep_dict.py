@@ -190,7 +190,7 @@ def _workflow_edges(recipe: schemas.WorkflowNode) -> list[tuple[str, str]]:
             )
         )
 
-    # Child output → workflow output  (or passthrough from workflow input)
+    # Child output/passthrough input → workflow output
     for target, source in recipe.output_edges.items():
         if isinstance(source, schemas.InputSource):
             edges.append(
