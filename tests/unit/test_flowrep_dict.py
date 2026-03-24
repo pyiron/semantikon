@@ -468,6 +468,9 @@ class TestDigraphConverters(unittest.TestCase):
         G = flowrep_dict._get_workflow_graph(wf_dict)
         # Confirm that output ports are pre-populated (triggering the continue branch).
         self.assertIn("value", G.nodes["add_0:outputs@output"])
+        # Sanity check to confirm initial values
+        self.assertEqual(G.nodes["outputs@x"]["value"], 30)
+        self.assertEqual(G.nodes["outputs@y"]["value"], 600)
         # _simple_run should succeed and preserve existing values unchanged.
         G_result = flowrep_dict._simple_run(G)
         self.assertEqual(G_result.nodes["outputs@x"]["value"], 30)
