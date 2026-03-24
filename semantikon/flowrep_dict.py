@@ -297,12 +297,14 @@ def get_hashed_node_dict(workflow_dict: dict[str, dict]) -> dict[str, Any]:
                 hash_dict_tmp["inputs"][inp_name] = data["hash"]
                 hash_dict_tmp["node"]["connected_inputs"].append(inp_name)
             elif "value" in data:
-                if dataclasses.is_dataclass(data["value"]):
-                    hash_dict_tmp["inputs"][inp_name] = dataclasses.asdict(
-                        data["value"]
-                    )
+                val = data["value"]
+                is_dataclass_instance = dataclasses.is_dataclass(
+                    val
+                ) and not isinstance(val, type)
+                if is_dataclass_instance:
+                    hash_dict_tmp["inputs"][inp_name] = dataclasses.asdict(val)
                 else:
-                    hash_dict_tmp["inputs"][inp_name] = data["value"]
+                    hash_dict_tmp["inputs"][inp_name] = val
             else:
                 break_flag = True
         if break_flag:
