@@ -3,6 +3,7 @@
 import dataclasses
 import math
 import unittest
+from typing import Annotated
 
 import networkx as nx
 from flowrep.models.api import live, parsers, schemas, wfms
@@ -403,14 +404,12 @@ class TestUnwrapAnnotated(unittest.TestCase):
         self.assertIs(result, float)
 
     def test_annotated_type_is_stripped_to_base(self):
-        from typing import Annotated
 
         result = flowrep_dict._unwrap_annotated(Annotated[int, "some-uri"])
         self.assertIs(result, int)
 
     def test_port_dict_strips_annotated(self):
         """_port_dict calls _unwrap_annotated; check the dtype is the bare type."""
-        from typing import Annotated
 
         d = flowrep_dict._port_dict(42, Annotated[int, "some-uri"])
         self.assertIs(d["dtype"], int)
