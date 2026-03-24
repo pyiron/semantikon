@@ -532,6 +532,8 @@ def _graph_to_wf_dict(G: nx.DiGraph) -> dict:
         dest = GNode(edge[1])
         if not orig.is_io or not dest.is_io:
             continue
+        elif orig.io is None or orig.arg is None or dest.io is None or dest.arg is None:
+            raise ValueError("Origin and/or destination GNodes hit a non-stringy case.")
         if len(orig.node_list) == len(dest.node_list):
             nodes = orig.node_list[:-1]
             if len(orig.node_list) == 0:
