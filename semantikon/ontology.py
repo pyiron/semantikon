@@ -513,7 +513,7 @@ def _function_to_graph(
                 )
             if "uri" in arg:
                 assert isinstance(arg["uri"], URIRef)
-                uri_node = arg_node + "_uri"
+                uri_node = URIRef(str(arg_node) + "_uri")
                 g.add((uri_node, RDF.type, OWL.Restriction))
                 g.add((uri_node, OWL.onProperty, SNS.is_about))
                 g.add((uri_node, OWL.allValuesFrom, arg["uri"]))
@@ -615,7 +615,7 @@ def _translate_triples(
     G: SemantikonDiGraph,
     t_box: bool,
 ) -> Graph:
-    def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode | BNode:
+    def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode:
         if isinstance(t, SemantikonURI):
             return t.get_instance() if not t_box else t.get_class()
         elif isinstance(t, (URIRef, BNode)):
@@ -647,14 +647,14 @@ def _translate_triples(
 
 
 def _restrictions_to_triples(
-    restrictions: _rest_type, data_node: URIRef | BNode, predicate: URIRef | None = None
+    restrictions: _rest_type, data_node: URIRef, predicate: URIRef | None = None
 ) -> Graph:
     """
     Converts restrictions into triples for OWL restrictions or SHACL constraints.
 
     Args:
         restrictions (_rest_type): The restrictions to convert.
-        data_node (URIRef | BNode): The node to which the restrictions apply.
+        data_node (URIRef): The node to which the restrictions apply.
         predicate (URIRef | None): The predicate to use for OWL restrictions
             (default: RDFS.subClassOf).
 
@@ -851,7 +851,7 @@ def _wf_io_to_graph(
 
 def _parse_precedes(
     G: SemantikonDiGraph,
-    workflow_node: URIRef | BNode,
+    workflow_node: URIRef,
     t_box: bool,
 ) -> Graph:
     g = _get_bound_graph()
@@ -893,7 +893,7 @@ def _parse_precedes(
 
 def _parse_global_io(
     G: SemantikonDiGraph,
-    workflow_node: URIRef | BNode,
+    workflow_node: URIRef,
     t_box: bool,
 ) -> Graph:
     g = _get_bound_graph()
