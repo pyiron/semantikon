@@ -595,8 +595,6 @@ def serialize_functions(data: dict[str, Any]) -> dict[str, Any]:
             data["nodes"][key] = serialize_functions(node)
     elif "function" in data and not isinstance(data["function"], str):
         data["function"] = get_function_metadata(data["function"])
-    if "test" in data and not isinstance(data["test"]["function"], str):
-        data["test"]["function"] = get_function_metadata(data["test"]["function"])
     return data
 
 
