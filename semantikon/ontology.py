@@ -513,7 +513,7 @@ def _function_to_graph(
                 )
             if "uri" in arg:
                 assert isinstance(arg["uri"], URIRef)
-                uri_node = URIRef(str(arg_node) + "_uri")
+                uri_node = BNode(str(arg_node) + "_uri")
                 g.add((uri_node, RDF.type, OWL.Restriction))
                 g.add((uri_node, OWL.onProperty, SNS.is_about))
                 g.add((uri_node, OWL.allValuesFrom, arg["uri"]))
