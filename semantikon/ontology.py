@@ -1161,7 +1161,7 @@ class _DataclassTranslator:
             graph.add((field_node, QUDT.hasUnit, _units_to_uri(units)))
 
         if "uri" in metadata:
-            instance = field_node + "_uri"
+            instance = URIRef(str(field_node) + "_uri")
             graph.add((instance, RDF.type, metadata["uri"]))
             graph.add((field_node, SNS.specifies_value_of, instance))
 
