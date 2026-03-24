@@ -330,7 +330,7 @@ def get_knowledge_graph(
     prefix: str | None = None,
     store_data: bool = False,
     file_name: str | None = None,
-    pmdco_uri: str = "https://w3id.org/pmd/co/3.0.0-rc2",
+    pmdco_uri: str = "https://w3id.org/pmd/co/3.0.0",
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
