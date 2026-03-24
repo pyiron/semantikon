@@ -150,6 +150,12 @@ def _parent_workflow(inner: schemas.WorkflowNode) -> schemas.WorkflowNode:
     )
 
 
+class TestNonNodeToDict(unittest.TestCase):
+    def test_non_node_type_raises(self):
+        with self.assertRaisesRegex(TypeError, "Unsupported live node type"):
+            flowrep_dict.live_to_dict(123)
+
+
 class TestAtomicToDict(unittest.TestCase):
     def test_basic_structure(self):
         node = schemas.Atomic.from_recipe(my_add.flowrep_recipe)
