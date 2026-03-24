@@ -330,7 +330,7 @@ def get_knowledge_graph(
     prefix: str | None = None,
     store_data: bool = False,
     file_name: str | None = None,
-    pmdco_uri: str = "https://w3id.org/pmd/co/3.0.0-rc2",
+    pmdco_uri: str = "https://w3id.org/pmd/co/3.0.0",
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
@@ -476,10 +476,11 @@ def _function_to_graph(
         g.add((docstring, SNS.is_about, f_node))
     if uri is not None:
         assert isinstance(uri, URIRef)
-        g.add((f_node, SNS.is_about, BNode(uri)))
-        g.add((BNode(uri), RDF.type, uri))
+        instance_iri = URIRef(f"{f_node}_instance")
+        g.add((f_node, SNS.is_about, instance_iri))
+        g.add((instance_iri, RDF.type, uri))
     if data.get("hash", "") != "":
-        hash_bnode = BNode(f_node + "_hash")
+        hash_bnode = URIRef(f_node + "_hash")
         g.add((f_node, SNS.denoted_by, hash_bnode))
         g.add((hash_bnode, RDF.type, SNS.identifier))
         g.add((hash_bnode, SNS.has_value, Literal(data["hash"])))
@@ -512,7 +513,7 @@ def _function_to_graph(
                 )
             if "uri" in arg:
                 assert isinstance(arg["uri"], URIRef)
-                uri_node = BNode(arg_node + "_uri")
+                uri_node = BNode(str(arg_node) + "_uri")
                 g.add((uri_node, RDF.type, OWL.Restriction))
                 g.add((uri_node, OWL.onProperty, SNS.is_about))
                 g.add((uri_node, OWL.allValuesFrom, arg["uri"]))
@@ -610,11 +611,11 @@ def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: str) -> st
 def _translate_triples(
     triples: _triple_type,
     node_name: str,
-    data_node: BNode,
+    data_node: URIRef,
     G: SemantikonDiGraph,
     t_box: bool,
 ) -> Graph:
-    def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode | BNode:
+    def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode:
         if isinstance(t, SemantikonURI):
             return t.get_instance() if not t_box else t.get_class()
         elif isinstance(t, (URIRef, BNode)):
@@ -646,14 +647,14 @@ def _translate_triples(
 
 
 def _restrictions_to_triples(
-    restrictions: _rest_type, data_node: URIRef | BNode, predicate: URIRef | None = None
+    restrictions: _rest_type, data_node: URIRef, predicate: URIRef | None = None
 ) -> Graph:
     """
     Converts restrictions into triples for OWL restrictions or SHACL constraints.
 
     Args:
         restrictions (_rest_type): The restrictions to convert.
-        data_node (URIRef | BNode): The node to which the restrictions apply.
+        data_node (URIRef): The node to which the restrictions apply.
         predicate (URIRef | None): The predicate to use for OWL restrictions
             (default: RDFS.subClassOf).
 
@@ -743,7 +744,7 @@ def _wf_input_to_graph(
             if units is not None:
                 g.add((data_node, QUDT.hasUnit, _units_to_uri(units)))
             if "uri" in data:
-                bnode = BNode(str(data_node) + "_uri")
+                bnode = URIRef(str(data_node) + "_uri")
                 g.add((bnode, RDF.type, data["uri"]))
                 g.add((data_node, SNS.specifies_value_of, bnode))
     g += _wf_io_to_graph(
@@ -789,9 +790,9 @@ def _wf_output_to_graph(
         if units is not None:
             g.add((data_node, QUDT.hasUnit, _units_to_uri(units)))
         if "uri" in data:
-            bnode = BNode()
-            g.add((bnode, RDF.type, data["uri"]))
-            g.add((data_node, SNS.specifies_value_of, bnode))
+            instance = URIRef(str(data_node) + "_uri")
+            g.add((instance, RDF.type, data["uri"]))
+            g.add((data_node, SNS.specifies_value_of, instance))
     g += _wf_io_to_graph(
         node_name=node_name,
         data=data,
@@ -807,7 +808,7 @@ def _wf_output_to_graph(
 def _wf_io_to_graph(
     node_name: str,
     data: dict,
-    data_node: BNode | URIRef,
+    data_node: URIRef,
     G: SemantikonDiGraph,
     io_assignment: URIRef,
     has_specified_io: URIRef,
@@ -850,7 +851,7 @@ def _wf_io_to_graph(
 
 def _parse_precedes(
     G: SemantikonDiGraph,
-    workflow_node: URIRef | BNode,
+    workflow_node: URIRef,
     t_box: bool,
 ) -> Graph:
     g = _get_bound_graph()
@@ -892,7 +893,7 @@ def _parse_precedes(
 
 def _parse_global_io(
     G: SemantikonDiGraph,
-    workflow_node: URIRef | BNode,
+    workflow_node: URIRef,
     t_box: bool,
 ) -> Graph:
     g = _get_bound_graph()
@@ -990,7 +991,7 @@ class _DataclassTranslator:
     def translate(
         self,
         *,
-        a_node: BNode,
+        a_node: URIRef,
         t_node: URIRef,
         value: Any,
         dtype: type,
@@ -1047,16 +1048,16 @@ class _DataclassTranslator:
 
         return g
 
-    def _to_subkey(self, node: URIRef | BNode, key: str):
+    def _to_subkey(self, node: URIRef, key: str):
         """
         Construct a deterministic sub-node for a dataclass field.
 
         Args:
-            node: Base URIRef or BNode.
+            node: Base URIRef
             key: Field name.
 
         Returns:
-            A new URIRef or BNode derived from the base node.
+            A new URIRef derived from the base node.
         """
         base = str(node).rsplit("_data", 1)[0]
         return node.__class__(f"{base}-{key}")
@@ -1065,7 +1066,7 @@ class _DataclassTranslator:
         self,
         *,
         graph: Graph,
-        a_node: BNode,
+        a_node: URIRef,
         t_node: URIRef,
         value: Any,
         dtype: type,
@@ -1136,8 +1137,8 @@ class _DataclassTranslator:
         self,
         *,
         graph: Graph,
-        parent: BNode,
-        field_node: BNode,
+        parent: URIRef,
+        field_node: URIRef,
         field_class: URIRef,
         metadata: dict,
         value: Any,
@@ -1161,9 +1162,9 @@ class _DataclassTranslator:
             graph.add((field_node, QUDT.hasUnit, _units_to_uri(units)))
 
         if "uri" in metadata:
-            bnode = BNode()
-            graph.add((bnode, RDF.type, metadata["uri"]))
-            graph.add((field_node, SNS.specifies_value_of, bnode))
+            instance = URIRef(str(field_node) + "_uri")
+            graph.add((instance, RDF.type, metadata["uri"]))
+            graph.add((field_node, SNS.specifies_value_of, instance))
 
         if value is not None:
             graph.add((field_node, RDF.value, Literal(value)))
