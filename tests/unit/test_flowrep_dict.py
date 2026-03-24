@@ -626,5 +626,31 @@ class TestOutputSanitizationConsistency(unittest.TestCase):
         self.assertEqual(G.nodes["outputs@result"]["value"], 42)
 
 
+class TestGetFunctionMetadata(unittest.TestCase):
+    def test_getter_gets_already_gotten(self):
+        """Existing tests miss one of the hinted cases, so test it explicitly"""
+        sure_looks_like_metadata = {
+            "module": "foo",
+            "qualname": "bar",
+            "unstructured_data_is_risky": "because this is not a field we wanted",
+        }
+        reparsed = flowrep_dict.get_function_metadata(
+            sure_looks_like_metadata, full_metadata=True
+        )
+        self.assertIs(
+            reparsed,
+            sure_looks_like_metadata,
+            msg="if it already looks like metadata, the code has a clause to return "
+            "that",
+        )
+        self.assertNotIn(
+            "hash",
+            reparsed,
+            msg="that is a dangerous move, since we asked for full metadata but "
+            "short-circuited finding the hash by using an early return! It would "
+            "probably be nice if this test failed.",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
