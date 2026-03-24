@@ -281,7 +281,7 @@ def get_hashed_node_dict(workflow_dict: dict[str, dict]) -> dict[str, Any]:
                             G.nodes[node][term] = G.nodes[pre][term]
                             continue
             continue
-        hash_dict_tmp = {
+        hash_dict_tmp: dict[str, Any] = {
             "inputs": {},
             "outputs": [
                 G.nodes[out].get("label", out.split("@")[-1])
