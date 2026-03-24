@@ -789,7 +789,7 @@ def _wf_output_to_graph(
         if units is not None:
             g.add((data_node, QUDT.hasUnit, _units_to_uri(units)))
         if "uri" in data:
-            instance = data_node + "_uri"
+            instance = URIRef(str(data_node) + "_uri")
             g.add((instance, RDF.type, data["uri"]))
             g.add((data_node, SNS.specifies_value_of, instance))
     g += _wf_io_to_graph(
