@@ -253,7 +253,6 @@ class TestOntology(unittest.TestCase):
         g = onto.get_knowledge_graph(wf_dict)
 
         query = f"""
-        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX qudt: <http://qudt.org/schema/qudt/>
         PREFIX unit: <http://qudt.org/vocab/unit/>
         PREFIX sns: <{onto.BASE}>
