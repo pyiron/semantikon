@@ -194,6 +194,7 @@ def _inherit_properties(graph: Graph, n_max: int = 1000):
     PREFIX rdf: <{RDF}>
     PREFIX owl: <{OWL}>
     PREFIX ro: <{RO}>
+    PREFIX pmdco: <{PMD}>
     INSERT {{
         ?subject ?p ?o .
     }}
@@ -202,7 +203,7 @@ def _inherit_properties(graph: Graph, n_max: int = 1000):
         ?target ?p ?o .
         FILTER(?p != ro:0001000)
         FILTER(?p != rdfs:label)
-        FILTER(?p != rdf:value)
+        FILTER(?p != pmdco:0000006)
         FILTER(?p != rdf:type)
         FILTER(?p != owl:sameAs)
     }}
@@ -308,13 +309,13 @@ def _import_pmdco(pmdco_uri: str) -> Graph:
 
 def _remove_data(graph: Graph) -> Graph:
     graph.update("""DELETE {
-            ?data_node rdf:value ?value .
+            ?data_node pmdco:0000006 ?value .
         }
         WHERE {
-            ?data_node rdf:value ?value .
+            ?data_node pmdco:0000006 ?value .
             ?data_node iao:0000235 ?hash_node .
             ?hash_node a iao:0020000 .
-            ?hash_node rdf:value ?hash .
+            ?hash_node pmdco:0000006 ?hash .
         }
     """)
     return graph
@@ -372,10 +373,10 @@ def get_knowledge_graph(
 
 def _store_data(graph: Graph, file_name: str | Path):
     query = """SELECT DISTINCT ?data_node ?hash ?value WHERE {
-        ?data_node rdf:value ?value .
+        ?data_node pmdco:0000006 ?value .
         ?data_node iao:0000235 ?hash_node .
         ?hash_node a iao:0020000 .
-        ?hash_node rdf:value ?hash .
+        ?hash_node pmdco:0000006 ?hash .
     }"""
     file_path = str(Path(file_name).absolute().as_uri())
     file_path_id = sha256(file_path.encode("utf-8")).hexdigest()
@@ -826,13 +827,13 @@ def _wf_io_to_graph(
     else:
         g.add((data_node, RDF.type, G.t_ns[G._get_data_node(io=node_name)]))
         g.add((node, has_specified_io, data_node))
-        if "value" in data and g.value(data_node, RDF.value) is None:
-            g.add((data_node, RDF.value, Literal(data["value"])))
+        if "value" in data and g.value(data_node, SNS.has_value) is None:
+            g.add((data_node, SNS.has_value, Literal(data["value"])))
         if "hash" in data:
             hash_bnode = G.get_a_node(G._get_data_node(io=node_name) + "_hash")
             g.add((data_node, SNS.denoted_by, hash_bnode))
             g.add((hash_bnode, RDF.type, SNS.identifier))
-            g.add((hash_bnode, RDF.value, Literal(data["hash"])))
+            g.add((hash_bnode, SNS.has_value, Literal(data["hash"])))
     triples = data.get("triples", [])
     if triples != [] and not isinstance(triples[0], list | tuple):
         triples = [triples]
@@ -1167,7 +1168,7 @@ class _DataclassTranslator:
             graph.add((field_node, SNS.specifies_value_of, instance))
 
         if value is not None:
-            graph.add((field_node, RDF.value, Literal(value)))
+            graph.add((field_node, SNS.has_value, Literal(value)))
 
 
 def extract_dataclass(
@@ -1176,7 +1177,7 @@ def extract_dataclass(
     include_a_box: bool = True,
 ) -> Graph:
     """
-    Extract dataclass-backed RDF.value entries from a graph and translate
+    Extract dataclass-backed SNS.has_value entries from a graph and translate
     them into RDF TBox and/or ABox triples.
 
     This function preserves the original public API while delegating
@@ -1196,7 +1197,7 @@ def extract_dataclass(
         include_a_box=include_a_box,
     )
 
-    for subj, obj in graph.subject_objects(RDF.value):
+    for subj, obj in graph.subject_objects(SNS.has_value):
         py_value = obj.toPython()
         if not is_dataclass(py_value):
             continue
