@@ -27,7 +27,7 @@ prefixes = """
 @prefix obi: <http://purl.obolibrary.org/obo/OBI_> .
 @prefix sns: <http://pyiron.org/ontology/> .
 @prefix ro: <http://purl.obolibrary.org/obo/RO_> .
-@prefix pmd: <https://w3id.org/pmd/co/PMD_> .
+@prefix pmdco: <https://w3id.org/pmd/co/PMD_> .
 @prefix ex: <http://example.org/> .
 """
 
@@ -349,14 +349,13 @@ class TestOntology(unittest.TestCase):
         g = onto.get_knowledge_graph(wf_dict)
 
         query = f"""
-        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX qudt: <http://qudt.org/schema/qudt/>
         PREFIX unit: <http://qudt.org/vocab/unit/>
-        PREFIX pmd: <{onto.BASE}>
+        PREFIX sns: <{onto.BASE}>
         PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
 
         ASK {{
-            ?output a pmd:W20ec0adc_my_kinetic_energy_workflow-outputs-kinetic_energy .
+            ?output a sns:W20ec0adc_my_kinetic_energy_workflow-outputs-kinetic_energy .
             ?output ro:0000057 ?data .
             ?data qudt:hasUnit unit:J .
         }}"""
@@ -651,7 +650,7 @@ class TestOntology(unittest.TestCase):
               ?input a ?bnode .
               ?bnode a owl:Restriction .
               ?bnode owl:onProperty iao:0000136 .
-              ?bnode owl:allValuesFrom pmd:0020133 .
+              ?bnode owl:allValuesFrom pmdco:0020133 .
             }"""
         mass_spec = list(graph.query(query))
         self.assertEqual(len(mass_spec), 1)
@@ -667,7 +666,7 @@ class TestOntology(unittest.TestCase):
               ?output a ?bnode .
               ?bnode a owl:Restriction .
               ?bnode owl:onProperty iao:0000136 .
-              ?bnode owl:allValuesFrom pmd:0020142 .
+              ?bnode owl:allValuesFrom pmdco:0020142 .
             }"""
         output_spec = list(graph.query(query))
         self.assertEqual(len(output_spec), 1)
@@ -685,7 +684,7 @@ class TestOntology(unittest.TestCase):
         query = sparql_prefixes + """
         SELECT ?node ?value WHERE {
           ?bnode a ?node ;
-            rdf:value ?value .
+            pmdco:0000006 ?value .
         }
         """
         results = list(g_run.query(query))
@@ -722,16 +721,16 @@ class TestOntology(unittest.TestCase):
 
         query = sparql_prefixes + """
         SELECT ?distance_value ?e_value WHERE {
-          ?distance_datanode rdf:value ?distance_value .
+          ?distance_datanode pmdco:0000006 ?distance_value .
           ?distance_datanode obi:0001927 ?distance_bnode .
-          ?distance_bnode a pmd:0040001 .
+          ?distance_bnode a pmdco:0040001 .
           ?input_node ro:0000057 ?distance_datanode .
           ?workflow_node bfo:0000051 ?input_node .
           ?workflow_node bfo:0000051 ?output_node .
           ?output_node ro:0000057 ?e_datanode .
-          ?e_bnode a pmd:0020142 .
+          ?e_bnode a pmdco:0020142 .
           ?e_datanode obi:0001927 ?e_bnode .
-          ?e_datanode rdf:value ?e_value .
+          ?e_datanode pmdco:0000006 ?e_value .
         }
         """
         data = [d.toPython() for d in list(graph.query(query))[0]]
@@ -745,19 +744,19 @@ class TestOntology(unittest.TestCase):
         with self.subTest("temperature data"):
             for s in g_dc.subjects(RDF.type, onto.BASE["get_run_md-inputs-inp_T_data"]):
                 self.assertIn((s, onto.QUDT.hasUnit, UNIT["K"]), g_dc)
-                self.assertIn((s, RDF.value, Literal(300.0)), g_dc)
+                self.assertIn((s, onto.SNS.has_value, Literal(300.0)), g_dc)
 
         with self.subTest("particle count data"):
             # Check that the particle count data has the correct value
             for s in g_dc.subjects(RDF.type, onto.BASE["get_run_md-inputs-inp_n_data"]):
-                self.assertIn((s, RDF.value, Literal(100)), g_dc)
+                self.assertIn((s, onto.SNS.has_value, Literal(100)), g_dc)
 
         with self.subTest("energy output data"):
             for s in g_dc.subjects(
                 RDF.type, onto.BASE["get_run_md-run_md_0-outputs-out_E_data"]
             ):
                 self.assertIn((s, onto.QUDT.hasUnit, UNIT["EV"]), g_dc)
-                self.assertIn((s, RDF.value, Literal(1.0)), g_dc)
+                self.assertIn((s, onto.SNS.has_value, Literal(1.0)), g_dc)
                 self.assertIn((s, onto.OBI["0001927"], None), g_dc)
 
         with self.subTest("length output data"):
@@ -765,14 +764,14 @@ class TestOntology(unittest.TestCase):
                 RDF.type, onto.BASE["get_run_md-run_md_0-outputs-out_L_data"]
             ):
                 self.assertIn((s, onto.QUDT.hasUnit, UNIT["NanoM"]), g_dc)
-                self.assertIn((s, RDF.value, Literal(2.0)), g_dc)
+                self.assertIn((s, onto.SNS.has_value, Literal(2.0)), g_dc)
 
         speed_data = NewSpeedData(distance=1.0, time=2.0)
         query = sparql_prefixes + """
             SELECT ?distance_value ?e_value WHERE {
-              ?distance_datanode rdf:value ?distance_value .
+              ?distance_datanode pmdco:0000006 ?distance_value .
               ?distance_datanode obi:0001927 ?distance_bnode .
-              ?distance_bnode a pmd:0040001 .
+              ?distance_bnode a pmdco:0040001 .
               ?distance_datanode a ?distance_class .
               ?speed_data_class rdfs:subClassOf ?has_part_bnode .
               ?has_part_bnode owl:someValuesFrom ?distance_class .
@@ -783,9 +782,9 @@ class TestOntology(unittest.TestCase):
               ?workflow_node bfo:0000051 ?input_node .
               ?workflow_node bfo:0000051 ?output_node .
               ?output_node ro:0000057 ?e_datanode .
-              ?e_bnode a pmd:0020142 .
+              ?e_bnode a pmdco:0020142 .
               ?e_datanode obi:0001927 ?e_bnode .
-              ?e_datanode rdf:value ?e_value .
+              ?e_datanode pmdco:0000006 ?e_value .
             }"""
 
         wf_dict = workflow_with_dataclass.run(speed_data=speed_data, mass=3)
@@ -806,12 +805,12 @@ class TestOntology(unittest.TestCase):
             SELECT ?label ?import_path WHERE {
               ?function iao:0000136 ?bnode .
               ?function iao:0000235 ?f_name .
-              ?f_name pmd:0000006 ?label .
-              ?f_name a pmd:0000100 .
+              ?f_name pmdco:0000006 ?label .
+              ?f_name a pmdco:0000100 .
               ?bnode a ex:get_kinetic_energy .
               ?function iao:0000235 ?f_module .
-              ?f_module a pmd:0000101 .
-              ?f_module pmd:0000006 ?import_path .
+              ?f_module a pmdco:0000101 .
+              ?f_module pmdco:0000006 ?import_path .
             }"""
         self.assertEqual(
             "get_kinetic_energy", [row[0].toPython() for row in g.query(query)][0]
@@ -875,7 +874,7 @@ class TestOntology(unittest.TestCase):
 
         # Check that each data node with a value has a corresponding file part
         q = """SELECT DISTINCT ?data_node WHERE {
-            ?data_node rdf:value ?value .
+            ?data_node pmdco:0000006 ?value .
             ?data_node iao:0000235 ?hash_node .
             ?hash_node a iao:0020000 .
         }"""

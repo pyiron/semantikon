@@ -76,10 +76,11 @@ def request_values(wf_dict: dict, graph: Graph) -> dict:
     query = f"""
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX iao: <http://purl.obolibrary.org/obo/IAO_>
+    PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
     SELECT DISTINCT ?h ?v WHERE {{
-        ?h_bnode rdf:value ?h .
+        ?h_bnode pmdco:0000006 ?h .
         ?data_node iao:0000235 ?h_bnode .
-        ?data_node rdf:value ?v .
+        ?data_node pmdco:0000006 ?v .
         VALUES ?h {{ {values_str} }}
     }}
     """
@@ -446,7 +447,7 @@ class SparqlWriter:
                 G.add_edge(
                     self._to_qname(data_nodes[-1]),
                     value_node,
-                    predicate="rdf:value",
+                    predicate="pmdco:0000006",
                     optional=value_node,
                 )
                 G.add_edge(
@@ -458,14 +459,14 @@ class SparqlWriter:
                 G.add_edge(
                     hash_node + "_b",
                     hash_node,
-                    predicate="rdf:value",
+                    predicate="pmdco:0000006",
                     optional=hash_node,
                 )
             else:
                 G.add_edge(
                     self._to_qname(data_nodes[-1]),
                     value_node,
-                    predicate="rdf:value",
+                    predicate="pmdco:0000006",
                 )
         if len(data_nodes) > 1:
             head_node = self._get_head_node(data_nodes)
@@ -520,6 +521,7 @@ class SparqlWriter:
             )
         ).items():
             output_with_ind[key.split("_")[0]].append(value)
+        prefixes = ["PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>"]
         select_line = "SELECT DISTINCT"
         for key, value in output_with_ind.items():
             if len(value) == 1:
@@ -528,7 +530,7 @@ class SparqlWriter:
                 select_line += " (COALESCE(" + ", ".join(value) + f") AS ?{key})"
         select_line += " WHERE {"
         optional_dict = defaultdict(list)
-        lines = [select_line]
+        lines = prefixes + [select_line]
         for subj, obj, data in G.edges.data():
             if "optional" in data:
                 optional_dict[data["optional"]].append(
