@@ -1,9 +1,8 @@
 import unittest
 from typing import Annotated
 
-from flowrep import tools
-
 import semantikon.workflow as swf
+from semantikon import flowrep_dict
 from semantikon.metadata import meta, u
 
 
@@ -166,7 +165,7 @@ class TestWorkflow(unittest.TestCase):
         }
         wf = example_macro.get_semantikon_dict()
         self.assertEqual(wf["type"], "workflow")
-        smtk_wf = tools.serialize_functions(wf)
+        smtk_wf = flowrep_dict.serialize_functions(wf)
         del smtk_wf["function"]
         self.assertEqual(smtk_wf, ref_data)
 
@@ -259,7 +258,7 @@ class TestWorkflow(unittest.TestCase):
         }
         wf = example_workflow.get_semantikon_dict()
         self.assertEqual(wf["type"], "workflow")
-        smtk_wf = tools.serialize_functions(wf)
+        smtk_wf = flowrep_dict.serialize_functions(wf)
         del smtk_wf["function"]
         del smtk_wf["nodes"]["example_macro_0"]["function"]
         self.assertEqual(smtk_wf, ref_data)
@@ -346,11 +345,12 @@ class TestWorkflow(unittest.TestCase):
             return a, b
 
         with self.assertRaises(ValueError) as cm:
-            swf.get_workflow_dict(test_workflow)
+            swf.workflow(test_workflow)
         self.assertIn(
-            "Duplicate output label 'output' detected for function function_with_duplicate_output_labels",
+            "must have unique elements. Duplicates:",
             str(cm.exception),
         )
+        self.assertIn("output", str(cm.exception))
 
         def test_workflow_non_identifier_label(
             a: int, b: int
@@ -358,8 +358,9 @@ class TestWorkflow(unittest.TestCase):
             result = add(a, b)
             return result
 
-        with self.assertRaises(ValueError):
-            swf.get_workflow_dict(test_workflow_non_identifier_label)
+        with self.assertRaises(ValueError) as cm:
+            swf.workflow(test_workflow_non_identifier_label)
+        self.assertIn("Label must be a valid Python identifier", str(cm.exception))
 
 
 if __name__ == "__main__":

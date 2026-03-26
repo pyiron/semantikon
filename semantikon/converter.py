@@ -20,7 +20,6 @@ from typing import (
     get_type_hints,
 )
 
-from flowrep.tools import get_function_metadata
 from pint import Quantity, UnitRegistry
 from pint.registry_helpers import (
     _apply_defaults,
@@ -30,6 +29,7 @@ from pint.registry_helpers import (
 )
 
 from semantikon.datastructure import TypeMetadata
+from semantikon.flowrep_dict import get_function_metadata
 
 __author__ = "Sam Waseda"
 __copyright__ = (

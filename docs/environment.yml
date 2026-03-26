@@ -20,6 +20,6 @@ dependencies:
 - python-graphviz =0.21
 - requests =2.32.5
 - typeguard =4.5.1
-- flowrep =0.2.0
+- flowrep =0.3.0
 - networkx =3.5
 - bagofholding =0.1.9
