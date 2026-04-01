@@ -4,7 +4,8 @@ import keyword
 from collections import Counter
 from typing import Any, Callable, Iterable, cast
 
-from flowrep.models.api import parsers, schemas, wfms
+from flowrep.api import schemas as frs
+from flowrep.api import tools as frt
 
 from semantikon import flowrep_dict
 from semantikon.converter import (
@@ -237,7 +238,7 @@ def to_semantikon_workflow_dict(data: dict, output_counts: int | None = None) ->
 
 
 def workflow(func: Callable) -> Callable:
-    func = parsers.workflow(func)
+    func = frt.workflow(func)
     # Expose new dictionary getter
     func.get_semantikon_dict = functools.partial(  # type: ignore[attr-defined]
         _get_semantikon_dict, func
@@ -251,7 +252,7 @@ def _get_semantikon_dict(workflow_func):
     # Assumes *workflow_func* is already a flowrep workflow recipe holder
     return to_semantikon_workflow_dict(
         flowrep_dict.live_to_dict(
-            schemas.Workflow.from_recipe(workflow_func.flowrep_recipe),
+            frs.LiveWorkflow.from_recipe(workflow_func.flowrep_recipe),
             with_io=True,
             with_function=True,
         )
@@ -259,6 +260,6 @@ def _get_semantikon_dict(workflow_func):
 
 
 def run_workflow_dict(func, **kwargs) -> dict[str, Any]:
-    executed = wfms.run_recipe(func.flowrep_recipe, **kwargs)
+    executed = frt.run_recipe(func.flowrep_recipe, **kwargs)
     wf_dict = flowrep_dict.live_to_dict(executed, with_io=True, with_function=True)
     return to_semantikon_workflow_dict(wf_dict)
