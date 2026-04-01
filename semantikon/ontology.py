@@ -564,8 +564,7 @@ def _wf_node_to_graph(
                 f_node,
                 restriction_type=OWL.hasValue,
             )
-        g.add((node, RDFS.label, Literal(node_name)))
-        g.add((node, SNS.workflow_argument_name, Literal(node_name.split("-")[-1])))
+        g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
     else:
         node = G.get_a_node(node_name)
         g.add((node, RDF.type, G.t_ns[node_name]))

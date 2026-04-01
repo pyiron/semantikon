@@ -279,7 +279,8 @@ class Completer(_Node):
 
 
 def _get_label_from_port(port, graph) -> list[str]:
-    query_io_node = f"""SELECT DISTINCT ?parent ?label WHERE {{
+    query_io_node = f"""PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
+    SELECT DISTINCT ?parent ?label WHERE {{
         ?parent rdfs:subClassOf ?bnode .
         ?parent rdfs:label ?label .
         ?bnode a owl:Restriction .
@@ -293,9 +294,10 @@ def _get_label_from_port(port, graph) -> list[str]:
 
 
 def _get_labels(graph):
-    query_data_node = """SELECT DISTINCT ?parent ?data_node ?label ?io_class WHERE {
+    query_data_node = """PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
+    SELECT DISTINCT ?parent ?data_node ?label ?io_class WHERE {
         ?parent rdfs:subClassOf ?bnode .
-        ?parent rdfs:label ?label .
+        ?parent pmdco:0000128 ?label .
         ?bnode a owl:Restriction .
         ?bnode owl:onProperty ro:0000057 .
         ?bnode owl:someValuesFrom ?data_node .
@@ -319,14 +321,15 @@ def _get_labels(graph):
 
 
 def _add_child_data_class(graph, label_dict):
-    query_data_class = """SELECT DISTINCT ?parent ?child ?label WHERE {{
+    query_data_class = """PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
+    SELECT DISTINCT ?parent ?child ?label WHERE {{
         ?parent rdfs:subClassOf ?bnode .
         ?bnode a owl:Restriction .
         ?bnode owl:onProperty bfo:0000051 .
         ?bnode owl:someValuesFrom ?child .
         ?parent rdfs:subClassOf obi:0001933 .
         ?child rdfs:subClassOf obi:0001933 .
-        ?child rdfs:label ?label .
+        ?child pmdco:0000128 ?label .
     }}"""
     child_label_dict = {}
     for parent_uri, child_uri, key in graph.query(query_data_class):
