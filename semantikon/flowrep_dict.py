@@ -1,8 +1,9 @@
 """
 Convert live node trees to the legacy nested-dictionary format.
 
-This module bridges :mod:`flowrep.models.live` objects (recipe + instance data)
-to the ``dict`` structure historically produced by :func:`flowrep.workflow.get_workflow_dict`
+This module bridges :mod:`flowrep.live` objects (recipe + instance data)
+to the ``dict`` structure historically produced by
+:func:`flowrep.workflow.get_workflow_dict` in versions <0.3.0
 and consumed by downstream packages such as *semantikon*.
 
 Edge string format
