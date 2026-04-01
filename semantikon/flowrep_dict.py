@@ -40,12 +40,12 @@ from collections.abc import Callable, Mapping
 from typing import Annotated, Any, cast, get_args, get_origin
 
 import networkx as nx
-from flowrep.models.api import live, schemas
+from flowrep.api import schemas as frs
 from pyiron_snippets import retrieve
 
 
 def live_to_dict(
-    node: live.LiveNode,
+    node: frs.LiveNode,
     *,
     with_io: bool = False,
     with_function: bool = False,
@@ -64,13 +64,13 @@ def live_to_dict(
         A nested dictionary matching the structure of the legacy
         ``get_workflow_dict`` output.
     """
-    if isinstance(node, schemas.Atomic):
+    if isinstance(node, frs.LiveAtomic):
         return _atomic_to_dict(node, with_io=with_io, with_function=with_function)
-    if isinstance(node, schemas.Workflow):
+    if isinstance(node, frs.LiveWorkflow):
         return _workflow_to_dict(
             node, with_io=with_io, with_function=with_function, label=label
         )
-    if isinstance(node, schemas.FlowControl):
+    if isinstance(node, frs.FlowControl):
         raise NotImplementedError(
             "FlowControl → dict conversion is not yet implemented.  "
             "The legacy format flattens body-workflow children into the "
@@ -85,7 +85,7 @@ def live_to_dict(
 
 
 def _atomic_to_dict(
-    node: schemas.Atomic,
+    node: frs.LiveAtomic,
     *,
     with_io: bool,
     with_function: bool,
@@ -106,14 +106,14 @@ def _atomic_to_dict(
 
 
 def _workflow_to_dict(
-    node: schemas.Workflow,
+    node: frs.LiveWorkflow,
     *,
     with_io: bool,
     with_function: bool,
     label: str | None,
 ) -> dict[str, Any]:
     recipe = node.recipe
-    assert isinstance(recipe, schemas.WorkflowNode)
+    assert isinstance(recipe, frs.WorkflowNode)
 
     result: dict[str, Any] = {
         "type": "workflow",
@@ -142,7 +142,7 @@ def _workflow_to_dict(
     return result
 
 
-def _infer_label(recipe: schemas.WorkflowNode) -> str:
+def _infer_label(recipe: frs.LiveWorkflowNode) -> str:
     """Best-effort label from a workflow recipe's reference."""
     if recipe.reference is not None:
         return recipe.reference.info.fully_qualified_name.rsplit(".", 1)[-1]
@@ -154,7 +154,7 @@ def _infer_label(recipe: schemas.WorkflowNode) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _workflow_edges(recipe: schemas.WorkflowNode) -> list[tuple[str, str]]:
+def _workflow_edges(recipe: frs.WorkflowNode) -> list[tuple[str, str]]:
     """Flatten typed edge objects into ``("src", "tgt")`` string tuples."""
     edges: list[tuple[str, str]] = []
 
@@ -192,7 +192,7 @@ def _workflow_edges(recipe: schemas.WorkflowNode) -> list[tuple[str, str]]:
 
     # Child output/passthrough input → workflow output
     for target, source in recipe.output_edges.items():
-        if isinstance(source, schemas.InputSource):
+        if isinstance(source, frs.InputSource):
             edges.append(
                 (
                     f"inputs.{source.port}",
@@ -215,13 +215,13 @@ def _workflow_edges(recipe: schemas.WorkflowNode) -> list[tuple[str, str]]:
 # ---------------------------------------------------------------------------
 
 
-def _port_dict(value, annotation, default=schemas.NOT_DATA):
+def _port_dict(value, annotation, default=frs.NOT_DATA):
     d = {}
-    if not isinstance(value, schemas.NotData):
+    if not isinstance(value, frs.NotData):
         d["value"] = value
     if annotation is not None:
         d["dtype"] = _unwrap_annotated(annotation)
-    if not isinstance(default, schemas.NotData):
+    if not isinstance(default, frs.NotData):
         d["default"] = default
     return d
 
@@ -241,7 +241,7 @@ def _unwrap_annotated(annotation: Any) -> Any:
 
 
 def _input_ports_to_dict(
-    ports: Mapping[str, live.InputPort],
+    ports: Mapping[str, frs.InputPort],
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     for name, port in ports.items():
@@ -250,7 +250,7 @@ def _input_ports_to_dict(
 
 
 def _output_ports_to_dict(
-    ports: Mapping[str, live.OutputPort],
+    ports: Mapping[str, frs.OutputPort],
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     if len(ports) == 1 and next(iter(ports.keys())) == "output_0":
