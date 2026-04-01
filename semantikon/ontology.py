@@ -72,6 +72,7 @@ class SNS:
     import_path: URIRef = PMD["0000101"]
     function_name: URIRef = PMD["0000100"]
     file_data_item: URIRef = NFDI["0000027"]
+    workflow_argument_name: URIRef = PMD["0000128"]
 
 
 ud = UnitsDict()
@@ -503,7 +504,8 @@ def _function_to_graph(
                 g.add((arg_node, RDF.type, SNS.input_specification))
             else:
                 g.add((arg_node, RDF.type, SNS.output_specification))
-            g.add((arg_node, RDFS.label, Literal(arg_name)))
+            g.add((arg_node, SNS.workflow_argument_name, Literal(arg_name)))
+            g.add((arg_node, RDFS.label, Literal(str(f_node))))
             g.add((f_node, SNS.has_part, arg_node))
             g.add(
                 (arg_node, SNS.has_parameter_position, Literal(arg.get("position", ii)))
@@ -562,7 +564,8 @@ def _wf_node_to_graph(
                 f_node,
                 restriction_type=OWL.hasValue,
             )
-        g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
+        g.add((node, RDFS.label, Literal(node_name)))
+        g.add((node, SNS.workflow_argument_name, Literal(node_name.split("-")[-1])))
     else:
         node = G.get_a_node(node_name)
         g.add((node, RDF.type, G.t_ns[node_name]))
@@ -817,7 +820,8 @@ def _wf_io_to_graph(
 ) -> Graph:
     node = G.t_ns[node_name] if t_box else G.get_a_node(node_name)
     g = _get_bound_graph()
-    g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
+    g.add((node, RDFS.label, Literal(node_name)))
+    g.add((node, SNS.workflow_argument_name, Literal(node_name.split("-")[-1])))
     if t_box:
         g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.subClassOf, io_assignment))
@@ -1115,7 +1119,10 @@ class _DataclassTranslator:
         )
 
         graph.add((field_node, RDFS.subClassOf, SNS.value_specification))
-        graph.add((field_node, RDFS.label, Literal(field_node.split("-")[-1])))
+        graph.add((field_node, RDFS.label, Literal(field_node)))
+        graph.add(
+            (field_node, SNS.workflow_argument_name, Literal(field_node.split("-")[-1]))
+        )
 
         units = metadata.get("units", metadata.get("unit"))
         if units is not None:
@@ -1156,7 +1163,10 @@ class _DataclassTranslator:
         """
         graph.add((parent, SNS.has_part, field_node))
         graph.add((field_node, RDF.type, field_class))
-        graph.add((field_node, RDFS.label, Literal(field_node.split("-")[-1])))
+        graph.add((field_node, RDFS.label, Literal(field_node)))
+        graph.add(
+            (field_node, SNS.workflow_argument_name, Literal(field_node.split("-")[-1]))
+        )
 
         units = metadata.get("units", metadata.get("unit"))
         if units is not None:
