@@ -13,13 +13,13 @@ from semantikon.converter import to_identifier
 from semantikon.ontology import SNS, serialize_and_convert_to_networkx
 
 
-def label_to_uri(graph: Graph, label: str) -> list[URIRef]:
+def identifier_to_uri(graph: Graph, identifier: str) -> list[URIRef]:
     """
-    Convert a human-readable label to its corresponding URIRef in the graph.
+    Convert a local identifier (pmdco:0000128) to its corresponding URIRef in the graph.
 
     Args:
         graph (Graph): The RDF graph to query.
-        label (str): The human-readable label or URIRef.
+        identifier (str): The local identifier (Python name) to look up.
 
     Returns:
         list[URIRef]: The corresponding URIs from the graph.
@@ -27,11 +27,11 @@ def label_to_uri(graph: Graph, label: str) -> list[URIRef]:
     query = """PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
     SELECT DISTINCT ?s
     WHERE {
-      ?s pmdco:0000128 ?label .
+      ?s pmdco:0000128 ?identifier .
       ?s a owl:Class .
     }"""
-    result = list(graph.query(query, initBindings={"label": Literal(label)}))
-    assert len(result) > 0, f"No result found for {label}"
+    result = list(graph.query(query, initBindings={"identifier": Literal(identifier)}))
+    assert len(result) > 0, f"No result found for {identifier}"
     return [r[0] for r in result]
 
 

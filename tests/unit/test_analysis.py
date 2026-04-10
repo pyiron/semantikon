@@ -78,7 +78,7 @@ class TestAnalysis(unittest.TestCase):
         g = onto.get_knowledge_graph(wf_dict, prefix="T")
 
         with self.subTest("workflow instance exists"):
-            uri = asis.label_to_uri(g, "my_kinetic_energy_workflow")[0]
+            uri = asis.identifier_to_uri(g, "my_kinetic_energy_workflow")[0]
             workflows = list(g.subjects(RDF.type, uri))
             self.assertEqual(len(workflows), 1)
 
@@ -86,9 +86,9 @@ class TestAnalysis(unittest.TestCase):
 
         with self.subTest("workflow has both function executions as parts"):
             parts = list(g.objects(wf, onto.BFO["0000051"]))
-            uri = asis.label_to_uri(g, "get_kinetic_energy_0")[0]
+            uri = asis.identifier_to_uri(g, "get_kinetic_energy_0")[0]
             ke_calls = [p for p in parts if (p, RDF.type, uri) in g]
-            uri = asis.label_to_uri(g, "get_speed_0")[0]
+            uri = asis.identifier_to_uri(g, "get_speed_0")[0]
             speed_calls = [p for p in parts if (p, RDF.type, uri) in g]
             self.assertEqual(len(ke_calls), 1)
             self.assertEqual(len(speed_calls), 1)
@@ -237,12 +237,12 @@ class TestAnalysis(unittest.TestCase):
             [(1.0,)],
         )
 
-    def test_label_to_uri(self):
+    def test_identifier_to_uri(self):
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         g = onto.get_knowledge_graph(wf_dict)
-        uri = asis.label_to_uri(g, "my_kinetic_energy_workflow")[0]
-        label = str(g.value(uri, RDFS.label))
-        self.assertEqual(label, "my_kinetic_energy_workflow")
+        uri = asis.identifier_to_uri(g, "my_kinetic_energy_workflow")[0]
+        identifier = str(g.value(uri, onto.SNS.local_identifier))
+        self.assertEqual(identifier, "my_kinetic_energy_workflow")
 
 
 if __name__ == "__main__":
