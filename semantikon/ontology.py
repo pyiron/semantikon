@@ -1096,6 +1096,19 @@ class _DataclassTranslator:
                     dtype=field_type,
                 )
 
+    @staticmethod
+    def _to_field_label(field_node: URIRef) -> Literal:
+        """
+        Generate a human-readable label for a dataclass field.
+
+        Args:
+            field_node: URIRef representing the field.
+
+        Returns:
+            A Literal containing the field label.
+        """
+        return Literal(str(field_node).rsplit("#", 1)[-1].rsplit("/", 1)[-1])
+
     def _emit_tbox(
         self,
         *,
@@ -1120,8 +1133,7 @@ class _DataclassTranslator:
         )
 
         graph.add((field_node, RDFS.subClassOf, SNS.value_specification))
-        field_label = str(field_node).rsplit("#", 1)[-1].rsplit("/", 1)[-1]
-        graph.add((field_node, RDFS.label, Literal(field_label)))
+        graph.add((field_node, RDFS.label, self._to_field_label(field_node)))
         graph.add(
             (field_node, SNS.local_identifier, Literal(field_node.split("-")[-1]))
         )
@@ -1165,7 +1177,7 @@ class _DataclassTranslator:
         """
         graph.add((parent, SNS.has_part, field_node))
         graph.add((field_node, RDF.type, field_class))
-        graph.add((field_node, RDFS.label, Literal(field_node)))
+        graph.add((field_node, RDFS.label, self._to_field_label(field_node)))
         graph.add(
             (field_node, SNS.local_identifier, Literal(field_node.split("-")[-1]))
         )
