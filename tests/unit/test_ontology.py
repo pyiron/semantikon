@@ -655,7 +655,9 @@ class TestOntology(unittest.TestCase):
         mass_spec = list(graph.query(query))
         self.assertEqual(len(mass_spec), 1)
         self.assertIn((mass_spec[0][0], RDF.type, onto.SNS.input_specification), graph)
-        self.assertIn((mass_spec[0][0], RDFS.label, Literal("mass")), graph)
+        self.assertIn(
+            (mass_spec[0][0], onto.SNS.local_identifier, Literal("mass")), graph
+        )
         self.assertIn(
             (mass_spec[0][0], onto.SNS.has_parameter_position, Literal(0)), graph
         )
@@ -673,7 +675,10 @@ class TestOntology(unittest.TestCase):
         self.assertIn(
             (output_spec[0][0], RDF.type, onto.SNS.output_specification), graph
         )
-        self.assertIn((output_spec[0][0], RDFS.label, Literal("kinetic_energy")), graph)
+        self.assertIn(
+            (output_spec[0][0], onto.SNS.local_identifier, Literal("kinetic_energy")),
+            graph,
+        )
         self.assertIn(
             (output_spec[0][0], onto.SNS.has_parameter_position, Literal(0)), graph
         )
@@ -819,7 +824,7 @@ class TestOntology(unittest.TestCase):
         query = sparql_prefixes + """
             SELECT ?label WHERE {
               ?function bfo:0000051 ?bnode .
-              ?bnode rdfs:label ?label .
+              ?bnode pmdco:0000128 ?label .
             }"""
         g = onto.function_to_knowledge_graph(prepare_pizza)
         self.assertEqual(list(g.query(query))[0][0].toPython(), "output_0")
