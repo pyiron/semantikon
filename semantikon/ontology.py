@@ -505,7 +505,6 @@ def _function_to_graph(
             else:
                 g.add((arg_node, RDF.type, SNS.output_specification))
             g.add((arg_node, SNS.workflow_argument_name, Literal(arg_name)))
-            g.add((arg_node, RDFS.label, Literal(str(f_node))))
             g.add((f_node, SNS.has_part, arg_node))
             g.add(
                 (arg_node, SNS.has_parameter_position, Literal(arg.get("position", ii)))
