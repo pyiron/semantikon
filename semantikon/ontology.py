@@ -1120,7 +1120,8 @@ class _DataclassTranslator:
         )
 
         graph.add((field_node, RDFS.subClassOf, SNS.value_specification))
-        graph.add((field_node, RDFS.label, Literal(field_node)))
+        field_label = str(field_node).rsplit("#", 1)[-1].rsplit("/", 1)[-1]
+        graph.add((field_node, RDFS.label, Literal(field_label)))
         graph.add(
             (field_node, SNS.local_identifier, Literal(field_node.split("-")[-1]))
         )
