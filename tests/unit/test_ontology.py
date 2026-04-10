@@ -655,7 +655,7 @@ class TestOntology(unittest.TestCase):
         mass_spec = list(graph.query(query))
         self.assertEqual(len(mass_spec), 1)
         self.assertIn((mass_spec[0][0], RDF.type, onto.SNS.input_specification), graph)
-        self.assertIn((mass_spec[0][0], onto.SNS.workflow_argument_name, Literal("mass")), graph)
+        self.assertIn((mass_spec[0][0], onto.SNS.local_identifier, Literal("mass")), graph)
         self.assertIn(
             (mass_spec[0][0], onto.SNS.has_parameter_position, Literal(0)), graph
         )
@@ -673,7 +673,7 @@ class TestOntology(unittest.TestCase):
         self.assertIn(
             (output_spec[0][0], RDF.type, onto.SNS.output_specification), graph
         )
-        self.assertIn((output_spec[0][0], onto.SNS.workflow_argument_name, Literal("kinetic_energy")), graph)
+        self.assertIn((output_spec[0][0], onto.SNS.local_identifier, Literal("kinetic_energy")), graph)
         self.assertIn(
             (output_spec[0][0], onto.SNS.has_parameter_position, Literal(0)), graph
         )
