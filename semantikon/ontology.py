@@ -204,6 +204,7 @@ def _inherit_properties(graph: Graph, n_max: int = 1000):
         ?target ?p ?o .
         FILTER(?p != ro:0001000)
         FILTER(?p != rdfs:label)
+        FILTER(?p != pmdco:0000128)
         FILTER(?p != pmdco:0000006)
         FILTER(?p != rdf:type)
         FILTER(?p != owl:sameAs)
@@ -563,7 +564,8 @@ def _wf_node_to_graph(
                 f_node,
                 restriction_type=OWL.hasValue,
             )
-        g.add((node, RDFS.label, Literal(node_name.split("-")[-1])))
+        g.add((node, RDFS.label, Literal(node_name)))
+        g.add((node, SNS.local_identifier, Literal(node_name.split("-")[-1])))
     else:
         node = G.get_a_node(node_name)
         g.add((node, RDF.type, G.t_ns[node_name]))
@@ -957,6 +959,7 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
     if t_box:
         g.add((workflow_node, RDF.type, OWL.Class))
         g.add((workflow_node, RDFS.subClassOf, SNS.workflow_node))
+        g.add((workflow_node, SNS.local_identifier, Literal(G.name)))
         g.add((workflow_node, RDFS.label, Literal(G.name)))
     else:
         g.add((workflow_node, RDF.type, G.t_ns[G.name]))

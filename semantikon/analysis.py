@@ -24,9 +24,10 @@ def label_to_uri(graph: Graph, label: str) -> list[URIRef]:
     Returns:
         list[URIRef]: The corresponding URIs from the graph.
     """
-    query = """SELECT DISTINCT ?s
+    query = """PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
+    SELECT DISTINCT ?s
     WHERE {
-      ?s rdfs:label ?label .
+      ?s pmdco:0000128 ?label .
       ?s a owl:Class .
     }"""
     result = list(graph.query(query, initBindings={"label": Literal(label)}))
@@ -282,7 +283,7 @@ def _get_label_from_port(port, graph) -> list[str]:
     query_io_node = f"""PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
     SELECT DISTINCT ?parent ?label WHERE {{
         ?parent rdfs:subClassOf ?bnode .
-        ?parent rdfs:label ?label .
+        ?parent pmdco:0000128 ?label .
         ?bnode a owl:Restriction .
         ?bnode owl:onProperty bfo:0000051 .
         ?bnode owl:someValuesFrom <{port}> .
