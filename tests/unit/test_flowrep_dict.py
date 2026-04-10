@@ -339,7 +339,7 @@ class TestWorkflowToDict(unittest.TestCase):
 
 class TestFlowControlStub(unittest.TestCase):
     def test_raises_not_implemented(self):
-        recipe = frs.ForNode(
+        recipe = frs.ForEachNode(
             inputs=["xs"],
             outputs=["ys"],
             body_node=frs.LabeledNode(label="body", node=negate.flowrep_recipe),
