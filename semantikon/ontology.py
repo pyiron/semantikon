@@ -948,13 +948,15 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
                 G=G,
                 t_box=t_box,
             )
-        else:
+        elif step == "outputs":
             g += _wf_output_to_graph(
                 node_name=node_name,
                 data=data,
                 G=G,
                 t_box=t_box,
             )
+        else:
+            raise ValueError(f"Encountered unknown step: {step}")
 
     if t_box:
         g.add((workflow_node, RDF.type, OWL.Class))
