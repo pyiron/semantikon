@@ -1345,7 +1345,6 @@ class _WorkflowGraphSerializer:
         for key, data in self.node_dict.items():
             if "." not in key:
                 G.name = key
-                continue
 
             G.add_node(
                 key,
