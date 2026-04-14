@@ -119,7 +119,7 @@ class SemantikonDiGraph(nx.DiGraph):
                 c for c in self.predecessors(io) if self.nodes[c]["step"] != "node"
             ]
             assert len(candidate) <= 1
-            if len(candidate) == 0 or self.nodes[candidate[0]]["step"] == "node":
+            if len(candidate) == 0:
                 return f"{io}_data"
             io = candidate[0]
 
