@@ -913,9 +913,10 @@ class TestOntology(unittest.TestCase):
             ?bnode owl:onProperty bfo:0000051 .
             ?bnode owl:someValuesFrom sns:T_wf_nested_triples-wf_triples_0 .
         }"""
-        g = onto.get_knowledge_graph(wf_nested_triples.get_semantikon_dict(), prefix="T")
+        g = onto.get_knowledge_graph(
+            wf_nested_triples.get_semantikon_dict(), prefix="T"
+        )
         self.assertTrue(g.query(query).askAnswer, msg=g.serialize())
-
 
 
 if __name__ == "__main__":
