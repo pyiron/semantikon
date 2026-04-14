@@ -1,3 +1,4 @@
+import copy
 import os
 import unittest
 from dataclasses import dataclass, field
@@ -9,7 +10,7 @@ from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace
 from rdflib.compare import graph_diff
 
-from semantikon import ontology as onto
+from semantikon import ontology as onto, get_knowledge_graph
 from semantikon.metadata import SemantikonURI, meta
 from semantikon.visualize import visualize_recipe
 from semantikon.workflow import workflow
@@ -32,6 +33,23 @@ prefixes = """
 """
 
 sparql_prefixes = prefixes.replace("@prefix ", "PREFIX ").replace(" .\n", "\n")
+
+
+def add_one(x):
+    y = x + 1
+    return y
+
+@workflow
+def add_two(a):
+    b = add_one(a)
+    c = add_one(b)
+    return c
+
+@workflow
+def add_three(alpha):
+    beta = add_two(alpha)
+    gamma = add_two(beta)
+    return gamma
 
 
 def get_speed(
@@ -349,6 +367,41 @@ class TestOntology(unittest.TestCase):
     def setUpClass(cls):
         cls.maxDiff = None
         cls.static_dir = Path(__file__).parent.parent / "static"
+
+    def test_nested_topology(self):
+        wf_dict = add_three.get_semantikon_dict()
+
+        def _label(fnc) -> str:
+            return fnc.__name__ + "_0"
+
+        with self.subTest("Basic construction"):
+            g = onto.get_knowledge_graph(wf_dict=wf_dict)
+            validation = onto.validate_values(g)
+            self.assertTrue(
+                validation[0],
+                msg="Trivial deeply nested topology should parse and validates"
+            )
+
+        subgraph_label = add_two.__name__ + "_0"
+        subgraph_edges = wf_dict["nodes"][subgraph_label]["edges"]
+
+
+        with self.subTest("Too many inputs"):
+            extra_input = ('inputs.a', 'add_one_1.inputs.x')
+            overloaded_input_edges = list(subgraph_edges)
+            overloaded_input_edges.append(extra_input)
+            overloaded_dict = copy.deepcopy(wf_dict)
+            overloaded_dict["nodes"][subgraph_label]["edges"] = overloaded_input_edges
+
+            with self.assertRaises(
+                AssertionError,
+                msg="Providing an input with two legitimate sources (a peer source and "
+                "a parent source, in this case) should force an error. It would be "
+                "nice to hit the ValueError in __, but we hit an assertion in "
+                "`_get_data_node` first."
+            ):
+                onto.get_knowledge_graph(wf_dict=overloaded_dict)
+
 
     def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
