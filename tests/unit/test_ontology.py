@@ -10,7 +10,7 @@ from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace
 from rdflib.compare import graph_diff
 
-from semantikon import ontology as onto, get_knowledge_graph
+from semantikon import ontology as onto
 from semantikon.metadata import SemantikonURI, meta
 from semantikon.visualize import visualize_recipe
 from semantikon.workflow import workflow
