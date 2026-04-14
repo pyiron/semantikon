@@ -614,13 +614,31 @@ def _is_macro_input(io: str, G: SemantikonDiGraph, candidates: tuple[str, str]):
 
 def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
     candidate = list(G.predecessors(io))
-    if len(candidate) == 1:
+    n_predecessors = len(candidate)
+    if n_predecessors == 0:
+        return False
+    elif n_predecessors == 1:
         if G.nodes[candidate[0]]["step"] == "node":
             return True
         return _input_is_connected(candidate[0], G)
-    if len(candidate) != 0:
-        raise ValueError(f"Too many predecessors for {io}: {candidate}")
-    return False
+    elif n_predecessors == 2 and _is_macro_output(io, G, tuple(candidate)):
+        return (
+            _input_is_connected(candidate[0], G)
+            and _input_is_connected(candidate[1], G)
+        )
+    else:
+        predecessor_steps = {c: G.nodes[c]["step"] for c in candidate}
+        step_type = G.nodes[io]["step"]
+        raise ValueError(
+            f"Too many predecessors for {io} ({step_type}): {predecessor_steps}"
+        )
+
+
+def _is_macro_output(io: str, G: SemantikonDiGraph, candidates: tuple[str, str]):
+    predecessor_types = {G.nodes[c]["step"] for c in candidates}
+    step_type = G.nodes[io]["step"]
+    output_edge_predecessors = {"node", "outputs"}
+    return step_type == "outputs" and predecessor_types == output_edge_predecessors
 
 
 def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: str) -> str:
