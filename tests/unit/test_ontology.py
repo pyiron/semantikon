@@ -107,6 +107,12 @@ def wf_triples(a, b):
     return a
 
 
+@workflow
+def wf_nested_triples(a, b):
+    result = wf_triples(a, b)
+    return result
+
+
 class Meal:
     pass
 
@@ -898,6 +904,18 @@ class TestOntology(unittest.TestCase):
             )
 
         os.remove("test.h5")
+
+    def test_nested_workflow(self):
+        query = sparql_prefixes + """
+        ASK {
+            sns:T_wf_nested_triples rdfs:subClassOf ?bnode .
+            ?bnode a owl:Restriction .
+            ?bnode owl:onProperty bfo:0000051 .
+            ?bnode owl:someValuesFrom sns:T_wf_nested_triples-wf_triples_0 .
+        }"""
+        g = onto.get_knowledge_graph(wf_nested_triples.get_semantikon_dict(), prefix="T")
+        self.assertTrue(g.query(query).askAnswer, msg=g.serialize())
+
 
 
 if __name__ == "__main__":
