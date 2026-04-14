@@ -39,11 +39,13 @@ def add_one(x):
     y = x + 1
     return y
 
+
 @workflow
 def add_two(a):
     b = add_one(a)
     c = add_one(b)
     return c
+
 
 @workflow
 def add_three(alpha):
@@ -379,15 +381,14 @@ class TestOntology(unittest.TestCase):
             validation = onto.validate_values(g)
             self.assertTrue(
                 validation[0],
-                msg="Trivial deeply nested topology should parse and validates"
+                msg="Trivial deeply nested topology should parse and validates",
             )
 
         subgraph_label = add_two.__name__ + "_0"
         subgraph_edges = wf_dict["nodes"][subgraph_label]["edges"]
 
-
         with self.subTest("Too many inputs"):
-            extra_input = ('inputs.a', 'add_one_1.inputs.x')
+            extra_input = ("inputs.a", "add_one_1.inputs.x")
             overloaded_input_edges = list(subgraph_edges)
             overloaded_input_edges.append(extra_input)
             overloaded_dict = copy.deepcopy(wf_dict)
@@ -398,10 +399,9 @@ class TestOntology(unittest.TestCase):
                 msg="Providing an input with two legitimate sources (a peer source and "
                 "a parent source, in this case) should force an error. It would be "
                 "nice to hit the ValueError in __, but we hit an assertion in "
-                "`_get_data_node` first."
+                "`_get_data_node` first.",
             ):
                 onto.get_knowledge_graph(wf_dict=overloaded_dict)
-
 
     def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()

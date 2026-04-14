@@ -598,12 +598,12 @@ def _output_is_connected(io: str, G: SemantikonDiGraph) -> bool:
             return True
         return _output_is_connected(candidate[0], G)
     elif n_candidates == 2 and _is_macro_input(io, G, tuple(candidate)):
-        return (
-            _output_is_connected(candidate[0], G)
-            and _output_is_connected(candidate[1], G)
+        return _output_is_connected(candidate[0], G) and _output_is_connected(
+            candidate[1], G
         )
     else:
         return any(_output_is_connected(c, G) for c in candidate)
+
 
 def _is_macro_input(io: str, G: SemantikonDiGraph, candidates: tuple[str, str]):
     successor_types = {G.nodes[c]["step"] for c in candidates}
@@ -622,9 +622,8 @@ def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
             return True
         return _input_is_connected(candidate[0], G)
     elif n_predecessors == 2 and _is_macro_output(io, G, tuple(candidate)):
-        return (
-            _input_is_connected(candidate[0], G)
-            and _input_is_connected(candidate[1], G)
+        return _input_is_connected(candidate[0], G) and _input_is_connected(
+            candidate[1], G
         )
     else:
         predecessor_steps = {c: G.nodes[c]["step"] for c in candidate}
