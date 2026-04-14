@@ -613,7 +613,7 @@ def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
             return True
         return _input_is_connected(candidate[0], G)
     if len(candidate) != 0:
-        raise ValueError(f"No predecessors for {io} in {G.nodes}")
+        raise ValueError(f"Too many predecessors for {io}: {candidate}")
     return False
 
 
