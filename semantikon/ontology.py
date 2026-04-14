@@ -866,7 +866,6 @@ def _wf_io_to_graph(
 
 def _parse_precedes(
     G: SemantikonDiGraph,
-    workflow_node: URIRef,
     t_box: bool,
 ) -> Graph:
     g = _get_bound_graph()
@@ -952,7 +951,7 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
                 t_box=t_box,
             )
 
-    g += _parse_precedes(G=G, workflow_node=workflow_node, t_box=t_box)
+    g += _parse_precedes(G=G, t_box=t_box)
     return g
 
 
