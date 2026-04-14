@@ -595,7 +595,7 @@ def _output_is_connected(io: str, G: SemantikonDiGraph) -> bool:
             return True
         return _output_is_connected(candidate[0], G)
     elif len(candidate) > 1:
-        if trouble:= {c: G.nodes[c] for c in candidate if G.nodes[c]["step"] != "node"}:
+        if trouble:= {c: G.nodes[c] for c in candidate if G.nodes[c]["step"] == "node"}:
             raise ValueError(
                 f"Problematic candidates for {io} `_output_is_connected` check from "
                 f"among {candidate}: {trouble!r}"
@@ -610,7 +610,7 @@ def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
         if G.nodes[candidate[0]]["step"] == "node":
             return True
         return _input_is_connected(candidate[0], G)
-    if len(candidate) == 0:
+    if len(candidate) != 0:
         raise ValueError(f"No predecessors for {io} in {G.nodes}")
     return False
 
