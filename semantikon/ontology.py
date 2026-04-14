@@ -878,11 +878,6 @@ def _parse_precedes(
                             SNS.precedes,
                             G.t_ns[succ],
                         )
-                    g += _to_owl_restriction(
-                        workflow_node,
-                        SNS.has_part,
-                        G.t_ns[node[0]],
-                    )
                 else:
                     for succ in successors:
                         g.add(
@@ -892,7 +887,6 @@ def _parse_precedes(
                                 G.get_a_node(succ),
                             )
                         )
-                    g.add((workflow_node, SNS.has_part, G.get_a_node(node[0])))
     return g
 
 
@@ -956,15 +950,7 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
                 t_box=t_box,
             )
 
-    if t_box:
-        g.add((workflow_node, RDF.type, OWL.Class))
-        g.add((workflow_node, RDFS.subClassOf, SNS.workflow_node))
-        g.add((workflow_node, SNS.local_identifier, Literal(G.name)))
-        g.add((workflow_node, RDFS.label, Literal(G.name)))
-    else:
-        g.add((workflow_node, RDF.type, G.t_ns[G.name]))
     g += _parse_precedes(G=G, workflow_node=workflow_node, t_box=t_box)
-    g += _parse_global_io(G=G, workflow_node=workflow_node, t_box=t_box)
     return g
 
 
