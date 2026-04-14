@@ -595,7 +595,9 @@ def _output_is_connected(io: str, G: SemantikonDiGraph) -> bool:
             return True
         return _output_is_connected(candidate[0], G)
     elif len(candidate) > 1:
-        if trouble:= {c: G.nodes[c] for c in candidate if G.nodes[c]["step"] == "node"}:
+        if trouble := {
+            c: G.nodes[c] for c in candidate if G.nodes[c]["step"] == "node"
+        }:
             raise ValueError(
                 f"Problematic candidates for {io} `_output_is_connected` check from "
                 f"among {candidate}: {trouble!r}"
