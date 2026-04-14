@@ -1249,8 +1249,7 @@ class _WorkflowGraphSerializer:
 
     @staticmethod
     def _remove_us(*args: str) -> str:
-        s = ".".join(args)
-        return ".".join(part.split("__")[-1] for part in s.split("."))
+        return ".".join(args)
 
     @staticmethod
     def _dot(*args: str | None) -> str:
