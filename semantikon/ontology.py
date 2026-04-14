@@ -1304,7 +1304,7 @@ class _WorkflowGraphSerializer:
         for key, node in wf_dict.get("nodes", {}).items():
             child_key = self._dot(prefix, key)
             self._serialize_workflow(node, child_key)
-            self.node_dict[child_key]["parent"] = prefix
+            self.node_dict[child_key]["parent"] = prefix.replace(".", "-")
 
     def _serialize_edges(self, wf_dict: dict, prefix: str) -> None:
         for edge in wf_dict.get("edges", []):
