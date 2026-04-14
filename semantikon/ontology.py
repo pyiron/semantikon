@@ -115,7 +115,9 @@ class SemantikonDiGraph(nx.DiGraph):
     @cache
     def _get_data_node(self, io: str) -> str:
         while True:
-            candidate = [c for c in self.predecessors(io) if self.nodes[c]["step"] != "node"]
+            candidate = [
+                c for c in self.predecessors(io) if self.nodes[c]["step"] != "node"
+            ]
             assert len(candidate) <= 1
             if len(candidate) == 0 or self.nodes[candidate[0]]["step"] == "node":
                 return f"{io}_data"
