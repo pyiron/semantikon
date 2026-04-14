@@ -610,7 +610,8 @@ def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
         if G.nodes[candidate[0]]["step"] == "node":
             return True
         return _input_is_connected(candidate[0], G)
-    assert len(candidate) == 0
+    if len(candidate) == 0:
+        raise ValueError(f"No predecessors for {io} in {G.nodes}")
     return False
 
 
