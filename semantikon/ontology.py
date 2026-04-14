@@ -566,6 +566,12 @@ def _wf_node_to_graph(
             )
         g.add((node, RDFS.label, Literal(node_name)))
         g.add((node, SNS.local_identifier, Literal(node_name.split("-")[-1])))
+        if "parent" in data:
+            g += _to_owl_restriction(
+                G.t_ns[data["parent"]],
+                SNS.has_part,
+                node,
+            )
     else:
         node = G.get_a_node(node_name)
         g.add((node, RDF.type, G.t_ns[node_name]))
@@ -575,6 +581,8 @@ def _wf_node_to_graph(
             g.add((node, SNS.has_part, G.get_a_node(out)))
         if "function" in data:
             g.add((node, SNS.concretizes, f_node))
+        if "parent" in data:
+            g.add((G.get_a_node(data["parent"]), SNS.has_part, node))
     return g
 
 
@@ -863,30 +871,22 @@ def _parse_precedes(
     for node in G.nodes.data():
         if node[1]["step"] == "node":
             successors = list(_get_successor_nodes(G, node[0]))
-            if len(successors) == 0:
-                if t_box:
+            if t_box:
+                for succ in successors:
                     g += _to_owl_restriction(
-                        workflow_node, SNS.has_part, G.t_ns[node[0]]
+                        G.t_ns[node[0]],
+                        SNS.precedes,
+                        G.t_ns[succ],
                     )
-                else:
-                    g.add((workflow_node, SNS.has_part, G.get_a_node(node[0])))
             else:
-                if t_box:
-                    for succ in successors:
-                        g += _to_owl_restriction(
-                            G.t_ns[node[0]],
+                for succ in successors:
+                    g.add(
+                        (
+                            G.get_a_node(node[0]),
                             SNS.precedes,
-                            G.t_ns[succ],
+                            G.get_a_node(succ),
                         )
-                else:
-                    for succ in successors:
-                        g.add(
-                            (
-                                G.get_a_node(node[0]),
-                                SNS.precedes,
-                                G.get_a_node(succ),
-                            )
-                        )
+                    )
     return g
 
 
@@ -1300,7 +1300,9 @@ class _WorkflowGraphSerializer:
 
     def _serialize_children(self, wf_dict: dict, prefix: str) -> None:
         for key, node in wf_dict.get("nodes", {}).items():
-            self._serialize_workflow(node, self._dot(prefix, key))
+            child_key = self._dot(prefix, key)
+            self._serialize_workflow(node, child_key)
+            self.node_dict[child_key]["parent"] = prefix
 
     def _serialize_edges(self, wf_dict: dict, prefix: str) -> None:
         for edge in wf_dict.get("edges", []):
