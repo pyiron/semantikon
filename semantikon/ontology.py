@@ -920,7 +920,6 @@ def _parse_global_io(
 
 def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
     g = _get_bound_graph()
-    workflow_node = G.t_ns[G.name] if t_box else G.get_a_node(G.name)
     for node_name, data in G.nodes.data():
         data = data.copy()
         step = data.pop("step")
