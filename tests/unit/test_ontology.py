@@ -360,11 +360,12 @@ class TestOntology(unittest.TestCase):
             ?data qudt:hasUnit unit:J .
         }}"""
         self.assertTrue(
-            g.query(query).askAnswer, msg=g.serialize() + """
+            g.query(query).askAnswer,
+            msg=g.serialize() + """
             The reason why this test failed is probably because the representation
             of the workflow graph changed and therefore also its hash value
             (starting with W in the URI)
-            """
+            """,
         )
         self.assertTrue(onto.validate_values(g)[0])
 
