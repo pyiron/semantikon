@@ -363,6 +363,7 @@ class TestOntology(unittest.TestCase):
             g.query(query).askAnswer, msg=g.serialize() + """
             The reason why this test failed is probably because the representation
             of the workflow graph changed and therefore also its hash value
+            (starting with W in the URI)
             """
         )
         self.assertTrue(onto.validate_values(g)[0])
