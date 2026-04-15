@@ -359,7 +359,12 @@ class TestOntology(unittest.TestCase):
             ?output ro:0000057 ?data .
             ?data qudt:hasUnit unit:J .
         }}"""
-        self.assertTrue(g.query(query).askAnswer, msg=g.serialize())
+        self.assertTrue(
+            g.query(query).askAnswer, msg=g.serialize() + """
+            The reason why this test failed is probably because the representation
+            of the workflow graph changed and therefore also its hash value
+            """
+        )
         self.assertTrue(onto.validate_values(g)[0])
 
     def test_to_restrictions(self):
