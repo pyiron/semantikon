@@ -786,14 +786,15 @@ def _wf_input_to_graph(
         data_node_name = G._get_data_node(io=node_name)
         data_node = G.get_a_node(data_node_name)
         if not _input_is_connected(node_name, G):
+            if units is not None:
+                g.add((data_node, QUDT.hasUnit, _units_to_uri(units)))
+
             # Only emit URI/unit info if this node OWNS the data node.
             # If the data node traces back to a parent input, that parent is the
             # canonical holder; emitting here would collide with the parent's
             # emission on the shared bnode and mask uri/unit mismatches.
             owns_data_node = data_node_name == f"{node_name}_data"
             if owns_data_node:
-                if units is not None:
-                    g.add((data_node, QUDT.hasUnit, _units_to_uri(units)))
                 if "uri" in data:
                     bnode = URIRef(str(data_node) + "_uri")
                     g.add((bnode, RDF.type, data["uri"]))
@@ -838,11 +839,13 @@ def _wf_output_to_graph(
     else:  # ABox
         data_node_name = G._get_data_node(io=node_name)
         data_node = G.get_a_node(data_node_name)
+
+        units = data.get("units", data.get("unit"))
+        if units is not None:
+            g.add((data_node, QUDT.hasUnit, _units_to_uri(units)))
+
         owns_data_node = data_node_name == f"{node_name}_data"
         if owns_data_node:
-            units = data.get("units", data.get("unit"))
-            if units is not None:
-                g.add((data_node, QUDT.hasUnit, _units_to_uri(units)))
             if "uri" in data:
                 instance = URIRef(str(data_node) + "_uri")
                 g.add((instance, RDF.type, data["uri"]))
