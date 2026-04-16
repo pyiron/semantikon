@@ -115,9 +115,11 @@ class SemantikonDiGraph(nx.DiGraph):
     @cache
     def _get_data_node(self, io: str) -> str:
         while True:
-            candidate = list(self.predecessors(io))
+            candidate = [
+                c for c in self.predecessors(io) if self.nodes[c]["step"] != "node"
+            ]
             assert len(candidate) <= 1
-            if len(candidate) == 0 or self.nodes[candidate[0]]["step"] == "node":
+            if len(candidate) == 0:
                 return f"{io}_data"
             io = candidate[0]
 
@@ -566,6 +568,12 @@ def _wf_node_to_graph(
             )
         g.add((node, RDFS.label, Literal(node_name)))
         g.add((node, SNS.local_identifier, Literal(node_name.split("-")[-1])))
+        if "parent" in data:
+            g += _to_owl_restriction(
+                G.t_ns[data["parent"]],
+                SNS.has_part,
+                node,
+            )
     else:
         node = G.get_a_node(node_name)
         g.add((node, RDF.type, G.t_ns[node_name]))
@@ -575,29 +583,61 @@ def _wf_node_to_graph(
             g.add((node, SNS.has_part, G.get_a_node(out)))
         if "function" in data:
             g.add((node, SNS.concretizes, f_node))
+        if "parent" in data:
+            g.add((G.get_a_node(data["parent"]), SNS.has_part, node))
     return g
 
 
 def _output_is_connected(io: str, G: SemantikonDiGraph) -> bool:
     candidate = list(G.successors(io))
-    if len(candidate) == 1:
+    n_candidates = len(candidate)
+    if n_candidates == 0:
+        return False
+    elif n_candidates == 1:
         if G.nodes[candidate[0]]["step"] == "node":
             return True
         return _output_is_connected(candidate[0], G)
-    elif len(candidate) > 1:
-        assert all(G.nodes[c]["step"] != "node" for c in candidate)
+    elif n_candidates == 2 and _is_macro_input(io, G, tuple(candidate)):
+        return _output_is_connected(candidate[0], G) and _output_is_connected(
+            candidate[1], G
+        )
+    else:
         return any(_output_is_connected(c, G) for c in candidate)
-    return False
+
+
+def _is_macro_input(io: str, G: SemantikonDiGraph, candidates: tuple[str, str]):
+    successor_types = {G.nodes[c]["step"] for c in candidates}
+    step_type = G.nodes[io]["step"]
+    input_edge_predecessors = {"node", "inputs"}
+    return step_type == "inputs" and successor_types == input_edge_predecessors
 
 
 def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
     candidate = list(G.predecessors(io))
-    if len(candidate) == 1:
+    n_predecessors = len(candidate)
+    if n_predecessors == 0:
+        return False
+    elif n_predecessors == 1:
         if G.nodes[candidate[0]]["step"] == "node":
             return True
         return _input_is_connected(candidate[0], G)
-    assert len(candidate) == 0
-    return False
+    elif n_predecessors == 2 and _is_macro_output(io, G, tuple(candidate)):
+        return _input_is_connected(candidate[0], G) and _input_is_connected(
+            candidate[1], G
+        )
+    else:
+        predecessor_steps = {c: G.nodes[c]["step"] for c in candidate}
+        step_type = G.nodes[io]["step"]
+        raise ValueError(
+            f"Too many predecessors for {io} ({step_type}): {predecessor_steps}"
+        )
+
+
+def _is_macro_output(io: str, G: SemantikonDiGraph, candidates: tuple[str, str]):
+    predecessor_types = {G.nodes[c]["step"] for c in candidates}
+    step_type = G.nodes[io]["step"]
+    output_edge_predecessors = {"node", "outputs"}
+    return step_type == "outputs" and predecessor_types == output_edge_predecessors
 
 
 def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: str) -> str:
@@ -856,43 +896,28 @@ def _wf_io_to_graph(
 
 def _parse_precedes(
     G: SemantikonDiGraph,
-    workflow_node: URIRef,
     t_box: bool,
 ) -> Graph:
     g = _get_bound_graph()
     for node in G.nodes.data():
         if node[1]["step"] == "node":
             successors = list(_get_successor_nodes(G, node[0]))
-            if len(successors) == 0:
-                if t_box:
+            if t_box:
+                for succ in successors:
                     g += _to_owl_restriction(
-                        workflow_node, SNS.has_part, G.t_ns[node[0]]
-                    )
-                else:
-                    g.add((workflow_node, SNS.has_part, G.get_a_node(node[0])))
-            else:
-                if t_box:
-                    for succ in successors:
-                        g += _to_owl_restriction(
-                            G.t_ns[node[0]],
-                            SNS.precedes,
-                            G.t_ns[succ],
-                        )
-                    g += _to_owl_restriction(
-                        workflow_node,
-                        SNS.has_part,
                         G.t_ns[node[0]],
+                        SNS.precedes,
+                        G.t_ns[succ],
                     )
-                else:
-                    for succ in successors:
-                        g.add(
-                            (
-                                G.get_a_node(node[0]),
-                                SNS.precedes,
-                                G.get_a_node(succ),
-                            )
+            else:
+                for succ in successors:
+                    g.add(
+                        (
+                            G.get_a_node(node[0]),
+                            SNS.precedes,
+                            G.get_a_node(succ),
                         )
-                    g.add((workflow_node, SNS.has_part, G.get_a_node(node[0])))
+                    )
     return g
 
 
@@ -925,7 +950,6 @@ def _parse_global_io(
 
 def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
     g = _get_bound_graph()
-    workflow_node = G.t_ns[G.name] if t_box else G.get_a_node(G.name)
     for node_name, data in G.nodes.data():
         data = data.copy()
         step = data.pop("step")
@@ -956,15 +980,7 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
                 t_box=t_box,
             )
 
-    if t_box:
-        g.add((workflow_node, RDF.type, OWL.Class))
-        g.add((workflow_node, RDFS.subClassOf, SNS.workflow_node))
-        g.add((workflow_node, SNS.local_identifier, Literal(G.name)))
-        g.add((workflow_node, RDFS.label, Literal(G.name)))
-    else:
-        g.add((workflow_node, RDF.type, G.t_ns[G.name]))
-    g += _parse_precedes(G=G, workflow_node=workflow_node, t_box=t_box)
-    g += _parse_global_io(G=G, workflow_node=workflow_node, t_box=t_box)
+    g += _parse_precedes(G=G, t_box=t_box)
     return g
 
 
@@ -1263,8 +1279,7 @@ class _WorkflowGraphSerializer:
 
     @staticmethod
     def _remove_us(*args: str) -> str:
-        s = ".".join(args)
-        return ".".join(part.split("__")[-1] for part in s.split("."))
+        return ".".join(args)
 
     @staticmethod
     def _dot(*args: str | None) -> str:
@@ -1314,7 +1329,9 @@ class _WorkflowGraphSerializer:
 
     def _serialize_children(self, wf_dict: dict, prefix: str) -> None:
         for key, node in wf_dict.get("nodes", {}).items():
-            self._serialize_workflow(node, self._dot(prefix, key))
+            child_key = self._dot(prefix, key)
+            self._serialize_workflow(node, child_key)
+            self.node_dict[child_key]["parent"] = prefix.replace(".", "-")
 
     def _serialize_edges(self, wf_dict: dict, prefix: str) -> None:
         for edge in wf_dict.get("edges", []):
@@ -1345,7 +1362,6 @@ class _WorkflowGraphSerializer:
         for key, data in self.node_dict.items():
             if "." not in key:
                 G.name = key
-                continue
 
             G.add_node(
                 key,

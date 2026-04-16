@@ -1,3 +1,4 @@
+import copy
 import os
 import unittest
 from dataclasses import dataclass, field
@@ -32,6 +33,25 @@ prefixes = """
 """
 
 sparql_prefixes = prefixes.replace("@prefix ", "PREFIX ").replace(" .\n", "\n")
+
+
+def add_one(x):
+    y = x + 1
+    return y
+
+
+@workflow
+def add_two(a):
+    b = add_one(a)
+    c = add_one(b)
+    return c
+
+
+@workflow
+def add_three(alpha):
+    beta = add_two(alpha)
+    gamma = add_two(beta)
+    return gamma
 
 
 def get_speed(
@@ -105,6 +125,12 @@ def f_triples(
 def wf_triples(a, b):
     a = f_triples(a, b)
     return a
+
+
+@workflow
+def wf_nested_triples(a, b):
+    result = wf_triples(a, b)
+    return result
 
 
 class Meal:
@@ -344,6 +370,39 @@ class TestOntology(unittest.TestCase):
         cls.maxDiff = None
         cls.static_dir = Path(__file__).parent.parent / "static"
 
+    def test_nested_topology(self):
+        wf_dict = add_three.get_semantikon_dict()
+
+        def _label(fnc) -> str:
+            return fnc.__name__ + "_0"
+
+        with self.subTest("Basic construction"):
+            g = onto.get_knowledge_graph(wf_dict=wf_dict)
+            validation = onto.validate_values(g)
+            self.assertTrue(
+                validation[0],
+                msg="Trivial deeply nested topology should parse and validates",
+            )
+
+        subgraph_label = add_two.__name__ + "_0"
+        subgraph_edges = wf_dict["nodes"][subgraph_label]["edges"]
+
+        with self.subTest("Too many inputs"):
+            extra_input = ("inputs.a", "add_one_1.inputs.x")
+            overloaded_input_edges = list(subgraph_edges)
+            overloaded_input_edges.append(extra_input)
+            overloaded_dict = copy.deepcopy(wf_dict)
+            overloaded_dict["nodes"][subgraph_label]["edges"] = overloaded_input_edges
+
+            with self.assertRaises(
+                AssertionError,
+                msg="Providing an input with two legitimate sources (a peer source and "
+                "a parent source, in this case) should force an error. It would be "
+                "nice to hit the ValueError in __, but we hit an assertion in "
+                "`_get_data_node` first.",
+            ):
+                onto.get_knowledge_graph(wf_dict=overloaded_dict)
+
     def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         g = onto.get_knowledge_graph(wf_dict)
@@ -355,7 +414,7 @@ class TestOntology(unittest.TestCase):
         PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
 
         ASK {{
-            ?output a sns:W20ec0adc_my_kinetic_energy_workflow-outputs-kinetic_energy .
+            ?output a sns:Wc59275b7_my_kinetic_energy_workflow-outputs-kinetic_energy .
             ?output ro:0000057 ?data .
             ?data qudt:hasUnit unit:J .
         }}"""
@@ -905,6 +964,19 @@ class TestOntology(unittest.TestCase):
             )
 
         os.remove("test.h5")
+
+    def test_nested_workflow(self):
+        query = sparql_prefixes + """
+        ASK {
+            sns:T_wf_nested_triples rdfs:subClassOf ?bnode .
+            ?bnode a owl:Restriction .
+            ?bnode owl:onProperty bfo:0000051 .
+            ?bnode owl:someValuesFrom sns:T_wf_nested_triples-wf_triples_0 .
+        }"""
+        g = onto.get_knowledge_graph(
+            wf_nested_triples.get_semantikon_dict(), prefix="T"
+        )
+        self.assertTrue(g.query(query).askAnswer, msg=g.serialize())
 
 
 if __name__ == "__main__":
