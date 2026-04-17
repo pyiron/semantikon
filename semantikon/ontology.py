@@ -1623,10 +1623,7 @@ class _OWLToSHACLConverter:
         node_shapes: dict[URIRef, BNode] = {}
         shacl_graph = self._get_bound_graph()
         for cls in self.owl_graph.subjects(RDF.type, OWL.Class):
-            disjoints = {
-                *self.owl_graph.objects(cls, OWL.disjointWith),
-                *self.owl_graph.subjects(OWL.disjointWith, cls),
-            }
+            disjoints = list(self.owl_graph.objects(cls, OWL.disjointWith))
             if not disjoints:
                 continue
 
