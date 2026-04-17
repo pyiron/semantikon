@@ -1559,7 +1559,7 @@ class _OWLToSHACLConverter:
 
     def _iter_supported_restrictions(self):
         """
-        Yield (base_class, restriction_node, property, restriction_type, value)
+        Yield (base_class, property, restriction_type, value) tuples
         for supported OWL restrictions.
         """
         for r in self.owl_graph.subjects(RDF.type, OWL.Restriction):
