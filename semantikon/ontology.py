@@ -1551,7 +1551,7 @@ class _OWLToSHACLConverter:
         self.excluded_nodes = excluded_nodes
 
     @staticmethod
-    def _get_bound_graph():
+    def _new_shacl_graph():
         shacl_graph = _get_bound_graph()
         shacl_graph.bind("sh", str(SH))
         shacl_graph.bind("sns", str(BASE))
@@ -1582,7 +1582,7 @@ class _OWLToSHACLConverter:
 
     def _translate_restrictions(self) -> Graph:
         node_shapes: dict[URIRef, BNode] = {}
-        shacl_graph = self._get_bound_graph()
+        shacl_graph = self._new_shacl_graph()
         for base_cls, prop, rtype, value in self._iter_supported_restrictions():
 
             # One NodeShape per base class
@@ -1621,7 +1621,7 @@ class _OWLToSHACLConverter:
         Translate OWL disjointWith axioms into SHACL shapes with sh:not.
         """
         node_shapes: dict[URIRef, BNode] = {}
-        shacl_graph = self._get_bound_graph()
+        shacl_graph = self._new_shacl_graph()
         for cls in self.owl_graph.subjects(RDF.type, OWL.Class):
             disjoints = list(self.owl_graph.objects(cls, OWL.disjointWith))
             if not disjoints:
