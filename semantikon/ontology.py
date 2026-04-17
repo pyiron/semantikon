@@ -1604,7 +1604,6 @@ class _OWLToSHACLConverter:
             # Add a sh:not constraint to the original shape
             self.shacl_graph.add((ns, SH["not"], disjoint_shape))
 
-
     def convert(self) -> Graph:
         """
         Convert the OWL restrictions in the graph to SHACL shapes.

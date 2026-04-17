@@ -152,6 +152,16 @@ def eat_pizza():
     return comment
 
 
+class Drink:
+    pass
+
+
+@workflow
+def swallow_pizza_painfully(drink: Annotated[Drink, {"uri": EX.Water}]):
+    x = eat(drink)
+    return x
+
+
 uri_color = SemantikonURI(EX.Color)
 uri_cleaned = SemantikonURI(EX.Cleaned)
 
@@ -977,6 +987,28 @@ class TestOntology(unittest.TestCase):
             wf_nested_triples.get_semantikon_dict(), prefix="T"
         )
         self.assertTrue(g.query(query).askAnswer, msg=g.serialize())
+
+    def test_inconsistent_workflow_and_child_node_inputs(self):
+        wf_dict = swallow_pizza_painfully.get_semantikon_dict()
+        g = onto.get_knowledge_graph(wf_dict)
+        self.assertTrue(
+            onto.validate_values(g)[0],
+            msg=dedent("""
+                As long as the knowledge graph does not know that EX.Meal and
+                EX.Water are disjoint, it should not raise an error
+            """),
+        )
+        g.add((EX.Meal, OWL.disjointWith, EX.Water))
+        g.add((EX.Meal, RDF.type, OWL.Class))
+        g.add((EX.Water, RDF.type, OWL.Class))
+        self.assertFalse(
+            onto.validate_values(g)[0],
+            msg=dedent("""
+                Once we add that EX.Meal and EX.Water are disjoint, the workflow
+                should be inconsistent because it requires an individual to be
+                both a Meal and a Water.
+            """),
+        )
 
 
 if __name__ == "__main__":
