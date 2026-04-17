@@ -1554,7 +1554,7 @@ class _OWLToSHACLConverter:
         self.shacl_graph.bind("sh", str(SH))
         self.shacl_graph.bind("sns", str(BASE))
 
-    def iter_supported_restrictions(self):
+    def _iter_supported_restrictions(self):
         """
         Yield (base_class, restriction_node, property, restriction_type, value)
         for supported OWL restrictions.
@@ -1577,11 +1577,39 @@ class _OWLToSHACLConverter:
                 for base_cls in self.owl_graph.subjects(RDFS.subClassOf, r):
                     yield base_cls, prop, restriction_type, value
 
+    def _translate_disjoint_with(self):
+        """
+        Translate OWL disjointWith axioms into SHACL shapes with sh:not.
+        """
+        for cls in self.owl_graph.subjects(RDF.type, OWL.Class):
+            disjoints = list(self.owl_graph.objects(cls, OWL.disjointWith))
+            if not disjoints:
+                continue
+
+            # Create a NodeShape for the class if it doesn't exist
+            if cls not in self.node_shapes:
+                ns = BNode()
+                self.node_shapes[cls] = ns
+                self.shacl_graph.add((ns, RDF.type, SH.NodeShape))
+                self.shacl_graph.add((ns, SH.targetClass, cls))
+            else:
+                ns = self.node_shapes[cls]
+
+            # Create a shape that represents the disjoint classes
+            disjoint_shape = BNode()
+            self.shacl_graph.add((disjoint_shape, RDF.type, SH.NodeShape))
+            for disjoint_cls in disjoints:
+                self.shacl_graph.add((disjoint_shape, SH.targetClass, disjoint_cls))
+
+            # Add a sh:not constraint to the original shape
+            self.shacl_graph.add((ns, SH.not_, disjoint_shape))
+
+
     def convert(self) -> Graph:
         """
         Convert the OWL restrictions in the graph to SHACL shapes.
         """
-        for base_cls, prop, rtype, value in self.iter_supported_restrictions():
+        for base_cls, prop, rtype, value in self._iter_supported_restrictions():
 
             # One NodeShape per base class
             if base_cls not in self.node_shapes:
@@ -1615,6 +1643,7 @@ class _OWLToSHACLConverter:
 
             self.shacl_graph.add((ns, SH.property, ps))
 
+        self._translate_disjoint_with()
         return self.shacl_graph
 
 
