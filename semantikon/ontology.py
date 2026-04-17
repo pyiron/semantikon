@@ -1549,10 +1549,13 @@ class _OWLToSHACLConverter:
         """
         self.owl_graph = owl_graph
         self.excluded_nodes = excluded_nodes
-        self.shacl_graph = _get_bound_graph()
-        self.node_shapes: dict[URIRef, BNode] = {}
-        self.shacl_graph.bind("sh", str(SH))
-        self.shacl_graph.bind("sns", str(BASE))
+
+    @staticmethod
+    def _get_bound_graph():
+        shacl_graph = _get_bound_graph()
+        shacl_graph.bind("sh", str(SH))
+        shacl_graph.bind("sns", str(BASE))
+        return shacl_graph
 
     def _iter_supported_restrictions(self):
         """
@@ -1577,73 +1580,82 @@ class _OWLToSHACLConverter:
                 for base_cls in self.owl_graph.subjects(RDFS.subClassOf, r):
                     yield base_cls, prop, restriction_type, value
 
-    def _translate_disjoint_with(self):
+    def _translate_restrictions(self) -> Graph:
+        node_shapes: dict[URIRef, BNode] = {}
+        shacl_graph = self._get_bound_graph()
+        for base_cls, prop, rtype, value in self._iter_supported_restrictions():
+
+            # One NodeShape per base class
+            if base_cls not in node_shapes:
+                ns = BNode()
+                node_shapes[base_cls] = ns
+                shacl_graph.add((ns, RDF.type, SH.NodeShape))
+                shacl_graph.add((ns, SH.targetClass, base_cls))
+            else:
+                ns = node_shapes[base_cls]
+
+            ps = BNode()
+            shacl_graph.add((ps, RDF.type, SH.PropertyShape))
+            shacl_graph.add((ps, SH.path, prop))
+
+            if rtype == OWL.someValuesFrom:
+                # Existential restriction:
+                # ∃ prop . C  →  qualifiedValueShape + qualifiedMinCount
+                qvs = BNode()
+                shacl_graph.add((qvs, SH["class"], value))
+
+                shacl_graph.add((ps, SH.qualifiedValueShape, qvs))
+                shacl_graph.add((ps, SH.qualifiedMinCount, Literal(1)))
+
+            elif rtype == OWL.hasValue:
+                shacl_graph.add((ps, SH.hasValue, value))
+
+            elif rtype == OWL.allValuesFrom:
+                # Universal restriction:
+                # ∀ prop . C  →  class
+                shacl_graph.add((ps, SH["class"], value))
+
+            shacl_graph.add((ns, SH.property, ps))
+        return shacl_graph
+
+    def _translate_disjoint_with(self) -> Graph:
         """
         Translate OWL disjointWith axioms into SHACL shapes with sh:not.
         """
+        node_shapes: dict[URIRef, BNode] = {}
+        shacl_graph = self._get_bound_graph()
         for cls in self.owl_graph.subjects(RDF.type, OWL.Class):
             disjoints = list(self.owl_graph.objects(cls, OWL.disjointWith))
             if not disjoints:
                 continue
 
             # Create a NodeShape for the class if it doesn't exist
-            if cls not in self.node_shapes:
+            if cls not in node_shapes:
                 ns = BNode()
-                self.node_shapes[cls] = ns
-                self.shacl_graph.add((ns, RDF.type, SH.NodeShape))
-                self.shacl_graph.add((ns, SH.targetClass, cls))
+                node_shapes[cls] = ns
+                shacl_graph.add((ns, RDF.type, SH.NodeShape))
+                shacl_graph.add((ns, SH.targetClass, cls))
             else:
-                ns = self.node_shapes[cls]
+                ns = node_shapes[cls]
 
             # Create a shape that represents the disjoint classes
             disjoint_shape = BNode()
-            self.shacl_graph.add((disjoint_shape, RDF.type, SH.NodeShape))
+            shacl_graph.add((disjoint_shape, RDF.type, SH.NodeShape))
             for disjoint_cls in disjoints:
-                self.shacl_graph.add((disjoint_shape, SH.targetClass, disjoint_cls))
+                shacl_graph.add((disjoint_shape, SH.targetClass, disjoint_cls))
 
             # Add a sh:not constraint to the original shape
-            self.shacl_graph.add((ns, SH["not"], disjoint_shape))
+            shacl_graph.add((ns, SH["not"], disjoint_shape))
+        return shacl_graph
 
     def convert(self) -> Graph:
         """
         Convert the OWL restrictions in the graph to SHACL shapes.
         """
-        for base_cls, prop, rtype, value in self._iter_supported_restrictions():
 
-            # One NodeShape per base class
-            if base_cls not in self.node_shapes:
-                ns = BNode()
-                self.node_shapes[base_cls] = ns
-                self.shacl_graph.add((ns, RDF.type, SH.NodeShape))
-                self.shacl_graph.add((ns, SH.targetClass, base_cls))
-            else:
-                ns = self.node_shapes[base_cls]
-
-            ps = BNode()
-            self.shacl_graph.add((ps, RDF.type, SH.PropertyShape))
-            self.shacl_graph.add((ps, SH.path, prop))
-
-            if rtype == OWL.someValuesFrom:
-                # Existential restriction:
-                # ∃ prop . C  →  qualifiedValueShape + qualifiedMinCount
-                qvs = BNode()
-                self.shacl_graph.add((qvs, SH["class"], value))
-
-                self.shacl_graph.add((ps, SH.qualifiedValueShape, qvs))
-                self.shacl_graph.add((ps, SH.qualifiedMinCount, Literal(1)))
-
-            elif rtype == OWL.hasValue:
-                self.shacl_graph.add((ps, SH.hasValue, value))
-
-            elif rtype == OWL.allValuesFrom:
-                # Universal restriction:
-                # ∀ prop . C  →  class
-                self.shacl_graph.add((ps, SH["class"], value))
-
-            self.shacl_graph.add((ns, SH.property, ps))
-
-        self._translate_disjoint_with()
-        return self.shacl_graph
+        shacl_graph = self._translate_restrictions()
+        shacl_graph += self._translate_disjoint_with()
+        return shacl_graph
 
 
 def owl_restrictions_to_shacl(
