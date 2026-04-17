@@ -1586,13 +1586,11 @@ class _OWLToSHACLConverter:
         for base_cls, prop, rtype, value in self._iter_supported_restrictions():
 
             # One NodeShape per base class
-            if base_cls not in node_shapes:
+            if not (ns := node_shapes.get(base_cls)):
                 ns = BNode()
                 node_shapes[base_cls] = ns
                 shacl_graph.add((ns, RDF.type, SH.NodeShape))
                 shacl_graph.add((ns, SH.targetClass, base_cls))
-            else:
-                ns = node_shapes[base_cls]
 
             ps = BNode()
             shacl_graph.add((ps, RDF.type, SH.PropertyShape))
