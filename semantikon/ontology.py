@@ -1628,13 +1628,11 @@ class _OWLToSHACLConverter:
                 continue
 
             # Create a NodeShape for the class if it doesn't exist
-            if cls not in node_shapes:
+            if not (ns := node_shapes.get(cls)):
                 ns = BNode()
                 node_shapes[cls] = ns
                 shacl_graph.add((ns, RDF.type, SH.NodeShape))
                 shacl_graph.add((ns, SH.targetClass, cls))
-            else:
-                ns = node_shapes[cls]
 
             # Create a shape that represents the disjoint classes
             disjoint_shape = BNode()
@@ -1648,9 +1646,9 @@ class _OWLToSHACLConverter:
 
     def convert(self) -> Graph:
         """
-        Convert the OWL restrictions in the graph to SHACL shapes.
+        Convert the OWL logics into SHACL shapes, including both restrictions
+        and disjointness axioms.
         """
-
         shacl_graph = self._translate_restrictions()
         shacl_graph += self._translate_disjoint_with()
         return shacl_graph
