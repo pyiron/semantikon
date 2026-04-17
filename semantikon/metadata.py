@@ -42,6 +42,19 @@ def u(
     derived_from: str | Missing = MISSING,
     **extra,
 ) -> Any:
+    """
+    A function that takes a type and metadata and returns an Annotated type with the metadata attached.
+
+    Args:
+        type_: Data type (e.g. int, float)
+        uri: The URI associated with the type.
+        triples: RDF triples associated with the type.
+        restrictions: Restrictions associated with the type.
+        label: A human-readable label for the type.
+        units: Units associated with the type, if applicable.
+        shape: The shape of the data, if applicable.
+        derived_from: Information about what this type is derived from, if applicable.
+    """
     units = extra.pop("unit", units)
     presently_requested_metadata = TypeMetadata(
         uri=uri,
