@@ -43,17 +43,22 @@ def u(
     **extra,
 ) -> Any:
     """
-    A function that takes a type and metadata and returns an Annotated type with the metadata attached.
+    A function that takes a type and metadata and returns an Annotated type
+    with the metadata attached.
 
     Args:
         type_: Data type (e.g. int, float)
-        uri: The URI associated with the type.
-        triples: RDF triples associated with the type.
-        restrictions: Restrictions associated with the type.
-        label: A human-readable label for the type.
-        units: Units associated with the type, if applicable.
-        shape: The shape of the data, if applicable.
-        derived_from: Information about what this type is derived from, if applicable.
+        uri: The URI associated with the argument.
+        triples: RDF triples associated with the argument (cf. below)
+        restrictions: Restrictions associated with the argument.
+        label: A human-readable label for the argument.
+        units: Units associated with the argument, if applicable.
+        shape: The shape of the data, if applicable - currently not used
+        derived_from: Information about what this argument is derived from, if
+            applicable.
+
+    Returns:
+        An Annotated type with the metadata attached.
     """
     units = extra.pop("unit", units)
     presently_requested_metadata = TypeMetadata(
