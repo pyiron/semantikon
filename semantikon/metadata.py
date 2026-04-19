@@ -52,7 +52,12 @@ def u(
         triples: RDF triples associated with the argument (cf. below)
         restrictions: Restrictions associated with the argument.
         label: A human-readable label for the argument.
-        units: Units associated with the argument, if applicable.
+        units: Units associated with the argument, if applicable. Either a
+            string (such as "meter" or "meter**2/second") or a URIRef pointing
+            to a unit in an ontology. If a string is provided, the unit will
+            be parsed using the pint library, and the resulting unit will be
+            translated to the corresponding URI in the QUDT ontology. If a
+            URIRef is provided, it will be used
         shape: The shape of the data, if applicable - currently not used
         derived_from: Information about what this argument is derived from, if
             applicable.
