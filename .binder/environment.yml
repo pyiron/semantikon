@@ -15,5 +15,5 @@ dependencies:
 - requests =2.33.1
 - typeguard =4.5.1
 - flowrep =0.4.1
-- networkx =3.5
+- networkx =3.6.1
 - bagofholding =0.1.11
