@@ -374,6 +374,7 @@ def my_unhashable_inputs(uh):
     return result
 
 
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

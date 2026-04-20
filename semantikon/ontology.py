@@ -755,6 +755,11 @@ def _wf_input_to_graph(
 ) -> Graph:
     g = _get_bound_graph()
     units = data.get("units", data.get("unit"))
+    if "derived_from" in data:
+        raise ValueError(
+            f"'derived_from' (defined for the argument '{data['arg']}') is not"
+            " supported for inputs."
+        )
     if t_box:
         data_node = G.t_ns[G._get_data_node(io=node_name)]
         if _input_is_connected(node_name, G):
