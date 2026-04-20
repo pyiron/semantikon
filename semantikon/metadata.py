@@ -72,7 +72,9 @@ def u(
             `units`.
 
     Returns:
-        An Annotated type with the metadata attached.
+        An Annotated type with the metadata attached. The metadata is stored
+        as a tuple of keyword-value pairs, i.e. odd items are keywords and
+        even items are values.
 
     The `triples` argument can be either a double or a triple. The following
     annotations are all equivalent:
