@@ -51,8 +51,9 @@ def u(
         uri: The URI associated with the argument.
         triples: RDF triples associated with the argument (cf. below)
         restrictions: Restrictions associated with the argument. Only to be
-            used for input arguments, and must consist of doubles without blank
-            nodes.
+            used for input arguments. Restrictions are expressed as 2-tuples
+            of (predicate, object) without blank nodes, and may be provided as
+            a single clause, a tuple of clauses, or multiple restriction sets.
         label: A human-readable label for the argument.
         units: Units associated with the argument, if applicable. Either a
             string (such as "meter" or "meter**2/second") or a URIRef pointing
