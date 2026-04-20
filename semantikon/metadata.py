@@ -64,7 +64,9 @@ def u(
         shape: The shape of the data, if applicable - currently not used.
         derived_from: Information about what this argument is derived from, if
             applicable. Only used for output arguments, and should be a string
-            describing the derivation (e.g. "inputs.x").
+            describing the derivation (e.g. "inputs.x"). The output argument
+            then inherits all the triples of the input argument, but **not**
+            the restrictions and the URI.
         extra: Additional metadata fields. The key `unit` is accepted as an
             alias for `units`; if provided, it overrides the value of
             `units`.
