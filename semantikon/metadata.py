@@ -59,11 +59,14 @@ def u(
             to a unit in an ontology. If a string is provided, the unit will
             be parsed using the pint library, and the resulting unit will be
             translated to the corresponding URI in the QUDT ontology. If a
-            URIRef is provided, it will be used
-        shape: The shape of the data, if applicable - currently not used
+            URIRef is provided, it will be used directly.
+        shape: The shape of the data, if applicable - currently not used.
         derived_from: Information about what this argument is derived from, if
             applicable. Only used for output arguments, and should be a string
             describing the derivation (e.g. "inputs.x").
+        extra: Additional metadata fields. The key `unit` is accepted as an
+            alias for `units`; if provided, it overrides the value of
+            `units`.
 
     Returns:
         An Annotated type with the metadata attached.
