@@ -42,6 +42,62 @@ def u(
     derived_from: str | Missing = MISSING,
     **extra,
 ) -> Any:
+    """
+    A function that takes a type and metadata and returns an Annotated type
+    with the metadata attached.
+
+    Args:
+        type_: Data type (e.g. int, float)
+        uri: The URI associated with the argument.
+        triples: RDF triples associated with the argument (cf. below)
+        restrictions: Restrictions associated with the argument. Only to be
+            used for input arguments. Restrictions are expressed as 2-tuples
+            of (predicate, object) without blank nodes, and may be provided as
+            a single clause, a tuple of clauses, or multiple restriction sets.
+        label: A human-readable label for the argument.
+        units: Units associated with the argument, if applicable. Either a
+            string (such as "meter" or "meter**2/second") or a URIRef pointing
+            to a unit in an ontology. If a string is provided, the unit will
+            be parsed using the pint library, and the resulting unit will be
+            translated to the corresponding URI in the QUDT ontology. If a
+            URIRef is provided, it will be used directly.
+        shape: The shape of the data, if applicable - currently not used.
+        derived_from: Information about what this argument is derived from, if
+            applicable. Only used for output arguments, and should be a string
+            describing the derivation (e.g. "inputs.x"). The output argument
+            then inherits all the triples of the input argument, but **not**
+            the restrictions and the URI.
+        extra: Additional metadata fields. The key `unit` is accepted as an
+            alias for `units`; if provided, it overrides the value of
+            `units`.
+
+    Returns:
+        An Annotated type with the metadata attached. The metadata is stored
+        as a tuple of keyword-value pairs, i.e. odd items are keywords and
+        even items are values.
+
+    The `triples` argument can be either a double or a triple. The following
+    annotations are all equivalent:
+
+    >>> f(x: float) -> u(float, triples=(EX.outputOf, "inputs.x"))
+    >>> f(x: float) -> u(float, triples=("self", EX.outputOf, "inputs.x"))
+    >>> f(x: float) -> u(float, triples=(None, EX.outputOf, "inputs.x"))
+
+    with an appropriate namespace `EX`. The `x` in `inputs.x` refers to the
+    input variable.
+
+    The `restrictions` argument must consist of doubles without the blank
+    nodes and it can be used only for the input arguments, e.g.:
+
+    >>> f(
+    ...     x: u(
+    ...         float, restrictions=(
+    ...             (OWL.onProperty, EX.hasProperty),
+    ...             (OWL.someValuesFrom, EX.SomeClass)
+    ...         )
+    ...     )
+    ... ) -> float
+    """
     units = extra.pop("unit", units)
     presently_requested_metadata = TypeMetadata(
         uri=uri,
