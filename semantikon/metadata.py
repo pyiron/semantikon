@@ -50,7 +50,9 @@ def u(
         type_: Data type (e.g. int, float)
         uri: The URI associated with the argument.
         triples: RDF triples associated with the argument (cf. below)
-        restrictions: Restrictions associated with the argument.
+        restrictions: Restrictions associated with the argument. Only to be
+            used for input arguments, and must consist of doubles without blank
+            nodes.
         label: A human-readable label for the argument.
         units: Units associated with the argument, if applicable. Either a
             string (such as "meter" or "meter**2/second") or a URIRef pointing
@@ -60,10 +62,33 @@ def u(
             URIRef is provided, it will be used
         shape: The shape of the data, if applicable - currently not used
         derived_from: Information about what this argument is derived from, if
-            applicable.
+            applicable. Only used for output arguments, and should be a string
+            describing the derivation (e.g. "inputs.x").
 
     Returns:
         An Annotated type with the metadata attached.
+
+    The `triples` argument can be either a double or a triple. The following
+    annotations are all equivalent:
+
+    >>> f(x: float) -> u(float, triples=(EX.outputOf, "inputs.x"))
+    >>> f(x: float) -> u(float, triples=("self", EX.outputOf, "inputs.x"))
+    >>> f(x: float) -> u(float, triples=(None, EX.outputOf, "inputs.x"))
+
+    with an appropriate namespace `EX`. The `x` in `inputs.x` refers to the
+    input variable.
+
+    The `restrictions` argument must consist of doubles without the blank
+    nodes and it can be used only for the input arguments, e.g.:
+
+    >>> f(
+    ...     x: u(
+    ...         float, restrictions=(
+    ...             (OWL.onProperty, EX.hasProperty),
+    ...             (OWL.someValuesFrom, EX.SomeClass)
+    ...         )
+    ...     )
+    ... ) -> float
     """
     units = extra.pop("unit", units)
     presently_requested_metadata = TypeMetadata(
