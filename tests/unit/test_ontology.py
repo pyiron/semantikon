@@ -114,9 +114,15 @@ def get_speed_with_dataclass(speed_data: NewSpeedData):
 
 
 def f_triples(
-    a: float, b: Annotated[float, {"triples": ("self", EX.relatedTo, "inputs.a")}]
+    a: Annotated[float, {"uri": EX.Something}],
+    b: Annotated[float, {"triples": ("self", EX.relatedTo, "inputs.a")}],
 ) -> Annotated[
-    float, {"triples": ((EX.hasSomeRelation, "inputs.b")), "derived_from": "inputs.a"}
+    float,
+    {
+        "triples": ((EX.hasSomeRelation, "inputs.b")),
+        "derived_from": "inputs.a",
+        "uri": EX.SomethingElse,
+    },
 ]:
     return a
 
@@ -1008,6 +1014,21 @@ class TestOntology(unittest.TestCase):
                 should be inconsistent because it requires an individual to be
                 both a Meal and a Water.
             """),
+        )
+
+    def test_inheritance_of_derives_from(self):
+        g = onto.get_knowledge_graph(wf_triples.get_semantikon_dict())
+        onto._inherit_properties(g)
+        uri_node = list(g.subjects(RDF.type, EX.Something))[0]
+        data_node = list(g.subjects(onto.SNS.specifies_value_of, uri_node))
+        self.assertEqual(
+            len(data_node),
+            1,
+            msg=dedent(f"""
+                Expected only the input data node specifying value of {uri_node}
+                (which should end with 'wf_triples-inputs-a_data'), found
+                {len(data_node)}
+                """),
         )
 
 
