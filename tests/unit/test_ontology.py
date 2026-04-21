@@ -449,7 +449,7 @@ class TestOntology(unittest.TestCase):
                     "as-or-more-specific than downstream targets. This requirement "
                     "also holds for 'meaning' types carried by the `uri=` annotation. "
                     "Here, upstream and downstream URIs are not the same, and thus we "
-                    "expect require specificity directionality to hold.",
+                    "require specificity directionality to hold.",
                 )
 
     def test_my_kinetic_energy_workflow_graph(self):
