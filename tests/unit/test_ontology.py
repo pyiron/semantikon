@@ -54,7 +54,6 @@ def add_three(alpha):
     return gamma
 
 
-# def upstream_node(a) -> meta.u(object, uri=EX.Upstream):
 def upstream_node(a) -> Annotated[object, {"uri": EX.Upstream}]:
     b = a
     return b
