@@ -59,6 +59,7 @@ def upstream_node(a) -> Annotated[object, {"uri": EX.Upstream}]:
     b = a
     return b
 
+
 def downstream_node(x: Annotated[object, {"uri": EX.Downstream}]):
     y = x
     return y
@@ -448,9 +449,8 @@ class TestOntology(unittest.TestCase):
                     "as-or-more-specific than downstream targets. This requirement "
                     "also holds for 'meaning' types carried by the `uri=` annotation. "
                     "Here, upstream and downstream URIs are not the same, and thus we "
-                    "expect require specificity directionality to hold."
+                    "expect require specificity directionality to hold.",
                 )
-
 
     def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
