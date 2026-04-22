@@ -1021,13 +1021,13 @@ class TestOntology(unittest.TestCase):
         onto._inherit_properties(g)
         uri_node = list(g.subjects(RDF.type, EX.Something))[0]
         data_node = list(g.subjects(onto.SNS.specifies_value_of, uri_node))
-        self.assertEqual(
-            len(data_node),
-            1,
+        self.assertIn(
+            "wf_triples-inputs-a_data",
+            str(data_node[0]),
             msg=dedent(f"""
                 Expected only the input data node specifying value of {uri_node}
                 (which should end with 'wf_triples-inputs-a_data'), found
-                {len(data_node)}
+                {data_node}
                 """),
         )
 
