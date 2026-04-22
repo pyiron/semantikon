@@ -54,6 +54,23 @@ def add_three(alpha):
     return gamma
 
 
+def upstream_node(a) -> Annotated[object, {"uri": EX.Upstream}]:
+    b = a
+    return b
+
+
+def downstream_node(x: Annotated[object, {"uri": EX.Downstream}]):
+    y = x
+    return y
+
+
+@workflow
+def undefined_specificity(a):
+    b = upstream_node(a)
+    y = downstream_node(b)
+    return y
+
+
 def get_speed(
     distance: Annotated[
         float, {"uri": PMD["0040001"], "units": "meter", "label": "Distance"}
@@ -412,6 +429,27 @@ class TestOntology(unittest.TestCase):
                 "`_get_data_node` first.",
             ):
                 onto.get_knowledge_graph(wf_dict=overloaded_dict)
+
+    def test_uri_specificity(self):
+        for source_more_specific in [True, False]:
+            with self.subTest(f"source_more_specific={source_more_specific}"):
+                d = undefined_specificity.get_semantikon_dict()
+                g = onto.get_knowledge_graph(d)
+
+                if source_more_specific:
+                    g.add((EX.Upstream, RDFS.subClassOf, EX.Downstream))
+                else:
+                    g.add((EX.Downstream, RDFS.subClassOf, EX.Upstream))
+                v = onto.validate_values(g)
+                self.assertEqual(
+                    v[0],
+                    source_more_specific,
+                    msg="Dataflow type validation requires that upstream sources be "
+                    "as-or-more-specific than downstream targets. This requirement "
+                    "also holds for 'meaning' types carried by the `uri=` annotation. "
+                    "Here, upstream and downstream URIs are not the same, and thus we "
+                    "require specificity directionality to hold.",
+                )
 
     def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
