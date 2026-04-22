@@ -198,6 +198,7 @@ def _inherit_properties(graph: Graph, n_max: int = 1000):
     PREFIX owl: <{OWL}>
     PREFIX ro: <{RO}>
     PREFIX pmdco: <{PMD}>
+    PREFIX obi: <{OBI}>
     INSERT {{
         ?subject ?p ?o .
     }}
@@ -210,6 +211,7 @@ def _inherit_properties(graph: Graph, n_max: int = 1000):
         FILTER(?p != pmdco:0000006)
         FILTER(?p != rdf:type)
         FILTER(?p != owl:sameAs)
+        FILTER(?p != obi:0001927)
     }}
     """
     n = 0
