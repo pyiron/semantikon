@@ -338,6 +338,7 @@ def get_knowledge_graph(
     store_data: bool = False,
     file_name: str | None = None,
     pmdco_uri: str = "https://w3id.org/pmd/co/3.0.0",
+    enforce_subgraph_io_uri_alignment: bool = True,
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
@@ -351,6 +352,11 @@ def get_knowledge_graph(
         extract_dataclasses (bool): if True, extract dataclass information into the graph
         prefix (str | None): prefix to use for the workflow namespace.
             If None, a hash-based prefix is generated.
+        enforce_subgraph_io_uri_alignment (bool): if True, parent workflow input
+            argument URIs must explicitly align with any child input URIs to which
+            they are passed. Mechanistically, if True, when parsing the A-box only
+            nodes whose name matches their associated data node will emit a uri
+            instance node.
 
     Returns:
         (rdflib.Graph): graph containing workflow information
@@ -361,7 +367,11 @@ def get_knowledge_graph(
     if include_t_box:
         graph += _nx_to_kg(G, t_box=True)
     if include_a_box:
-        graph += _nx_to_kg(G, t_box=False)
+        graph += _nx_to_kg(
+            G,
+            t_box=False,
+            all_data_emit_uri=not enforce_subgraph_io_uri_alignment,
+        )
     if extract_dataclasses:
         graph += extract_dataclass(
             graph=graph, include_t_box=include_t_box, include_a_box=include_a_box
@@ -754,6 +764,7 @@ def _wf_input_to_graph(
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
+    all_data_emit_uri: bool,
 ) -> Graph:
     g = _get_bound_graph()
     units = data.get("units", data.get("unit"))
@@ -796,7 +807,7 @@ def _wf_input_to_graph(
             # canonical holder; emitting here would collide with the parent's
             # emission on the shared bnode and mask uri/unit mismatches.
             owns_data_node = data_node_name == f"{node_name}_data"
-            if owns_data_node:
+            if all_data_emit_uri or owns_data_node:
                 if "uri" in data:
                     bnode = URIRef(str(data_node) + "_uri")
                     g.add((bnode, RDF.type, data["uri"]))
@@ -818,6 +829,7 @@ def _wf_output_to_graph(
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
+    all_data_emit_uri: bool,
 ) -> Graph:
     g = _get_bound_graph()
     if t_box:
@@ -847,7 +859,7 @@ def _wf_output_to_graph(
             g.add((data_node, QUDT.hasUnit, _units_to_uri(units)))
 
         owns_data_node = data_node_name == f"{node_name}_data"
-        if owns_data_node:
+        if all_data_emit_uri or owns_data_node:
             if "uri" in data:
                 instance = URIRef(str(data_node) + "_uri")
                 g.add((instance, RDF.type, data["uri"]))
@@ -963,7 +975,11 @@ def _parse_global_io(
     return g
 
 
-def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
+def _nx_to_kg(
+    G: SemantikonDiGraph,
+    t_box: bool,
+    all_data_emit_uri: bool = False,
+) -> Graph:
     g = _get_bound_graph()
     for node_name, data in G.nodes.data():
         data = data.copy()
@@ -986,6 +1002,7 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
                 data=data,
                 G=G,
                 t_box=t_box,
+                all_data_emit_uri=all_data_emit_uri,
             )
         else:
             g += _wf_output_to_graph(
@@ -993,6 +1010,7 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
                 data=data,
                 G=G,
                 t_box=t_box,
+                all_data_emit_uri=all_data_emit_uri,
             )
 
     g += _parse_precedes(G=G, t_box=t_box)
