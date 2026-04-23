@@ -1063,12 +1063,13 @@ class TestOntology(unittest.TestCase):
 
     def test_inconsistent_workflow_and_child_node_inputs(self):
         wf_dict = swallow_pizza_painfully.get_semantikon_dict()
-        g = onto.get_knowledge_graph(wf_dict)
+        g = onto.get_knowledge_graph(wf_dict, enforce_subgraph_uri_alignment=False)
         self.assertTrue(
             onto.validate_values(g)[0],
             msg=dedent("""
                 As long as the knowledge graph does not know that EX.Meal and
-                EX.Water are disjoint, it should not raise an error
+                EX.Water are disjoint, it should not raise an error while subgraph uri 
+                alignment is not enforced
             """),
         )
         g.add((EX.Meal, OWL.disjointWith, EX.Water))
@@ -1079,7 +1080,9 @@ class TestOntology(unittest.TestCase):
             msg=dedent("""
                 Once we add that EX.Meal and EX.Water are disjoint, the workflow
                 should be inconsistent because it requires an individual to be
-                both a Meal and a Water.
+                both a Meal and a Water. This fails even without forcing subgraph uri 
+                alignment, because now it is provably impossible for the parent 
+                workflow to satisfy the child node's demands.
             """),
         )
 
