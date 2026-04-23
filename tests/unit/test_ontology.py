@@ -479,6 +479,12 @@ class TestOntology(unittest.TestCase):
             valid, _, _ = onto.validate_values(g)
             self.assertTrue(valid)
 
+    def test_enforce_subgraph_uri_alignment_subclassing(self):
+        d = input_uri_nonalignment.get_semantikon_dict()
+        g = onto.get_knowledge_graph(d, enforce_subgraph_uri_alignment=True)
+        g.add((EX.SomethingOtherThanDownstream, RDFS.subClassOf, EX.Downstream))
+        valid, _, _ = onto.validate_values(g)
+        self.assertTrue(valid)
 
     def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
