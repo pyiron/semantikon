@@ -71,6 +71,14 @@ def undefined_specificity(a):
     return y
 
 
+@workflow
+def input_uri_nonalignment(
+        a: Annotated[object, {"uri": EX.SomethingOtherThanDownstream}]
+):
+    y = downstream_node(a)
+    return y
+
+
 def get_speed(
     distance: Annotated[
         float, {"uri": PMD["0040001"], "units": "meter", "label": "Distance"}
@@ -456,6 +464,27 @@ class TestOntology(unittest.TestCase):
                     "Here, upstream and downstream URIs are not the same, and thus we "
                     "require specificity directionality to hold.",
                 )
+
+    def test_subgraph_input_uri_alignment_enforcement(self):
+        d = input_uri_nonalignment.get_semantikon_dict()
+
+        with self.subTest("Misaligned and enforced"):
+            g = onto.get_knowledge_graph(d, enforce_subgraph_io_uri_alignment=True)
+            valid, _, report = onto.validate_values(g)
+            self.assertFalse(valid)
+            self.assertIn("input_uri_nonalignment-inputs-a_data", report)
+
+        with self.subTest("Misaligned and not enforced"):
+            g = onto.get_knowledge_graph(d, enforce_subgraph_io_uri_alignment=False)
+            valid, _, _ = onto.validate_values(g)
+            self.assertTrue(valid)
+
+        with self.subTest("Misalignment corrected by subclassing"):
+            g = onto.get_knowledge_graph(d, enforce_subgraph_io_uri_alignment=True)
+            g.add((EX.SomethingOtherThanDownstream, RDFS.subClassOf, EX.Downstream))
+            valid, _, _ = onto.validate_values(g)
+            self.assertTrue(valid)
+
 
     def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
