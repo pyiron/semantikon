@@ -338,7 +338,7 @@ def get_knowledge_graph(
     store_data: bool = False,
     file_name: str | None = None,
     pmdco_uri: str = "https://w3id.org/pmd/co/3.0.0",
-    enforce_subgraph_io_uri_alignment: bool = True,
+    enforce_subgraph_uri_alignment: bool = True,
 ) -> Graph:
     """
     Generate RDF graph from a dictionary containing workflow information
@@ -352,7 +352,7 @@ def get_knowledge_graph(
         extract_dataclasses (bool): if True, extract dataclass information into the graph
         prefix (str | None): prefix to use for the workflow namespace.
             If None, a hash-based prefix is generated.
-        enforce_subgraph_io_uri_alignment (bool): if True, parent workflow input
+        enforce_subgraph_uri_alignment (bool): if True, parent workflow input
             argument URIs must explicitly align with any child input URIs to which
             they are passed. Mechanistically, if True, when parsing the A-box only
             nodes whose name matches their associated data node will emit a uri
@@ -370,7 +370,7 @@ def get_knowledge_graph(
         graph += _nx_to_kg(
             G,
             t_box=False,
-            all_data_emit_uri=not enforce_subgraph_io_uri_alignment,
+            all_data_emit_uri=not enforce_subgraph_uri_alignment,
         )
     if extract_dataclasses:
         graph += extract_dataclass(

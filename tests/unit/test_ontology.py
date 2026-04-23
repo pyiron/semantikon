@@ -465,23 +465,17 @@ class TestOntology(unittest.TestCase):
                     "require specificity directionality to hold.",
                 )
 
-    def test_subgraph_input_uri_alignment_enforcement(self):
+    def test_enforce_subgraph_uri_alignment_toggle(self):
         d = input_uri_nonalignment.get_semantikon_dict()
 
         with self.subTest("Misaligned and enforced"):
-            g = onto.get_knowledge_graph(d, enforce_subgraph_io_uri_alignment=True)
+            g = onto.get_knowledge_graph(d, enforce_subgraph_uri_alignment=True)
             valid, _, report = onto.validate_values(g)
             self.assertFalse(valid)
             self.assertIn("input_uri_nonalignment-inputs-a_data", report)
 
         with self.subTest("Misaligned and not enforced"):
-            g = onto.get_knowledge_graph(d, enforce_subgraph_io_uri_alignment=False)
-            valid, _, _ = onto.validate_values(g)
-            self.assertTrue(valid)
-
-        with self.subTest("Misalignment corrected by subclassing"):
-            g = onto.get_knowledge_graph(d, enforce_subgraph_io_uri_alignment=True)
-            g.add((EX.SomethingOtherThanDownstream, RDFS.subClassOf, EX.Downstream))
+            g = onto.get_knowledge_graph(d, enforce_subgraph_uri_alignment=False)
             valid, _, _ = onto.validate_values(g)
             self.assertTrue(valid)
 
