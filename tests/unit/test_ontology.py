@@ -1085,7 +1085,7 @@ class TestOntology(unittest.TestCase):
         self.assertRaises(
             ValueError,
             onto.get_knowledge_graph,
-            workflow_with_wrong_derived_from.get_semantikon_dict()
+            workflow_with_wrong_derived_from.get_semantikon_dict(),
         )
 
 
