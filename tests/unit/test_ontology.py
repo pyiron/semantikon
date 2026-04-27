@@ -397,6 +397,17 @@ def my_unhashable_inputs(uh):
     return result
 
 
+def use_derived_from_wrongly_in_input(
+    x: Annotated[float, {"derived_from": "inputs.x"}],
+):
+    return x
+
+
+@workflow
+def workflow_with_wrong_derived_from(x):
+    result = use_derived_from_wrongly_in_input(x)
+    return result
+
 
 class TestOntology(unittest.TestCase):
     @classmethod
@@ -1068,6 +1079,13 @@ class TestOntology(unittest.TestCase):
                 (which should end with 'wf_triples-inputs-a_data'), found
                 {data_node}
                 """),
+        )
+
+    def test_derived_from_in_inputs(self):
+        self.assertRaises(
+            ValueError,
+            onto.get_knowledge_graph,
+            workflow_with_wrong_derived_from.get_semantikon_dict()
         )
 
 
