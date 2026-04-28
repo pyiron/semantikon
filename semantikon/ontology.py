@@ -1374,7 +1374,7 @@ class _WorkflowGraphSerializer:
                 **{k: v for k, v in data.items() if k != "semantikon_type"},
             )
 
-    def _add_nodes(self, G: SemantikonDiGraph, node_dict: dict | None) -> None:
+    def _add_nodes(self, G: SemantikonDiGraph, node_dict: dict) -> None:
         for key, data in node_dict.items():
             if "." not in key:
                 G.name = key
