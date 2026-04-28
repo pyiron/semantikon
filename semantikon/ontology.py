@@ -1282,6 +1282,9 @@ class _WorkflowFlattener:
         channel_dict = self._serialize_channels(wf_dict, prefix)
         n, c, e = self._serialize_children(wf_dict, prefix)
         edge_list = self._serialize_edges(wf_dict, prefix)
+        node_dict.update(n)
+        channel_dict.update(c)
+        edge_list.extend(e)
         return node_dict, channel_dict, edge_list
 
     @staticmethod
@@ -1345,9 +1348,6 @@ class _WorkflowGraphSerializer:
 
     def __init__(self, wf_dict: dict, prefix: str | None = None):
         self.wf_dict = wf_dict
-        self.node_dict: dict = {}
-        self.channel_dict: dict = {}
-        self.edge_list: list[list[str]] = []
         self.prefix = prefix
 
     # -----------------------------
@@ -1355,25 +1355,27 @@ class _WorkflowGraphSerializer:
     # -----------------------------
 
     def serialize(self) -> SemantikonDiGraph:
-        _WorkflowFlattener().flatten(self.wf_dict, self.wf_dict["label"])
+        node_dict, channel_dict, edge_list = _WorkflowFlattener().flatten(
+            self.wf_dict, self.wf_dict["label"]
+        )
         G = SemantikonDiGraph(prefix=self.prefix)
 
-        self._add_channels(G)
-        self._add_nodes(G)
-        self._add_edges(G)
+        self._add_channels(G, channel_dict)
+        self._add_nodes(G, node_dict)
+        self._add_edges(G, edge_list)
 
         return self._relabel_graph(G)
 
-    def _add_channels(self, G: SemantikonDiGraph) -> None:
-        for key, data in self.channel_dict.items():
+    def _add_channels(self, G: SemantikonDiGraph, channel_dict: dict) -> None:
+        for key, data in channel_dict.items():
             G.add_node(
                 key,
                 step=data["semantikon_type"],
                 **{k: v for k, v in data.items() if k != "semantikon_type"},
             )
 
-    def _add_nodes(self, G: SemantikonDiGraph) -> None:
-        for key, data in self.node_dict.items():
+    def _add_nodes(self, G: SemantikonDiGraph, node_dict: dict | None) -> None:
+        for key, data in node_dict.items():
             if "." not in key:
                 G.name = key
 
@@ -1389,8 +1391,8 @@ class _WorkflowGraphSerializer:
             for out in data.get("outputs", {}):
                 G.add_edge(key, f"{key}.outputs.{out}")
 
-    def _add_edges(self, G: SemantikonDiGraph) -> None:
-        for edge in self.edge_list:
+    def _add_edges(self, G: SemantikonDiGraph, edge_list: list[list[str]]) -> None:
+        for edge in edge_list:
             G.add_edge(*edge)
 
     @staticmethod
