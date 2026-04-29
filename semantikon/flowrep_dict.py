@@ -32,17 +32,20 @@ import collections
 import copy
 import dataclasses
 import hashlib
-import importlib
-import inspect
 import json
 import re
-import textwrap
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from typing import Annotated, Any, cast, get_args, get_origin
 
 import networkx as nx
 from flowrep.api import schemas as frs
 from pyiron_snippets import retrieve
+
+from semantikon.converter import (
+    get_function_dict,
+    get_function_metadata,
+    meta_to_dict,
+)
 
 
 def live_to_dict(
@@ -603,78 +606,6 @@ def serialize_functions(data: dict[str, Any]) -> dict[str, Any]:
     return data
 
 
-def _get_version_from_module(module_name: str) -> str:
-    base_module_name = module_name.split(".")[0]
-    base_module = importlib.import_module(base_module_name)
-    return getattr(base_module, "__version__", "not_defined")
-
-
-def get_function_metadata(
-    cls: Callable | dict[str, str], full_metadata: bool = False
-) -> dict[str, str]:
-    """
-    Get metadata for a given function or class.
-
-    Args:
-        cls (Callable | dict[str, str]): The function or class to get metadata for.
-        full_metadata (bool): Whether to include full metadata including hash,
-            docstring, and name.
-
-    Returns:
-        dict[str, str]: A dictionary containing the metadata of the function or class.
-    """
-    if isinstance(cls, dict):
-        if "module" in cls and "qualname" in cls:
-            return cls
-        else:
-            raise ValueError(f"Got a dict, but it doesn't look like metadata: {cls}")
-
-    data = {
-        "module": cls.__module__,
-        "qualname": cls.__qualname__,
-    }
-
-    data["version"] = _get_version_from_module(data["module"])
-    if not full_metadata:
-        return data
-    data["hash"] = hash_function(cls)
-    data["docstring"] = cls.__doc__ or ""
-    data["name"] = cls.__name__
-    return data
-
-
-def hash_function(fn: Callable) -> str:
-    """
-    Hash a function based on its source code or signature.
-
-    For regular functions, the hash is based on the dedented source code.
-    For other callables (built-ins, methods, etc.), the hash is based on
-    the module, qualified name, and signature. If source code is unavailable
-    for a function, falls back to signature-based hashing.
-
-    Args:
-        fn (Callable): The function to hash.
-
-    Returns:
-        str: A stable hash string in the format "function_name:hash_hex".
-    """
-
-    if inspect.isfunction(fn):
-        try:
-            source_code = inspect.getsource(fn)
-            source_code = textwrap.dedent(
-                source_code.replace("\r\n", "\n").replace("\r", "\n")
-            )
-        except (OSError, TypeError):
-            # Fall back to signature for functions where source is unavailable
-            source_code = f"{fn.__module__}:{fn.__qualname__}:{inspect.signature(fn)}"
-    else:
-        source_code = f"{fn.__module__}:{fn.__qualname__}:{inspect.signature(fn)}"
-    source_code_hash = hashlib.sha256(source_code.encode("utf-8")).hexdigest()
-    name = getattr(fn, "__name__", "unknown")
-    return name + ":" + source_code_hash
-
-
 def recursive_defaultdict() -> collections.defaultdict:
     """
     Create a recursively nested collections.defaultdict.
@@ -703,3 +634,142 @@ def recursive_dd_to_dict(d: dict | collections.defaultdict) -> dict:
     if isinstance(d, collections.defaultdict):
         return {k: recursive_dd_to_dict(v) for k, v in d.items()}
     return d
+
+
+# ---------------------------------------------------------------------------
+# Workflow dict → graph conversion
+# ---------------------------------------------------------------------------
+
+
+class _WorkflowFlattener:
+    @staticmethod
+    def _remove_us(*args: str) -> str:
+        return ".".join(args)
+
+    @staticmethod
+    def _dot(*args: str | None) -> str:
+        return ".".join(a for a in args if a is not None)
+
+    @classmethod
+    def flatten(cls, wf_dict: dict, prefix: str) -> tuple[dict, dict, list[list[str]]]:
+        node_dict = cls._serialize_node_metadata(wf_dict, prefix)
+        channel_dict = cls._serialize_channels(wf_dict, prefix)
+        n, c, e = cls._serialize_children(wf_dict, prefix)
+        edge_list = cls._serialize_edges(wf_dict, prefix)
+        node_dict.update(n)
+        channel_dict.update(c)
+        edge_list.extend(e)
+        return node_dict, channel_dict, edge_list
+
+    @staticmethod
+    def _serialize_node_metadata(wf_dict: dict, prefix: str) -> dict:
+        node_dict = {
+            prefix: {k: v for k, v in wf_dict.items() if k not in {"nodes", "edges"}}
+        }
+
+        assert "function" in wf_dict or wf_dict["type"] != "atomic"
+
+        if "function" in wf_dict:
+            meta = get_function_dict(wf_dict["function"])
+            meta["identifier"] = ".".join(
+                (meta["module"], meta["qualname"], meta["version"])
+            )
+            node_dict[prefix]["function"] = meta
+        return node_dict
+
+    @classmethod
+    def _serialize_channels(cls, wf_dict: dict, prefix: str) -> dict:
+        channel_dict = {}
+        for io_type in ("inputs", "outputs"):
+            for pos, (arg, channel) in enumerate(wf_dict.get(io_type, {}).items()):
+                label = cls._remove_us(prefix, io_type, arg)
+                assert "semantikon_type" not in channel
+                if "dtype" in channel:
+                    channel.update(meta_to_dict(channel["dtype"]))
+
+                channel_dict[label] = channel | {
+                    "semantikon_type": io_type,
+                    "position": channel.get("position", pos),
+                    "arg": arg,
+                }
+        return channel_dict
+
+    @classmethod
+    def _serialize_children(
+        cls, wf_dict: dict, prefix: str
+    ) -> tuple[dict, dict, list[list[str]]]:
+        node_dict = {}
+        channel_dict = {}
+        edge_list = []
+        for key, node in wf_dict.get("nodes", {}).items():
+            child_key = cls._dot(prefix, key)
+            n, c, e = cls.flatten(node, child_key)
+            node_dict.update(n)
+            channel_dict.update(c)
+            edge_list.extend(e)
+            node_dict[child_key]["parent"] = prefix.replace(".", "-")
+        return node_dict, channel_dict, edge_list
+
+    @classmethod
+    def _serialize_edges(cls, wf_dict: dict, prefix: str) -> list[list[str]]:
+        edge_list = []
+        for edge in wf_dict.get("edges", []):
+            edge_list.append([cls._remove_us(prefix, a) for a in edge])
+        return edge_list
+
+
+class _WorkflowGraphSerializer:
+    """
+    Serializes a workflow dictionary into a NetworkX directed graph, where
+    nodes represent workflow steps and channels,
+    """
+
+    @classmethod
+    def serialize(cls, wf_dict: dict) -> nx.DiGraph:
+        node_dict, channel_dict, edge_list = _WorkflowFlattener.flatten(
+            wf_dict, wf_dict["label"]
+        )
+        G = nx.DiGraph()
+
+        cls._add_channels(G, channel_dict)
+        cls._add_nodes(G, node_dict)
+        cls._add_edges(G, edge_list)
+
+        return cls._relabel_graph(G)
+
+    @classmethod
+    def _add_channels(cls, G: nx.DiGraph, channel_dict: dict) -> None:
+        for key, data in channel_dict.items():
+            G.add_node(
+                key,
+                step=data["semantikon_type"],
+                **{k: v for k, v in data.items() if k != "semantikon_type"},
+            )
+
+    @classmethod
+    def _add_nodes(cls, G: nx.DiGraph, node_dict: dict) -> None:
+        for key, data in node_dict.items():
+            if "." not in key:
+                G.name = key
+
+            G.add_node(
+                key,
+                step="node",
+                **{k: v for k, v in data.items() if k not in {"inputs", "outputs"}},
+            )
+
+            for inp in data.get("inputs", {}):
+                G.add_edge(f"{key}.inputs.{inp}", key)
+
+            for out in data.get("outputs", {}):
+                G.add_edge(key, f"{key}.outputs.{out}")
+
+    @classmethod
+    def _add_edges(cls, G: nx.DiGraph, edge_list: list[list[str]]) -> None:
+        for edge in edge_list:
+            G.add_edge(*edge)
+
+    @staticmethod
+    def _relabel_graph(G: nx.DiGraph) -> nx.DiGraph:
+        mapping = {n: n.replace(".", "-") for n in G.nodes()}
+        return nx.relabel_nodes(G, mapping, copy=True)
