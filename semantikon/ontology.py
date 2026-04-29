@@ -1277,11 +1277,12 @@ class _WorkflowFlattener:
     def _dot(*args: str | None) -> str:
         return ".".join(a for a in args if a is not None)
 
-    def flatten(self, wf_dict: dict, prefix: str) -> tuple[dict, dict, list[list[str]]]:
-        node_dict = self._serialize_node_metadata(wf_dict, prefix)
-        channel_dict = self._serialize_channels(wf_dict, prefix)
-        n, c, e = self._serialize_children(wf_dict, prefix)
-        edge_list = self._serialize_edges(wf_dict, prefix)
+    @classmethod
+    def flatten(cls, wf_dict: dict, prefix: str) -> tuple[dict, dict, list[list[str]]]:
+        node_dict = cls._serialize_node_metadata(wf_dict, prefix)
+        channel_dict = cls._serialize_channels(wf_dict, prefix)
+        n, c, e = cls._serialize_children(wf_dict, prefix)
+        edge_list = cls._serialize_edges(wf_dict, prefix)
         node_dict.update(n)
         channel_dict.update(c)
         edge_list.extend(e)
@@ -1303,11 +1304,12 @@ class _WorkflowFlattener:
             node_dict[prefix]["function"] = meta
         return node_dict
 
-    def _serialize_channels(self, wf_dict: dict, prefix: str) -> dict:
+    @classmethod
+    def _serialize_channels(cls, wf_dict: dict, prefix: str) -> dict:
         channel_dict = {}
         for io_type in ("inputs", "outputs"):
             for pos, (arg, channel) in enumerate(wf_dict.get(io_type, {}).items()):
-                label = self._remove_us(prefix, io_type, arg)
+                label = cls._remove_us(prefix, io_type, arg)
                 assert "semantikon_type" not in channel
                 if "dtype" in channel:
                     channel.update(meta_to_dict(channel["dtype"]))
@@ -1319,25 +1321,27 @@ class _WorkflowFlattener:
                 }
         return channel_dict
 
+    @classmethod
     def _serialize_children(
-        self, wf_dict: dict, prefix: str
+        cls, wf_dict: dict, prefix: str
     ) -> tuple[dict, dict, list[list[str]]]:
         node_dict = {}
         channel_dict = {}
         edge_list = []
         for key, node in wf_dict.get("nodes", {}).items():
-            child_key = self._dot(prefix, key)
-            n, c, e = self.flatten(node, child_key)
+            child_key = cls._dot(prefix, key)
+            n, c, e = cls.flatten(node, child_key)
             node_dict.update(n)
             channel_dict.update(c)
             edge_list.extend(e)
             node_dict[child_key]["parent"] = prefix.replace(".", "-")
         return node_dict, channel_dict, edge_list
 
-    def _serialize_edges(self, wf_dict: dict, prefix: str) -> list[list[str]]:
+    @classmethod
+    def _serialize_edges(cls, wf_dict: dict, prefix: str) -> list[list[str]]:
         edge_list = []
         for edge in wf_dict.get("edges", []):
-            edge_list.append([self._remove_us(prefix, a) for a in edge])
+            edge_list.append([cls._remove_us(prefix, a) for a in edge])
         return edge_list
 
 
@@ -1355,7 +1359,7 @@ class _WorkflowGraphSerializer:
     # -----------------------------
 
     def serialize(self) -> SemantikonDiGraph:
-        node_dict, channel_dict, edge_list = _WorkflowFlattener().flatten(
+        node_dict, channel_dict, edge_list = _WorkflowFlattener.flatten(
             self.wf_dict, self.wf_dict["label"]
         )
         G = SemantikonDiGraph(prefix=self.prefix)
