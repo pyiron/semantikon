@@ -1,7 +1,6 @@
 """Tests for the live → nested-dict converter."""
 
 import dataclasses
-import math
 import unittest
 from typing import Annotated
 
