@@ -8,6 +8,7 @@ from semantikon.converter import (
     get_function_dict,
     get_return_expressions,
     get_return_labels,
+    hash_function,
     parse_input_args,
     parse_metadata,
     parse_output_args,
@@ -20,6 +21,11 @@ if TYPE_CHECKING:
 
     class Atoms:
         pass
+
+
+def example_function(x):
+    """An example function to be hashed."""
+    return x * 2
 
 
 class TestParser(unittest.TestCase):
@@ -283,6 +289,53 @@ class TestParser(unittest.TestCase):
         self.assertEqual(to_identifier("123invalid"), "_123invalid")
         self.assertEqual(to_identifier("invalid-name!"), "invalid_name_")
         self.assertEqual(to_identifier("name with spaces"), "name_with_spaces")
+
+    def test_hash_function(self):
+        import math
+
+        # Test built-in function (triggers except path - no source code available)
+        self.assertEqual(
+            hash_function(math.sin)[:40],
+            "sin:0146c21ab456a735f07d62b456f003ce3dc6",
+        )
+
+        # Test regular function with source code available
+        expected_hash = "example_function:196938631e98c05e128b0b1"
+        self.assertEqual(
+            hash_function(example_function)[: len(expected_hash)],
+            expected_hash,
+        )
+
+    def test_hash_function_fallback(self):
+        """Test that hash_function falls back to signature for functions without source."""
+        import math
+
+        # Built-in functions (not Python functions, so uses else branch)
+        hash_result = hash_function(math.sin)
+        self.assertTrue(hash_result.startswith("sin:"))
+        self.assertEqual(len(hash_result), 68)  # "sin:" + 64 char hex hash
+
+        # Test another built-in
+        hash_result = hash_function(len)
+        self.assertTrue(hash_result.startswith("len:"))
+        self.assertEqual(len(hash_result), 68)
+
+    def test_hash_function_except_path(self):
+        """Test that hash_function handles functions where source is unavailable (except path)."""
+        # Create a lambda function - it's a function but source is unavailable
+        hash_result = hash_function(lambda x: x * 2)
+        self.assertTrue(hash_result.startswith("<lambda>:"))
+        self.assertEqual(len(hash_result), 73)  # "<lambda>:" + 64 char hex hash
+
+        # Create a dynamically defined function using exec
+        exec_globals = {}
+        exec("def dynamic_test_func(x):\n    return x + 1", exec_globals)
+        dynamic_func = exec_globals["dynamic_test_func"]
+        hash_result = hash_function(dynamic_func)
+        self.assertTrue(hash_result.startswith("dynamic_test_func:"))
+        self.assertEqual(
+            len(hash_result), 82
+        )  # "dynamic_test_func:" + 64 char hex hash
 
 
 if __name__ == "__main__":

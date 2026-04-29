@@ -568,52 +568,6 @@ class TestTools(unittest.TestCase):
         meta = flowrep_dict.get_function_metadata(example_function, full_metadata=False)
         self.assertNotIn("docstring", meta)
 
-    def test_hash_function(self):
-        import math
-
-        # Test built-in function (triggers except path - no source code available)
-        self.assertEqual(
-            flowrep_dict.hash_function(math.sin)[:40],
-            "sin:0146c21ab456a735f07d62b456f003ce3dc6",
-        )
-
-        # Test regular function with source code available
-        expected_hash = "example_function:196938631e98c05e128b0b1"
-        self.assertEqual(
-            flowrep_dict.hash_function(example_function)[: len(expected_hash)],
-            expected_hash,
-        )
-
-    def test_hash_function_fallback(self):
-        """Test that hash_function falls back to signature for functions without source."""
-
-        # Built-in functions (not Python functions, so uses else branch)
-        hash_result = flowrep_dict.hash_function(math.sin)
-        self.assertTrue(hash_result.startswith("sin:"))
-        self.assertEqual(len(hash_result), 68)  # "sin:" + 64 char hex hash
-
-        # Test another built-in
-        hash_result = flowrep_dict.hash_function(len)
-        self.assertTrue(hash_result.startswith("len:"))
-        self.assertEqual(len(hash_result), 68)
-
-    def test_hash_function_except_path(self):
-        """Test that hash_function handles functions where source is unavailable (except path)."""
-        # Create a lambda function - it's a function but source is unavailable
-        hash_result = flowrep_dict.hash_function(lambda x: x * 2)
-        self.assertTrue(hash_result.startswith("<lambda>:"))
-        self.assertEqual(len(hash_result), 73)  # "<lambda>:" + 64 char hex hash
-
-        # Create a dynamically defined function using exec
-        exec_globals = {}
-        exec("def dynamic_test_func(x):\n    return x + 1", exec_globals)
-        dynamic_func = exec_globals["dynamic_test_func"]
-        hash_result = flowrep_dict.hash_function(dynamic_func)
-        self.assertTrue(hash_result.startswith("dynamic_test_func:"))
-        self.assertEqual(
-            len(hash_result), 82
-        )  # "dynamic_test_func:" + 64 char hex hash
-
 
 class TestOutputSanitizationConsistency(unittest.TestCase):
     """Edges and output dicts must agree on port names after sanitization."""
