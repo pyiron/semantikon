@@ -1350,19 +1350,18 @@ class _WorkflowGraphSerializer:
     Serializes a workflow dictionary into a SemantikonDiGraph.
     """
 
-    def __init__(self, wf_dict: dict, prefix: str | None = None):
+    def __init__(self, wf_dict: dict):
         self.wf_dict = wf_dict
-        self.prefix = prefix
 
     # -----------------------------
     # Serialization
     # -----------------------------
 
-    def serialize(self) -> SemantikonDiGraph:
+    def serialize(self) -> nx.DiGraph:
         node_dict, channel_dict, edge_list = _WorkflowFlattener.flatten(
             self.wf_dict, self.wf_dict["label"]
         )
-        G = SemantikonDiGraph(prefix=self.prefix)
+        G = nx.DiGraph()
 
         self._add_channels(G, channel_dict)
         self._add_nodes(G, node_dict)
@@ -1370,7 +1369,7 @@ class _WorkflowGraphSerializer:
 
         return self._relabel_graph(G)
 
-    def _add_channels(self, G: SemantikonDiGraph, channel_dict: dict) -> None:
+    def _add_channels(self, G: nx.DiGraph, channel_dict: dict) -> None:
         for key, data in channel_dict.items():
             G.add_node(
                 key,
@@ -1378,7 +1377,7 @@ class _WorkflowGraphSerializer:
                 **{k: v for k, v in data.items() if k != "semantikon_type"},
             )
 
-    def _add_nodes(self, G: SemantikonDiGraph, node_dict: dict) -> None:
+    def _add_nodes(self, G: nx.DiGraph, node_dict: dict) -> None:
         for key, data in node_dict.items():
             if "." not in key:
                 G.name = key
@@ -1395,12 +1394,12 @@ class _WorkflowGraphSerializer:
             for out in data.get("outputs", {}):
                 G.add_edge(key, f"{key}.outputs.{out}")
 
-    def _add_edges(self, G: SemantikonDiGraph, edge_list: list[list[str]]) -> None:
+    def _add_edges(self, G: nx.DiGraph, edge_list: list[list[str]]) -> None:
         for edge in edge_list:
             G.add_edge(*edge)
 
     @staticmethod
-    def _relabel_graph(G: SemantikonDiGraph) -> SemantikonDiGraph:
+    def _relabel_graph(G: nx.DiGraph) -> nx.DiGraph:
         mapping = {n: n.replace(".", "-") for n in G.nodes()}
         return nx.relabel_nodes(G, mapping, copy=True)
 
@@ -1422,7 +1421,8 @@ def serialize_and_convert_to_networkx(
     Returns:
         SemantikonDiGraph: The serialized workflow graph.
     """
-    G = _WorkflowGraphSerializer(wf_dict, prefix=prefix).serialize()
+    G_nx = _WorkflowGraphSerializer(wf_dict).serialize()
+    G = SemantikonDiGraph(G_nx, prefix=prefix)
     if hash_data:
         try:
             hashed_dict = {}
