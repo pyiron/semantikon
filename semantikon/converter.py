@@ -3,6 +3,8 @@
 # Distributed under the terms of "New BSD License", see the LICENSE file.
 
 import ast
+import hashlib
+import importlib
 import inspect
 import re
 import string
@@ -29,7 +31,6 @@ from pint.registry_helpers import (
 )
 
 from semantikon.datastructure import TypeMetadata
-from semantikon.flowrep_dict import get_function_metadata
 
 __author__ = "Sam Waseda"
 __copyright__ = (
@@ -374,6 +375,78 @@ def units(func: Callable) -> Callable:
             return output_units * func(*args, **new_kwargs)
 
     return wrapper
+
+
+def hash_function(fn: Callable) -> str:
+    """
+    Hash a function based on its source code or signature.
+
+    For regular functions, the hash is based on the dedented source code.
+    For other callables (built-ins, methods, etc.), the hash is based on
+    the module, qualified name, and signature. If source code is unavailable
+    for a function, falls back to signature-based hashing.
+
+    Args:
+        fn (Callable): The function to hash.
+
+    Returns:
+        str: A stable hash string in the format "function_name:hash_hex".
+    """
+
+    if inspect.isfunction(fn):
+        try:
+            source_code = inspect.getsource(fn)
+            source_code = textwrap.dedent(
+                source_code.replace("\r\n", "\n").replace("\r", "\n")
+            )
+        except (OSError, TypeError):
+            # Fall back to signature for functions where source is unavailable
+            source_code = f"{fn.__module__}:{fn.__qualname__}:{inspect.signature(fn)}"
+    else:
+        source_code = f"{fn.__module__}:{fn.__qualname__}:{inspect.signature(fn)}"
+    source_code_hash = hashlib.sha256(source_code.encode("utf-8")).hexdigest()
+    name = getattr(fn, "__name__", "unknown")
+    return name + ":" + source_code_hash
+
+
+def _get_version_from_module(module_name: str) -> str:
+    base_module_name = module_name.split(".")[0]
+    base_module = importlib.import_module(base_module_name)
+    return getattr(base_module, "__version__", "not_defined")
+
+
+def get_function_metadata(
+    cls: Callable | dict[str, str], full_metadata: bool = False
+) -> dict[str, str]:
+    """
+    Get metadata for a given function or class.
+
+    Args:
+        cls (Callable | dict[str, str]): The function or class to get metadata for.
+        full_metadata (bool): Whether to include full metadata including hash,
+            docstring, and name.
+
+    Returns:
+        dict[str, str]: A dictionary containing the metadata of the function or class.
+    """
+    if isinstance(cls, dict):
+        if "module" in cls and "qualname" in cls:
+            return cls
+        else:
+            raise ValueError(f"Got a dict, but it doesn't look like metadata: {cls}")
+
+    data = {
+        "module": cls.__module__,
+        "qualname": cls.__qualname__,
+    }
+
+    data["version"] = _get_version_from_module(data["module"])
+    if not full_metadata:
+        return data
+    data["hash"] = hash_function(cls)
+    data["docstring"] = cls.__doc__ or ""
+    data["name"] = cls.__name__
+    return data
 
 
 def get_function_dict(function: Callable) -> dict[str, Any]:
