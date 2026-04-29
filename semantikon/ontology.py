@@ -1347,7 +1347,8 @@ class _WorkflowFlattener:
 
 class _WorkflowGraphSerializer:
     """
-    Serializes a workflow dictionary into a SemantikonDiGraph.
+    Serializes a workflow dictionary into a NetworkX directed graph, where
+    nodes represent workflow steps and channels,
     """
 
     def __init__(self, wf_dict: dict):
