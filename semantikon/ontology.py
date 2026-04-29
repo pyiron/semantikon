@@ -1351,26 +1351,21 @@ class _WorkflowGraphSerializer:
     nodes represent workflow steps and channels,
     """
 
-    def __init__(self, wf_dict: dict):
-        self.wf_dict = wf_dict
-
-    # -----------------------------
-    # Serialization
-    # -----------------------------
-
-    def serialize(self) -> nx.DiGraph:
+    @classmethod
+    def serialize(cls, wf_dict: dict) -> nx.DiGraph:
         node_dict, channel_dict, edge_list = _WorkflowFlattener.flatten(
-            self.wf_dict, self.wf_dict["label"]
+            wf_dict, wf_dict["label"]
         )
         G = nx.DiGraph()
 
-        self._add_channels(G, channel_dict)
-        self._add_nodes(G, node_dict)
-        self._add_edges(G, edge_list)
+        cls._add_channels(G, channel_dict)
+        cls._add_nodes(G, node_dict)
+        cls._add_edges(G, edge_list)
 
-        return self._relabel_graph(G)
+        return cls._relabel_graph(G)
 
-    def _add_channels(self, G: nx.DiGraph, channel_dict: dict) -> None:
+    @classmethod
+    def _add_channels(cls, G: nx.DiGraph, channel_dict: dict) -> None:
         for key, data in channel_dict.items():
             G.add_node(
                 key,
@@ -1378,7 +1373,8 @@ class _WorkflowGraphSerializer:
                 **{k: v for k, v in data.items() if k != "semantikon_type"},
             )
 
-    def _add_nodes(self, G: nx.DiGraph, node_dict: dict) -> None:
+    @classmethod
+    def _add_nodes(cls, G: nx.DiGraph, node_dict: dict) -> None:
         for key, data in node_dict.items():
             if "." not in key:
                 G.name = key
@@ -1395,7 +1391,8 @@ class _WorkflowGraphSerializer:
             for out in data.get("outputs", {}):
                 G.add_edge(key, f"{key}.outputs.{out}")
 
-    def _add_edges(self, G: nx.DiGraph, edge_list: list[list[str]]) -> None:
+    @classmethod
+    def _add_edges(cls, G: nx.DiGraph, edge_list: list[list[str]]) -> None:
         for edge in edge_list:
             G.add_edge(*edge)
 
@@ -1422,7 +1419,7 @@ def serialize_and_convert_to_networkx(
     Returns:
         SemantikonDiGraph: The serialized workflow graph.
     """
-    G_nx = _WorkflowGraphSerializer(wf_dict).serialize()
+    G_nx = _WorkflowGraphSerializer.serialize(wf_dict)
     G = SemantikonDiGraph(G_nx, prefix=prefix)
     if hash_data:
         try:
