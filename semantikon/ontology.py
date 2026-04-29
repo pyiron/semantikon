@@ -1268,22 +1268,7 @@ def _get_successor_nodes(G, node_name):
                 yield node
 
 
-class _WorkflowGraphSerializer:
-    """
-    Serializes a workflow dictionary into a SemantikonDiGraph.
-    """
-
-    def __init__(self, wf_dict: dict, prefix: str | None = None):
-        self.wf_dict = wf_dict
-        self.node_dict: dict = {}
-        self.channel_dict: dict = {}
-        self.edge_list: list[list[str]] = []
-        self.prefix = prefix
-
-    # -----------------------------
-    # String utilities
-    # -----------------------------
-
+class _WorkflowFlattener:
     @staticmethod
     def _remove_us(*args: str) -> str:
         return ".".join(args)
@@ -1292,23 +1277,21 @@ class _WorkflowGraphSerializer:
     def _dot(*args: str | None) -> str:
         return ".".join(a for a in args if a is not None)
 
-    # -----------------------------
-    # Serialization
-    # -----------------------------
+    @classmethod
+    def flatten(cls, wf_dict: dict, prefix: str) -> tuple[dict, dict, list[list[str]]]:
+        node_dict = cls._serialize_node_metadata(wf_dict, prefix)
+        channel_dict = cls._serialize_channels(wf_dict, prefix)
+        n, c, e = cls._serialize_children(wf_dict, prefix)
+        edge_list = cls._serialize_edges(wf_dict, prefix)
+        node_dict.update(n)
+        channel_dict.update(c)
+        edge_list.extend(e)
+        return node_dict, channel_dict, edge_list
 
-    def serialize(self) -> SemantikonDiGraph:
-        self._serialize_workflow(self.wf_dict, self.wf_dict["label"])
-        return self._build_graph()
-
-    def _serialize_workflow(self, wf_dict: dict, prefix: str) -> None:
-        self._serialize_node_metadata(wf_dict, prefix)
-        self._serialize_channels(wf_dict, prefix)
-        self._serialize_children(wf_dict, prefix)
-        self._serialize_edges(wf_dict, prefix)
-
-    def _serialize_node_metadata(self, wf_dict: dict, prefix: str) -> None:
-        self.node_dict[prefix] = {
-            k: v for k, v in wf_dict.items() if k not in {"nodes", "edges"}
+    @staticmethod
+    def _serialize_node_metadata(wf_dict: dict, prefix: str) -> dict:
+        node_dict = {
+            prefix: {k: v for k, v in wf_dict.items() if k not in {"nodes", "edges"}}
         }
 
         assert "function" in wf_dict or wf_dict["type"] != "atomic"
@@ -1318,55 +1301,81 @@ class _WorkflowGraphSerializer:
             meta["identifier"] = ".".join(
                 (meta["module"], meta["qualname"], meta["version"])
             )
-            self.node_dict[prefix]["function"] = meta
+            node_dict[prefix]["function"] = meta
+        return node_dict
 
-    def _serialize_channels(self, wf_dict: dict, prefix: str) -> None:
+    @classmethod
+    def _serialize_channels(cls, wf_dict: dict, prefix: str) -> dict:
+        channel_dict = {}
         for io_type in ("inputs", "outputs"):
             for pos, (arg, channel) in enumerate(wf_dict.get(io_type, {}).items()):
-                label = self._remove_us(prefix, io_type, arg)
+                label = cls._remove_us(prefix, io_type, arg)
                 assert "semantikon_type" not in channel
                 if "dtype" in channel:
                     channel.update(meta_to_dict(channel["dtype"]))
 
-                self.channel_dict[label] = channel | {
+                channel_dict[label] = channel | {
                     "semantikon_type": io_type,
                     "position": channel.get("position", pos),
                     "arg": arg,
                 }
+        return channel_dict
 
-    def _serialize_children(self, wf_dict: dict, prefix: str) -> None:
+    @classmethod
+    def _serialize_children(
+        cls, wf_dict: dict, prefix: str
+    ) -> tuple[dict, dict, list[list[str]]]:
+        node_dict = {}
+        channel_dict = {}
+        edge_list = []
         for key, node in wf_dict.get("nodes", {}).items():
-            child_key = self._dot(prefix, key)
-            self._serialize_workflow(node, child_key)
-            self.node_dict[child_key]["parent"] = prefix.replace(".", "-")
+            child_key = cls._dot(prefix, key)
+            n, c, e = cls.flatten(node, child_key)
+            node_dict.update(n)
+            channel_dict.update(c)
+            edge_list.extend(e)
+            node_dict[child_key]["parent"] = prefix.replace(".", "-")
+        return node_dict, channel_dict, edge_list
 
-    def _serialize_edges(self, wf_dict: dict, prefix: str) -> None:
+    @classmethod
+    def _serialize_edges(cls, wf_dict: dict, prefix: str) -> list[list[str]]:
+        edge_list = []
         for edge in wf_dict.get("edges", []):
-            self.edge_list.append([self._remove_us(prefix, a) for a in edge])
+            edge_list.append([cls._remove_us(prefix, a) for a in edge])
+        return edge_list
 
-    # -----------------------------
-    # Graph construction
-    # -----------------------------
 
-    def _build_graph(self) -> SemantikonDiGraph:
-        G = SemantikonDiGraph(prefix=self.prefix)
+class _WorkflowGraphSerializer:
+    """
+    Serializes a workflow dictionary into a NetworkX directed graph, where
+    nodes represent workflow steps and channels,
+    """
 
-        self._add_channels(G)
-        self._add_nodes(G)
-        self._add_edges(G)
+    @classmethod
+    def serialize(cls, wf_dict: dict) -> nx.DiGraph:
+        node_dict, channel_dict, edge_list = _WorkflowFlattener.flatten(
+            wf_dict, wf_dict["label"]
+        )
+        G = nx.DiGraph()
 
-        return self._relabel_graph(G)
+        cls._add_channels(G, channel_dict)
+        cls._add_nodes(G, node_dict)
+        cls._add_edges(G, edge_list)
 
-    def _add_channels(self, G: SemantikonDiGraph) -> None:
-        for key, data in self.channel_dict.items():
+        return cls._relabel_graph(G)
+
+    @classmethod
+    def _add_channels(cls, G: nx.DiGraph, channel_dict: dict) -> None:
+        for key, data in channel_dict.items():
             G.add_node(
                 key,
                 step=data["semantikon_type"],
                 **{k: v for k, v in data.items() if k != "semantikon_type"},
             )
 
-    def _add_nodes(self, G: SemantikonDiGraph) -> None:
-        for key, data in self.node_dict.items():
+    @classmethod
+    def _add_nodes(cls, G: nx.DiGraph, node_dict: dict) -> None:
+        for key, data in node_dict.items():
             if "." not in key:
                 G.name = key
 
@@ -1382,12 +1391,13 @@ class _WorkflowGraphSerializer:
             for out in data.get("outputs", {}):
                 G.add_edge(key, f"{key}.outputs.{out}")
 
-    def _add_edges(self, G: SemantikonDiGraph) -> None:
-        for edge in self.edge_list:
+    @classmethod
+    def _add_edges(cls, G: nx.DiGraph, edge_list: list[list[str]]) -> None:
+        for edge in edge_list:
             G.add_edge(*edge)
 
     @staticmethod
-    def _relabel_graph(G: SemantikonDiGraph) -> SemantikonDiGraph:
+    def _relabel_graph(G: nx.DiGraph) -> nx.DiGraph:
         mapping = {n: n.replace(".", "-") for n in G.nodes()}
         return nx.relabel_nodes(G, mapping, copy=True)
 
@@ -1409,7 +1419,8 @@ def serialize_and_convert_to_networkx(
     Returns:
         SemantikonDiGraph: The serialized workflow graph.
     """
-    G = _WorkflowGraphSerializer(wf_dict, prefix=prefix).serialize()
+    G_nx = _WorkflowGraphSerializer.serialize(wf_dict)
+    G = SemantikonDiGraph(G_nx, prefix=prefix)
     if hash_data:
         try:
             hashed_dict = {}
