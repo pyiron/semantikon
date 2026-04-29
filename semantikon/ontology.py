@@ -23,7 +23,7 @@ from semantikon.converter import (
     parse_input_args,
     parse_output_args,
 )
-from semantikon.flowrep_dict import get_hashed_node_dict, _WorkflowGraphSerializer
+from semantikon.flowrep_dict import _WorkflowGraphSerializer, get_hashed_node_dict
 from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
