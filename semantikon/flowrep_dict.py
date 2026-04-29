@@ -40,7 +40,12 @@ from typing import Annotated, Any, cast, get_args, get_origin
 import networkx as nx
 from flowrep.api import schemas as frs
 from pyiron_snippets import retrieve
-from semantikon.converter import get_function_dict, get_function_metadata, meta_to_dict
+from semantikon.converter import (
+    get_function_dict,
+    get_function_metadata,
+    hash_function,
+    meta_to_dict,
+)
 
 
 def live_to_dict(
