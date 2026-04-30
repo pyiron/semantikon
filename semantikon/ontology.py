@@ -344,7 +344,8 @@ def _check_consistency_of_digraph(G: SemantikonDiGraph):
             warnings.warn(
                 f"Node '{node}' is derived from '{data['derived_from']}' which"
                 " has a URI defined, but the node itself does not have a URI."
-                f" '{node}' remains without a URI."
+                f" '{node}' remains without a URI.",
+                UserWarning,
             )
 
 
