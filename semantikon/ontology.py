@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import unicodedata
+import warnings
 from dataclasses import asdict, dataclass, fields, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
@@ -327,6 +328,27 @@ def _remove_data(graph: Graph) -> Graph:
     return graph
 
 
+def _check_consistency_of_digraph(G: SemantikonDiGraph):
+    for node, data in G.nodes.data():
+        if "derived_from" not in data:
+            continue
+        expected_input = node.rsplit("-outputs-", 1)[
+            0
+        ] + f"-{data['derived_from']}".replace(".", "-")
+        if expected_input not in G.nodes:
+            raise ValueError(
+                f"Node '{node}' is derived from '{data['derived_from']}' but"
+                f" expected input '{expected_input}' not found in the graph."
+            )
+        if "uri" not in data and "uri" in G.nodes[expected_input]:
+            warnings.warn(
+                f"Node '{node}' is derived from '{data['derived_from']}' which"
+                " has a URI defined, but the node itself does not have a URI."
+                f" '{node}' remains without a URI.",
+                UserWarning,
+            )
+
+
 def get_knowledge_graph(
     wf_dict: dict,
     include_t_box: bool = True,
@@ -356,6 +378,7 @@ def get_knowledge_graph(
         (rdflib.Graph): graph containing workflow information
     """
     G = serialize_and_convert_to_networkx(wf_dict, hash_data=hash_data, prefix=prefix)
+    _check_consistency_of_digraph(G)
     graph = _get_bound_graph()
     graph += _import_pmdco(pmdco_uri=pmdco_uri)
     if include_t_box:

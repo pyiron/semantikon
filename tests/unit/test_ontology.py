@@ -1,6 +1,7 @@
 import copy
 import os
 import unittest
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from textwrap import dedent
@@ -406,6 +407,38 @@ def use_derived_from_wrongly_in_input(
 @workflow
 def workflow_with_wrong_derived_from(x):
     result = use_derived_from_wrongly_in_input(x)
+    return result
+
+
+@workflow
+def workflow_with_derived_from_and_no_uri(
+    x: Annotated[float, {"uri": EX.Something}],
+) -> Annotated[float, {"derived_from": "inputs.x"}]:
+    result = add_one(x)
+    return result
+
+
+@workflow
+def workflow_with_derived_from_and_with_uri(
+    x: Annotated[float, {"uri": EX.Something}],
+) -> Annotated[float, {"derived_from": "inputs.x", "uri": EX.SomethingElse}]:
+    result = add_one(x)
+    return result
+
+
+@workflow
+def workflow_with_derived_from_and_with_no_uri_at_all(
+    x: float,
+) -> Annotated[float, {"derived_from": "inputs.x"}]:
+    result = add_one(x)
+    return result
+
+
+@workflow
+def workflow_with_wrong_derived_from_in_output(
+    x,
+) -> Annotated[float, {"derived_from": "inputs.y"}]:
+    result = add_one(x)
     return result
 
 
@@ -1086,6 +1119,30 @@ class TestOntology(unittest.TestCase):
             ValueError,
             onto.get_knowledge_graph,
             workflow_with_wrong_derived_from.get_semantikon_dict(),
+        )
+
+    def test_derived_from_and_with_and_without_uri(self):
+        with self.assertWarnsRegex(
+            UserWarning,
+            "node itself does not have a URI",
+        ):
+            onto.get_knowledge_graph(
+                workflow_with_derived_from_and_no_uri.get_semantikon_dict()
+            )
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error", message="node itself does not have a URI")
+            onto.get_knowledge_graph(
+                workflow_with_derived_from_and_with_uri.get_semantikon_dict()
+            )
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error", message="node itself does not have a URI")
+            onto.get_knowledge_graph(
+                workflow_with_derived_from_and_with_no_uri_at_all.get_semantikon_dict()
+            )
+        self.assertRaises(
+            ValueError,
+            onto.get_knowledge_graph,
+            workflow_with_wrong_derived_from_in_output.get_semantikon_dict(),
         )
 
 
