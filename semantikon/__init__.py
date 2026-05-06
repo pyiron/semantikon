@@ -9,9 +9,12 @@ except importlib.metadata.PackageNotFoundError:
 
 
 from semantikon.api import (
+    FunctionMetadata,
     SemantikonURI,
+    TypeMetadata,
     get_knowledge_graph,
     meta,
+    parse_metadata,
     query_io_completer,
     request_values,
     semantikon_dataclass,
@@ -21,12 +24,15 @@ from semantikon.api import (
 )
 
 __all__ = [
+    "FunctionMetadata",
     "SemantikonURI",
-    "semantikon_dataclass",
+    "TypeMetadata",
     "get_knowledge_graph",
     "meta",
+    "parse_metadata",
     "query_io_completer",
     "request_values",
+    "semantikon_dataclass",
     "u",
     "validate_values",
     "visualize_recipe",
