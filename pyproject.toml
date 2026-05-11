@@ -29,7 +29,7 @@ dependencies = [
     "pint==0.25.3",
     "rdflib==7.6.0",
     "pyshacl==0.31.0",
-    "requests==2.33.1",
+    "requests==2.34.0",
     "typeguard==4.5.1",
     "flowrep==0.4.1",
     "networkx==3.6.1",
