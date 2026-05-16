@@ -554,7 +554,7 @@ def with_explicit_defaults(**messages) -> Callable:
                     else:
                         warnings.warn(
                             f"'{name}' not provided,"
-                            f" using default: {sig.parameters['x'].default}"
+                            f" using default: {sig.parameters[name].default}"
                         )
 
             return func(*args, **kwargs)
