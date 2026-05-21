@@ -1,8 +1,8 @@
 """
-Convert live node trees to the legacy nested-dictionary format.
+Convert node data trees to the legacy nested-dictionary format.
 
-This module bridges :mod:`flowrep.live` objects (recipe + instance data)
-to the ``dict`` structure historically produced by
+This module bridges :mod:`flowrep.retrospective` objects (instance data with associated
+recipe) to the ``dict`` structure historically produced by
 :func:`flowrep.workflow.get_workflow_dict` in versions <0.3.0
 and consumed by downstream packages such as *semantikon*.
 
@@ -48,17 +48,17 @@ from semantikon.converter import (
 )
 
 
-def live_to_dict(
+def node_data_to_dict(
     node: frs.NodeData,
     *,
     with_io: bool = False,
     with_function: bool = False,
     label: str | None = None,
 ) -> dict[str, Any]:
-    """Convert a live node to the nested dictionary format.
+    """Convert a data node to the nested dictionary format.
 
     Args:
-        node: The live node to convert (pre- or post-run).
+        node: The node data to convert (pre- or post-run).
         with_io: Include ``"inputs"`` / ``"outputs"`` port dictionaries.
         with_function: Store raw callables (``True``) or
             :func:`get_function_metadata` dicts (``False``).
@@ -80,7 +80,7 @@ def live_to_dict(
             "The legacy format flattens body-workflow children into the "
             "control-flow dict, which requires unwrapping the body recipe."
         )
-    raise TypeError(f"Unsupported live node type: {type(node).__name__}")
+    raise TypeError(f"Unsupported data node type: {type(node).__name__}")
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ def _workflow_to_dict(
         "type": "workflow",
         "label": label or _infer_label(recipe),
         "nodes": {
-            child_label: live_to_dict(
+            child_label: node_data_to_dict(
                 child_node,
                 with_io=with_io,
                 with_function=with_function,
