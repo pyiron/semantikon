@@ -362,9 +362,7 @@ class TestRoundTripConsistency(unittest.TestCase):
 
     def test_pre_and_post_run_same_keys(self):
         recipe = _diamond_workflow.flowrep_recipe
-        pre = flowrep_dict.live_to_dict(
-            frs.DagData.from_recipe(recipe), with_io=True
-        )
+        pre = flowrep_dict.live_to_dict(frs.DagData.from_recipe(recipe), with_io=True)
         post = flowrep_dict.live_to_dict(frt.run_recipe(recipe, a=3, b=7), with_io=True)
         # Same top-level keys
         self.assertEqual(set(pre.keys()), set(post.keys()))
@@ -375,9 +373,7 @@ class TestRoundTripConsistency(unittest.TestCase):
 
     def test_pre_run_no_values(self):
         recipe = _diamond_workflow.flowrep_recipe
-        d = flowrep_dict.live_to_dict(
-            frs.DagData.from_recipe(recipe), with_io=True
-        )
+        d = flowrep_dict.live_to_dict(frs.DagData.from_recipe(recipe), with_io=True)
         for port_d in d["outputs"].values():
             self.assertNotIn("value", port_d)
 
