@@ -117,7 +117,7 @@ def _workflow_to_dict(
     label: str | None,
 ) -> dict[str, Any]:
     recipe = node.recipe
-    assert isinstance(recipe, frs.WorkflowNode)
+    assert isinstance(recipe, frs.WorkflowRecipe)
 
     result: dict[str, Any] = {
         "type": "workflow",
@@ -158,7 +158,7 @@ def _infer_label(recipe: frs.LiveWorkflowNode) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _workflow_edges(recipe: frs.WorkflowNode) -> list[tuple[str, str]]:
+def _workflow_edges(recipe: frs.WorkflowRecipe) -> list[tuple[str, str]]:
     """Flatten typed edge objects into ``("src", "tgt")`` string tuples."""
     edges: list[tuple[str, str]] = []
 

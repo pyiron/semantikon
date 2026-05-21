@@ -113,13 +113,13 @@ def identity(x):
     return x
 
 
-def _inner_workflow_with_output_0() -> frs.WorkflowNode:
+def _inner_workflow_with_output_0() -> frs.WorkflowRecipe:
     """A workflow whose sole output is named ``output_0``.
 
     This is unusual (the workflow parser names outputs from return variables),
     but perfectly valid for manually constructed recipes.
     """
-    return frs.WorkflowNode(
+    return frs.WorkflowRecipe(
         inputs=["x"],
         outputs=["output_0"],
         nodes={"identity_0": identity.flowrep_recipe},
@@ -135,9 +135,9 @@ def _inner_workflow_with_output_0() -> frs.WorkflowNode:
     )
 
 
-def _parent_workflow(inner: frs.WorkflowNode) -> frs.WorkflowNode:
+def _parent_workflow(inner: frs.WorkflowRecipe) -> frs.WorkflowRecipe:
     """A workflow that wraps *inner* and reads its ``output_0`` port."""
-    return frs.WorkflowNode(
+    return frs.WorkflowRecipe(
         inputs=["x"],
         outputs=["result"],
         nodes={"inner_0": inner},
@@ -338,10 +338,10 @@ class TestWorkflowToDict(unittest.TestCase):
 
 class TestFlowControlStub(unittest.TestCase):
     def test_raises_not_implemented(self):
-        recipe = frs.ForEachNode(
+        recipe = frs.ForEachRecipe(
             inputs=["xs"],
             outputs=["ys"],
-            body_node=frs.LabeledNode(label="body", node=negate.flowrep_recipe),
+            body_node=frs.LabeledRecipe(label="body", node=negate.flowrep_recipe),
             input_edges={
                 frs.TargetHandle(node="body", port="x"): frs.InputSource(port="xs")
             },
