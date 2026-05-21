@@ -408,7 +408,7 @@ class TestDigraphConverters(unittest.TestCase):
     def test_wf_dict_to_graph(self):
         # wf_dict = example_workflow.get_flowrep_dict()
         wf_dict = flowrep_dict.live_to_dict(
-            frt.recipe2live(example_workflow.flowrep_recipe),
+            frt.recipe2data(example_workflow.flowrep_recipe),
             with_io=False,
             with_function=True,
         )
@@ -419,7 +419,7 @@ class TestDigraphConverters(unittest.TestCase):
             _ = flowrep_dict._simple_run(G)
 
         wf_dict = flowrep_dict.live_to_dict(
-            frt.recipe2live(example_workflow.flowrep_recipe),
+            frt.recipe2data(example_workflow.flowrep_recipe),
             with_io=True,
             with_function=True,
         )
@@ -499,7 +499,7 @@ class TestDigraphConverters(unittest.TestCase):
 
         # workflow_dict = workflow_with_data.get_flowrep_dict()
         workflow_dict = flowrep_dict.live_to_dict(
-            frt.recipe2live(workflow_with_data.flowrep_recipe),
+            frt.recipe2data(workflow_with_data.flowrep_recipe),
             with_io=True,
             with_function=True,
         )
