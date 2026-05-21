@@ -49,7 +49,7 @@ from semantikon.converter import (
 
 
 def live_to_dict(
-    node: frs.LiveNode,
+    node: frs.NodeData,
     *,
     with_io: bool = False,
     with_function: bool = False,
@@ -68,13 +68,13 @@ def live_to_dict(
         A nested dictionary matching the structure of the legacy
         ``get_workflow_dict`` output.
     """
-    if isinstance(node, frs.LiveAtomic):
+    if isinstance(node, frs.AtomicData):
         return _atomic_to_dict(node, with_io=with_io, with_function=with_function)
-    if isinstance(node, frs.LiveWorkflow):
+    if isinstance(node, frs.DagData):
         return _workflow_to_dict(
             node, with_io=with_io, with_function=with_function, label=label
         )
-    if isinstance(node, frs.FlowControl):
+    if isinstance(node, frs.FlowControlData):
         raise NotImplementedError(
             "FlowControl → dict conversion is not yet implemented.  "
             "The legacy format flattens body-workflow children into the "
@@ -89,7 +89,7 @@ def live_to_dict(
 
 
 def _atomic_to_dict(
-    node: frs.LiveAtomic,
+    node: frs.AtomicData,
     *,
     with_io: bool,
     with_function: bool,
@@ -110,7 +110,7 @@ def _atomic_to_dict(
 
 
 def _workflow_to_dict(
-    node: frs.LiveWorkflow,
+    node: frs.DagData,
     *,
     with_io: bool,
     with_function: bool,
@@ -245,7 +245,7 @@ def _unwrap_annotated(annotation: Any) -> Any:
 
 
 def _input_ports_to_dict(
-    ports: Mapping[str, frs.InputPort],
+    ports: Mapping[str, frs.InputDataPort],
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     for name, port in ports.items():
@@ -254,7 +254,7 @@ def _input_ports_to_dict(
 
 
 def _output_ports_to_dict(
-    ports: Mapping[str, frs.OutputPort],
+    ports: Mapping[str, frs.OutputDataPort],
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     if len(ports) == 1 and next(iter(ports.keys())) == "output_0":

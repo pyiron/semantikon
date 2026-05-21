@@ -161,7 +161,7 @@ class TestNonNodeToDict(unittest.TestCase):
 
 class TestAtomicToDict(unittest.TestCase):
     def test_basic_structure(self):
-        node = frs.LiveAtomic.from_recipe(my_add.flowrep_recipe)
+        node = frs.AtomicData.from_recipe(my_add.flowrep_recipe)
         d = flowrep_dict.live_to_dict(node)
         self.assertEqual(d["type"], "atomic")
         self.assertIn("function", d)
@@ -172,12 +172,12 @@ class TestAtomicToDict(unittest.TestCase):
         self.assertNotIn("outputs", d)
 
     def test_with_function(self):
-        node = frs.LiveAtomic.from_recipe(my_add.flowrep_recipe)
+        node = frs.AtomicData.from_recipe(my_add.flowrep_recipe)
         d = flowrep_dict.live_to_dict(node, with_function=True)
         self.assertTrue(callable(d["function"]))
 
     def test_with_io_pre_run(self):
-        node = frs.LiveAtomic.from_recipe(my_add.flowrep_recipe)
+        node = frs.AtomicData.from_recipe(my_add.flowrep_recipe)
         d = flowrep_dict.live_to_dict(node, with_io=True)
         self.assertIn("inputs", d)
         self.assertIn("outputs", d)
@@ -195,7 +195,7 @@ class TestAtomicToDict(unittest.TestCase):
         self.assertEqual(d["outputs"]["output"]["value"], 7)
 
     def test_defaults_included(self):
-        node = frs.LiveAtomic.from_recipe(increment.flowrep_recipe)
+        node = frs.AtomicData.from_recipe(increment.flowrep_recipe)
         d = flowrep_dict.live_to_dict(node, with_io=True)
         self.assertEqual(d["inputs"]["step"]["default"], 1)
         self.assertNotIn("default", d["inputs"]["x"])
@@ -212,7 +212,7 @@ class TestAtomicToDict(unittest.TestCase):
 class TestWorkflowToDict(unittest.TestCase):
     def test_basic_structure(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = frs.LiveWorkflow.from_recipe(recipe)
+        node = frs.DagData.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node)
         self.assertEqual(d["type"], "workflow")
         self.assertIn("nodes", d)
@@ -223,19 +223,19 @@ class TestWorkflowToDict(unittest.TestCase):
 
     def test_label_inferred_from_reference(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = frs.LiveWorkflow.from_recipe(recipe)
+        node = frs.DagData.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node)
         self.assertEqual(d["label"], "_diamond_workflow")
 
     def test_label_override(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = frs.LiveWorkflow.from_recipe(recipe)
+        node = frs.DagData.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node, label="my_label")
         self.assertEqual(d["label"], "my_label")
 
     def test_child_nodes_present(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = frs.LiveWorkflow.from_recipe(recipe)
+        node = frs.DagData.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node)
         self.assertIn("my_add_0", d["nodes"])
         self.assertIn("negate_0", d["nodes"])
@@ -245,7 +245,7 @@ class TestWorkflowToDict(unittest.TestCase):
 
     def test_edges_cover_all_recipe_edges(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = frs.LiveWorkflow.from_recipe(recipe)
+        node = frs.DagData.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node)
         edges = d["edges"]
         # Should have input_edges + sibling edges + output_edges
@@ -256,13 +256,13 @@ class TestWorkflowToDict(unittest.TestCase):
 
     def test_passthrough_edges(self):
         recipe = _passthrough_workflow.flowrep_recipe
-        node = frs.LiveWorkflow.from_recipe(recipe)
+        node = frs.DagData.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node)
         self.assertIn(("inputs.x", "outputs.x"), d["edges"])
 
     def test_edge_format(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = frs.LiveWorkflow.from_recipe(recipe)
+        node = frs.DagData.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node)
         for src, tgt in d["edges"]:
             self.assertIsInstance(src, str)
@@ -273,7 +273,7 @@ class TestWorkflowToDict(unittest.TestCase):
 
     def test_with_io_pre_run(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = frs.LiveWorkflow.from_recipe(recipe)
+        node = frs.DagData.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node, with_io=True)
         self.assertIn("inputs", d)
         self.assertIn("outputs", d)
@@ -301,7 +301,7 @@ class TestWorkflowToDict(unittest.TestCase):
 
     def test_with_function_on_workflow(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = frs.LiveWorkflow.from_recipe(recipe)
+        node = frs.DagData.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node, with_function=True)
         # Top-level workflow should have the resolved function
         self.assertIn("function", d)
@@ -312,7 +312,7 @@ class TestWorkflowToDict(unittest.TestCase):
 
     def test_without_function_uses_metadata(self):
         recipe = _diamond_workflow.flowrep_recipe
-        node = frs.LiveWorkflow.from_recipe(recipe)
+        node = frs.DagData.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node, with_function=False)
         # Top-level: no "function" key (no with_function, reference exists but
         # we only add it when with_function=True)
@@ -325,7 +325,7 @@ class TestWorkflowToDict(unittest.TestCase):
         """Every port referenced in an edge should correspond to a real node or
         the workflow's own inputs/outputs."""
         recipe = _diamond_workflow.flowrep_recipe
-        node = frs.LiveWorkflow.from_recipe(recipe)
+        node = frs.DagData.from_recipe(recipe)
         d = flowrep_dict.live_to_dict(node, with_io=True)
 
         valid_prefixes = {"inputs", "outputs"} | set(d["nodes"].keys())
@@ -352,7 +352,7 @@ class TestFlowControlStub(unittest.TestCase):
             },
             nested_ports=["x"],
         )
-        fc = frs.FlowControl.from_recipe(recipe)
+        fc = frs.FlowControlData.from_recipe(recipe)
         with self.assertRaises(NotImplementedError):
             flowrep_dict.live_to_dict(fc)
 
@@ -363,7 +363,7 @@ class TestRoundTripConsistency(unittest.TestCase):
     def test_pre_and_post_run_same_keys(self):
         recipe = _diamond_workflow.flowrep_recipe
         pre = flowrep_dict.live_to_dict(
-            frs.LiveWorkflow.from_recipe(recipe), with_io=True
+            frs.DagData.from_recipe(recipe), with_io=True
         )
         post = flowrep_dict.live_to_dict(frt.run_recipe(recipe, a=3, b=7), with_io=True)
         # Same top-level keys
@@ -376,7 +376,7 @@ class TestRoundTripConsistency(unittest.TestCase):
     def test_pre_run_no_values(self):
         recipe = _diamond_workflow.flowrep_recipe
         d = flowrep_dict.live_to_dict(
-            frs.LiveWorkflow.from_recipe(recipe), with_io=True
+            frs.DagData.from_recipe(recipe), with_io=True
         )
         for port_d in d["outputs"].values():
             self.assertNotIn("value", port_d)
@@ -473,7 +473,7 @@ class TestDigraphConverters(unittest.TestCase):
         # _passthrough_workflow returns both the raw input x and the negated y,
         # producing an edge (inputs.x, outputs.x) that has node_list == [] on both ends.
         wf_dict = flowrep_dict.live_to_dict(
-            frs.LiveWorkflow.from_recipe(_passthrough_workflow.flowrep_recipe),
+            frs.DagData.from_recipe(_passthrough_workflow.flowrep_recipe),
             with_io=True,
             with_function=True,
         )
@@ -581,7 +581,7 @@ class TestOutputSanitizationConsistency(unittest.TestCase):
     def test_inner_dict_edges_consistent_with_outputs(self):
         """The inner workflow's edges and outputs dict must use the same name."""
         inner = _inner_workflow_with_output_0()
-        inner_live = frs.LiveWorkflow.from_recipe(inner)
+        inner_live = frs.DagData.from_recipe(inner)
         d = flowrep_dict.live_to_dict(inner_live, with_io=True, with_function=True)
 
         # The outputs dict uses "output"
@@ -599,7 +599,7 @@ class TestOutputSanitizationConsistency(unittest.TestCase):
         """get_workflow_graph must create exactly one output node per port."""
         inner = _inner_workflow_with_output_0()
         parent = _parent_workflow(inner)
-        parent_live = frs.LiveWorkflow.from_recipe(parent)
+        parent_live = frs.DagData.from_recipe(parent)
         d = flowrep_dict.live_to_dict(parent_live, with_io=True, with_function=True)
         G = flowrep_dict._get_workflow_graph(d)
 
@@ -615,7 +615,7 @@ class TestOutputSanitizationConsistency(unittest.TestCase):
         """The full dict → nx graph → simple_run path must produce the right value."""
         inner = _inner_workflow_with_output_0()
         parent = _parent_workflow(inner)
-        parent_live = frs.LiveWorkflow.from_recipe(parent)
+        parent_live = frs.DagData.from_recipe(parent)
         d = flowrep_dict.live_to_dict(parent_live, with_io=True, with_function=True)
         d["inputs"]["x"]["value"] = 42
 

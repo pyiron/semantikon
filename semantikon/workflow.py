@@ -252,7 +252,7 @@ def _get_semantikon_dict(workflow_func):
     # Assumes *workflow_func* is already a flowrep workflow recipe holder
     return to_semantikon_workflow_dict(
         flowrep_dict.live_to_dict(
-            frs.LiveWorkflow.from_recipe(workflow_func.flowrep_recipe),
+            frs.DagData.from_recipe(workflow_func.flowrep_recipe),
             with_io=True,
             with_function=True,
         )
