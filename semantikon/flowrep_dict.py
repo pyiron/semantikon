@@ -1,8 +1,8 @@
 """
-Convert live node trees to the legacy nested-dictionary format.
+Convert node data trees to the legacy nested-dictionary format.
 
-This module bridges :mod:`flowrep.live` objects (recipe + instance data)
-to the ``dict`` structure historically produced by
+This module bridges :mod:`flowrep.retrospective` objects (instance data with associated
+recipe) to the ``dict`` structure historically produced by
 :func:`flowrep.workflow.get_workflow_dict` in versions <0.3.0
 and consumed by downstream packages such as *semantikon*.
 
@@ -48,17 +48,17 @@ from semantikon.converter import (
 )
 
 
-def live_to_dict(
-    node: frs.LiveNode,
+def node_data_to_dict(
+    node: frs.NodeData,
     *,
     with_io: bool = False,
     with_function: bool = False,
     label: str | None = None,
 ) -> dict[str, Any]:
-    """Convert a live node to the nested dictionary format.
+    """Convert a data node to the nested dictionary format.
 
     Args:
-        node: The live node to convert (pre- or post-run).
+        node: The node data to convert (pre- or post-run).
         with_io: Include ``"inputs"`` / ``"outputs"`` port dictionaries.
         with_function: Store raw callables (``True``) or
             :func:`get_function_metadata` dicts (``False``).
@@ -68,19 +68,19 @@ def live_to_dict(
         A nested dictionary matching the structure of the legacy
         ``get_workflow_dict`` output.
     """
-    if isinstance(node, frs.LiveAtomic):
+    if isinstance(node, frs.AtomicData):
         return _atomic_to_dict(node, with_io=with_io, with_function=with_function)
-    if isinstance(node, frs.LiveWorkflow):
+    if isinstance(node, frs.DagData):
         return _workflow_to_dict(
             node, with_io=with_io, with_function=with_function, label=label
         )
-    if isinstance(node, frs.FlowControl):
+    if isinstance(node, frs.FlowControlData):
         raise NotImplementedError(
             "FlowControl → dict conversion is not yet implemented.  "
             "The legacy format flattens body-workflow children into the "
             "control-flow dict, which requires unwrapping the body recipe."
         )
-    raise TypeError(f"Unsupported live node type: {type(node).__name__}")
+    raise TypeError(f"Unsupported data node type: {type(node).__name__}")
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +89,7 @@ def live_to_dict(
 
 
 def _atomic_to_dict(
-    node: frs.LiveAtomic,
+    node: frs.AtomicData,
     *,
     with_io: bool,
     with_function: bool,
@@ -110,20 +110,20 @@ def _atomic_to_dict(
 
 
 def _workflow_to_dict(
-    node: frs.LiveWorkflow,
+    node: frs.DagData,
     *,
     with_io: bool,
     with_function: bool,
     label: str | None,
 ) -> dict[str, Any]:
     recipe = node.recipe
-    assert isinstance(recipe, frs.WorkflowNode)
+    assert isinstance(recipe, frs.WorkflowRecipe)
 
     result: dict[str, Any] = {
         "type": "workflow",
         "label": label or _infer_label(recipe),
         "nodes": {
-            child_label: live_to_dict(
+            child_label: node_data_to_dict(
                 child_node,
                 with_io=with_io,
                 with_function=with_function,
@@ -158,7 +158,7 @@ def _infer_label(recipe: frs.LiveWorkflowNode) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _workflow_edges(recipe: frs.WorkflowNode) -> list[tuple[str, str]]:
+def _workflow_edges(recipe: frs.WorkflowRecipe) -> list[tuple[str, str]]:
     """Flatten typed edge objects into ``("src", "tgt")`` string tuples."""
     edges: list[tuple[str, str]] = []
 
@@ -245,7 +245,7 @@ def _unwrap_annotated(annotation: Any) -> Any:
 
 
 def _input_ports_to_dict(
-    ports: Mapping[str, frs.InputPort],
+    ports: Mapping[str, frs.InputDataPort],
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     for name, port in ports.items():
@@ -254,7 +254,7 @@ def _input_ports_to_dict(
 
 
 def _output_ports_to_dict(
-    ports: Mapping[str, frs.OutputPort],
+    ports: Mapping[str, frs.OutputDataPort],
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     if len(ports) == 1 and next(iter(ports.keys())) == "output_0":
