@@ -20,7 +20,7 @@ def workflow(func: Callable) -> Callable:
 
 def _get_semantikon_dict(workflow_func):
     # Assumes *workflow_func* is already a flowrep workflow recipe holder
-    return flowrep_dict.node_data_to_dict(
+    return flowrep_dict.nodedata2dict(
         frs.DagData.from_recipe(workflow_func.flowrep_recipe),
         with_io=True,
         with_function=True,
@@ -29,4 +29,4 @@ def _get_semantikon_dict(workflow_func):
 
 def run_workflow_dict(func, **kwargs) -> dict[str, Any]:
     executed = frt.run_recipe(func.flowrep_recipe, **kwargs)
-    return flowrep_dict.node_data_to_dict(executed, with_io=True, with_function=True)
+    return flowrep_dict.nodedata2dict(executed, with_io=True, with_function=True)
