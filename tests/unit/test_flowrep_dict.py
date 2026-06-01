@@ -2,13 +2,13 @@
 
 import dataclasses
 import unittest
-from typing import Annotated
 
 import networkx as nx
 from flowrep.api import schemas as frs
 from flowrep.api import tools as frt
 
-from semantikon import flowrep_dict
+from semantikon import datastructure, flowrep_dict
+from semantikon.metadata import u
 
 
 @frt.atomic
@@ -111,6 +111,21 @@ def example_function(x):
 @frt.atomic
 def identity(x):
     return x
+
+
+@frt.atomic
+def measure(
+    distance: u(float, units="meter", uri="http://example.org/distance"),
+) -> u(float, units="meter", label="measured"):
+    return distance
+
+
+@frt.workflow
+def measurement_workflow(
+    distance: u(float, units="meter", uri="http://example.org/distance"),
+) -> u(float, units="meter", label="velocity"):
+    result = measure(distance)
+    return result
 
 
 def _inner_workflow_with_output_0() -> frs.WorkflowRecipe:
@@ -392,22 +407,33 @@ class TestRoundTripConsistency(unittest.TestCase):
             self.assertIn("value", port_d)
 
 
-class TestUnwrapAnnotated(unittest.TestCase):
-    def test_plain_annotation_returned_unchanged(self):
-        result = flowrep_dict._unwrap_annotated(float)
-        self.assertIs(result, float)
+class TestAnnotationConverters(unittest.TestCase):
+    def test_type_hint_none(self):
+        self.assertIsNone(flowrep_dict.annotation_to_type_hint(None))
 
-    def test_annotated_type_is_stripped_to_base(self):
+    def test_type_hint_plain(self):
+        self.assertIs(flowrep_dict.annotation_to_type_hint(float), float)
 
-        result = flowrep_dict._unwrap_annotated(Annotated[int, "some-uri"])
-        self.assertIs(result, int)
+    def test_type_hint_strips_annotated_to_base(self):
+        self.assertIs(flowrep_dict.annotation_to_type_hint(u(int, units="meter")), int)
 
-    def test_port_dict_strips_annotated(self):
-        """_port_dict calls _unwrap_annotated; check the dtype is the bare type."""
+    def test_type_metadata_none(self):
+        self.assertIsNone(flowrep_dict.annotation_to_type_metadata(None))
 
-        d = flowrep_dict._port_dict(42, Annotated[int, "some-uri"])
+    def test_type_metadata_plain_is_none(self):
+        self.assertIsNone(flowrep_dict.annotation_to_type_metadata(float))
+
+    def test_type_metadata_from_annotated(self):
+        meta = flowrep_dict.annotation_to_type_metadata(u(int, units="meter"))
+        self.assertIsInstance(meta, datastructure.TypeMetadata)
+        self.assertEqual(meta.units, "meter")
+
+    def test_port_dict_strips_annotated_and_propagates_metadata(self):
+        """_port_dict stores the bare dtype and flattens semantikon metadata."""
+        d = flowrep_dict._port_dict(42, u(int, units="meter"))
         self.assertIs(d["dtype"], int)
         self.assertEqual(d["value"], 42)
+        self.assertEqual(d["units"], "meter")
 
 
 class TestDigraphConverters(unittest.TestCase):
@@ -687,6 +713,46 @@ class TestSerializeFunctions(unittest.TestCase):
         self.assertIsInstance(result["nodes"]["add_0"]["function"], dict)
         # Original is not mutated.
         self.assertTrue(callable(data["nodes"]["add_0"]["function"]))
+
+
+class TestMetadataPropagation(unittest.TestCase):
+    """``semantikon.u`` metadata must survive the dataclass → dict conversion.
+
+    Exercises the whole path: a ``u``-wrapped workflow signature → flowrep
+    recipe → :class:`frs.DagData` → :func:`node_data_to_dict`, asserting the
+    :class:`~semantikon.datastructure.TypeMetadata` fields land in both the
+    workflow-level and the nested child-node port dicts.
+    """
+
+    def setUp(self):
+        node = frs.DagData.from_recipe(measurement_workflow.flowrep_recipe)
+        self.d = flowrep_dict.node_data_to_dict(node, with_io=True)
+
+    def test_workflow_input_metadata(self):
+        port = self.d["inputs"]["distance"]
+        self.assertIs(port["dtype"], float)
+        self.assertEqual(port["units"], "meter")
+        self.assertEqual(port["uri"], "http://example.org/distance")
+
+    def test_workflow_output_metadata(self):
+        port = self.d["outputs"]["result"]
+        self.assertIs(port["dtype"], float)
+        self.assertEqual(port["units"], "meter")
+        self.assertEqual(port["label"], "velocity")
+
+    def test_child_node_input_metadata(self):
+        port = self.d["nodes"]["measure_0"]["inputs"]["distance"]
+        self.assertIs(port["dtype"], float)
+        self.assertEqual(port["units"], "meter")
+        self.assertEqual(port["uri"], "http://example.org/distance")
+
+    def test_child_node_output_metadata(self):
+        # ``measure`` returns the variable ``distance``, so the output port
+        # keeps that name rather than being sanitized to "output".
+        port = self.d["nodes"]["measure_0"]["outputs"]["distance"]
+        self.assertIs(port["dtype"], float)
+        self.assertEqual(port["units"], "meter")
+        self.assertEqual(port["label"], "measured")
 
 
 if __name__ == "__main__":
