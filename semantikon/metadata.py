@@ -159,6 +159,18 @@ def meta(
     return decorator
 
 
+def _rebuild_semantikon_uri(value: str, instance: BNode) -> "SemantikonURI":
+    """Reconstruct a :class:`SemantikonURI`, preserving its blank-node instance.
+
+    Used by :meth:`SemantikonURI.__reduce__` for copy/pickle support. The
+    ``instance`` cannot be passed through the constructor (``URIRef.__new__``
+    rejects the extra argument), so it is assigned after construction.
+    """
+    obj = SemantikonURI(value)
+    obj._instance = instance
+    return obj
+
+
 class SemantikonURI(URIRef):
     """A class representing a URIRef with an associated blank node instance."""
 
@@ -179,6 +191,12 @@ class SemantikonURI(URIRef):
             tag = value.split("/")[-1].split("#")[-1] + "_" + str(uuid4())
             instance = BNode(tag)
         self._instance = instance
+
+    def __reduce__(self):
+        # rdflib's URIRef.__reduce__ hard-codes URIRef as the reconstruction
+        # class, which would silently downgrade copies/unpickles of a
+        # SemantikonURI to a plain URIRef and drop the blank-node instance.
+        return (_rebuild_semantikon_uri, (str(self), self._instance))
 
     def get_class(self) -> URIRef:
         return self._uriref
