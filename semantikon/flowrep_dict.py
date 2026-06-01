@@ -50,7 +50,7 @@ from semantikon.converter import (
 from semantikon.datastructure import TypeMetadata
 
 
-def node_data_to_dict(
+def nodedata2dict(
     node: frs.NodeData,
     *,
     with_io: bool = False,
@@ -127,7 +127,7 @@ def _workflow_to_dict(
         "type": "workflow",
         "label": label or _infer_label(recipe),
         "nodes": {
-            child_label: node_data_to_dict(
+            child_label: nodedata2dict(
                 child_node,
                 with_io=with_io,
                 with_function=with_function,
