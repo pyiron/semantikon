@@ -241,6 +241,18 @@ def _port_dict(
 
 
 def annotation_to_type_hint(annotation: Any) -> Any | None:
+    """
+    Extract the underlying type hint from a parameter annotation.
+
+    Plain annotations (``int`` in ``def foo(x: int)``) are returned as-is;
+    ``Annotated[T, ...]`` is unwrapped to ``T``.
+
+    Args:
+        annotation: A parameter annotation, plain or ``Annotated``.
+
+    Returns:
+        The underlying type, or ``None`` if ``annotation`` is ``None``.
+    """
     if annotation is None:
         return None
     elif get_origin(annotation) is Annotated:
@@ -250,6 +262,18 @@ def annotation_to_type_hint(annotation: Any) -> Any | None:
 
 
 def annotation_to_type_metadata(annotation: Any) -> TypeMetadata | None:
+    """
+    Extract ``TypeMetadata`` from an ``Annotated`` parameter annotation.
+
+    Plain annotations (``int`` in ``def foo(x: int)``) carry no metadata and
+    yield ``None``; only ``Annotated[T, ...]`` is parsed.
+
+    Args:
+        annotation: A parameter annotation, plain or ``Annotated``.
+
+    Returns:
+        The parsed metadata, or ``None`` if ``annotation`` is not ``Annotated``.
+    """
     if annotation is None or get_origin(annotation) is not Annotated:
         return None
     return parse_metadata(annotation)
