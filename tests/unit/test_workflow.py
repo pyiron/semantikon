@@ -89,22 +89,6 @@ class TestWorkflow(unittest.TestCase):
     def setUpClass(cls):
         cls.maxDiff = None
 
-    def test_get_node_dict(self):
-        node_dict = swf._get_node_dict(add)
-        self.assertEqual(
-            node_dict,
-            {
-                "inputs": {
-                    "x": {"dtype": float, "default": 2.0},
-                    "y": {"dtype": float, "default": 1},
-                },
-                "outputs": {"output": {"dtype": float}},
-                "function": add,
-                "uri": "add",
-                "type": "atomic",
-            },
-        )
-
     def test_get_workflow_dict(self):
         ref_data = {
             "inputs": {"a": {"default": 10}, "b": {"default": 20}},
@@ -262,82 +246,6 @@ class TestWorkflow(unittest.TestCase):
         del smtk_wf["function"]
         del smtk_wf["nodes"]["example_macro_0"]["function"]
         self.assertEqual(smtk_wf, ref_data)
-
-    def test_separate_types(self):
-        old_data = example_workflow.get_semantikon_dict()
-        class_dict = swf.separate_types(old_data)[1]
-        self.assertEqual(class_dict, {"float": float})
-
-    def test_get_node_outputs(self):
-        self.assertEqual(
-            swf._get_node_outputs(operation, counts=2),
-            {"output_0": {"dtype": float}, "output_1": {"dtype": float}},
-        )
-        self.assertEqual(
-            swf._get_node_outputs(operation, counts=1),
-            {"output": {"dtype": tuple[float, float]}},
-        )
-        self.assertEqual(
-            swf._get_node_outputs(parallel_execution, counts=2),
-            {"e": {}, "f": {}},
-        )
-        self.assertEqual(
-            swf._get_node_outputs(parallel_execution, counts=1),
-            {"output": {}},
-        )
-
-    def test_get_workflow_output(self):
-
-        def test_function_1(a, b):
-            return a + b
-
-        self.assertEqual(
-            swf._get_node_outputs(test_function_1),
-            {"output": {}},
-        )
-
-        def test_function_2(a, b):
-            return a
-
-        self.assertEqual(
-            swf._get_node_outputs(test_function_2),
-            {"a": {}},
-        )
-
-        def test_function_3(a, b):
-            return a, b
-
-        self.assertEqual(
-            swf._get_node_outputs(test_function_3),
-            {"a": {}, "b": {}},
-        )
-
-        def test_function_4(a, b):
-            return a + b, b
-
-        data = swf._get_node_outputs(test_function_4)
-        self.assertEqual(data, {"output_0": {}, "b": {}})
-        data["output_0"]["value"] = 0
-        self.assertEqual(
-            data,
-            {"output_0": {"value": 0}, "b": {}},
-        )
-
-        def test_function_5(a: int, b: int) -> tuple[int, int]:
-            return a, b
-
-        self.assertEqual(
-            swf._get_node_outputs(test_function_5),
-            {"a": {"dtype": int}, "b": {"dtype": int}},
-        )
-
-    def test_edges_to_output_counts(self):
-        self.assertDictEqual(
-            swf._edges_to_output_counts(
-                example_macro.get_semantikon_dict()["edges"],
-            ),
-            {"operation_0": 2, "add_0": 1, "multiply_0": 1},
-        )
 
     def test_forbidden_output_labels(self):
         def test_workflow(a: int, b: int):

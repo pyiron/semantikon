@@ -45,10 +45,12 @@ from semantikon.converter import (
     get_function_dict,
     get_function_metadata,
     meta_to_dict,
+    parse_metadata,
 )
+from semantikon.datastructure import TypeMetadata
 
 
-def node_data_to_dict(
+def nodedata2dict(
     node: frs.NodeData,
     *,
     with_io: bool = False,
@@ -101,6 +103,8 @@ def _atomic_to_dict(
     if with_io:
         result["inputs"] = _input_ports_to_dict(node.input_ports)
         result["outputs"] = _output_ports_to_dict(node.output_ports)
+    if hasattr(node.function, "_semantikon_metadata"):
+        result.update(node.function._semantikon_metadata)
     return result
 
 
@@ -123,7 +127,7 @@ def _workflow_to_dict(
         "type": "workflow",
         "label": label or _infer_label(recipe),
         "nodes": {
-            child_label: node_data_to_dict(
+            child_label: nodedata2dict(
                 child_node,
                 with_io=with_io,
                 with_function=with_function,
@@ -138,10 +142,12 @@ def _workflow_to_dict(
         result["inputs"] = _input_ports_to_dict(node.input_ports)
         result["outputs"] = _output_ports_to_dict(node.output_ports)
 
-    if with_function and recipe.reference is not None:
-        result["function"] = retrieve.import_from_string(
-            recipe.reference.info.fully_qualified_name
-        )
+    if recipe.reference is not None:
+        func = retrieve.import_from_string(recipe.reference.info.fully_qualified_name)
+        if hasattr(func, "_semantikon_metadata"):
+            result.update(func._semantikon_metadata)
+        if with_function:
+            result["function"] = func
 
     return result
 
@@ -219,15 +225,58 @@ def _workflow_edges(recipe: frs.WorkflowRecipe) -> list[tuple[str, str]]:
 # ---------------------------------------------------------------------------
 
 
-def _port_dict(value, annotation, default=frs.NOT_DATA):
-    d = {}
+def _port_dict(
+    value: Any, annotation: Any, default: Any = frs.NOT_DATA
+) -> dict[str, Any]:
+    d: dict[str, Any] = {}
     if not isinstance(value, frs.NotData):
         d["value"] = value
-    if annotation is not None:
-        d["dtype"] = _unwrap_annotated(annotation)
+    if type_hint := annotation_to_type_hint(annotation):
+        d["dtype"] = type_hint
+    if type_metadata := annotation_to_type_metadata(annotation):
+        d.update(type_metadata.to_dictionary())
     if not isinstance(default, frs.NotData):
         d["default"] = default
     return d
+
+
+def annotation_to_type_hint(annotation: Any) -> Any | None:
+    """
+    Extract the underlying type hint from a parameter annotation.
+
+    Plain annotations (``int`` in ``def foo(x: int)``) are returned as-is;
+    ``Annotated[T, ...]`` is unwrapped to ``T``.
+
+    Args:
+        annotation: A parameter annotation, plain or ``Annotated``.
+
+    Returns:
+        The underlying type, or ``None`` if ``annotation`` is ``None``.
+    """
+    if annotation is None:
+        return None
+    elif get_origin(annotation) is Annotated:
+        return get_args(annotation)[0]
+    else:
+        return annotation
+
+
+def annotation_to_type_metadata(annotation: Any) -> TypeMetadata | None:
+    """
+    Extract ``TypeMetadata`` from an ``Annotated`` parameter annotation.
+
+    Plain annotations (``int`` in ``def foo(x: int)``) carry no metadata and
+    yield ``None``; only ``Annotated[T, ...]`` is parsed.
+
+    Args:
+        annotation: A parameter annotation, plain or ``Annotated``.
+
+    Returns:
+        The parsed metadata, or ``None`` if ``annotation`` is not ``Annotated``.
+    """
+    if annotation is None or get_origin(annotation) is not Annotated:
+        return None
+    return parse_metadata(annotation)
 
 
 def _unwrap_annotated(annotation: Any) -> Any:

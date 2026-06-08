@@ -2,13 +2,13 @@
 
 import dataclasses
 import unittest
-from typing import Annotated
 
 import networkx as nx
 from flowrep.api import schemas as frs
 from flowrep.api import tools as frt
 
-from semantikon import flowrep_dict
+from semantikon import datastructure, flowrep_dict
+from semantikon.metadata import u
 
 
 @frt.atomic
@@ -113,6 +113,21 @@ def identity(x):
     return x
 
 
+@frt.atomic
+def measure(
+    distance: u(float, units="meter", uri="http://example.org/distance"),
+) -> u(float, units="meter", label="measured"):
+    return distance
+
+
+@frt.workflow
+def measurement_workflow(
+    distance: u(float, units="meter", uri="http://example.org/distance"),
+) -> u(float, units="meter", label="velocity"):
+    result = measure(distance)
+    return result
+
+
 def _inner_workflow_with_output_0() -> frs.WorkflowRecipe:
     """A workflow whose sole output is named ``output_0``.
 
@@ -156,13 +171,13 @@ def _parent_workflow(inner: frs.WorkflowRecipe) -> frs.WorkflowRecipe:
 class TestNonNodeToDict(unittest.TestCase):
     def test_non_node_type_raises(self):
         with self.assertRaisesRegex(TypeError, "Unsupported data node type"):
-            flowrep_dict.node_data_to_dict(123)
+            flowrep_dict.nodedata2dict(123)
 
 
 class TestAtomicToDict(unittest.TestCase):
     def test_basic_structure(self):
         node = frs.AtomicData.from_recipe(my_add.flowrep_recipe)
-        d = flowrep_dict.node_data_to_dict(node)
+        d = flowrep_dict.nodedata2dict(node)
         self.assertEqual(d["type"], "atomic")
         self.assertIn("function", d)
         # Default: metadata dict, not raw callable
@@ -173,12 +188,12 @@ class TestAtomicToDict(unittest.TestCase):
 
     def test_with_function(self):
         node = frs.AtomicData.from_recipe(my_add.flowrep_recipe)
-        d = flowrep_dict.node_data_to_dict(node, with_function=True)
+        d = flowrep_dict.nodedata2dict(node, with_function=True)
         self.assertTrue(callable(d["function"]))
 
     def test_with_io_pre_run(self):
         node = frs.AtomicData.from_recipe(my_add.flowrep_recipe)
-        d = flowrep_dict.node_data_to_dict(node, with_io=True)
+        d = flowrep_dict.nodedata2dict(node, with_io=True)
         self.assertIn("inputs", d)
         self.assertIn("outputs", d)
         self.assertIn("a", d["inputs"])
@@ -189,20 +204,20 @@ class TestAtomicToDict(unittest.TestCase):
 
     def test_with_io_post_run(self):
         node = frt.run_recipe(my_add.flowrep_recipe, a=3, b=4)
-        d = flowrep_dict.node_data_to_dict(node, with_io=True)
+        d = flowrep_dict.nodedata2dict(node, with_io=True)
         self.assertEqual(d["inputs"]["a"]["value"], 3)
         self.assertEqual(d["inputs"]["b"]["value"], 4)
         self.assertEqual(d["outputs"]["output"]["value"], 7)
 
     def test_defaults_included(self):
         node = frs.AtomicData.from_recipe(increment.flowrep_recipe)
-        d = flowrep_dict.node_data_to_dict(node, with_io=True)
+        d = flowrep_dict.nodedata2dict(node, with_io=True)
         self.assertEqual(d["inputs"]["step"]["default"], 1)
         self.assertNotIn("default", d["inputs"]["x"])
 
     def test_multi_output(self):
         node = frt.run_recipe(divmod_func.flowrep_recipe, a=17, b=5)
-        d = flowrep_dict.node_data_to_dict(node, with_io=True)
+        d = flowrep_dict.nodedata2dict(node, with_io=True)
         self.assertIn("quotient", d["outputs"])
         self.assertIn("remainder", d["outputs"])
         self.assertAlmostEqual(d["outputs"]["quotient"]["value"], 3.0)
@@ -213,7 +228,7 @@ class TestWorkflowToDict(unittest.TestCase):
     def test_basic_structure(self):
         recipe = _diamond_workflow.flowrep_recipe
         node = frs.DagData.from_recipe(recipe)
-        d = flowrep_dict.node_data_to_dict(node)
+        d = flowrep_dict.nodedata2dict(node)
         self.assertEqual(d["type"], "workflow")
         self.assertIn("nodes", d)
         self.assertIn("edges", d)
@@ -224,19 +239,19 @@ class TestWorkflowToDict(unittest.TestCase):
     def test_label_inferred_from_reference(self):
         recipe = _diamond_workflow.flowrep_recipe
         node = frs.DagData.from_recipe(recipe)
-        d = flowrep_dict.node_data_to_dict(node)
+        d = flowrep_dict.nodedata2dict(node)
         self.assertEqual(d["label"], "_diamond_workflow")
 
     def test_label_override(self):
         recipe = _diamond_workflow.flowrep_recipe
         node = frs.DagData.from_recipe(recipe)
-        d = flowrep_dict.node_data_to_dict(node, label="my_label")
+        d = flowrep_dict.nodedata2dict(node, label="my_label")
         self.assertEqual(d["label"], "my_label")
 
     def test_child_nodes_present(self):
         recipe = _diamond_workflow.flowrep_recipe
         node = frs.DagData.from_recipe(recipe)
-        d = flowrep_dict.node_data_to_dict(node)
+        d = flowrep_dict.nodedata2dict(node)
         self.assertIn("my_add_0", d["nodes"])
         self.assertIn("negate_0", d["nodes"])
         self.assertIn("my_mul_0", d["nodes"])
@@ -246,7 +261,7 @@ class TestWorkflowToDict(unittest.TestCase):
     def test_edges_cover_all_recipe_edges(self):
         recipe = _diamond_workflow.flowrep_recipe
         node = frs.DagData.from_recipe(recipe)
-        d = flowrep_dict.node_data_to_dict(node)
+        d = flowrep_dict.nodedata2dict(node)
         edges = d["edges"]
         # Should have input_edges + sibling edges + output_edges
         n_expected = (
@@ -257,13 +272,13 @@ class TestWorkflowToDict(unittest.TestCase):
     def test_passthrough_edges(self):
         recipe = _passthrough_workflow.flowrep_recipe
         node = frs.DagData.from_recipe(recipe)
-        d = flowrep_dict.node_data_to_dict(node)
+        d = flowrep_dict.nodedata2dict(node)
         self.assertIn(("inputs.x", "outputs.x"), d["edges"])
 
     def test_edge_format(self):
         recipe = _diamond_workflow.flowrep_recipe
         node = frs.DagData.from_recipe(recipe)
-        d = flowrep_dict.node_data_to_dict(node)
+        d = flowrep_dict.nodedata2dict(node)
         for src, tgt in d["edges"]:
             self.assertIsInstance(src, str)
             self.assertIsInstance(tgt, str)
@@ -274,7 +289,7 @@ class TestWorkflowToDict(unittest.TestCase):
     def test_with_io_pre_run(self):
         recipe = _diamond_workflow.flowrep_recipe
         node = frs.DagData.from_recipe(recipe)
-        d = flowrep_dict.node_data_to_dict(node, with_io=True)
+        d = flowrep_dict.nodedata2dict(node, with_io=True)
         self.assertIn("inputs", d)
         self.assertIn("outputs", d)
         self.assertIn("a", d["inputs"])
@@ -285,7 +300,7 @@ class TestWorkflowToDict(unittest.TestCase):
 
     def test_with_io_post_run(self):
         wf = frt.run_recipe(_diamond_workflow.flowrep_recipe, a=3, b=7)
-        d = flowrep_dict.node_data_to_dict(wf, with_io=True)
+        d = flowrep_dict.nodedata2dict(wf, with_io=True)
         self.assertEqual(d["inputs"]["a"]["value"], 3)
         self.assertEqual(d["inputs"]["b"]["value"], 7)
         self.assertEqual(d["outputs"]["result"]["value"], (3 + 7) * (-3))
@@ -293,7 +308,7 @@ class TestWorkflowToDict(unittest.TestCase):
     def test_child_io_post_run(self):
         """After execution, child nodes also carry values when with_io=True."""
         wf = frt.run_recipe(_diamond_workflow.flowrep_recipe, a=3, b=7)
-        d = flowrep_dict.node_data_to_dict(wf, with_io=True)
+        d = flowrep_dict.nodedata2dict(wf, with_io=True)
         add_d = d["nodes"]["my_add_0"]
         self.assertEqual(add_d["inputs"]["a"]["value"], 3)
         self.assertEqual(add_d["inputs"]["b"]["value"], 7)
@@ -302,7 +317,7 @@ class TestWorkflowToDict(unittest.TestCase):
     def test_with_function_on_workflow(self):
         recipe = _diamond_workflow.flowrep_recipe
         node = frs.DagData.from_recipe(recipe)
-        d = flowrep_dict.node_data_to_dict(node, with_function=True)
+        d = flowrep_dict.nodedata2dict(node, with_function=True)
         # Top-level workflow should have the resolved function
         self.assertIn("function", d)
         self.assertTrue(callable(d["function"]))
@@ -313,7 +328,7 @@ class TestWorkflowToDict(unittest.TestCase):
     def test_without_function_uses_metadata(self):
         recipe = _diamond_workflow.flowrep_recipe
         node = frs.DagData.from_recipe(recipe)
-        d = flowrep_dict.node_data_to_dict(node, with_function=False)
+        d = flowrep_dict.nodedata2dict(node, with_function=False)
         # Top-level: no "function" key (no with_function, reference exists but
         # we only add it when with_function=True)
         self.assertNotIn("function", d)
@@ -326,7 +341,7 @@ class TestWorkflowToDict(unittest.TestCase):
         the workflow's own inputs/outputs."""
         recipe = _diamond_workflow.flowrep_recipe
         node = frs.DagData.from_recipe(recipe)
-        d = flowrep_dict.node_data_to_dict(node, with_io=True)
+        d = flowrep_dict.nodedata2dict(node, with_io=True)
 
         valid_prefixes = {"inputs", "outputs"} | set(d["nodes"].keys())
         for src, tgt in d["edges"]:
@@ -354,7 +369,7 @@ class TestFlowControlStub(unittest.TestCase):
         )
         fc = frs.FlowControlData.from_recipe(recipe)
         with self.assertRaises(NotImplementedError):
-            flowrep_dict.node_data_to_dict(fc)
+            flowrep_dict.nodedata2dict(fc)
 
 
 class TestRoundTripConsistency(unittest.TestCase):
@@ -362,10 +377,8 @@ class TestRoundTripConsistency(unittest.TestCase):
 
     def test_pre_and_post_run_same_keys(self):
         recipe = _diamond_workflow.flowrep_recipe
-        pre = flowrep_dict.node_data_to_dict(
-            frs.DagData.from_recipe(recipe), with_io=True
-        )
-        post = flowrep_dict.node_data_to_dict(
+        pre = flowrep_dict.nodedata2dict(frs.DagData.from_recipe(recipe), with_io=True)
+        post = flowrep_dict.nodedata2dict(
             frt.run_recipe(recipe, a=3, b=7), with_io=True
         )
         # Same top-level keys
@@ -377,14 +390,12 @@ class TestRoundTripConsistency(unittest.TestCase):
 
     def test_pre_run_no_values(self):
         recipe = _diamond_workflow.flowrep_recipe
-        d = flowrep_dict.node_data_to_dict(
-            frs.DagData.from_recipe(recipe), with_io=True
-        )
+        d = flowrep_dict.nodedata2dict(frs.DagData.from_recipe(recipe), with_io=True)
         for port_d in d["outputs"].values():
             self.assertNotIn("value", port_d)
 
     def test_post_run_has_values(self):
-        d = flowrep_dict.node_data_to_dict(
+        d = flowrep_dict.nodedata2dict(
             frt.run_recipe(_diamond_workflow.flowrep_recipe, a=3, b=7),
             with_io=True,
         )
@@ -392,28 +403,39 @@ class TestRoundTripConsistency(unittest.TestCase):
             self.assertIn("value", port_d)
 
 
-class TestUnwrapAnnotated(unittest.TestCase):
-    def test_plain_annotation_returned_unchanged(self):
-        result = flowrep_dict._unwrap_annotated(float)
-        self.assertIs(result, float)
+class TestAnnotationConverters(unittest.TestCase):
+    def test_type_hint_none(self):
+        self.assertIsNone(flowrep_dict.annotation_to_type_hint(None))
 
-    def test_annotated_type_is_stripped_to_base(self):
+    def test_type_hint_plain(self):
+        self.assertIs(flowrep_dict.annotation_to_type_hint(float), float)
 
-        result = flowrep_dict._unwrap_annotated(Annotated[int, "some-uri"])
-        self.assertIs(result, int)
+    def test_type_hint_strips_annotated_to_base(self):
+        self.assertIs(flowrep_dict.annotation_to_type_hint(u(int, units="meter")), int)
 
-    def test_port_dict_strips_annotated(self):
-        """_port_dict calls _unwrap_annotated; check the dtype is the bare type."""
+    def test_type_metadata_none(self):
+        self.assertIsNone(flowrep_dict.annotation_to_type_metadata(None))
 
-        d = flowrep_dict._port_dict(42, Annotated[int, "some-uri"])
+    def test_type_metadata_plain_is_none(self):
+        self.assertIsNone(flowrep_dict.annotation_to_type_metadata(float))
+
+    def test_type_metadata_from_annotated(self):
+        meta = flowrep_dict.annotation_to_type_metadata(u(int, units="meter"))
+        self.assertIsInstance(meta, datastructure.TypeMetadata)
+        self.assertEqual(meta.units, "meter")
+
+    def test_port_dict_strips_annotated_and_propagates_metadata(self):
+        """_port_dict stores the bare dtype and flattens semantikon metadata."""
+        d = flowrep_dict._port_dict(42, u(int, units="meter"))
         self.assertIs(d["dtype"], int)
         self.assertEqual(d["value"], 42)
+        self.assertEqual(d["units"], "meter")
 
 
 class TestDigraphConverters(unittest.TestCase):
     def test_wf_dict_to_graph(self):
         # wf_dict = example_workflow.get_flowrep_dict()
-        wf_dict = flowrep_dict.node_data_to_dict(
+        wf_dict = flowrep_dict.nodedata2dict(
             frt.recipe2data(example_workflow.flowrep_recipe),
             with_io=False,
             with_function=True,
@@ -424,7 +446,7 @@ class TestDigraphConverters(unittest.TestCase):
             G = flowrep_dict._get_workflow_graph(wf_dict)
             _ = flowrep_dict._simple_run(G)
 
-        wf_dict = flowrep_dict.node_data_to_dict(
+        wf_dict = flowrep_dict.nodedata2dict(
             frt.recipe2data(example_workflow.flowrep_recipe),
             with_io=True,
             with_function=True,
@@ -454,7 +476,7 @@ class TestDigraphConverters(unittest.TestCase):
     def test_simple_run_skips_nodes_with_prepopulated_outputs(self):
         """_simple_run must not recompute a node whose output ports already have values."""
         # A post-run workflow dict already has values on all output ports.
-        wf_dict = flowrep_dict.node_data_to_dict(
+        wf_dict = flowrep_dict.nodedata2dict(
             frt.run_recipe(workflow_with_data.flowrep_recipe, a=10, b=20),
             with_io=True,
             with_function=True,
@@ -474,7 +496,7 @@ class TestDigraphConverters(unittest.TestCase):
         """_graph_to_wf_dict must correctly round-trip edges between workflow-level I/O."""
         # _passthrough_workflow returns both the raw input x and the negated y,
         # producing an edge (inputs.x, outputs.x) that has node_list == [] on both ends.
-        wf_dict = flowrep_dict.node_data_to_dict(
+        wf_dict = flowrep_dict.nodedata2dict(
             frs.DagData.from_recipe(_passthrough_workflow.flowrep_recipe),
             with_io=True,
             with_function=True,
@@ -487,7 +509,7 @@ class TestDigraphConverters(unittest.TestCase):
     def test_get_hashed_node_dict(self):
 
         # workflow_dict = workflow_with_data.run(a=10, b=20)
-        workflow_dict = flowrep_dict.node_data_to_dict(
+        workflow_dict = flowrep_dict.nodedata2dict(
             frt.run_recipe(workflow_with_data.flowrep_recipe, a=10, b=20),
             with_io=True,
             with_function=True,
@@ -504,7 +526,7 @@ class TestDigraphConverters(unittest.TestCase):
         )
 
         # workflow_dict = workflow_with_data.get_flowrep_dict()
-        workflow_dict = flowrep_dict.node_data_to_dict(
+        workflow_dict = flowrep_dict.nodedata2dict(
             frt.recipe2data(workflow_with_data.flowrep_recipe),
             with_io=True,
             with_function=True,
@@ -514,7 +536,7 @@ class TestDigraphConverters(unittest.TestCase):
             self.assertNotIn("hash", node)
         workflow_dict["inputs"] = {"a": {"value": 10}, "b": {"value": 20}}
         # workflow_dict_run = workflow_with_data.run(a=10, b=20)
-        workflow_dict_run = flowrep_dict.node_data_to_dict(
+        workflow_dict_run = flowrep_dict.nodedata2dict(
             frt.run_recipe(workflow_with_data.flowrep_recipe, a=10, b=20),
             with_io=True,
             with_function=True,
@@ -525,7 +547,7 @@ class TestDigraphConverters(unittest.TestCase):
         )
 
         # workflow_dict = example_workflow.run(a=10, b=20)
-        workflow_dict = flowrep_dict.node_data_to_dict(
+        workflow_dict = flowrep_dict.nodedata2dict(
             frt.run_recipe(example_workflow.flowrep_recipe, a=10, b=20),
             with_io=True,
             with_function=True,
@@ -535,7 +557,7 @@ class TestDigraphConverters(unittest.TestCase):
 
         test_instance = TestClass()
         # workflow_dict = workflow_with_class.run(test=test_instance)
-        workflow_dict = flowrep_dict.node_data_to_dict(
+        workflow_dict = flowrep_dict.nodedata2dict(
             frt.run_recipe(workflow_with_class.flowrep_recipe, test=test_instance),
             with_io=True,
             with_function=True,
@@ -584,7 +606,7 @@ class TestOutputSanitizationConsistency(unittest.TestCase):
         """The inner workflow's edges and outputs dict must use the same name."""
         inner = _inner_workflow_with_output_0()
         inner_data = frs.DagData.from_recipe(inner)
-        d = flowrep_dict.node_data_to_dict(inner_data, with_io=True, with_function=True)
+        d = flowrep_dict.nodedata2dict(inner_data, with_io=True, with_function=True)
 
         # The outputs dict uses "output"
         self.assertIn("output", d["outputs"])
@@ -602,9 +624,7 @@ class TestOutputSanitizationConsistency(unittest.TestCase):
         inner = _inner_workflow_with_output_0()
         parent = _parent_workflow(inner)
         parent_data = frs.DagData.from_recipe(parent)
-        d = flowrep_dict.node_data_to_dict(
-            parent_data, with_io=True, with_function=True
-        )
+        d = flowrep_dict.nodedata2dict(parent_data, with_io=True, with_function=True)
         G = flowrep_dict._get_workflow_graph(d)
 
         inner_output_nodes = [n for n in G.nodes if n.startswith("inner_0:outputs@")]
@@ -620,9 +640,7 @@ class TestOutputSanitizationConsistency(unittest.TestCase):
         inner = _inner_workflow_with_output_0()
         parent = _parent_workflow(inner)
         parent_data = frs.DagData.from_recipe(parent)
-        d = flowrep_dict.node_data_to_dict(
-            parent_data, with_io=True, with_function=True
-        )
+        d = flowrep_dict.nodedata2dict(parent_data, with_io=True, with_function=True)
         d["inputs"]["x"]["value"] = 42
 
         G = flowrep_dict._get_workflow_graph(d)
@@ -687,6 +705,46 @@ class TestSerializeFunctions(unittest.TestCase):
         self.assertIsInstance(result["nodes"]["add_0"]["function"], dict)
         # Original is not mutated.
         self.assertTrue(callable(data["nodes"]["add_0"]["function"]))
+
+
+class TestMetadataPropagation(unittest.TestCase):
+    """``semantikon.u`` metadata must survive the dataclass → dict conversion.
+
+    Exercises the whole path: a ``u``-wrapped workflow signature → flowrep
+    recipe → :class:`frs.DagData` → :func:`node_data_to_dict`, asserting the
+    :class:`~semantikon.datastructure.TypeMetadata` fields land in both the
+    workflow-level and the nested child-node port dicts.
+    """
+
+    def setUp(self):
+        node = frs.DagData.from_recipe(measurement_workflow.flowrep_recipe)
+        self.d = flowrep_dict.nodedata2dict(node, with_io=True)
+
+    def test_workflow_input_metadata(self):
+        port = self.d["inputs"]["distance"]
+        self.assertIs(port["dtype"], float)
+        self.assertEqual(port["units"], "meter")
+        self.assertEqual(port["uri"], "http://example.org/distance")
+
+    def test_workflow_output_metadata(self):
+        port = self.d["outputs"]["result"]
+        self.assertIs(port["dtype"], float)
+        self.assertEqual(port["units"], "meter")
+        self.assertEqual(port["label"], "velocity")
+
+    def test_child_node_input_metadata(self):
+        port = self.d["nodes"]["measure_0"]["inputs"]["distance"]
+        self.assertIs(port["dtype"], float)
+        self.assertEqual(port["units"], "meter")
+        self.assertEqual(port["uri"], "http://example.org/distance")
+
+    def test_child_node_output_metadata(self):
+        # ``measure`` returns the variable ``distance``, so the output port
+        # keeps that name rather than being sanitized to "output".
+        port = self.d["nodes"]["measure_0"]["outputs"]["distance"]
+        self.assertIs(port["dtype"], float)
+        self.assertEqual(port["units"], "meter")
+        self.assertEqual(port["label"], "measured")
 
 
 if __name__ == "__main__":
