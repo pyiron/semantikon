@@ -507,7 +507,7 @@ class TestOntology(unittest.TestCase):
     def test_get_knowledge_graph_type_coercion(self):
         flowrep_recipe = my_kinetic_energy_workflow.flowrep_recipe
         flowrep_data = frt.recipe2data(flowrep_recipe)
-        semantikon_dict = nodedata2dict(flowrep_data, with_io=True, with_function=True)
+        semantikon_dict = nodedata2dict(flowrep_data, with_function=True)
 
         graphs = [
             onto.get_knowledge_graph(target)

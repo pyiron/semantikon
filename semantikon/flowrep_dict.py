@@ -53,7 +53,6 @@ from semantikon.datastructure import TypeMetadata
 def nodedata2dict(
     node: frs.NodeData,
     *,
-    with_io: bool = True,
     with_function: bool = True,
     label: str | None = None,
 ) -> dict[str, Any]:
@@ -61,7 +60,6 @@ def nodedata2dict(
 
     Args:
         node: The node data to convert (pre- or post-run).
-        with_io: Include ``"inputs"`` / ``"outputs"`` port dictionaries.
         with_function: Store raw callables (``True``) or
             :func:`get_function_metadata` dicts (``False``).
         label: Override the inferred label.
@@ -71,11 +69,9 @@ def nodedata2dict(
         ``get_workflow_dict`` output.
     """
     if isinstance(node, frs.AtomicData):
-        return _atomic_to_dict(node, with_io=with_io, with_function=with_function)
+        return _atomic_to_dict(node, with_function=with_function)
     if isinstance(node, frs.DagData):
-        return _workflow_to_dict(
-            node, with_io=with_io, with_function=with_function, label=label
-        )
+        return _workflow_to_dict(node, with_function=with_function, label=label)
     if isinstance(node, frs.FlowControlData):
         raise NotImplementedError(
             "FlowControl → dict conversion is not yet implemented.  "
@@ -93,16 +89,14 @@ def nodedata2dict(
 def _atomic_to_dict(
     node: frs.AtomicData,
     *,
-    with_io: bool,
     with_function: bool,
 ) -> dict[str, Any]:
     result: dict[str, Any] = {"type": "atomic"}
     result["function"] = (
         node.function if with_function else get_function_metadata(node.function)
     )
-    if with_io:
-        result["inputs"] = _input_ports_to_dict(node.input_ports)
-        result["outputs"] = _output_ports_to_dict(node.output_ports)
+    result["inputs"] = _input_ports_to_dict(node.input_ports)
+    result["outputs"] = _output_ports_to_dict(node.output_ports)
     if hasattr(node.function, "_semantikon_metadata"):
         result.update(node.function._semantikon_metadata)
     return result
@@ -116,7 +110,6 @@ def _atomic_to_dict(
 def _workflow_to_dict(
     node: frs.DagData,
     *,
-    with_io: bool,
     with_function: bool,
     label: str | None,
 ) -> dict[str, Any]:
@@ -129,7 +122,6 @@ def _workflow_to_dict(
         "nodes": {
             child_label: nodedata2dict(
                 child_node,
-                with_io=with_io,
                 with_function=with_function,
                 label=child_label,
             )
@@ -138,9 +130,8 @@ def _workflow_to_dict(
         "edges": _workflow_edges(recipe),
     }
 
-    if with_io:
-        result["inputs"] = _input_ports_to_dict(node.input_ports)
-        result["outputs"] = _output_ports_to_dict(node.output_ports)
+    result["inputs"] = _input_ports_to_dict(node.input_ports)
+    result["outputs"] = _output_ports_to_dict(node.output_ports)
 
     if recipe.reference is not None:
         func = retrieve.import_from_string(recipe.reference.info.fully_qualified_name)
