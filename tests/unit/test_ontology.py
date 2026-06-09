@@ -9,7 +9,7 @@ from typing import Annotated
 
 from flowrep.api import tools as frt
 from pyshacl import validate
-from rdflib import compare, OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace
+from rdflib import OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, compare
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
