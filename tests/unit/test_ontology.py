@@ -542,7 +542,11 @@ class TestOntology(unittest.TestCase):
             (starting with W in the URI)
             """,
         )
-        self.assertTrue(onto.validate_values(g)[0])
+
+        recipe = my_kinetic_energy_workflow.flowrep_recipe
+        for target in (g, wf_dict, frt.recipe2data(recipe), recipe):
+            with self.subTest(f"Type coercion {target}"):
+                self.assertTrue(onto.validate_values(target)[0])
 
     def test_to_restrictions(self):
         # Common reference graph for single target class

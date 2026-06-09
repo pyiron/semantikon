@@ -254,7 +254,7 @@ def _extract_shacl_shapes(input_graph: Graph) -> Graph:
 
 
 def validate_values(
-    graph: Graph,
+    graph: Graph | dict | frs.DagData | frs.WorkflowRecipe,
     run_reasoner: bool = True,
     copy_graph: bool = True,
     strict_typing: bool = True,
@@ -263,7 +263,8 @@ def validate_values(
     Validate if all values required by restrictions are present in the graph
 
     Args:
-        graph (Graph): input RDF graph
+        graph (Graph|dict |frs.DagData|frs.WorkflowRecipe): input RDF graph, or
+            something coercible to one via ``get_knowledge_graph``.
         run_reasoner (bool): if True, run OWL RL reasoner before validation
         copy_graph (bool): if True, work on a copy of the graph. When the graph
             is not copied and reasoner is run, the input graph is modified by
@@ -275,6 +276,9 @@ def validate_values(
     Returns:
         (tuple): validation result and message from pyshacl
     """
+    if not isinstance(graph, Graph):
+        graph = get_knowledge_graph(graph)
+
     g = copy.deepcopy(graph) if copy_graph and run_reasoner else graph
     excluded = []
     if not strict_typing:
