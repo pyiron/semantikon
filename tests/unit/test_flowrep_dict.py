@@ -177,7 +177,7 @@ class TestNonNodeToDict(unittest.TestCase):
 class TestAtomicToDict(unittest.TestCase):
     def test_basic_structure(self):
         node = frs.AtomicData.from_recipe(my_add.flowrep_recipe)
-        d = flowrep_dict.nodedata2dict(node)
+        d = flowrep_dict.nodedata2dict(node, with_io=False, with_function=False)
         self.assertEqual(d["type"], "atomic")
         self.assertIn("function", d)
         # Default: metadata dict, not raw callable
@@ -228,7 +228,7 @@ class TestWorkflowToDict(unittest.TestCase):
     def test_basic_structure(self):
         recipe = _diamond_workflow.flowrep_recipe
         node = frs.DagData.from_recipe(recipe)
-        d = flowrep_dict.nodedata2dict(node)
+        d = flowrep_dict.nodedata2dict(node, with_io=False, with_function=False)
         self.assertEqual(d["type"], "workflow")
         self.assertIn("nodes", d)
         self.assertIn("edges", d)

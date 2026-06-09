@@ -53,8 +53,8 @@ from semantikon.datastructure import TypeMetadata
 def nodedata2dict(
     node: frs.NodeData,
     *,
-    with_io: bool = False,
-    with_function: bool = False,
+    with_io: bool = True,
+    with_function: bool = True,
     label: str | None = None,
 ) -> dict[str, Any]:
     """Convert a data node to the nested dictionary format.
