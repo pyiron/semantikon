@@ -594,3 +594,297 @@ class SparqlWriter:
                 lines.append("  OPTIONAL { " + "\n".join(o_line) + " }")
         lines.append("}")
         return "\n".join(lines)
+
+
+def extract_annotations_from_graph(
+    graph: Graph, arg_type: str = "input"
+) -> list[Annotation]:
+    """
+    Extract input or output annotations from an RDF graph.
+
+    Args:
+        graph: The RDF graph created by _function_to_graph
+        arg_type: Either "input" or "output"
+
+    Returns:
+        List of Annotation objects
+    """
+    from semantikon.ontology import PMD
+
+    annotations = []
+    spec_type = SNS.input_specification if arg_type == "input" else SNS.output_specification
+
+    query = f"""
+    PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
+    PREFIX bfo: <http://purl.obolibrary.org/obo/BFO_>
+    SELECT DISTINCT ?arg ?label ?position ?default
+    WHERE {{
+        ?arg a <{spec_type}> .
+        ?arg pmdco:0000128 ?label .
+        OPTIONAL {{ ?arg pmdco:0001857 ?position }}
+        OPTIONAL {{ ?arg pmdco:0001877 ?default }}
+    }}
+    ORDER BY COALESCE(?position, 999) ?label
+    """
+
+    try:
+        results = list(graph.query(query))
+        for arg_uri, label, position, default in results:
+            annotation = Annotation(
+                name=label.toPython() if label else str(arg_uri),
+                label=label.toPython() if label else None,
+                position=int(position.toPython()) if position else None,
+                default=default.toPython() if default else None,
+            )
+            annotations.append(annotation)
+    except Exception:
+        # If query fails, return empty list
+        pass
+
+    return annotations
+
+
+def parse_function_request_from_graph(
+    graph: Graph,
+    function_name: str | None = None,
+    module: str | None = None,
+) -> FunctionRequest:
+    """
+    Parse a FunctionRequest from an RDF graph created by _function_to_graph.
+
+    Args:
+        graph: The RDF graph containing function metadata
+        function_name: Optional override for function name
+        module: Optional override for module/import path
+
+    Returns:
+        FunctionRequest object with extracted data
+    """
+
+    # Extract function name from graph
+    name_query = """
+    PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
+    SELECT DISTINCT ?value
+    WHERE {
+        ?func a <http://purl.obolibrary.org/obo/PMD_0000010> .
+        ?func <http://purl.obolibrary.org/obo/IAO_0000235> ?name_node .
+        ?name_node a <http://purl.obolibrary.org/obo/PMD_0000100> .
+        ?name_node pmdco:0000006 ?value .
+    }
+    LIMIT 1
+    """
+    try:
+        results = list(graph.query(name_query))
+        if results:
+            extracted_name = results[0][0].toPython() if results[0][0] else function_name or "unknown"
+        else:
+            extracted_name = function_name or "unknown"
+    except Exception:
+        extracted_name = function_name or "unknown"
+
+    # Extract docstring
+    docstring_query = """
+    PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
+    PREFIX iao: <http://purl.obolibrary.org/obo/IAO_>
+    SELECT DISTINCT ?value
+    WHERE {
+        ?func a <http://purl.obolibrary.org/obo/PMD_0000010> .
+        ?docstring iao:0000136 ?func .
+        ?docstring a iao:0000300 .
+        ?docstring pmdco:0000006 ?value .
+    }
+    LIMIT 1
+    """
+    docstring = ""
+    try:
+        results = list(graph.query(docstring_query))
+        if results:
+            docstring = results[0][0].toPython() if results[0][0] else ""
+    except Exception:
+        pass
+
+    # Extract module/import path
+    python_import = ""
+    if module:
+        python_import = module
+    else:
+        import_query = """
+        PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
+        SELECT DISTINCT ?value
+        WHERE {
+            ?func a <http://purl.obolibrary.org/obo/PMD_0000010> .
+            ?func <http://purl.obolibrary.org/obo/IAO_0000235> ?module .
+            ?module a pmdco:0000101 .
+            ?module pmdco:0000006 ?value .
+        }
+        LIMIT 1
+        """
+        try:
+            results = list(graph.query(import_query))
+            if results:
+                python_import = results[0][0].toPython() if results[0][0] else ""
+        except Exception:
+            pass
+
+    # Extract annotations
+    inputs = extract_annotations_from_graph(graph, arg_type="input")
+    outputs = extract_annotations_from_graph(graph, arg_type="output")
+
+    return FunctionRequest(
+        name=extracted_name,
+        docstring=docstring,
+        python_import=python_import,
+        inputs=inputs,
+        outputs=outputs,
+    )
+
+
+def parse_function_request_from_dict(
+    function_data: dict,
+    input_args: list[dict] | tuple[dict, ...] | None = None,
+    output_args: list[dict] | tuple[dict, ...] | None = None,
+    module: str | None = None,
+    source_code: str = "",
+    category: str = "",
+    keywords: list[str] | None = None,
+) -> FunctionRequest:
+    """
+    Parse a FunctionRequest directly from function data dictionary.
+
+    This function extracts metadata from the dictionary format typically used
+    by _function_to_graph before RDF conversion.
+
+    Args:
+        function_data: Dictionary containing function metadata with keys like:
+            - "qualname" (str): qualified name of the function
+            - "docstring" (str, optional): function docstring
+            - "module" (str, optional): module/import path
+            - "hash" (str, optional): hash identifier
+        input_args: List of input argument dictionaries with keys:
+            - "label" (str, optional): argument name
+            - "arg" (str, optional): fallback argument name
+            - "position" (int, optional): position in argument list
+            - "default" (Any, optional): default value
+            - "uri" (URIRef, optional): type URI
+            - "restrictions" (dict, optional): constraints
+        output_args: List of output argument dictionaries with similar structure
+        module: Optional override for module path
+        source_code: Optional source code string
+        category: Optional category/classification
+        keywords: Optional list of keywords
+
+    Returns:
+        FunctionRequest object with extracted data
+    """
+    input_args = input_args or []
+    output_args = output_args or []
+    keywords = keywords or []
+
+    # Extract function name
+    name = function_data.get("qualname", "unknown")
+
+    # Extract docstring
+    docstring = function_data.get("docstring", "")
+
+    # Extract import path
+    python_import = module or function_data.get("module", "")
+
+    # Parse input annotations
+    inputs = []
+    for idx, arg in enumerate(input_args):
+        label = arg.get("label") or arg.get("arg") or f"input_{idx}"
+        annotation = Annotation(
+            name=label,
+            label=arg.get("label"),
+            position=arg.get("position", idx),
+            default=arg.get("default"),
+            uri=str(arg.get("uri")) if arg.get("uri") else None,
+        )
+        if arg.get("restrictions"):
+            annotation.restrictions = arg["restrictions"]
+        inputs.append(annotation)
+
+    # Parse output annotations
+    outputs = []
+    for idx, arg in enumerate(output_args):
+        label = arg.get("label") or arg.get("arg") or f"output_{idx}"
+        annotation = Annotation(
+            name=label,
+            label=arg.get("label"),
+            position=arg.get("position", idx),
+            default=arg.get("default"),
+            uri=str(arg.get("uri")) if arg.get("uri") else None,
+        )
+        if arg.get("restrictions"):
+            annotation.restrictions = arg["restrictions"]
+        outputs.append(annotation)
+
+    return FunctionRequest(
+        name=name,
+        artifact_type=ArtifactType.FUNCTION,
+        category=category,
+        keywords=keywords,
+        python_import=python_import,
+        source_code=source_code,
+        docstring=docstring,
+        inputs=inputs,
+        outputs=outputs,
+    )
+
+
+def parse_function_request(
+    function_data: dict | Graph,
+    input_args: list[dict] | tuple[dict, ...] | None = None,
+    output_args: list[dict] | tuple[dict, ...] | None = None,
+    module: str | None = None,
+    source_code: str = "",
+    category: str = "",
+    keywords: list[str] | None = None,
+) -> FunctionRequest:
+    """
+    Parse a FunctionRequest from either a dictionary or RDF graph.
+
+    This is the main entry point for extracting FunctionRequest metadata.
+    It automatically detects whether the input is a dictionary or RDF graph
+    and delegates to the appropriate parser.
+
+    Args:
+        function_data: Either a dictionary containing function metadata
+            or an RDF Graph from _function_to_graph
+        input_args: List of input argument dictionaries (used if function_data is dict)
+        output_args: List of output argument dictionaries (used if function_data is dict)
+        module: Optional module path override
+        source_code: Optional source code string
+        category: Optional category/classification
+        keywords: Optional list of keywords
+
+    Returns:
+        FunctionRequest object with extracted data
+
+    Examples:
+        # From dictionary
+        func_data = {
+            "qualname": "my_func",
+            "docstring": "Does something",
+            "module": "my.module"
+        }
+        request = parse_function_request(func_data)
+
+        # From RDF graph
+        graph = _function_to_graph(...)
+        request = parse_function_request(graph)
+    """
+    if isinstance(function_data, Graph):
+        return parse_function_request_from_graph(
+            function_data, module=module
+        )
+    else:
+        return parse_function_request_from_dict(
+            function_data,
+            input_args=input_args,
+            output_args=output_args,
+            module=module,
+            source_code=source_code,
+            category=category,
+            keywords=keywords,
+        )
