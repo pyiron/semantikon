@@ -749,156 +749,40 @@ def parse_function_request_from_graph(
     )
 
 
-def parse_function_request_from_dict(
-    function_data: dict,
-    input_args: list[dict] | tuple[dict, ...] | None = None,
-    output_args: list[dict] | tuple[dict, ...] | None = None,
+def parse_function_request(
+    graph: Graph,
     module: str | None = None,
     source_code: str = "",
     category: str = "",
     keywords: list[str] | None = None,
 ) -> FunctionRequest:
     """
-    Parse a FunctionRequest directly from function data dictionary.
+    Parse a FunctionRequest from an RDF knowledge graph.
 
-    This function extracts metadata from the dictionary format typically used
-    by _function_to_graph before RDF conversion.
+    This is the main entry point for extracting FunctionRequest metadata
+    from RDF graphs created by _function_to_graph.
 
     Args:
-        function_data: Dictionary containing function metadata with keys like:
-            - "qualname" (str): qualified name of the function
-            - "docstring" (str, optional): function docstring
-            - "module" (str, optional): module/import path
-            - "hash" (str, optional): hash identifier
-        input_args: List of input argument dictionaries with keys:
-            - "label" (str, optional): argument name
-            - "arg" (str, optional): fallback argument name
-            - "position" (int, optional): position in argument list
-            - "default" (Any, optional): default value
-            - "uri" (URIRef, optional): type URI
-            - "restrictions" (dict, optional): constraints
-        output_args: List of output argument dictionaries with similar structure
-        module: Optional override for module path
+        graph: The RDF graph containing function metadata
+        module: Optional override for module/import path
         source_code: Optional source code string
         category: Optional category/classification
         keywords: Optional list of keywords
 
     Returns:
         FunctionRequest object with extracted data
+
+    Example:
+        >>> from semantikon.ontology import _function_to_graph
+        >>> from semantikon.analysis import parse_function_request
+        >>>
+        >>> graph = _function_to_graph(func_uri, func_data, inputs, outputs)
+        >>> request = parse_function_request(graph, category="math")
     """
-    input_args = input_args or []
-    output_args = output_args or []
-    keywords = keywords or []
-
-    # Extract function name
-    name = function_data.get("qualname", "unknown")
-
-    # Extract docstring
-    docstring = function_data.get("docstring", "")
-
-    # Extract import path
-    python_import = module or function_data.get("module", "")
-
-    # Parse input annotations
-    inputs = []
-    for idx, arg in enumerate(input_args):
-        label = arg.get("label") or arg.get("arg") or f"input_{idx}"
-        annotation = Annotation(
-            name=label,
-            label=arg.get("label"),
-            position=arg.get("position", idx),
-            default=arg.get("default"),
-            uri=str(arg.get("uri")) if arg.get("uri") else None,
-        )
-        if arg.get("restrictions"):
-            annotation.restrictions = arg["restrictions"]
-        inputs.append(annotation)
-
-    # Parse output annotations
-    outputs = []
-    for idx, arg in enumerate(output_args):
-        label = arg.get("label") or arg.get("arg") or f"output_{idx}"
-        annotation = Annotation(
-            name=label,
-            label=arg.get("label"),
-            position=arg.get("position", idx),
-            default=arg.get("default"),
-            uri=str(arg.get("uri")) if arg.get("uri") else None,
-        )
-        if arg.get("restrictions"):
-            annotation.restrictions = arg["restrictions"]
-        outputs.append(annotation)
-
-    return FunctionRequest(
-        name=name,
-        artifact_type=ArtifactType.FUNCTION,
+    return parse_function_request_from_graph(
+        graph,
+        module=module,
+        source_code=source_code,
         category=category,
         keywords=keywords,
-        python_import=python_import,
-        source_code=source_code,
-        docstring=docstring,
-        inputs=inputs,
-        outputs=outputs,
     )
-
-
-def parse_function_request(
-    function_data: dict | Graph,
-    input_args: list[dict] | tuple[dict, ...] | None = None,
-    output_args: list[dict] | tuple[dict, ...] | None = None,
-    module: str | None = None,
-    source_code: str = "",
-    category: str = "",
-    keywords: list[str] | None = None,
-) -> FunctionRequest:
-    """
-    Parse a FunctionRequest from either a dictionary or RDF graph.
-
-    This is the main entry point for extracting FunctionRequest metadata.
-    It automatically detects whether the input is a dictionary or RDF graph
-    and delegates to the appropriate parser.
-
-    Args:
-        function_data: Either a dictionary containing function metadata
-            or an RDF Graph from _function_to_graph
-        input_args: List of input argument dictionaries (used if function_data is dict)
-        output_args: List of output argument dictionaries (used if function_data is dict)
-        module: Optional module path override
-        source_code: Optional source code string
-        category: Optional category/classification
-        keywords: Optional list of keywords
-
-    Returns:
-        FunctionRequest object with extracted data
-
-    Examples:
-        # From dictionary
-        func_data = {
-            "qualname": "my_func",
-            "docstring": "Does something",
-            "module": "my.module"
-        }
-        request = parse_function_request(func_data)
-
-        # From RDF graph
-        graph = _function_to_graph(...)
-        request = parse_function_request(graph)
-    """
-    if isinstance(function_data, Graph):
-        return parse_function_request_from_graph(
-            function_data,
-            module=module,
-            source_code=source_code,
-            category=category,
-            keywords=keywords,
-        )
-    else:
-        return parse_function_request_from_dict(
-            function_data,
-            input_args=input_args,
-            output_args=output_args,
-            module=module,
-            source_code=source_code,
-            category=category,
-            keywords=keywords,
-        )
