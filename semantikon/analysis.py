@@ -609,15 +609,13 @@ def extract_annotations_from_graph(
     Returns:
         List of Annotation objects
     """
-    from semantikon.ontology import PMD
-
     annotations = []
     spec_type = SNS.input_specification if arg_type == "input" else SNS.output_specification
 
     query = f"""
     PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
-    PREFIX bfo: <http://purl.obolibrary.org/obo/BFO_>
-    SELECT DISTINCT ?arg ?label ?position ?default
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    SELECT DISTINCT ?label ?position ?default
     WHERE {{
         ?arg a <{spec_type}> .
         ?arg pmdco:0000128 ?label .
@@ -629,9 +627,9 @@ def extract_annotations_from_graph(
 
     try:
         results = list(graph.query(query))
-        for arg_uri, label, position, default in results:
+        for label, position, default in results:
             annotation = Annotation(
-                name=label.toPython() if label else str(arg_uri),
+                name=label.toPython() if label else "unknown",
                 label=label.toPython() if label else None,
                 position=int(position.toPython()) if position else None,
                 default=default.toPython() if default else None,
@@ -648,6 +646,9 @@ def parse_function_request_from_graph(
     graph: Graph,
     function_name: str | None = None,
     module: str | None = None,
+    source_code: str = "",
+    category: str = "",
+    keywords: list[str] | None = None,
 ) -> FunctionRequest:
     """
     Parse a FunctionRequest from an RDF graph created by _function_to_graph.
@@ -656,19 +657,24 @@ def parse_function_request_from_graph(
         graph: The RDF graph containing function metadata
         function_name: Optional override for function name
         module: Optional override for module/import path
+        source_code: Optional source code string
+        category: Optional category/classification
+        keywords: Optional list of keywords
 
     Returns:
         FunctionRequest object with extracted data
     """
+    keywords = keywords or []
 
     # Extract function name from graph
     name_query = """
     PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     SELECT DISTINCT ?value
     WHERE {
-        ?func a <http://purl.obolibrary.org/obo/PMD_0000010> .
+        ?func a <https://w3id.org/pmd/co/PMD_0000010> .
         ?func <http://purl.obolibrary.org/obo/IAO_0000235> ?name_node .
-        ?name_node a <http://purl.obolibrary.org/obo/PMD_0000100> .
+        ?name_node a <https://w3id.org/pmd/co/PMD_0000100> .
         ?name_node pmdco:0000006 ?value .
     }
     LIMIT 1
@@ -688,7 +694,7 @@ def parse_function_request_from_graph(
     PREFIX iao: <http://purl.obolibrary.org/obo/IAO_>
     SELECT DISTINCT ?value
     WHERE {
-        ?func a <http://purl.obolibrary.org/obo/PMD_0000010> .
+        ?func a <https://w3id.org/pmd/co/PMD_0000010> .
         ?docstring iao:0000136 ?func .
         ?docstring a iao:0000300 .
         ?docstring pmdco:0000006 ?value .
@@ -712,9 +718,9 @@ def parse_function_request_from_graph(
         PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
         SELECT DISTINCT ?value
         WHERE {
-            ?func a <http://purl.obolibrary.org/obo/PMD_0000010> .
+            ?func a <https://w3id.org/pmd/co/PMD_0000010> .
             ?func <http://purl.obolibrary.org/obo/IAO_0000235> ?module .
-            ?module a pmdco:0000101 .
+            ?module a <https://w3id.org/pmd/co/PMD_0000101> .
             ?module pmdco:0000006 ?value .
         }
         LIMIT 1
@@ -732,8 +738,12 @@ def parse_function_request_from_graph(
 
     return FunctionRequest(
         name=extracted_name,
-        docstring=docstring,
+        artifact_type=ArtifactType.FUNCTION,
+        category=category,
+        keywords=keywords,
         python_import=python_import,
+        source_code=source_code,
+        docstring=docstring,
         inputs=inputs,
         outputs=outputs,
     )
@@ -876,7 +886,11 @@ def parse_function_request(
     """
     if isinstance(function_data, Graph):
         return parse_function_request_from_graph(
-            function_data, module=module
+            function_data,
+            module=module,
+            source_code=source_code,
+            category=category,
+            keywords=keywords,
         )
     else:
         return parse_function_request_from_dict(
