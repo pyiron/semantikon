@@ -7,10 +7,57 @@ from functools import cached_property
 from typing import Any, Iterable
 
 import networkx as nx
+from pydantic import BaseModel
 from rdflib import RDFS, Graph, Literal, URIRef
 
 from semantikon.converter import to_identifier
 from semantikon.ontology import SNS, serialize_and_convert_to_networkx
+
+
+class Annotation(BaseModel):
+    """Represents an input or output annotation for a function."""
+    name: str
+    type_: str | None = None
+    label: str | None = None
+    position: int | None = None
+    default: Any = None
+    uri: str | None = None
+    restrictions: dict[str, Any] | None = None
+
+    class Config:
+        extra = "allow"
+
+
+class ArtifactType:
+    """Artifact types enumeration."""
+    FUNCTION = "function"
+
+
+class FunctionRequest(BaseModel):
+    """Request model for function metadata extraction."""
+    author_name: str = "unknown"
+    author_email: str = "unknown"
+
+    name: str
+    artifact_type: str = ArtifactType.FUNCTION
+    category: str = ""
+    keywords: list[str] = []
+
+    homepage_url: str = ""
+    documentation_url: str = ""
+    source_url: str = ""
+
+    python_import: str = ""
+    dependencies: list[str] | None = None
+
+    source_code: str = ""
+
+    docstring: str = ""
+    inputs: list[Annotation] = []
+    outputs: list[Annotation] = []
+
+    class Config:
+        extra = "allow"
 
 
 def identifier_to_uri(graph: Graph, identifier: str) -> list[URIRef]:
