@@ -53,15 +53,12 @@ from semantikon.datastructure import TypeMetadata
 def nodedata2dict(
     node: frs.NodeData,
     *,
-    with_function: bool = True,
     label: str | None = None,
 ) -> dict[str, Any]:
     """Convert a data node to the nested dictionary format.
 
     Args:
         node: The node data to convert (pre- or post-run).
-        with_function: Store raw callables (``True``) or
-            :func:`get_function_metadata` dicts (``False``).
         label: Override the inferred label.
 
     Returns:
@@ -69,9 +66,9 @@ def nodedata2dict(
         ``get_workflow_dict`` output.
     """
     if isinstance(node, frs.AtomicData):
-        return _atomic_to_dict(node, with_function=with_function)
+        return _atomic_to_dict(node)
     if isinstance(node, frs.DagData):
-        return _workflow_to_dict(node, with_function=with_function, label=label)
+        return _workflow_to_dict(node, label=label)
     if isinstance(node, frs.FlowControlData):
         raise NotImplementedError(
             "FlowControl → dict conversion is not yet implemented.  "
@@ -86,15 +83,9 @@ def nodedata2dict(
 # ---------------------------------------------------------------------------
 
 
-def _atomic_to_dict(
-    node: frs.AtomicData,
-    *,
-    with_function: bool,
-) -> dict[str, Any]:
+def _atomic_to_dict(node: frs.AtomicData) -> dict[str, Any]:
     result: dict[str, Any] = {"type": "atomic"}
-    result["function"] = (
-        node.function if with_function else get_function_metadata(node.function)
-    )
+    result["function"] = node.function
     result["inputs"] = _input_ports_to_dict(node.input_ports)
     result["outputs"] = _output_ports_to_dict(node.output_ports)
     if hasattr(node.function, "_semantikon_metadata"):
@@ -107,12 +98,7 @@ def _atomic_to_dict(
 # ---------------------------------------------------------------------------
 
 
-def _workflow_to_dict(
-    node: frs.DagData,
-    *,
-    with_function: bool,
-    label: str | None,
-) -> dict[str, Any]:
+def _workflow_to_dict(node: frs.DagData, *, label: str | None) -> dict[str, Any]:
     recipe = node.recipe
     assert isinstance(recipe, frs.WorkflowRecipe)
 
@@ -120,11 +106,7 @@ def _workflow_to_dict(
         "type": "workflow",
         "label": label or _infer_label(recipe),
         "nodes": {
-            child_label: nodedata2dict(
-                child_node,
-                with_function=with_function,
-                label=child_label,
-            )
+            child_label: nodedata2dict(child_node, label=child_label)
             for child_label, child_node in node.nodes.items()
         },
         "edges": _workflow_edges(recipe),
@@ -137,8 +119,7 @@ def _workflow_to_dict(
         func = retrieve.import_from_string(recipe.reference.info.fully_qualified_name)
         if hasattr(func, "_semantikon_metadata"):
             result.update(func._semantikon_metadata)
-        if with_function:
-            result["function"] = func
+        result["function"] = func
 
     return result
 

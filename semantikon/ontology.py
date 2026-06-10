@@ -388,9 +388,9 @@ def get_knowledge_graph(
         (rdflib.Graph): graph containing workflow information
     """
     if isinstance(wf_dict, frs.WorkflowRecipe):
-        wf_dict = nodedata2dict(frs.DagData.from_recipe(wf_dict), with_function=True)
+        wf_dict = nodedata2dict(frs.DagData.from_recipe(wf_dict))
     elif isinstance(wf_dict, frs.DagData):
-        wf_dict = nodedata2dict(wf_dict, with_function=True)
+        wf_dict = nodedata2dict(wf_dict)
     elif not isinstance(wf_dict, dict):
         raise TypeError(
             f"Invalid input type. Expected dict, flowrep {frs.DagData.__name__!r}, or "
