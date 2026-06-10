@@ -12,6 +12,7 @@ from typing import Any, Callable, TypeAlias, cast
 
 import bagofholding
 import networkx as nx
+from flowrep.api import schemas as frs
 from owlrl import DeductiveClosure, RDFS_Semantics
 from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
@@ -24,7 +25,11 @@ from semantikon.converter import (
     parse_input_args,
     parse_output_args,
 )
-from semantikon.flowrep_dict import _WorkflowGraphSerializer, get_hashed_node_dict
+from semantikon.flowrep_dict import (
+    _WorkflowGraphSerializer,
+    get_hashed_node_dict,
+    nodedata2dict,
+)
 from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
@@ -249,7 +254,7 @@ def _extract_shacl_shapes(input_graph: Graph) -> Graph:
 
 
 def validate_values(
-    graph: Graph,
+    graph: Graph | dict | frs.DagData | frs.WorkflowRecipe,
     run_reasoner: bool = True,
     copy_graph: bool = True,
     strict_typing: bool = True,
@@ -258,7 +263,8 @@ def validate_values(
     Validate if all values required by restrictions are present in the graph
 
     Args:
-        graph (Graph): input RDF graph
+        graph (Graph|dict |frs.DagData|frs.WorkflowRecipe): input RDF graph, or
+            something coercible to one via ``get_knowledge_graph``.
         run_reasoner (bool): if True, run OWL RL reasoner before validation
         copy_graph (bool): if True, work on a copy of the graph. When the graph
             is not copied and reasoner is run, the input graph is modified by
@@ -270,6 +276,9 @@ def validate_values(
     Returns:
         (tuple): validation result and message from pyshacl
     """
+    if not isinstance(graph, Graph):
+        graph = get_knowledge_graph(graph)
+
     g = copy.deepcopy(graph) if copy_graph and run_reasoner else graph
     excluded = []
     if not strict_typing:
@@ -350,7 +359,7 @@ def _check_consistency_of_digraph(G: SemantikonDiGraph):
 
 
 def get_knowledge_graph(
-    wf_dict: dict,
+    wf_dict: dict | frs.DagData | frs.WorkflowRecipe,
     include_t_box: bool = True,
     include_a_box: bool = True,
     hash_data: bool = True,
@@ -365,7 +374,8 @@ def get_knowledge_graph(
     Generate RDF graph from a dictionary containing workflow information
 
     Args:
-        wf_dict (dict): dictionary containing workflow information
+        wf_dict (dict|frs.DagData|frs.WorkflowRecipe): dictionary containing workflow information, or a ``flowrep``
+            object coercible to such a dictionary.
         include_t_box (bool): if True, include T-Box information
         include_a_box (bool): if True, include A-Box information
         hash_data (bool): if True, compute and include hash values for data nodes
@@ -377,6 +387,16 @@ def get_knowledge_graph(
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
+    if isinstance(wf_dict, frs.WorkflowRecipe):
+        wf_dict = nodedata2dict(frs.DagData.from_recipe(wf_dict))
+    elif isinstance(wf_dict, frs.DagData):
+        wf_dict = nodedata2dict(wf_dict)
+    elif not isinstance(wf_dict, dict):
+        raise TypeError(
+            f"Invalid input type. Expected dict, flowrep {frs.DagData.__name__!r}, or "
+            f"flowrep {frs.WorkflowRecipe.__name__!r}, but got {type(wf_dict)}."
+        )
+
     G = serialize_and_convert_to_networkx(wf_dict, hash_data=hash_data, prefix=prefix)
     _check_consistency_of_digraph(G)
     graph = _get_bound_graph()

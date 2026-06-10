@@ -7,11 +7,13 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Annotated
 
+from flowrep.api import tools as frt
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace
+from rdflib import OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, compare
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
+from semantikon.flowrep_dict import nodedata2dict
 from semantikon.metadata import SemantikonURI, meta
 from semantikon.visualize import visualize_recipe
 from semantikon.workflow import workflow
@@ -502,6 +504,21 @@ class TestOntology(unittest.TestCase):
                     "require specificity directionality to hold.",
                 )
 
+    def test_get_knowledge_graph_type_coercion(self):
+        flowrep_recipe = my_kinetic_energy_workflow.flowrep_recipe
+        flowrep_data = frt.recipe2data(flowrep_recipe)
+        semantikon_dict = nodedata2dict(flowrep_data)
+
+        graphs = [
+            onto.get_knowledge_graph(target)
+            for target in (flowrep_recipe, flowrep_data, semantikon_dict)
+        ]
+        self.assertTrue(compare.isomorphic(graphs[0], graphs[-1]))
+        self.assertTrue(compare.isomorphic(graphs[1], graphs[-1]))
+
+        with self.assertRaises(TypeError, msg="Uncoercible data should raise cleanly"):
+            onto.get_knowledge_graph(42)
+
     def test_my_kinetic_energy_workflow_graph(self):
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         g = onto.get_knowledge_graph(wf_dict)
@@ -525,7 +542,11 @@ class TestOntology(unittest.TestCase):
             (starting with W in the URI)
             """,
         )
-        self.assertTrue(onto.validate_values(g)[0])
+
+        recipe = my_kinetic_energy_workflow.flowrep_recipe
+        for target in (g, wf_dict, frt.recipe2data(recipe), recipe):
+            with self.subTest(f"Type coercion {target}"):
+                self.assertTrue(onto.validate_values(target)[0])
 
     def test_to_restrictions(self):
         # Common reference graph for single target class
