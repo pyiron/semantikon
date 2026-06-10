@@ -16,6 +16,7 @@ from semantikon.ontology import SNS, serialize_and_convert_to_networkx
 
 class Annotation(BaseModel):
     """Represents an input or output annotation for a function."""
+
     name: str
     type_: str | None = None
     label: str | None = None
@@ -30,11 +31,13 @@ class Annotation(BaseModel):
 
 class ArtifactType:
     """Artifact types enumeration."""
+
     FUNCTION = "function"
 
 
 class FunctionRequest(BaseModel):
     """Request model for function metadata extraction."""
+
     author_name: str = "unknown"
     author_email: str = "unknown"
 
@@ -610,7 +613,9 @@ def extract_annotations_from_graph(
         List of Annotation objects
     """
     annotations = []
-    spec_type = SNS.input_specification if arg_type == "input" else SNS.output_specification
+    spec_type = (
+        SNS.input_specification if arg_type == "input" else SNS.output_specification
+    )
 
     query = f"""
     PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
@@ -682,7 +687,11 @@ def parse_function_request_from_graph(
     try:
         results = list(graph.query(name_query))
         if results:
-            extracted_name = results[0][0].toPython() if results[0][0] else function_name or "unknown"
+            extracted_name = (
+                results[0][0].toPython()
+                if results[0][0]
+                else function_name or "unknown"
+            )
         else:
             extracted_name = function_name or "unknown"
     except Exception:
