@@ -381,7 +381,7 @@ class TestAnalysis(unittest.TestCase):
 
     def test_function_request_pydantic_validation(self):
         """Test FunctionRequest Pydantic validation."""
-        from semantikon.analysis import FunctionRequest, Annotation
+        from semantikon.analysis import Annotation, FunctionRequest
 
         # Minimal valid request
         req = FunctionRequest(name="test_func")
@@ -439,8 +439,9 @@ class TestAnalysis(unittest.TestCase):
 
     def test_extract_annotations_from_graph(self):
         """Test extract_annotations_from_graph helper function."""
-        from semantikon.analysis import extract_annotations_from_graph
         from rdflib import URIRef
+
+        from semantikon.analysis import extract_annotations_from_graph
 
         func_uri = URIRef("http://example.org/functions/multi")
         func_data = {
