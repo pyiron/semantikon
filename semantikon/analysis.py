@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import string
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import cached_property
-import string
 from typing import Any, Iterable
 
 import networkx as nx
 from pydantic import BaseModel
-from rdflib import Graph, Literal, RDFS, URIRef
+from rdflib import RDFS, Graph, Literal, URIRef
 
 from semantikon.converter import to_identifier
 from semantikon.ontology import SNS, serialize_and_convert_to_networkx

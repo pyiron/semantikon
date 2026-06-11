@@ -1,8 +1,10 @@
-from dataclasses import dataclass
 import unittest
+from dataclasses import dataclass
 from typing import Annotated
 
-from rdflib import RDF, Namespace
+from rdflib import RDF, Namespace, URIRef
+
+        from semantikon.analysis import parse_function_request
 
 from semantikon import analysis as asis
 from semantikon import ontology as onto
@@ -246,8 +248,6 @@ class TestAnalysis(unittest.TestCase):
 
     def test_function_request_from_simple_function(self):
         """Test parsing FunctionRequest from a simple function graph."""
-        from semantikon.analysis import parse_function_request
-        from rdflib import URIRef
 
         func_uri = URIRef("http://example.org/functions/add")
         func_data = {
@@ -262,7 +262,7 @@ class TestAnalysis(unittest.TestCase):
         output_args = [{"label": "result", "position": 0}]
 
         graph = onto._function_to_graph(func_uri, func_data, input_args, output_args)
-        request = parse_function_request(graph)
+        request = asis.parse_function_request(graph)
 
         self.assertEqual(request.name, "add")
         self.assertEqual(request.docstring, "Add two numbers")
@@ -276,8 +276,6 @@ class TestAnalysis(unittest.TestCase):
 
     def test_function_request_with_metadata(self):
         """Test FunctionRequest with additional metadata (category, keywords)."""
-        from semantikon.analysis import parse_function_request
-        from rdflib import URIRef
 
         func_uri = URIRef("http://example.org/functions/distance")
         func_data = {
@@ -292,7 +290,7 @@ class TestAnalysis(unittest.TestCase):
         output_args = [{"label": "distance", "position": 0}]
 
         graph = onto._function_to_graph(func_uri, func_data, input_args, output_args)
-        request = parse_function_request(
+        request = asis.parse_function_request(
             graph, category="geometry", keywords=["distance", "vector", "math"]
         )
 
@@ -302,8 +300,6 @@ class TestAnalysis(unittest.TestCase):
 
     def test_function_request_with_defaults(self):
         """Test FunctionRequest preserves default values."""
-        from semantikon.analysis import parse_function_request
-        from rdflib import URIRef
 
         func_uri = URIRef("http://example.org/functions/power")
         func_data = {
@@ -318,15 +314,13 @@ class TestAnalysis(unittest.TestCase):
         output_args = [{"label": "result", "position": 0}]
 
         graph = onto._function_to_graph(func_uri, func_data, input_args, output_args)
-        request = parse_function_request(graph)
+        request = asis.parse_function_request(graph)
 
         self.assertEqual(request.inputs[1].name, "exponent")
         self.assertEqual(request.inputs[1].default, 2)
 
     def test_function_request_with_source_code(self):
         """Test FunctionRequest with source code."""
-        from semantikon.analysis import parse_function_request
-        from rdflib import URIRef
 
         func_uri = URIRef("http://example.org/functions/identity")
         func_data = {
@@ -339,14 +333,12 @@ class TestAnalysis(unittest.TestCase):
 
         graph = onto._function_to_graph(func_uri, func_data, input_args, output_args)
         source_code = "def identity(x):\n    return x"
-        request = parse_function_request(graph, source_code=source_code)
+        request = asis.parse_function_request(graph, source_code=source_code)
 
         self.assertEqual(request.source_code, source_code)
 
     def test_function_request_annotation_ordering(self):
         """Test that annotations are ordered by position."""
-        from semantikon.analysis import parse_function_request
-        from rdflib import URIRef
 
         func_uri = URIRef("http://example.org/functions/multi_arg")
         func_data = {
@@ -362,7 +354,7 @@ class TestAnalysis(unittest.TestCase):
         output_args = [{"label": "result", "position": 0}]
 
         graph = onto._function_to_graph(func_uri, func_data, input_args, output_args)
-        request = parse_function_request(graph)
+        request = asis.parse_function_request(graph)
 
         self.assertEqual(len(request.inputs), 3)
         self.assertEqual(request.inputs[0].name, "first")
@@ -425,8 +417,6 @@ class TestAnalysis(unittest.TestCase):
 
     def test_function_request_model_dump(self):
         """Test FunctionRequest model_dump method."""
-        from semantikon.analysis import parse_function_request
-        from rdflib import URIRef
 
         func_uri = URIRef("http://example.org/functions/test")
         func_data = {
@@ -438,7 +428,7 @@ class TestAnalysis(unittest.TestCase):
         output_args = [{"label": "y", "position": 0}]
 
         graph = onto._function_to_graph(func_uri, func_data, input_args, output_args)
-        request = parse_function_request(graph, category="test")
+        request = asis.parse_function_request(graph, category="test")
 
         data = request.model_dump()
 
