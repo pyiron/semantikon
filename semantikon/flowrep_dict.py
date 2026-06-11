@@ -1,7 +1,7 @@
 """
 Convert node data trees to the legacy nested-dictionary format.
 
-This module bridges :mod:`flowrep.retrospective` objects (instance data with associated
+This module bridges :mod:`flowrep` retrospective objects (instance data with associated
 recipe) to the ``dict`` structure historically produced by
 :func:`flowrep.workflow.get_workflow_dict` in versions <0.3.0
 and consumed by downstream packages such as *semantikon*.
@@ -37,8 +37,8 @@ import re
 from collections.abc import Mapping
 from typing import Annotated, Any, cast, get_args, get_origin
 
+import flowrep as fr
 import networkx as nx
-from flowrep.api import schemas as frs
 from pyiron_snippets import retrieve
 
 from semantikon.converter import (
@@ -51,7 +51,7 @@ from semantikon.datastructure import TypeMetadata
 
 
 def nodedata2dict(
-    node: frs.NodeData,
+    node: fr.schemas.NodeData,
     *,
     label: str | None = None,
 ) -> dict[str, Any]:
@@ -65,11 +65,11 @@ def nodedata2dict(
         A nested dictionary matching the structure of the legacy
         ``get_workflow_dict`` output.
     """
-    if isinstance(node, frs.AtomicData):
+    if isinstance(node, fr.schemas.AtomicData):
         return _atomic_to_dict(node)
-    if isinstance(node, frs.DagData):
+    if isinstance(node, fr.schemas.DagData):
         return _workflow_to_dict(node, label=label)
-    if isinstance(node, frs.FlowControlData):
+    if isinstance(node, fr.schemas.FlowControlData):
         raise NotImplementedError(
             "FlowControl → dict conversion is not yet implemented.  "
             "The legacy format flattens body-workflow children into the "
@@ -83,7 +83,7 @@ def nodedata2dict(
 # ---------------------------------------------------------------------------
 
 
-def _atomic_to_dict(node: frs.AtomicData) -> dict[str, Any]:
+def _atomic_to_dict(node: fr.schemas.AtomicData) -> dict[str, Any]:
     result: dict[str, Any] = {"type": "atomic"}
     result["function"] = node.function
     result["inputs"] = _input_ports_to_dict(node.input_ports)
@@ -98,9 +98,9 @@ def _atomic_to_dict(node: frs.AtomicData) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _workflow_to_dict(node: frs.DagData, *, label: str | None) -> dict[str, Any]:
+def _workflow_to_dict(node: fr.schemas.DagData, *, label: str | None) -> dict[str, Any]:
     recipe = node.recipe
-    assert isinstance(recipe, frs.WorkflowRecipe)
+    assert isinstance(recipe, fr.schemas.WorkflowRecipe)
 
     result: dict[str, Any] = {
         "type": "workflow",
@@ -124,7 +124,7 @@ def _workflow_to_dict(node: frs.DagData, *, label: str | None) -> dict[str, Any]
     return result
 
 
-def _infer_label(recipe: frs.LiveWorkflowNode) -> str:
+def _infer_label(recipe: fr.schemas.LiveWorkflowNode) -> str:
     """Best-effort label from a workflow recipe's reference."""
     if recipe.reference is not None:
         return recipe.reference.info.fully_qualified_name.rsplit(".", 1)[-1]
@@ -136,7 +136,7 @@ def _infer_label(recipe: frs.LiveWorkflowNode) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _workflow_edges(recipe: frs.WorkflowRecipe) -> list[tuple[str, str]]:
+def _workflow_edges(recipe: fr.schemas.WorkflowRecipe) -> list[tuple[str, str]]:
     """Flatten typed edge objects into ``("src", "tgt")`` string tuples."""
     edges: list[tuple[str, str]] = []
 
@@ -174,7 +174,7 @@ def _workflow_edges(recipe: frs.WorkflowRecipe) -> list[tuple[str, str]]:
 
     # Child output/passthrough input → workflow output
     for target, source in recipe.output_edges.items():
-        if isinstance(source, frs.InputSource):
+        if isinstance(source, fr.schemas.InputSource):
             edges.append(
                 (
                     f"inputs.{source.port}",
@@ -198,16 +198,16 @@ def _workflow_edges(recipe: frs.WorkflowRecipe) -> list[tuple[str, str]]:
 
 
 def _port_dict(
-    value: Any, annotation: Any, default: Any = frs.NOT_DATA
+    value: Any, annotation: Any, default: Any = fr.schemas.NOT_DATA
 ) -> dict[str, Any]:
     d: dict[str, Any] = {}
-    if not isinstance(value, frs.NotData):
+    if not isinstance(value, fr.schemas.NotData):
         d["value"] = value
     if type_hint := annotation_to_type_hint(annotation):
         d["dtype"] = type_hint
     if type_metadata := annotation_to_type_metadata(annotation):
         d.update(type_metadata.to_dictionary())
-    if not isinstance(default, frs.NotData):
+    if not isinstance(default, fr.schemas.NotData):
         d["default"] = default
     return d
 
@@ -266,7 +266,7 @@ def _unwrap_annotated(annotation: Any) -> Any:
 
 
 def _input_ports_to_dict(
-    ports: Mapping[str, frs.InputDataPort],
+    ports: Mapping[str, fr.schemas.InputDataPort],
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     for name, port in ports.items():
@@ -275,7 +275,7 @@ def _input_ports_to_dict(
 
 
 def _output_ports_to_dict(
-    ports: Mapping[str, frs.OutputDataPort],
+    ports: Mapping[str, fr.schemas.OutputDataPort],
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     if len(ports) == 1 and next(iter(ports.keys())) == "output_0":
