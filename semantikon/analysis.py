@@ -7,10 +7,60 @@ from functools import cached_property
 from typing import Any, Iterable
 
 import networkx as nx
+from pydantic import BaseModel
 from rdflib import RDFS, Graph, Literal, URIRef
 
 from semantikon.converter import to_identifier
 from semantikon.ontology import SNS, serialize_and_convert_to_networkx
+
+
+class Annotation(BaseModel):
+    """Represents an input or output annotation for a function."""
+
+    name: str
+    type_: str | None = None
+    label: str | None = None
+    position: int | None = None
+    default: Any = None
+    uri: str | None = None
+    restrictions: dict[str, Any] | None = None
+
+    class Config:
+        extra = "allow"
+
+
+class ArtifactType:
+    """Artifact types enumeration."""
+
+    FUNCTION = "function"
+
+
+class FunctionRequest(BaseModel):
+    """Request model for function metadata extraction."""
+
+    author_name: str = "unknown"
+    author_email: str = "unknown"
+
+    name: str
+    artifact_type: str = ArtifactType.FUNCTION
+    category: str = ""
+    keywords: list[str] = []
+
+    homepage_url: str = ""
+    documentation_url: str = ""
+    source_url: str = ""
+
+    python_import: str = ""
+    dependencies: list[str] | None = None
+
+    source_code: str = ""
+
+    docstring: str = ""
+    inputs: list[Annotation] = []
+    outputs: list[Annotation] = []
+
+    class Config:
+        extra = "allow"
 
 
 def identifier_to_uri(graph: Graph, identifier: str) -> list[URIRef]:
@@ -547,3 +597,201 @@ class SparqlWriter:
                 lines.append("  OPTIONAL { " + "\n".join(o_line) + " }")
         lines.append("}")
         return "\n".join(lines)
+
+
+def extract_annotations_from_graph(
+    graph: Graph, arg_type: str = "input"
+) -> list[Annotation]:
+    """
+    Extract input or output annotations from an RDF graph.
+
+    Args:
+        graph: The RDF graph created by _function_to_graph
+        arg_type: Either "input" or "output"
+
+    Returns:
+        List of Annotation objects
+    """
+    annotations = []
+    spec_type = (
+        SNS.input_specification if arg_type == "input" else SNS.output_specification
+    )
+
+    query = f"""
+    PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    SELECT DISTINCT ?label ?position ?default
+    WHERE {{
+        ?arg a <{spec_type}> .
+        ?arg pmdco:0000128 ?label .
+        OPTIONAL {{ ?arg pmdco:0001857 ?position }}
+        OPTIONAL {{ ?arg pmdco:0001877 ?default }}
+    }}
+    ORDER BY COALESCE(?position, 999) ?label
+    """
+
+    try:
+        results = list(graph.query(query))
+        for label, position, default in results:
+            annotation = Annotation(
+                name=label.toPython() if label else "unknown",
+                label=label.toPython() if label else None,
+                position=int(position.toPython()) if position else None,
+                default=default.toPython() if default else None,
+            )
+            annotations.append(annotation)
+    except Exception:
+        # If query fails, return empty list
+        pass
+
+    return annotations
+
+
+def parse_function_request_from_graph(
+    graph: Graph,
+    function_name: str | None = None,
+    module: str | None = None,
+    source_code: str = "",
+    category: str = "",
+    keywords: list[str] | None = None,
+) -> FunctionRequest:
+    """
+    Parse a FunctionRequest from an RDF graph created by _function_to_graph.
+
+    Args:
+        graph: The RDF graph containing function metadata
+        function_name: Optional override for function name
+        module: Optional override for module/import path
+        source_code: Optional source code string
+        category: Optional category/classification
+        keywords: Optional list of keywords
+
+    Returns:
+        FunctionRequest object with extracted data
+    """
+    keywords = keywords or []
+
+    # Extract function name from graph
+    name_query = """
+    PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    SELECT DISTINCT ?value
+    WHERE {
+        ?func a <https://w3id.org/pmd/co/PMD_0000010> .
+        ?func <http://purl.obolibrary.org/obo/IAO_0000235> ?name_node .
+        ?name_node a <https://w3id.org/pmd/co/PMD_0000100> .
+        ?name_node pmdco:0000006 ?value .
+    }
+    LIMIT 1
+    """
+    try:
+        results = list(graph.query(name_query))
+        if results:
+            extracted_name = (
+                results[0][0].toPython()
+                if results[0][0]
+                else function_name or "unknown"
+            )
+        else:
+            extracted_name = function_name or "unknown"
+    except Exception:
+        extracted_name = function_name or "unknown"
+
+    # Extract docstring
+    docstring_query = """
+    PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
+    PREFIX iao: <http://purl.obolibrary.org/obo/IAO_>
+    SELECT DISTINCT ?value
+    WHERE {
+        ?func a <https://w3id.org/pmd/co/PMD_0000010> .
+        ?docstring iao:0000136 ?func .
+        ?docstring a iao:0000300 .
+        ?docstring pmdco:0000006 ?value .
+    }
+    LIMIT 1
+    """
+    docstring = ""
+    try:
+        results = list(graph.query(docstring_query))
+        if results:
+            docstring = results[0][0].toPython() if results[0][0] else ""
+    except Exception:
+        pass
+
+    # Extract module/import path
+    python_import = ""
+    if module:
+        python_import = module
+    else:
+        import_query = """
+        PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
+        SELECT DISTINCT ?value
+        WHERE {
+            ?func a <https://w3id.org/pmd/co/PMD_0000010> .
+            ?func <http://purl.obolibrary.org/obo/IAO_0000235> ?module .
+            ?module a <https://w3id.org/pmd/co/PMD_0000101> .
+            ?module pmdco:0000006 ?value .
+        }
+        LIMIT 1
+        """
+        try:
+            results = list(graph.query(import_query))
+            if results:
+                python_import = results[0][0].toPython() if results[0][0] else ""
+        except Exception:
+            pass
+
+    # Extract annotations
+    inputs = extract_annotations_from_graph(graph, arg_type="input")
+    outputs = extract_annotations_from_graph(graph, arg_type="output")
+
+    return FunctionRequest(
+        name=extracted_name,
+        artifact_type=ArtifactType.FUNCTION,
+        category=category,
+        keywords=keywords,
+        python_import=python_import,
+        source_code=source_code,
+        docstring=docstring,
+        inputs=inputs,
+        outputs=outputs,
+    )
+
+
+def parse_function_request(
+    graph: Graph,
+    module: str | None = None,
+    source_code: str = "",
+    category: str = "",
+    keywords: list[str] | None = None,
+) -> FunctionRequest:
+    """
+    Parse a FunctionRequest from an RDF knowledge graph.
+
+    This is the main entry point for extracting FunctionRequest metadata
+    from RDF graphs created by _function_to_graph.
+
+    Args:
+        graph: The RDF graph containing function metadata
+        module: Optional override for module/import path
+        source_code: Optional source code string
+        category: Optional category/classification
+        keywords: Optional list of keywords
+
+    Returns:
+        FunctionRequest object with extracted data
+
+    Example:
+        >>> from semantikon.ontology import _function_to_graph
+        >>> from semantikon.analysis import parse_function_request
+        >>>
+        >>> graph = _function_to_graph(func_uri, func_data, inputs, outputs)
+        >>> request = parse_function_request(graph, category="math")
+    """
+    return parse_function_request_from_graph(
+        graph,
+        module=module,
+        source_code=source_code,
+        category=category,
+        keywords=keywords,
+    )
