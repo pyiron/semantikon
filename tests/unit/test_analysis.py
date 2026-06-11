@@ -4,8 +4,6 @@ from typing import Annotated
 
 from rdflib import RDF, Namespace, URIRef
 
-        from semantikon.analysis import parse_function_request
-
 from semantikon import analysis as asis
 from semantikon import ontology as onto
 from semantikon.metadata import meta
