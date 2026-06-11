@@ -1,5 +1,5 @@
-import unittest
 from dataclasses import dataclass
+import unittest
 from typing import Annotated
 
 from rdflib import RDF, Namespace
