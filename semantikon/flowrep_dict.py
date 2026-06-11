@@ -1,7 +1,7 @@
 """
 Convert node data trees to the legacy nested-dictionary format.
 
-This module bridges :mod:`flowrep.retrospective` objects (instance data with associated
+This module bridges :mod:`flowrep` retrospective objects (instance data with associated
 recipe) to the ``dict`` structure historically produced by
 :func:`flowrep.workflow.get_workflow_dict` in versions <0.3.0
 and consumed by downstream packages such as *semantikon*.
