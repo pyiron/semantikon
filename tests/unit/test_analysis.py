@@ -2,7 +2,7 @@ import unittest
 from dataclasses import dataclass
 from typing import Annotated
 
-from rdflib import RDF, Namespace
+from rdflib import RDF, Namespace, URIRef
 
 from semantikon import analysis as asis
 from semantikon import ontology as onto
@@ -243,6 +243,228 @@ class TestAnalysis(unittest.TestCase):
         uri = asis.identifier_to_uri(g, "my_kinetic_energy_workflow")[0]
         identifier = str(g.value(uri, onto.SNS.local_identifier))
         self.assertEqual(identifier, "my_kinetic_energy_workflow")
+
+    def test_function_request_from_simple_function(self):
+        """Test parsing FunctionRequest from a simple function graph."""
+
+        func_uri = URIRef("http://example.org/functions/add")
+        func_data = {
+            "qualname": "add",
+            "docstring": "Add two numbers",
+            "module": "math_utils",
+        }
+        input_args = [
+            {"label": "a", "position": 0},
+            {"label": "b", "position": 1},
+        ]
+        output_args = [{"label": "result", "position": 0}]
+
+        graph = onto._function_to_graph(func_uri, func_data, input_args, output_args)
+        request = asis.parse_function_request(graph)
+
+        self.assertEqual(request.name, "add")
+        self.assertEqual(request.docstring, "Add two numbers")
+        self.assertEqual(request.python_import, "math_utils")
+        self.assertEqual(request.artifact_type, "function")
+        self.assertEqual(len(request.inputs), 2)
+        self.assertEqual(len(request.outputs), 1)
+        self.assertEqual(request.inputs[0].name, "a")
+        self.assertEqual(request.inputs[1].name, "b")
+        self.assertEqual(request.outputs[0].name, "result")
+
+    def test_function_request_with_metadata(self):
+        """Test FunctionRequest with additional metadata (category, keywords)."""
+
+        func_uri = URIRef("http://example.org/functions/distance")
+        func_data = {
+            "qualname": "euclidean_distance",
+            "docstring": "Calculate Euclidean distance",
+            "module": "geometry.vector",
+        }
+        input_args = [
+            {"label": "point1", "position": 0},
+            {"label": "point2", "position": 1},
+        ]
+        output_args = [{"label": "distance", "position": 0}]
+
+        graph = onto._function_to_graph(func_uri, func_data, input_args, output_args)
+        request = asis.parse_function_request(
+            graph, category="geometry", keywords=["distance", "vector", "math"]
+        )
+
+        self.assertEqual(request.category, "geometry")
+        self.assertEqual(request.keywords, ["distance", "vector", "math"])
+        self.assertEqual(request.name, "euclidean_distance")
+
+    def test_function_request_with_defaults(self):
+        """Test FunctionRequest preserves default values."""
+
+        func_uri = URIRef("http://example.org/functions/power")
+        func_data = {
+            "qualname": "power",
+            "docstring": "Raise to power",
+            "module": "math_utils",
+        }
+        input_args = [
+            {"label": "base", "position": 0},
+            {"label": "exponent", "position": 1, "default": 2},
+        ]
+        output_args = [{"label": "result", "position": 0}]
+
+        graph = onto._function_to_graph(func_uri, func_data, input_args, output_args)
+        request = asis.parse_function_request(graph)
+
+        self.assertEqual(request.inputs[1].name, "exponent")
+        self.assertEqual(request.inputs[1].default, 2)
+
+    def test_function_request_with_source_code(self):
+        """Test FunctionRequest with source code."""
+
+        func_uri = URIRef("http://example.org/functions/identity")
+        func_data = {
+            "qualname": "identity",
+            "docstring": "Identity function",
+            "module": "utils",
+        }
+        input_args = [{"label": "x", "position": 0}]
+        output_args = [{"label": "result", "position": 0}]
+
+        graph = onto._function_to_graph(func_uri, func_data, input_args, output_args)
+        source_code = "def identity(x):\n    return x"
+        request = asis.parse_function_request(graph, source_code=source_code)
+
+        self.assertEqual(request.source_code, source_code)
+
+    def test_function_request_annotation_ordering(self):
+        """Test that annotations are ordered by position."""
+
+        func_uri = URIRef("http://example.org/functions/multi_arg")
+        func_data = {
+            "qualname": "process",
+            "docstring": "Process multiple args",
+            "module": "utils",
+        }
+        input_args = [
+            {"label": "first", "position": 0},
+            {"label": "second", "position": 1},
+            {"label": "third", "position": 2},
+        ]
+        output_args = [{"label": "result", "position": 0}]
+
+        graph = onto._function_to_graph(func_uri, func_data, input_args, output_args)
+        request = asis.parse_function_request(graph)
+
+        self.assertEqual(len(request.inputs), 3)
+        self.assertEqual(request.inputs[0].name, "first")
+        self.assertEqual(request.inputs[1].name, "second")
+        self.assertEqual(request.inputs[2].name, "third")
+
+    def test_annotation_fields(self):
+        """Test Annotation dataclass fields."""
+        from semantikon.analysis import Annotation
+
+        annotation = Annotation(
+            name="param1",
+            type_="int",
+            label="Parameter 1",
+            position=0,
+            default=42,
+            uri="http://example.org/types/int",
+        )
+
+        self.assertEqual(annotation.name, "param1")
+        self.assertEqual(annotation.type_, "int")
+        self.assertEqual(annotation.label, "Parameter 1")
+        self.assertEqual(annotation.position, 0)
+        self.assertEqual(annotation.default, 42)
+        self.assertEqual(annotation.uri, "http://example.org/types/int")
+
+    def test_function_request_pydantic_validation(self):
+        """Test FunctionRequest Pydantic validation."""
+        from semantikon.analysis import Annotation, FunctionRequest
+
+        # Minimal valid request
+        req = FunctionRequest(name="test_func")
+        self.assertEqual(req.name, "test_func")
+        self.assertEqual(req.author_name, "unknown")
+        self.assertEqual(req.author_email, "unknown")
+        self.assertEqual(req.artifact_type, "function")
+
+        # Full request
+        req_full = FunctionRequest(
+            author_name="John Doe",
+            author_email="john@example.com",
+            name="complex_func",
+            category="data",
+            keywords=["transform", "filter"],
+            homepage_url="https://example.com",
+            documentation_url="https://docs.example.com",
+            source_url="https://github.com/example",
+            python_import="my_package.module",
+            dependencies=["numpy", "pandas"],
+            source_code="# code",
+            docstring="Function description",
+            inputs=[Annotation(name="data")],
+            outputs=[Annotation(name="result")],
+        )
+
+        self.assertEqual(req_full.author_name, "John Doe")
+        self.assertEqual(req_full.author_email, "john@example.com")
+        self.assertEqual(len(req_full.keywords), 2)
+        self.assertEqual(len(req_full.dependencies), 2)
+
+    def test_function_request_model_dump(self):
+        """Test FunctionRequest model_dump method."""
+
+        func_uri = URIRef("http://example.org/functions/test")
+        func_data = {
+            "qualname": "test",
+            "docstring": "Test function",
+            "module": "test_module",
+        }
+        input_args = [{"label": "x", "position": 0}]
+        output_args = [{"label": "y", "position": 0}]
+
+        graph = onto._function_to_graph(func_uri, func_data, input_args, output_args)
+        request = asis.parse_function_request(graph, category="test")
+
+        data = request.model_dump()
+
+        self.assertIsInstance(data, dict)
+        self.assertEqual(data["name"], "test")
+        self.assertEqual(data["python_import"], "test_module")
+        self.assertEqual(data["category"], "test")
+        self.assertEqual(len(data["inputs"]), 1)
+        self.assertEqual(len(data["outputs"]), 1)
+
+    def test_extract_annotations_from_graph(self):
+        """Test extract_annotations_from_graph helper function."""
+        from rdflib import URIRef
+
+        from semantikon.analysis import extract_annotations_from_graph
+
+        func_uri = URIRef("http://example.org/functions/multi")
+        func_data = {
+            "qualname": "multi",
+            "docstring": "Multi arg function",
+            "module": "utils",
+        }
+        input_args = [
+            {"label": "a", "position": 0},
+            {"label": "b", "position": 1},
+        ]
+        output_args = [{"label": "result", "position": 0}]
+
+        graph = onto._function_to_graph(func_uri, func_data, input_args, output_args)
+
+        inputs = extract_annotations_from_graph(graph, arg_type="input")
+        outputs = extract_annotations_from_graph(graph, arg_type="output")
+
+        self.assertEqual(len(inputs), 2)
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(inputs[0].name, "a")
+        self.assertEqual(inputs[1].name, "b")
+        self.assertEqual(outputs[0].name, "result")
 
 
 if __name__ == "__main__":
