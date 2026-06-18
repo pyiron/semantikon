@@ -156,7 +156,8 @@ def wf_triples(a, b):
 @workflow
 def wf_nested_triples(a, b):
     result = wf_triples(a, b)
-    return result
+    one = add_one(result)
+    return one
 
 
 class Meal:
