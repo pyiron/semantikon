@@ -667,8 +667,12 @@ def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
             return True
         return _input_is_connected(candidate[0], G)
     elif n_predecessors == 2 and _is_macro_output(io, G, tuple(candidate)):
-        return _input_is_connected(candidate[0], G) and _input_is_connected(
-            candidate[1], G
+        return all(
+            [
+                _input_is_connected(cc, G)
+                for cc in candidate
+                if G.nodes[cc]["step"] != "node"
+            ]
         )
     else:
         predecessor_steps = {c: G.nodes[c]["step"] for c in candidate}
