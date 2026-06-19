@@ -387,6 +387,12 @@ def get_knowledge_graph(
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
+    if isinstance(wf_dict, dict):
+        warnings.warn(
+            "Passing a dict to 'get_knowledge_graph' is deprecated and will be removed in a future version. "
+            "Please pass a 'flowrep' object instead.",
+            DeprecationWarning,
+        )
     if isinstance(wf_dict, fr.schemas.WorkflowRecipe):
         wf_dict = nodedata2dict(fr.schemas.DagData.from_recipe(wf_dict))
     elif isinstance(wf_dict, fr.schemas.DagData):
