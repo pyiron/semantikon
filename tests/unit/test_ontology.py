@@ -7,7 +7,7 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Annotated
 
-from flowrep.api import tools as frt
+import flowrep as fr
 from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, compare
 from rdflib.compare import graph_diff
@@ -507,7 +507,7 @@ class TestOntology(unittest.TestCase):
 
     def test_get_knowledge_graph_type_coercion(self):
         flowrep_recipe = my_kinetic_energy_workflow.flowrep_recipe
-        flowrep_data = frt.recipe2data(flowrep_recipe)
+        flowrep_data = fr.tools.recipe2data(flowrep_recipe)
 
         graphs = [
             onto.get_knowledge_graph(target)
@@ -552,7 +552,7 @@ class TestOntology(unittest.TestCase):
         )
 
         recipe = my_kinetic_energy_workflow.flowrep_recipe
-        for target in (g, frt.recipe2data(recipe), recipe):
+        for target in (g, fr.tools.recipe2data(recipe), recipe):
             with self.subTest(f"Type coercion {target}"):
                 self.assertTrue(onto.validate_values(target)[0])
 
@@ -875,7 +875,7 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_run(self):
-        wf_data = frt.run_recipe(
+        wf_data = fr.tools.run_recipe(
             my_kinetic_energy_workflow.flowrep_recipe, distance=2, time=1, mass=4
         )
         g_run = onto.get_knowledge_graph(wf_data)
@@ -914,7 +914,7 @@ class TestOntology(unittest.TestCase):
                 self.assertFalse(any(str(r).endswith(tag) for r in results))
 
     def test_query_with_uri(self):
-        wf_data = frt.run_recipe(
+        wf_data = fr.tools.run_recipe(
             my_kinetic_energy_workflow.flowrep_recipe, distance=1.0, time=2.0, mass=3.0
         )
         graph = onto.get_knowledge_graph(wf_data)
@@ -938,7 +938,7 @@ class TestOntology(unittest.TestCase):
 
     def test_extract_dataclass(self):
         inp = Input(T=300.0, n=100)
-        wf_data = frt.run_recipe(get_run_md.flowrep_recipe, inp=inp, E=1.0)
+        wf_data = fr.tools.run_recipe(get_run_md.flowrep_recipe, inp=inp, E=1.0)
         g = onto.get_knowledge_graph(wf_data)
         g_dc = onto.extract_dataclass(g)
         with self.subTest("temperature data"):
@@ -987,7 +987,7 @@ class TestOntology(unittest.TestCase):
               ?e_datanode pmdco:0000006 ?e_value .
             }"""
 
-        wf_data = frt.run_recipe(
+        wf_data = fr.tools.run_recipe(
             workflow_with_dataclass.flowrep_recipe, speed_data=speed_data, mass=3
         )
         g = onto.get_knowledge_graph(wf_data, extract_dataclasses=False)
@@ -1028,7 +1028,7 @@ class TestOntology(unittest.TestCase):
 
     def test_unhashable(self):
         uh = Unhashable()
-        wf_data = frt.run_recipe(my_unhashable_inputs.flowrep_recipe, uh=uh)
+        wf_data = fr.tools.run_recipe(my_unhashable_inputs.flowrep_recipe, uh=uh)
         with self.assertRaises(RuntimeError) as context:
             _ = onto.get_knowledge_graph(wf_data)
             self.assertEqual(
@@ -1042,7 +1042,7 @@ class TestOntology(unittest.TestCase):
         _ = onto.get_knowledge_graph(multiple_connection.flowrep_recipe)
 
     def test_load_data(self):
-        wf_data = frt.run_recipe(
+        wf_data = fr.tools.run_recipe(
             my_kinetic_energy_workflow.flowrep_recipe, distance=1.0, time=2.0, mass=3.0
         )
         graph = onto.get_knowledge_graph(wf_data, store_data=True, file_name="test")

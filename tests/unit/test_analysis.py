@@ -2,7 +2,7 @@ import unittest
 from dataclasses import dataclass
 from typing import Annotated
 
-from flowrep.api import tools as frt
+import flowrep as fr
 from rdflib import RDF, Namespace
 
 from semantikon import analysis as asis
@@ -128,7 +128,7 @@ class TestAnalysis(unittest.TestCase):
         wf_dict["inputs"]["mass"]["value"] = 3.0
         self.assertDictEqual(wf_dict["outputs"], {"kinetic_energy": {}})
         graph = onto.get_knowledge_graph(
-            frt.run_recipe(
+            fr.tools.run_recipe(
                 my_kinetic_energy_workflow.flowrep_recipe,
                 distance=2.0,
                 time=2.0,
@@ -140,7 +140,7 @@ class TestAnalysis(unittest.TestCase):
             wf_dict["outputs"], {"kinetic_energy": {}}, msg="no known inputs"
         )
         graph += onto.get_knowledge_graph(
-            frt.run_recipe(
+            fr.tools.run_recipe(
                 my_kinetic_energy_workflow.flowrep_recipe,
                 distance=1.0,
                 time=2.0,
@@ -169,7 +169,7 @@ class TestAnalysis(unittest.TestCase):
             msg="speed must be known because of known distance and time",
         )
         graph = onto.get_knowledge_graph(
-            frt.run_recipe(
+            fr.tools.run_recipe(
                 my_kinetic_energy_workflow.flowrep_recipe,
                 distance=1.0,
                 time=2.0,
@@ -183,7 +183,7 @@ class TestAnalysis(unittest.TestCase):
         )
 
     def test_sparql_writer(self):
-        wf_data = frt.run_recipe(
+        wf_data = fr.tools.run_recipe(
             my_kinetic_energy_workflow.flowrep_recipe, distance=2.0, time=1.0, mass=4.0
         )
         graph = onto.get_knowledge_graph(wf_data)
@@ -219,7 +219,7 @@ class TestAnalysis(unittest.TestCase):
         self.assertIsInstance(comp.my_kinetic_energy_workflow, asis._Node)
 
         graph += onto.get_knowledge_graph(
-            frt.run_recipe(
+            fr.tools.run_recipe(
                 only_get_speed_workflow.flowrep_recipe, distance=3.0, time=1.5
             ),
             prefix="T",
@@ -251,7 +251,7 @@ class TestAnalysis(unittest.TestCase):
 
     def test_sparql_writer_with_dataclass(self):
         data = SpeedData(distance=1.0, time=2.0)
-        wf_data = frt.run_recipe(
+        wf_data = fr.tools.run_recipe(
             workflow_with_dataclass.flowrep_recipe, data=data, mass=3.0
         )
         graph = onto.get_knowledge_graph(wf_data, extract_dataclasses=True)
