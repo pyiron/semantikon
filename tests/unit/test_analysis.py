@@ -2,6 +2,7 @@ import unittest
 from dataclasses import dataclass
 from typing import Annotated
 
+import flowrep as fr
 from rdflib import RDF, Namespace
 
 from semantikon import analysis as asis
@@ -74,8 +75,9 @@ def only_get_speed_workflow(distance, time):
 
 class TestAnalysis(unittest.TestCase):
     def test_my_kinetic_energy_workflow_graph(self):
-        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
-        g = onto.get_knowledge_graph(wf_dict, prefix="T")
+        g = onto.get_knowledge_graph(
+            my_kinetic_energy_workflow.flowrep_recipe, prefix="T"
+        )
 
         with self.subTest("workflow instance exists"):
             uri = asis.identifier_to_uri(g, "my_kinetic_energy_workflow")[0]
@@ -126,14 +128,24 @@ class TestAnalysis(unittest.TestCase):
         wf_dict["inputs"]["mass"]["value"] = 3.0
         self.assertDictEqual(wf_dict["outputs"], {"kinetic_energy": {}})
         graph = onto.get_knowledge_graph(
-            my_kinetic_energy_workflow.run(distance=2.0, time=2.0, mass=3.0)
+            fr.tools.run_recipe(
+                my_kinetic_energy_workflow.flowrep_recipe,
+                distance=2.0,
+                time=2.0,
+                mass=3.0,
+            )
         )
         wf_dict = asis.request_values(wf_dict, graph)
         self.assertDictEqual(
             wf_dict["outputs"], {"kinetic_energy": {}}, msg="no known inputs"
         )
         graph += onto.get_knowledge_graph(
-            my_kinetic_energy_workflow.run(distance=1.0, time=2.0, mass=3.0)
+            fr.tools.run_recipe(
+                my_kinetic_energy_workflow.flowrep_recipe,
+                distance=1.0,
+                time=2.0,
+                mass=3.0,
+            )
         )
         wf_dict = asis.request_values(wf_dict, graph)
         self.assertDictEqual(
@@ -157,7 +169,12 @@ class TestAnalysis(unittest.TestCase):
             msg="speed must be known because of known distance and time",
         )
         graph = onto.get_knowledge_graph(
-            my_kinetic_energy_workflow.run(distance=1.0, time=2.0, mass=4.0),
+            fr.tools.run_recipe(
+                my_kinetic_energy_workflow.flowrep_recipe,
+                distance=1.0,
+                time=2.0,
+                mass=4.0,
+            ),
             remove_data=True,
         )
         wf_dict = asis.request_values(wf_dict, graph)
@@ -166,8 +183,10 @@ class TestAnalysis(unittest.TestCase):
         )
 
     def test_sparql_writer(self):
-        wf_dict = my_kinetic_energy_workflow.run(distance=2.0, time=1.0, mass=4.0)
-        graph = onto.get_knowledge_graph(wf_dict)
+        wf_data = fr.tools.run_recipe(
+            my_kinetic_energy_workflow.flowrep_recipe, distance=2.0, time=1.0, mass=4.0
+        )
+        graph = onto.get_knowledge_graph(wf_data)
         comp = asis.query_io_completer(graph)
         self.assertEqual(
             dir(comp.my_kinetic_energy_workflow.get_speed_0.inputs),
@@ -200,7 +219,10 @@ class TestAnalysis(unittest.TestCase):
         self.assertIsInstance(comp.my_kinetic_energy_workflow, asis._Node)
 
         graph += onto.get_knowledge_graph(
-            only_get_speed_workflow.run(distance=3.0, time=1.5), prefix="T"
+            fr.tools.run_recipe(
+                only_get_speed_workflow.flowrep_recipe, distance=3.0, time=1.5
+            ),
+            prefix="T",
         )
         comp = asis.query_io_completer(graph)
         A = comp.my_kinetic_energy_workflow.inputs.time
@@ -217,7 +239,7 @@ class TestAnalysis(unittest.TestCase):
             _ = (A & E).query()
         self.assertEqual(str(context.exception), "No common head node found")
         self.assertEqual(E.query(), [(3.0,)])
-        graph = onto.get_knowledge_graph(wf_dict, remove_data=True)
+        graph = onto.get_knowledge_graph(wf_data, remove_data=True)
         comp = asis.query_io_completer(graph)
         A = comp.my_kinetic_energy_workflow.inputs.time
         B = comp.my_kinetic_energy_workflow.outputs.kinetic_energy
@@ -229,8 +251,10 @@ class TestAnalysis(unittest.TestCase):
 
     def test_sparql_writer_with_dataclass(self):
         data = SpeedData(distance=1.0, time=2.0)
-        wf_dict = workflow_with_dataclass.run(data=data, mass=3.0)
-        graph = onto.get_knowledge_graph(wf_dict, extract_dataclasses=True)
+        wf_data = fr.tools.run_recipe(
+            workflow_with_dataclass.flowrep_recipe, data=data, mass=3.0
+        )
+        graph = onto.get_knowledge_graph(wf_data, extract_dataclasses=True)
         comp = asis.query_io_completer(graph)
         self.assertEqual(
             comp.workflow_with_dataclass.inputs.data.distance.query(),
@@ -238,8 +262,7 @@ class TestAnalysis(unittest.TestCase):
         )
 
     def test_identifier_to_uri(self):
-        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
-        g = onto.get_knowledge_graph(wf_dict)
+        g = onto.get_knowledge_graph(my_kinetic_energy_workflow.flowrep_recipe)
         uri = asis.identifier_to_uri(g, "my_kinetic_energy_workflow")[0]
         identifier = str(g.value(uri, onto.SNS.local_identifier))
         self.assertEqual(identifier, "my_kinetic_energy_workflow")

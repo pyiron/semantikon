@@ -371,11 +371,12 @@ def get_knowledge_graph(
     pmdco_uri: str = "https://w3id.org/pmd/co/3.0.0",
 ) -> Graph:
     """
-    Generate RDF graph from a dictionary containing workflow information
+    Generate RDF graph from workflow information
 
     Args:
-        wf_dict (dict|fr.schemas.DagData|fr.schemas.WorkflowRecipe): dictionary containing workflow information, or a ``flowrep``
-            object coercible to such a dictionary.
+        wf_dict (fr.schemas.DagData|fr.schemas.WorkflowRecipe): ``flowrep``
+            object containing workflow information. Passing a ``dict`` is
+            deprecated and will be removed in a future version.
         include_t_box (bool): if True, include T-Box information
         include_a_box (bool): if True, include A-Box information
         hash_data (bool): if True, compute and include hash values for data nodes
@@ -387,6 +388,13 @@ def get_knowledge_graph(
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
+    if isinstance(wf_dict, dict):
+        warnings.warn(
+            "Passing a dict to 'get_knowledge_graph' is deprecated and will be removed in a future version. "
+            "Please pass a 'flowrep' object instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
     if isinstance(wf_dict, fr.schemas.WorkflowRecipe):
         wf_dict = nodedata2dict(fr.schemas.DagData.from_recipe(wf_dict))
     elif isinstance(wf_dict, fr.schemas.DagData):
