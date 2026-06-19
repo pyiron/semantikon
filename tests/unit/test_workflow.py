@@ -84,6 +84,20 @@ def complex_workflow(
     return c
 
 
+def _serialize_callable_functions(data):
+    if isinstance(data, dict):
+        result = {}
+        for key, value in data.items():
+            if key == "function" and callable(value):
+                result[key] = flowrep_dict.get_function_metadata(value)
+            else:
+                result[key] = _serialize_callable_functions(value)
+        return result
+    if isinstance(data, list):
+        return [_serialize_callable_functions(v) for v in data]
+    return data
+
+
 class TestWorkflow(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -149,7 +163,7 @@ class TestWorkflow(unittest.TestCase):
         }
         wf = example_macro.get_semantikon_dict()
         self.assertEqual(wf["type"], "workflow")
-        smtk_wf = flowrep_dict.serialize_functions(wf)
+        smtk_wf = _serialize_callable_functions(wf)
         del smtk_wf["function"]
         self.assertEqual(smtk_wf, ref_data)
 
@@ -242,7 +256,7 @@ class TestWorkflow(unittest.TestCase):
         }
         wf = example_workflow.get_semantikon_dict()
         self.assertEqual(wf["type"], "workflow")
-        smtk_wf = flowrep_dict.serialize_functions(wf)
+        smtk_wf = _serialize_callable_functions(wf)
         del smtk_wf["function"]
         del smtk_wf["nodes"]["example_macro_0"]["function"]
         self.assertEqual(smtk_wf, ref_data)

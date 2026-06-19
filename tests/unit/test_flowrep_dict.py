@@ -405,58 +405,14 @@ class TestAnnotationConverters(unittest.TestCase):
 class TestDigraphConverters(unittest.TestCase):
     def test_wf_dict_to_graph(self):
         wf_dict = flowrep_dict.nodedata2dict(
-            frt.recipe2data(example_workflow.flowrep_recipe)
+            frt.run_recipe(example_workflow.flowrep_recipe, a=1, b=2)
         )
-        wf_dict["inputs"] = {"a": {"value": 1}, "b": {"default": 2}}
-        wf_dict["nodes"]["add_0"]["inputs"] = {"y": {"metadata": "something"}}
         G = flowrep_dict._get_workflow_graph(wf_dict)
         self.assertDictEqual(
             G.nodes["add_0:inputs@y"],
-            {"metadata": "something", "position": 0, "step": "input"},
+            {"value": 2, "dtype": float, "default": 1, "position": 1, "step": "input"},
         )
-        G = flowrep_dict._simple_run(G)
         self.assertDictEqual(G.nodes["outputs@z"], {"step": "output", "value": 12})
-        rev_edges = flowrep_dict._graph_to_wf_dict(G)["edges"]
-        self.assertEqual(
-            sorted(rev_edges),
-            sorted(wf_dict["edges"]),
-        )
-        rev_macro_edges = flowrep_dict._graph_to_wf_dict(G)["nodes"]["example_macro_0"][
-            "edges"
-        ]
-        self.assertEqual(
-            sorted(rev_macro_edges),
-            sorted(wf_dict["nodes"]["example_macro_0"]["edges"]),
-        )
-
-    def test_simple_run_skips_nodes_with_prepopulated_outputs(self):
-        """_simple_run must not recompute a node whose output ports already have values."""
-        # A post-run workflow dict already has values on all output ports.
-        wf_dict = flowrep_dict.nodedata2dict(
-            frt.run_recipe(workflow_with_data.flowrep_recipe, a=10, b=20),
-        )
-        G = flowrep_dict._get_workflow_graph(wf_dict)
-        # Confirm that output ports are pre-populated (triggering the continue branch).
-        self.assertIn("value", G.nodes["add_0:outputs@output"])
-        # Sanity check to confirm initial values
-        self.assertEqual(G.nodes["outputs@x"]["value"], 30)
-        self.assertEqual(G.nodes["outputs@y"]["value"], 600)
-        # _simple_run should succeed and preserve existing values unchanged.
-        G_result = flowrep_dict._simple_run(G)
-        self.assertEqual(G_result.nodes["outputs@x"]["value"], 30)
-        self.assertEqual(G_result.nodes["outputs@y"]["value"], 600)
-
-    def test_graph_to_wf_dict_passthrough_edge(self):
-        """_graph_to_wf_dict must correctly round-trip edges between workflow-level I/O."""
-        # _passthrough_workflow returns both the raw input x and the negated y,
-        # producing an edge (inputs.x, outputs.x) that has node_list == [] on both ends.
-        wf_dict = flowrep_dict.nodedata2dict(
-            frs.DagData.from_recipe(_passthrough_workflow.flowrep_recipe),
-        )
-        G = flowrep_dict._get_workflow_graph(wf_dict)
-        rev = flowrep_dict._graph_to_wf_dict(G)
-        self.assertIn(("inputs.x", "outputs.x"), rev["edges"])
-        self.assertEqual(sorted(rev["edges"]), sorted(wf_dict["edges"]))
 
     def test_get_hashed_node_dict(self):
 
@@ -512,18 +468,6 @@ class TestDigraphConverters(unittest.TestCase):
 
 
 class TestTools(unittest.TestCase):
-    def test_defaultdict(self):
-        d = flowrep_dict.recursive_defaultdict()
-        d["x"]["y"]["z"] = 3
-        self.assertEqual(d["x"]["y"]["z"], 3)
-        normal = {"a": {"b": {"c": 1}}}
-        dd = flowrep_dict.dict_to_recursive_dd(normal)
-        self.assertEqual(dd["a"]["b"]["c"], 1)
-        dd["x"]["y"]["z"] = 2
-        self.assertEqual(dd["x"]["y"]["z"], 2)
-        plain = flowrep_dict.recursive_dd_to_dict(dd)
-        self.assertEqual(plain["a"]["b"]["c"], 1)
-
     def test_get_function_metadata(self):
         meta = flowrep_dict.get_function_metadata(example_function, full_metadata=True)
         self.assertIn("name", meta)
@@ -577,17 +521,13 @@ class TestOutputSanitizationConsistency(unittest.TestCase):
             msg="Should be exactly one inner output node named 'output'",
         )
 
-    def test_nested_dict_runs_via_simple_run(self):
-        """The full dict → nx graph → simple_run path must produce the right value."""
+    def test_nested_dict_run_produces_right_value(self):
+        """The full recipe run path must produce the right value."""
         inner = _inner_workflow_with_output_0()
         parent = _parent_workflow(inner)
-        parent_data = frs.DagData.from_recipe(parent)
+        parent_data = frt.run_recipe(parent, x=42)
         d = flowrep_dict.nodedata2dict(parent_data)
-        d["inputs"]["x"]["value"] = 42
-
-        G = flowrep_dict._get_workflow_graph(d)
-        G = flowrep_dict._simple_run(G)
-        self.assertEqual(G.nodes["outputs@result"]["value"], 42)
+        self.assertEqual(d["outputs"]["result"]["value"], 42)
 
 
 class TestGetFunctionMetadata(unittest.TestCase):
@@ -616,35 +556,6 @@ class TestGetFunctionMetadata(unittest.TestCase):
     def test_non_metadata_dict_raises(self):
         with self.assertRaisesRegex(ValueError, "it doesn't look like metadata"):
             flowrep_dict.get_function_metadata({"foo": "bar"})
-
-
-class TestSerializeFunctions(unittest.TestCase):
-    def test_callable_in_function_field_is_replaced(self):
-        """A callable stored as 'function' is converted to a metadata dict."""
-        data = {"type": "atomic", "function": add}
-        result = flowrep_dict.serialize_functions(data)
-        self.assertIsInstance(result["function"], dict)
-        self.assertIn("module", result["function"])
-        # Original dict is not mutated (deep copy).
-        self.assertTrue(callable(data["function"]))
-
-    def test_string_function_field_is_left_unchanged(self):
-        """A string 'function' value must not be replaced."""
-        data = {"type": "atomic", "function": "already_serialized"}
-        result = flowrep_dict.serialize_functions(data)
-        self.assertEqual(result["function"], "already_serialized")
-
-    def test_nested_workflow_nodes_are_recursed(self):
-        """Functions inside nested 'nodes' dicts are also serialized."""
-        data = {
-            "type": "workflow",
-            "nodes": {"add_0": {"type": "atomic", "function": add}},
-            "edges": [],
-        }
-        result = flowrep_dict.serialize_functions(data)
-        self.assertIsInstance(result["nodes"]["add_0"]["function"], dict)
-        # Original is not mutated.
-        self.assertTrue(callable(data["nodes"]["add_0"]["function"]))
 
 
 class TestMetadataPropagation(unittest.TestCase):
