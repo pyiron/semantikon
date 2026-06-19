@@ -518,6 +518,14 @@ class TestOntology(unittest.TestCase):
         with self.assertRaises(TypeError, msg="Uncoercible data should raise cleanly"):
             onto.get_knowledge_graph(42)
 
+        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
+        with self.assertWarns(DeprecationWarning, msg="Dict input should emit a DeprecationWarning"):
+            g_dict = onto.get_knowledge_graph(wf_dict)
+        self.assertTrue(
+            compare.isomorphic(graphs[0], g_dict),
+            msg="Dict input should produce an isomorphic graph to flowrep input",
+        )
+
     def test_my_kinetic_energy_workflow_graph(self):
         g = onto.get_knowledge_graph(my_kinetic_energy_workflow.flowrep_recipe)
 
