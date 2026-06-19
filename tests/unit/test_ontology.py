@@ -771,7 +771,9 @@ class TestOntology(unittest.TestCase):
         )
         self.assertFalse(onto.validate_values(graph)[0])
 
-        graph = onto.get_knowledge_graph(my_kinetic_energy_workflow_wrong_uri.flowrep_recipe)
+        graph = onto.get_knowledge_graph(
+            my_kinetic_energy_workflow_wrong_uri.flowrep_recipe
+        )
         self.assertFalse(onto.validate_values(graph)[0])
 
         graph = onto.get_knowledge_graph(
@@ -863,7 +865,9 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_run(self):
-        wf_data = frt.run_recipe(my_kinetic_energy_workflow.flowrep_recipe, distance=2, time=1, mass=4)
+        wf_data = frt.run_recipe(
+            my_kinetic_energy_workflow.flowrep_recipe, distance=2, time=1, mass=4
+        )
         g_run = onto.get_knowledge_graph(wf_data)
         query = sparql_prefixes + """
         SELECT ?node ?value WHERE {
@@ -1092,9 +1096,7 @@ class TestOntology(unittest.TestCase):
             ?bnode owl:onProperty bfo:0000051 .
             ?bnode owl:someValuesFrom sns:T_wf_nested_triples-wf_triples_0 .
         }"""
-        g = onto.get_knowledge_graph(
-            wf_nested_triples.flowrep_recipe, prefix="T"
-        )
+        g = onto.get_knowledge_graph(wf_nested_triples.flowrep_recipe, prefix="T")
         self.assertTrue(g.query(query).askAnswer, msg=g.serialize())
 
     def test_inconsistent_workflow_and_child_node_inputs(self):

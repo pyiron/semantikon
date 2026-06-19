@@ -75,7 +75,9 @@ def only_get_speed_workflow(distance, time):
 
 class TestAnalysis(unittest.TestCase):
     def test_my_kinetic_energy_workflow_graph(self):
-        g = onto.get_knowledge_graph(my_kinetic_energy_workflow.flowrep_recipe, prefix="T")
+        g = onto.get_knowledge_graph(
+            my_kinetic_energy_workflow.flowrep_recipe, prefix="T"
+        )
 
         with self.subTest("workflow instance exists"):
             uri = asis.identifier_to_uri(g, "my_kinetic_energy_workflow")[0]
