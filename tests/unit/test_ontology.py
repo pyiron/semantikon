@@ -519,7 +519,9 @@ class TestOntology(unittest.TestCase):
             onto.get_knowledge_graph(42)
 
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
-        with self.assertWarns(DeprecationWarning, msg="Dict input should emit a DeprecationWarning"):
+        with self.assertWarns(
+            DeprecationWarning, msg="Dict input should emit a DeprecationWarning"
+        ):
             g_dict = onto.get_knowledge_graph(wf_dict)
         self.assertTrue(
             compare.isomorphic(graphs[0], g_dict),
