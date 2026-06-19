@@ -13,7 +13,6 @@ from rdflib import OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, compare
 from rdflib.compare import graph_diff
 
 from semantikon import ontology as onto
-from semantikon.flowrep_dict import nodedata2dict
 from semantikon.metadata import SemantikonURI, meta
 from semantikon.visualize import visualize_recipe
 from semantikon.workflow import workflow
@@ -458,7 +457,7 @@ class TestOntology(unittest.TestCase):
             return fnc.__name__ + "_0"
 
         with self.subTest("Basic construction"):
-            g = onto.get_knowledge_graph(wf_dict=wf_dict)
+            g = onto.get_knowledge_graph(wf_dict=add_three.flowrep_recipe)
             validation = onto.validate_values(g)
             self.assertTrue(
                 validation[0],
@@ -475,20 +474,21 @@ class TestOntology(unittest.TestCase):
             overloaded_dict = copy.deepcopy(wf_dict)
             overloaded_dict["nodes"][subgraph_label]["edges"] = overloaded_input_edges
 
-            with self.assertRaises(
-                AssertionError,
-                msg="Providing an input with two legitimate sources (a peer source and "
-                "a parent source, in this case) should force an error. It would be "
-                "nice to hit the ValueError in __, but we hit an assertion in "
-                "`_get_data_node` first.",
-            ):
-                onto.get_knowledge_graph(wf_dict=overloaded_dict)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", DeprecationWarning)
+                with self.assertRaises(
+                    AssertionError,
+                    msg="Providing an input with two legitimate sources (a peer source and "
+                    "a parent source, in this case) should force an error. It would be "
+                    "nice to hit the ValueError in __, but we hit an assertion in "
+                    "`_get_data_node` first.",
+                ):
+                    onto.get_knowledge_graph(wf_dict=overloaded_dict)
 
     def test_uri_specificity(self):
         for source_more_specific in [True, False]:
             with self.subTest(f"source_more_specific={source_more_specific}"):
-                d = undefined_specificity.get_semantikon_dict()
-                g = onto.get_knowledge_graph(d)
+                g = onto.get_knowledge_graph(undefined_specificity.flowrep_recipe)
 
                 if source_more_specific:
                     g.add((EX.Upstream, RDFS.subClassOf, EX.Downstream))
@@ -508,21 +508,18 @@ class TestOntology(unittest.TestCase):
     def test_get_knowledge_graph_type_coercion(self):
         flowrep_recipe = my_kinetic_energy_workflow.flowrep_recipe
         flowrep_data = frt.recipe2data(flowrep_recipe)
-        semantikon_dict = nodedata2dict(flowrep_data)
 
         graphs = [
             onto.get_knowledge_graph(target)
-            for target in (flowrep_recipe, flowrep_data, semantikon_dict)
+            for target in (flowrep_recipe, flowrep_data)
         ]
-        self.assertTrue(compare.isomorphic(graphs[0], graphs[-1]))
-        self.assertTrue(compare.isomorphic(graphs[1], graphs[-1]))
+        self.assertTrue(compare.isomorphic(graphs[0], graphs[1]))
 
         with self.assertRaises(TypeError, msg="Uncoercible data should raise cleanly"):
             onto.get_knowledge_graph(42)
 
     def test_my_kinetic_energy_workflow_graph(self):
-        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
-        g = onto.get_knowledge_graph(wf_dict)
+        g = onto.get_knowledge_graph(my_kinetic_energy_workflow.flowrep_recipe)
 
         query = f"""
         PREFIX qudt: <http://qudt.org/schema/qudt/>
@@ -545,7 +542,7 @@ class TestOntology(unittest.TestCase):
         )
 
         recipe = my_kinetic_energy_workflow.flowrep_recipe
-        for target in (g, wf_dict, frt.recipe2data(recipe), recipe):
+        for target in (g, frt.recipe2data(recipe), recipe):
             with self.subTest(f"Type coercion {target}"):
                 self.assertTrue(onto.validate_values(target)[0])
 
@@ -688,14 +685,13 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_shacl_validation(self):
-        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
-        g = onto.get_knowledge_graph(wf_dict)
+        g = onto.get_knowledge_graph(my_kinetic_energy_workflow.flowrep_recipe)
         shacl = onto.owl_restrictions_to_shacl(g)
         self.assertTrue(validate(g, shacl_graph=shacl)[0])
 
     def test_derives_from(self):
-        wf_dict = wf_triples.get_semantikon_dict()
-        g = onto.get_knowledge_graph(wf_dict, include_a_box=False, prefix="T")
+        wf_recipe = wf_triples.flowrep_recipe
+        g = onto.get_knowledge_graph(wf_recipe, include_a_box=False, prefix="T")
         query = sparql_prefixes + dedent("""\
         SELECT ?main_class WHERE {
             ?derivedFrom owl:someValuesFrom ?input_class .
@@ -709,7 +705,7 @@ class TestOntology(unittest.TestCase):
             list(g.query(query))[0]["main_class"],
             onto.BASE["T_wf_triples-f_triples_0-outputs-a_data"],
         )
-        g = onto.get_knowledge_graph(wf_dict, include_t_box=False, prefix="T")
+        g = onto.get_knowledge_graph(wf_recipe, include_t_box=False, prefix="T")
         query = sparql_prefixes + dedent("""
         ASK WHERE {
             ?output a sns:T_wf_triples-f_triples_0-outputs-a_data .
@@ -720,8 +716,8 @@ class TestOntology(unittest.TestCase):
         self.assertTrue(g.query(query).askAnswer)
 
     def test_triples(self):
-        wf_dict = wf_triples.get_semantikon_dict()
-        g = onto.get_knowledge_graph(wf_dict, include_t_box=False, prefix="T")
+        wf_recipe = wf_triples.flowrep_recipe
+        g = onto.get_knowledge_graph(wf_recipe, include_t_box=False, prefix="T")
 
         with self.subTest("workflow instance exists"):
             workflows = list(g.subjects(RDF.type, onto.BASE.T_wf_triples))
@@ -760,58 +756,55 @@ class TestOntology(unittest.TestCase):
             }
             """)
             self.assertTrue(g.query(query).askAnswer)
-        g = onto.get_knowledge_graph(wf_dict)
+        g = onto.get_knowledge_graph(wf_recipe)
         self.assertTrue(onto.validate_values(g)[0])
 
     def test_type_checking(self):
-        wf_dict = eat_pizza.get_semantikon_dict()
-        graph = onto.get_knowledge_graph(wf_dict)
+        graph = onto.get_knowledge_graph(eat_pizza.flowrep_recipe)
         self.assertFalse(onto.validate_values(graph)[0], msg=graph.serialize())
-        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
-        graph = onto.get_knowledge_graph(wf_dict)
+        graph = onto.get_knowledge_graph(my_kinetic_energy_workflow.flowrep_recipe)
         verdict, _, report = onto.validate_values(graph)
         self.assertTrue(verdict, msg=report)
 
-        wf_dict = my_kinetic_energy_workflow_wrong_units.get_semantikon_dict()
-        graph = onto.get_knowledge_graph(wf_dict)
+        graph = onto.get_knowledge_graph(
+            my_kinetic_energy_workflow_wrong_units.flowrep_recipe
+        )
         self.assertFalse(onto.validate_values(graph)[0])
 
-        wf_dict = my_kinetic_energy_workflow_wrong_uri.get_semantikon_dict()
-        graph = onto.get_knowledge_graph(wf_dict)
+        graph = onto.get_knowledge_graph(my_kinetic_energy_workflow_wrong_uri.flowrep_recipe)
         self.assertFalse(onto.validate_values(graph)[0])
 
-        wf_dict = my_kinetic_energy_workflow_not_annotated.get_semantikon_dict()
-        graph = onto.get_knowledge_graph(wf_dict)
+        graph = onto.get_knowledge_graph(
+            my_kinetic_energy_workflow_not_annotated.flowrep_recipe
+        )
         self.assertFalse(onto.validate_values(graph, strict_typing=True)[0])
         self.assertTrue(onto.validate_values(graph, strict_typing=False)[0])
 
     def test_restrictions(self):
-        graph = onto.get_knowledge_graph(my_correct_workflow.get_semantikon_dict())
+        graph = onto.get_knowledge_graph(my_correct_workflow.flowrep_recipe)
         self.assertTrue(onto.validate_values(graph)[0])
 
-        graph = onto.get_knowledge_graph(my_wrong_workflow.get_semantikon_dict())
+        graph = onto.get_knowledge_graph(my_wrong_workflow.flowrep_recipe)
         self.assertFalse(onto.validate_values(graph)[0])
 
-        graph = onto.get_knowledge_graph(my_simple_workflow.get_semantikon_dict())
+        graph = onto.get_knowledge_graph(my_simple_workflow.flowrep_recipe)
         self.assertTrue(onto.validate_values(graph)[0])
 
-        graph = onto.get_knowledge_graph(my_shacl_workflow.get_semantikon_dict())
+        graph = onto.get_knowledge_graph(my_shacl_workflow.flowrep_recipe)
         verdict, _, report = onto.validate_values(graph)
         self.assertTrue(verdict, msg=report)
 
-        graph = onto.get_knowledge_graph(my_shacl_wrong_workflow.get_semantikon_dict())
+        graph = onto.get_knowledge_graph(my_shacl_wrong_workflow.flowrep_recipe)
         self.assertFalse(onto.validate_values(graph)[0])
 
     def test_visualize(self):
-        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
-        g = onto.get_knowledge_graph(wf_dict)
+        g = onto.get_knowledge_graph(my_kinetic_energy_workflow.flowrep_recipe)
         from graphviz.graphs import Digraph
 
         self.assertIsInstance(visualize_recipe(g), Digraph)
 
     def test_docstring(self):
-        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
-        g = onto.get_knowledge_graph(wf_dict)
+        g = onto.get_knowledge_graph(my_kinetic_energy_workflow.flowrep_recipe)
         bnode = list(g.subjects(RDF.type, onto.SNS.textual_entity))
         self.assertEqual(len(bnode), 1)
         self.assertEqual(
@@ -819,8 +812,7 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_function_metadata(self):
-        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
-        graph = onto.get_knowledge_graph(wf_dict)
+        graph = onto.get_knowledge_graph(my_kinetic_energy_workflow.flowrep_recipe)
         # Check that the main subject exists
         main_subject = onto.BASE[
             f"{__name__}-get_kinetic_energy-not_defined".replace(".", "-")
@@ -871,8 +863,8 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_run(self):
-        wf_dict = my_kinetic_energy_workflow.run(distance=2, time=1, mass=4)
-        g_run = onto.get_knowledge_graph(wf_dict)
+        wf_data = frt.run_recipe(my_kinetic_energy_workflow.flowrep_recipe, distance=2, time=1, mass=4)
+        g_run = onto.get_knowledge_graph(wf_data)
         query = sparql_prefixes + """
         SELECT ?node ?value WHERE {
           ?bnode a ?node ;
@@ -898,7 +890,7 @@ class TestOntology(unittest.TestCase):
                 ]
                 self.assertEqual(len(matched), 1)
                 self.assertEqual(matched[0][1].toPython(), value)
-        g_run_without_data = onto.get_knowledge_graph(wf_dict, remove_data=True)
+        g_run_without_data = onto.get_knowledge_graph(wf_data, remove_data=True)
         results = [d[0] for d in g_run_without_data.query(query)]
         for tag in [
             "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-output_data",
@@ -908,8 +900,10 @@ class TestOntology(unittest.TestCase):
                 self.assertFalse(any(str(r).endswith(tag) for r in results))
 
     def test_query_with_uri(self):
-        wf_dict = my_kinetic_energy_workflow.run(distance=1.0, time=2.0, mass=3.0)
-        graph = onto.get_knowledge_graph(wf_dict)
+        wf_data = frt.run_recipe(
+            my_kinetic_energy_workflow.flowrep_recipe, distance=1.0, time=2.0, mass=3.0
+        )
+        graph = onto.get_knowledge_graph(wf_data)
 
         query = sparql_prefixes + """
         SELECT ?distance_value ?e_value WHERE {
@@ -930,8 +924,8 @@ class TestOntology(unittest.TestCase):
 
     def test_extract_dataclass(self):
         inp = Input(T=300.0, n=100)
-        wf_dict = get_run_md.run(inp=inp, E=1.0)
-        g = onto.get_knowledge_graph(wf_dict)
+        wf_data = frt.run_recipe(get_run_md.flowrep_recipe, inp=inp, E=1.0)
+        g = onto.get_knowledge_graph(wf_data)
         g_dc = onto.extract_dataclass(g)
         with self.subTest("temperature data"):
             for s in g_dc.subjects(RDF.type, onto.BASE["get_run_md-inputs-inp_T_data"]):
@@ -979,12 +973,14 @@ class TestOntology(unittest.TestCase):
               ?e_datanode pmdco:0000006 ?e_value .
             }"""
 
-        wf_dict = workflow_with_dataclass.run(speed_data=speed_data, mass=3)
-        g = onto.get_knowledge_graph(wf_dict, extract_dataclasses=False)
+        wf_data = frt.run_recipe(
+            workflow_with_dataclass.flowrep_recipe, speed_data=speed_data, mass=3
+        )
+        g = onto.get_knowledge_graph(wf_data, extract_dataclasses=False)
         self.assertListEqual(list(g.query(query)), [])
         sec = onto._units_to_uri("second")
         self.assertEqual(len(list(g.subjects(onto.QUDT.hasUnit, sec))), 0)
-        g = onto.get_knowledge_graph(wf_dict, extract_dataclasses=True)
+        g = onto.get_knowledge_graph(wf_data, extract_dataclasses=True)
         self.assertGreater(len(list(g.subjects(onto.QUDT.hasUnit, sec))), 0)
         self.assertListEqual(
             [d.toPython() for d in list(g.query(query))[0]], [1, 0.375]
@@ -1018,9 +1014,9 @@ class TestOntology(unittest.TestCase):
 
     def test_unhashable(self):
         uh = Unhashable()
-        wf_dict = my_unhashable_inputs.run(uh=uh)
+        wf_data = frt.run_recipe(my_unhashable_inputs.flowrep_recipe, uh=uh)
         with self.assertRaises(RuntimeError) as context:
-            _ = onto.get_knowledge_graph(wf_dict)
+            _ = onto.get_knowledge_graph(wf_data)
             self.assertEqual(
                 str(context.exception),
                 "Failed to hash workflow data - use only hashable inputs or set hash_data=False",
@@ -1029,11 +1025,13 @@ class TestOntology(unittest.TestCase):
     def test_multiple_connections(self):
 
         # Check that the multiple connections for c do not cause error
-        _ = onto.get_knowledge_graph(multiple_connection.get_semantikon_dict())
+        _ = onto.get_knowledge_graph(multiple_connection.flowrep_recipe)
 
     def test_load_data(self):
-        wf_dict = my_kinetic_energy_workflow.run(distance=1.0, time=2.0, mass=3.0)
-        graph = onto.get_knowledge_graph(wf_dict, store_data=True, file_name="test")
+        wf_data = frt.run_recipe(
+            my_kinetic_energy_workflow.flowrep_recipe, distance=1.0, time=2.0, mass=3.0
+        )
+        graph = onto.get_knowledge_graph(wf_data, store_data=True, file_name="test")
         data = onto.load_data("test.h5")
         self.assertEqual(sorted(data.values()), [0.375, 0.5])
         for key, value in data.items():
@@ -1095,13 +1093,12 @@ class TestOntology(unittest.TestCase):
             ?bnode owl:someValuesFrom sns:T_wf_nested_triples-wf_triples_0 .
         }"""
         g = onto.get_knowledge_graph(
-            wf_nested_triples.get_semantikon_dict(), prefix="T"
+            wf_nested_triples.flowrep_recipe, prefix="T"
         )
         self.assertTrue(g.query(query).askAnswer, msg=g.serialize())
 
     def test_inconsistent_workflow_and_child_node_inputs(self):
-        wf_dict = swallow_pizza_painfully.get_semantikon_dict()
-        g = onto.get_knowledge_graph(wf_dict)
+        g = onto.get_knowledge_graph(swallow_pizza_painfully.flowrep_recipe)
         self.assertTrue(
             onto.validate_values(g)[0],
             msg=dedent("""
@@ -1122,7 +1119,7 @@ class TestOntology(unittest.TestCase):
         )
 
     def test_inheritance_of_derives_from(self):
-        g = onto.get_knowledge_graph(wf_triples.get_semantikon_dict())
+        g = onto.get_knowledge_graph(wf_triples.flowrep_recipe)
         onto._inherit_properties(g)
         uri_node = list(g.subjects(RDF.type, EX.Something))[0]
         data_node = list(g.subjects(onto.SNS.specifies_value_of, uri_node))
@@ -1140,7 +1137,7 @@ class TestOntology(unittest.TestCase):
         self.assertRaises(
             ValueError,
             onto.get_knowledge_graph,
-            workflow_with_wrong_derived_from.get_semantikon_dict(),
+            workflow_with_wrong_derived_from.flowrep_recipe,
         )
 
     def test_derived_from_and_with_and_without_uri(self):
@@ -1149,22 +1146,22 @@ class TestOntology(unittest.TestCase):
             "node itself does not have a URI",
         ):
             onto.get_knowledge_graph(
-                workflow_with_derived_from_and_no_uri.get_semantikon_dict()
+                workflow_with_derived_from_and_no_uri.flowrep_recipe
             )
         with warnings.catch_warnings():
             warnings.filterwarnings("error", message="node itself does not have a URI")
             onto.get_knowledge_graph(
-                workflow_with_derived_from_and_with_uri.get_semantikon_dict()
+                workflow_with_derived_from_and_with_uri.flowrep_recipe
             )
         with warnings.catch_warnings():
             warnings.filterwarnings("error", message="node itself does not have a URI")
             onto.get_knowledge_graph(
-                workflow_with_derived_from_and_with_no_uri_at_all.get_semantikon_dict()
+                workflow_with_derived_from_and_with_no_uri_at_all.flowrep_recipe
             )
         self.assertRaises(
             ValueError,
             onto.get_knowledge_graph,
-            workflow_with_wrong_derived_from_in_output.get_semantikon_dict(),
+            workflow_with_wrong_derived_from_in_output.flowrep_recipe,
         )
 
 
