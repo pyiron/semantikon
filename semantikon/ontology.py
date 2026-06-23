@@ -1439,7 +1439,9 @@ def _workflow_to_networkx(
                 child,
                 child_name,
                 parent_name=node_name,
-                workflow_label=child_label if isinstance(child, fr.schemas.DagData) else None,
+                workflow_label=(
+                    child_label if isinstance(child, fr.schemas.DagData) else None
+                ),
             )
 
         child_recipes = recipe.nodes
@@ -1483,7 +1485,10 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
 
         hash_dict_tmp: dict[str, Any] = {
             "inputs": {},
-            "outputs": [G.nodes[out].get("label", out.split("-")[-1]) for out in G.successors(node)],
+            "outputs": [
+                G.nodes[out].get("label", out.split("-")[-1])
+                for out in G.successors(node)
+            ],
             "node": copy.deepcopy(data.get("function")),
         }
         if hash_dict_tmp["node"] is None:

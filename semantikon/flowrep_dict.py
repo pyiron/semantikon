@@ -145,7 +145,8 @@ def _dict_to_atomic_data(node: dict[str, Any]) -> fr.schemas.AtomicData:
     data = fr.schemas.AtomicData.from_recipe(_dict_to_atomic_recipe(node))
     data.function = node["function"]
     data.input_ports = {
-        label: _dict_to_input_port(port) for label, port in node.get("inputs", {}).items()
+        label: _dict_to_input_port(port)
+        for label, port in node.get("inputs", {}).items()
     }
     data.output_ports = {
         label: _dict_to_output_port(port)
@@ -173,9 +174,7 @@ def _normalize_output_label(label: str, recipe_outputs: list[str]) -> str:
 def _dict_to_workflow_recipe(node: dict[str, Any]) -> fr.schemas.WorkflowRecipe:
     function = node.get("function")
     if function is None:
-        raise TypeError(
-            "Workflow dict entries must carry a callable."
-        )
+        raise TypeError("Workflow dict entries must carry a callable.")
     base_recipe = _flowrep_recipe_from_callable(function, node_type="workflow")
     nodes = {
         label: _dict_to_recipe(child_node)
@@ -187,7 +186,12 @@ def _dict_to_workflow_recipe(node: dict[str, Any]) -> fr.schemas.WorkflowRecipe:
     for src, tgt in node.get("edges", []):
         src_node, src_io, src_port = _split_endpoint(src)
         tgt_node, tgt_io, tgt_port = _split_endpoint(tgt)
-        if src_node is None and src_io == "inputs" and tgt_node is not None and tgt_io == "inputs":
+        if (
+            src_node is None
+            and src_io == "inputs"
+            and tgt_node is not None
+            and tgt_io == "inputs"
+        ):
             input_edges[fr.schemas.TargetHandle(node=tgt_node, port=tgt_port)] = (
                 fr.schemas.InputSource(port=src_port)
             )
@@ -201,10 +205,15 @@ def _dict_to_workflow_recipe(node: dict[str, Any]) -> fr.schemas.WorkflowRecipe:
             edges[fr.schemas.TargetHandle(node=tgt_node, port=tgt_port)] = (
                 fr.schemas.SourceHandle(node=src_node, port=src_port)
             )
-        elif tgt_node is None and tgt_io == "outputs" and src_node is None and src_io == "inputs":
+        elif (
+            tgt_node is None
+            and tgt_io == "outputs"
+            and src_node is None
+            and src_io == "inputs"
+        ):
             tgt_port = _normalize_output_label(tgt_port, list(base_recipe.outputs))
-            output_edges[fr.schemas.OutputTarget(port=tgt_port)] = fr.schemas.InputSource(
-                port=src_port
+            output_edges[fr.schemas.OutputTarget(port=tgt_port)] = (
+                fr.schemas.InputSource(port=src_port)
             )
         elif (
             tgt_node is None
@@ -214,8 +223,8 @@ def _dict_to_workflow_recipe(node: dict[str, Any]) -> fr.schemas.WorkflowRecipe:
         ):
             src_port = _normalize_output_label(src_port, nodes[src_node].outputs)
             tgt_port = _normalize_output_label(tgt_port, list(base_recipe.outputs))
-            output_edges[fr.schemas.OutputTarget(port=tgt_port)] = fr.schemas.SourceHandle(
-                node=src_node, port=src_port
+            output_edges[fr.schemas.OutputTarget(port=tgt_port)] = (
+                fr.schemas.SourceHandle(node=src_node, port=src_port)
             )
         else:
             raise ValueError(f"Malformed workflow edge: {src!r} -> {tgt!r}")
@@ -235,7 +244,8 @@ def _dict_to_workflow_data(node: dict[str, Any]) -> fr.schemas.DagData:
     recipe = _dict_to_workflow_recipe(node)
     data = fr.schemas.DagData.from_recipe(recipe)
     data.input_ports = {
-        label: _dict_to_input_port(port) for label, port in node.get("inputs", {}).items()
+        label: _dict_to_input_port(port)
+        for label, port in node.get("inputs", {}).items()
     }
     data.output_ports = {
         label: _dict_to_output_port(port)
