@@ -1480,7 +1480,15 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
     hash_dict: dict[str, dict[str, Any]] = {}
     for node in nx.topological_sort(G):
         data = G.nodes[node]
-        if data["step"] != "node":
+        if data.get("step") != "node":
+            for term in ("hash", "value"):
+                if term in data:
+                    continue
+                for predecessor in G.predecessors(node):
+                    predecessor_data = G.nodes[predecessor]
+                    if term in predecessor_data:
+                        data[term] = predecessor_data[term]
+                        break
             continue
 
         hash_dict_tmp: dict[str, Any] = {
@@ -1515,6 +1523,8 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
         h = sha256(
             json.dumps(hash_dict_tmp, sort_keys=True).encode("utf-8")
         ).hexdigest()
+        for out in G.successors(node):
+            G.nodes[out]["hash"] = h + "@" + G.nodes[out].get("label", out.split("-")[-1])
         hash_dict_tmp["hash"] = h
         hash_dict[node] = hash_dict_tmp
     return hash_dict
