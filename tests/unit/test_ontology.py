@@ -444,6 +444,11 @@ def workflow_with_wrong_derived_from_in_output(
     return result
 
 
+@workflow
+def passthrough_input_workflow(x):
+    return x
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1175,6 +1180,48 @@ class TestOntology(unittest.TestCase):
             onto.get_knowledge_graph,
             workflow_with_wrong_derived_from_in_output.flowrep_recipe,
         )
+
+    def test_infer_workflow_label_without_reference(self):
+        recipe = fr.schemas.WorkflowRecipe(
+            inputs=["x"],
+            outputs=["y"],
+            nodes={},
+            input_edges={},
+            edges={},
+            output_edges={fr.schemas.OutputTarget(port="y"): fr.schemas.InputSource(port="x")},
+        )
+        self.assertEqual(onto._infer_workflow_label(recipe), "")
+
+    def test_serialize_workflow_recipe_with_input_passthrough(self):
+        self.assertTrue(
+            any(
+                isinstance(source, fr.schemas.InputSource)
+                for source in passthrough_input_workflow.flowrep_recipe.output_edges.values()
+            )
+        )
+        G = onto.serialize_and_convert_to_networkx(
+            passthrough_input_workflow.flowrep_recipe,
+            hash_data=False,
+        )
+        self.assertIn(
+            ("passthrough_input_workflow-inputs-x", "passthrough_input_workflow-outputs-x"),
+            G.edges,
+        )
+
+    def test_hashing_skips_nodes_without_function_metadata(self):
+        recipe = fr.schemas.WorkflowRecipe(
+            inputs=["x"],
+            outputs=["y"],
+            nodes={},
+            input_edges={},
+            edges={},
+            output_edges={fr.schemas.OutputTarget(port="y"): fr.schemas.InputSource(port="x")},
+        )
+        data = fr.schemas.DagData.from_recipe(recipe)
+        data.input_ports["x"].value = 1.0
+        G = onto._workflow_to_networkx(data)
+        hashed = onto._get_hashed_node_dict_from_graph(G)
+        self.assertEqual(hashed, {})
 
 
 if __name__ == "__main__":
