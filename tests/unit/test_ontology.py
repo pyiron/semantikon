@@ -1188,7 +1188,9 @@ class TestOntology(unittest.TestCase):
             nodes={},
             input_edges={},
             edges={},
-            output_edges={fr.schemas.OutputTarget(port="y"): fr.schemas.InputSource(port="x")},
+            output_edges={
+                fr.schemas.OutputTarget(port="y"): fr.schemas.InputSource(port="x")
+            },
         )
         self.assertEqual(onto._infer_workflow_label(recipe), "")
 
@@ -1204,7 +1206,10 @@ class TestOntology(unittest.TestCase):
             hash_data=False,
         )
         self.assertIn(
-            ("passthrough_input_workflow-inputs-x", "passthrough_input_workflow-outputs-x"),
+            (
+                "passthrough_input_workflow-inputs-x",
+                "passthrough_input_workflow-outputs-x",
+            ),
             G.edges,
         )
 
@@ -1215,7 +1220,9 @@ class TestOntology(unittest.TestCase):
             nodes={},
             input_edges={},
             edges={},
-            output_edges={fr.schemas.OutputTarget(port="y"): fr.schemas.InputSource(port="x")},
+            output_edges={
+                fr.schemas.OutputTarget(port="y"): fr.schemas.InputSource(port="x")
+            },
         )
         data = fr.schemas.DagData.from_recipe(recipe)
         data.input_ports["x"].value = 1.0
