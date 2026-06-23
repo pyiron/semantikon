@@ -1524,7 +1524,9 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
             json.dumps(hash_dict_tmp, sort_keys=True).encode("utf-8")
         ).hexdigest()
         for out in G.successors(node):
-            G.nodes[out]["hash"] = h + "@" + G.nodes[out].get("label", out.split("-")[-1])
+            G.nodes[out]["hash"] = (
+                h + "@" + G.nodes[out].get("label", out.split("-")[-1])
+            )
         hash_dict_tmp["hash"] = h
         hash_dict[node] = hash_dict_tmp
     return hash_dict
