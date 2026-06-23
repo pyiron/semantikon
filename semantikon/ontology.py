@@ -27,6 +27,7 @@ from semantikon.converter import (
 )
 from semantikon.flowrep_dict import (
     _WorkflowGraphSerializer,
+    dict_to_nodedata,
     get_hashed_node_dict,
     nodedata2dict,
 )
@@ -395,16 +396,18 @@ def get_knowledge_graph(
             DeprecationWarning,
             stacklevel=2,
         )
+        wf_dict = dict_to_nodedata(wf_dict)
     if isinstance(wf_dict, fr.schemas.WorkflowRecipe):
-        wf_dict = nodedata2dict(fr.schemas.DagData.from_recipe(wf_dict))
+        wf_dict = fr.schemas.DagData.from_recipe(wf_dict)
     elif isinstance(wf_dict, fr.schemas.DagData):
-        wf_dict = nodedata2dict(wf_dict)
-    elif not isinstance(wf_dict, dict):
+        pass
+    else:
         raise TypeError(
             f"Invalid input type. Expected dict, flowrep {fr.schemas.DagData.__name__!r}, or "
             f"flowrep {fr.schemas.WorkflowRecipe.__name__!r}, but got {type(wf_dict)}."
         )
 
+    wf_dict = nodedata2dict(wf_dict)
     G = serialize_and_convert_to_networkx(wf_dict, hash_data=hash_data, prefix=prefix)
     _check_consistency_of_digraph(G)
     graph = _get_bound_graph()

@@ -323,6 +323,20 @@ class TestWorkflowToDict(unittest.TestCase):
             self.assertIn(src_prefix, valid_prefixes, msg=f"bad edge source: {src}")
             self.assertIn(tgt_prefix, valid_prefixes, msg=f"bad edge target: {tgt}")
 
+    def test_dict_to_nodedata_round_trip(self):
+        wf_dict = flowrep_dict.nodedata2dict(
+            frt.run_recipe(_diamond_workflow.flowrep_recipe, a=3, b=7)
+        )
+        node = flowrep_dict.dict_to_nodedata(wf_dict)
+        self.assertIsInstance(node, frs.DagData)
+        self.assertEqual(node.input_ports["a"].value, 3)
+        self.assertEqual(node.input_ports["b"].value, 7)
+        self.assertEqual(node.nodes["my_add_0"].output_ports["output"].value, 10)
+        self.assertEqual(
+            flowrep_dict.nodedata2dict(node)["edges"],
+            wf_dict["edges"],
+        )
+
 
 class TestFlowControlStub(unittest.TestCase):
     def test_raises_not_implemented(self):
