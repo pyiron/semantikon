@@ -36,6 +36,7 @@ from typing import Annotated, Any, cast, get_args, get_origin
 
 import flowrep as fr
 import networkx as nx
+from pydantic import ValidationError
 from pyiron_snippets import retrieve
 
 from semantikon.converter import (
@@ -45,6 +46,20 @@ from semantikon.converter import (
     parse_metadata,
 )
 from semantikon.datastructure import TypeMetadata
+
+
+def dict_to_nodedata(node: dict[str, Any]) -> fr.schemas.NodeData:
+    """Convert a legacy semantikon workflow dict into flowrep node data."""
+    try:
+        match node["type"]:
+            case "atomic":
+                return _dict_to_atomic_data(node)
+            case "workflow":
+                return _dict_to_workflow_data(node)
+            case other:
+                raise TypeError(f"Unsupported workflow dict node type: {other!r}")
+    except ValidationError as exc:
+        raise AssertionError(str(exc)) from exc
 
 
 def nodedata2dict(
@@ -73,6 +88,174 @@ def nodedata2dict(
             "control-flow dict, which requires unwrapping the body recipe."
         )
     raise TypeError(f"Unsupported data node type: {type(node).__name__}")
+
+
+def _dict_to_annotation(port: dict[str, Any]) -> Any | None:
+    dtype = port.get("dtype")
+    metadata = {
+        key: value
+        for key, value in port.items()
+        if key not in {"value", "dtype", "default"}
+    }
+    if dtype is None and not metadata:
+        return None
+    if metadata:
+        return Annotated[dtype if dtype is not None else Any, metadata]
+    return dtype
+
+
+def _dict_to_input_port(port: dict[str, Any]) -> fr.schemas.InputDataPort:
+    return fr.schemas.InputDataPort(
+        value=port["value"] if "value" in port else fr.schemas.NOT_DATA,
+        annotation=_dict_to_annotation(port),
+        default=port["default"] if "default" in port else fr.schemas.NOT_DATA,
+    )
+
+
+def _dict_to_output_port(port: dict[str, Any]) -> fr.schemas.OutputDataPort:
+    return fr.schemas.OutputDataPort(
+        value=port["value"] if "value" in port else fr.schemas.NOT_DATA,
+        annotation=_dict_to_annotation(port),
+    )
+
+
+def _flowrep_recipe_from_callable(function: Any, *, node_type: str):
+    if hasattr(function, "flowrep_recipe"):
+        return function.flowrep_recipe
+    decorator = fr.tools.atomic if node_type == "atomic" else fr.tools.workflow
+    return decorator(function).flowrep_recipe
+
+
+def _dict_to_atomic_recipe(node: dict[str, Any]) -> fr.schemas.AtomicRecipe:
+    function = node["function"]
+    return _flowrep_recipe_from_callable(function, node_type="atomic")
+
+
+def _dict_to_recipe(node: dict[str, Any]) -> fr.schemas.RecipeDiscrimination:
+    match node["type"]:
+        case "atomic":
+            return _dict_to_atomic_recipe(node)
+        case "workflow":
+            return _dict_to_workflow_recipe(node)
+        case other:
+            raise TypeError(f"Unsupported workflow dict node type: {other!r}")
+
+
+def _dict_to_atomic_data(node: dict[str, Any]) -> fr.schemas.AtomicData:
+    data = fr.schemas.AtomicData.from_recipe(_dict_to_atomic_recipe(node))
+    data.function = node["function"]
+    data.input_ports = {
+        label: _dict_to_input_port(port)
+        for label, port in node.get("inputs", {}).items()
+    }
+    data.output_ports = {
+        label: _dict_to_output_port(port)
+        for label, port in node.get("outputs", {}).items()
+    }
+    return data
+
+
+def _split_endpoint(endpoint: str) -> tuple[str | None, str, str]:
+    if endpoint.startswith("inputs.") or endpoint.startswith("outputs."):
+        io, port = endpoint.split(".", 1)
+        return None, io, port
+    parts = endpoint.rsplit(".", 2)
+    if len(parts) != 3 or parts[1] not in {"inputs", "outputs"}:
+        raise ValueError(f"Malformed workflow edge endpoint: {endpoint!r}")
+    return parts[0], parts[1], parts[2]
+
+
+def _normalize_output_label(label: str, recipe_outputs: list[str]) -> str:
+    if label == "output" and recipe_outputs == ["output_0"]:
+        return "output_0"
+    return label
+
+
+def _dict_to_workflow_recipe(node: dict[str, Any]) -> fr.schemas.WorkflowRecipe:
+    function = node.get("function")
+    if function is None:
+        raise TypeError("Workflow dict entries must carry a callable.")
+    base_recipe = _flowrep_recipe_from_callable(function, node_type="workflow")
+    nodes = {
+        label: _dict_to_recipe(child_node)
+        for label, child_node in node.get("nodes", {}).items()
+    }
+    input_edges: fr.schemas.InputEdges = {}
+    edges: fr.schemas.Edges = {}
+    output_edges: fr.schemas.OutputEdges = {}
+    for src, tgt in node.get("edges", []):
+        src_node, src_io, src_port = _split_endpoint(src)
+        tgt_node, tgt_io, tgt_port = _split_endpoint(tgt)
+        if (
+            src_node is None
+            and src_io == "inputs"
+            and tgt_node is not None
+            and tgt_io == "inputs"
+        ):
+            input_edges[fr.schemas.TargetHandle(node=tgt_node, port=tgt_port)] = (
+                fr.schemas.InputSource(port=src_port)
+            )
+        elif (
+            src_node is not None
+            and src_io == "outputs"
+            and tgt_node is not None
+            and tgt_io == "inputs"
+        ):
+            src_port = _normalize_output_label(src_port, nodes[src_node].outputs)
+            edges[fr.schemas.TargetHandle(node=tgt_node, port=tgt_port)] = (
+                fr.schemas.SourceHandle(node=src_node, port=src_port)
+            )
+        elif (
+            tgt_node is None
+            and tgt_io == "outputs"
+            and src_node is None
+            and src_io == "inputs"
+        ):
+            tgt_port = _normalize_output_label(tgt_port, list(base_recipe.outputs))
+            output_edges[fr.schemas.OutputTarget(port=tgt_port)] = (
+                fr.schemas.InputSource(port=src_port)
+            )
+        elif (
+            tgt_node is None
+            and tgt_io == "outputs"
+            and src_node is not None
+            and src_io == "outputs"
+        ):
+            src_port = _normalize_output_label(src_port, nodes[src_node].outputs)
+            tgt_port = _normalize_output_label(tgt_port, list(base_recipe.outputs))
+            output_edges[fr.schemas.OutputTarget(port=tgt_port)] = (
+                fr.schemas.SourceHandle(node=src_node, port=src_port)
+            )
+        else:
+            raise ValueError(f"Malformed workflow edge: {src!r} -> {tgt!r}")
+    return fr.schemas.WorkflowRecipe(
+        inputs=list(base_recipe.inputs),
+        outputs=list(base_recipe.outputs),
+        nodes=nodes,
+        input_edges=input_edges,
+        edges=edges,
+        output_edges=output_edges,
+        reference=base_recipe.reference,
+        description=base_recipe.description,
+    )
+
+
+def _dict_to_workflow_data(node: dict[str, Any]) -> fr.schemas.DagData:
+    recipe = _dict_to_workflow_recipe(node)
+    data = fr.schemas.DagData.from_recipe(recipe)
+    data.input_ports = {
+        label: _dict_to_input_port(port)
+        for label, port in node.get("inputs", {}).items()
+    }
+    data.output_ports = {
+        label: _dict_to_output_port(port)
+        for label, port in node.get("outputs", {}).items()
+    }
+    data.nodes = {
+        label: dict_to_nodedata(child_node)
+        for label, child_node in node.get("nodes", {}).items()
+    }
+    return data
 
 
 # ---------------------------------------------------------------------------

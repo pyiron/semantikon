@@ -127,6 +127,27 @@ def measurement_workflow(
     return result
 
 
+@frt.workflow
+def _passthrough_with_child(x):
+    _ = identity(x)
+    return x
+
+
+_passthrough_with_child.flowrep_recipe = frs.WorkflowRecipe(
+    inputs=["x"],
+    outputs=["output_0"],
+    nodes={"identity_0": identity.flowrep_recipe},
+    input_edges={
+        frs.TargetHandle(node="identity_0", port="x"): frs.InputSource(port="x"),
+    },
+    edges={},
+    output_edges={
+        frs.OutputTarget(port="output_0"): frs.InputSource(port="x"),
+    },
+    reference=_passthrough_with_child.flowrep_recipe.reference,
+)
+
+
 def _inner_workflow_with_output_0() -> frs.WorkflowRecipe:
     """A workflow whose sole output is named ``output_0``.
 
@@ -322,6 +343,20 @@ class TestWorkflowToDict(unittest.TestCase):
             tgt_prefix = tgt.split(".")[0]
             self.assertIn(src_prefix, valid_prefixes, msg=f"bad edge source: {src}")
             self.assertIn(tgt_prefix, valid_prefixes, msg=f"bad edge target: {tgt}")
+
+    def test_dict_to_nodedata_round_trip(self):
+        wf_dict = flowrep_dict.nodedata2dict(
+            frt.run_recipe(_diamond_workflow.flowrep_recipe, a=3, b=7)
+        )
+        node = flowrep_dict.dict_to_nodedata(wf_dict)
+        self.assertIsInstance(node, frs.DagData)
+        self.assertEqual(node.input_ports["a"].value, 3)
+        self.assertEqual(node.input_ports["b"].value, 7)
+        self.assertEqual(node.nodes["my_add_0"].output_ports["output"].value, 10)
+        self.assertEqual(
+            flowrep_dict.nodedata2dict(node)["edges"],
+            wf_dict["edges"],
+        )
 
 
 class TestFlowControlStub(unittest.TestCase):
@@ -528,6 +563,20 @@ class TestOutputSanitizationConsistency(unittest.TestCase):
         parent_data = frt.run_recipe(parent, x=42)
         d = flowrep_dict.nodedata2dict(parent_data)
         self.assertEqual(d["outputs"]["result"]["value"], 42)
+
+    def test_dict_to_nodedata_normalizes_passthrough_output_name(self):
+        node = frs.DagData.from_recipe(_passthrough_with_child.flowrep_recipe)
+        d = flowrep_dict.nodedata2dict(node)
+        self.assertIn(("inputs.x", "outputs.output"), d["edges"])
+        round_tripped = flowrep_dict.dict_to_nodedata(d)
+        self.assertIn(
+            frs.OutputTarget(port="output_0"),
+            round_tripped.recipe.output_edges,
+        )
+        self.assertEqual(
+            round_tripped.recipe.output_edges[frs.OutputTarget(port="output_0")],
+            frs.InputSource(port="x"),
+        )
 
 
 class TestGetFunctionMetadata(unittest.TestCase):

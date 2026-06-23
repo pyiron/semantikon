@@ -14,6 +14,7 @@ import bagofholding
 import flowrep as fr
 import networkx as nx
 from owlrl import DeductiveClosure, RDFS_Semantics
+from pyiron_snippets import retrieve
 from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
@@ -26,9 +27,9 @@ from semantikon.converter import (
     parse_output_args,
 )
 from semantikon.flowrep_dict import (
-    _WorkflowGraphSerializer,
-    get_hashed_node_dict,
-    nodedata2dict,
+    annotation_to_type_hint,
+    annotation_to_type_metadata,
+    dict_to_nodedata,
 )
 from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
@@ -395,11 +396,12 @@ def get_knowledge_graph(
             DeprecationWarning,
             stacklevel=2,
         )
+        wf_dict = dict_to_nodedata(wf_dict)
     if isinstance(wf_dict, fr.schemas.WorkflowRecipe):
-        wf_dict = nodedata2dict(fr.schemas.DagData.from_recipe(wf_dict))
+        wf_dict = fr.schemas.DagData.from_recipe(wf_dict)
     elif isinstance(wf_dict, fr.schemas.DagData):
-        wf_dict = nodedata2dict(wf_dict)
-    elif not isinstance(wf_dict, dict):
+        pass
+    else:
         raise TypeError(
             f"Invalid input type. Expected dict, flowrep {fr.schemas.DagData.__name__!r}, or "
             f"flowrep {fr.schemas.WorkflowRecipe.__name__!r}, but got {type(wf_dict)}."
@@ -1323,31 +1325,244 @@ def _get_successor_nodes(G, node_name):
                 yield node
 
 
+def _infer_workflow_label(recipe: fr.schemas.WorkflowRecipe) -> str:
+    if recipe.reference is None:
+        return ""
+    return recipe.reference.info.fully_qualified_name.rsplit(".", 1)[-1]
+
+
+def _output_port_label(port: str, outputs: list[str]) -> str:
+    if port == "output_0" and len(outputs) == 1 and outputs[0] == "output_0":
+        return "output"
+    return port
+
+
+def _port_to_dict(
+    *,
+    value: Any,
+    annotation: Any,
+    default: Any = fr.schemas.NOT_DATA,
+) -> dict[str, Any]:
+    data: dict[str, Any] = {}
+    if not isinstance(value, fr.schemas.NotData):
+        data["value"] = value
+    if type_hint := annotation_to_type_hint(annotation):
+        data["dtype"] = type_hint
+    if type_metadata := annotation_to_type_metadata(annotation):
+        data.update(type_metadata.to_dictionary())
+    if not isinstance(default, fr.schemas.NotData):
+        data["default"] = default
+    return data
+
+
+def _node_data_to_metadata(
+    data: fr.schemas.NodeData,
+    *,
+    label: str | None = None,
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {}
+    function = None
+    if isinstance(data, fr.schemas.AtomicData):
+        metadata["type"] = "atomic"
+        function = data.function
+    elif isinstance(data, fr.schemas.DagData):
+        metadata["type"] = "workflow"
+        if label is not None:
+            metadata["label"] = label
+        if data.recipe.reference is not None:
+            function = retrieve.import_from_string(
+                data.recipe.reference.info.fully_qualified_name
+            )
+    if function is not None:
+        if hasattr(function, "_semantikon_metadata"):
+            metadata.update(function._semantikon_metadata)
+        function_data = get_function_dict(function)
+        function_data["identifier"] = ".".join(
+            (
+                function_data["module"],
+                function_data["qualname"],
+                function_data["version"],
+            )
+        )
+        metadata["function"] = function_data
+    return metadata
+
+
+def _workflow_to_networkx(
+    workflow: fr.schemas.DagData,
+    *,
+    prefix: str | None = None,
+) -> SemantikonDiGraph:
+    root_label = _infer_workflow_label(workflow.recipe)
+    G = SemantikonDiGraph(prefix=prefix)
+    G.name = root_label
+
+    def _add_node(
+        node_data: fr.schemas.NodeData,
+        node_name: str,
+        *,
+        parent_name: str | None = None,
+        workflow_label: str | None = None,
+    ):
+        node_attrs = _node_data_to_metadata(node_data, label=workflow_label)
+        if parent_name is not None:
+            node_attrs["parent"] = parent_name
+        G.add_node(node_name, step="node", **node_attrs)
+
+        output_labels = list(node_data.output_ports)
+        if len(output_labels) == 1 and output_labels[0] == "output_0":
+            output_labels = ["output"]
+
+        for position, (label, port) in enumerate(node_data.input_ports.items()):
+            io_name = f"{node_name}-inputs-{label}"
+            io_data = _port_to_dict(
+                value=port.value,
+                annotation=port.annotation,
+                default=port.default,
+            )
+            G.add_node(io_name, step="inputs", arg=label, position=position, **io_data)
+            G.add_edge(io_name, node_name)
+        for position, (raw_label, port) in enumerate(node_data.output_ports.items()):
+            label = output_labels[position] if raw_label == "output_0" else raw_label
+            io_name = f"{node_name}-outputs-{label}"
+            io_data = _port_to_dict(value=port.value, annotation=port.annotation)
+            G.add_node(io_name, step="outputs", arg=label, position=position, **io_data)
+            G.add_edge(node_name, io_name)
+
+        if not isinstance(node_data, fr.schemas.DagData):
+            return
+
+        recipe = node_data.recipe
+        for child_label, child in node_data.nodes.items():
+            child_name = f"{node_name}-{child_label}"
+            _add_node(
+                child,
+                child_name,
+                parent_name=node_name,
+                workflow_label=(
+                    child_label if isinstance(child, fr.schemas.DagData) else None
+                ),
+            )
+
+        child_recipes = recipe.nodes
+        for target, source in recipe.input_edges.items():
+            G.add_edge(
+                f"{node_name}-inputs-{source.port}",
+                f"{node_name}-{target.node}-inputs-{target.port}",
+            )
+        for target, source in recipe.edges.items():
+            child_outputs = list(child_recipes[source.node].outputs)
+            src_port = _output_port_label(source.port, child_outputs)
+            G.add_edge(
+                f"{node_name}-{source.node}-outputs-{src_port}",
+                f"{node_name}-{target.node}-inputs-{target.port}",
+            )
+        for target, source in recipe.output_edges.items():
+            target_port = _output_port_label(target.port, list(recipe.outputs))
+            if isinstance(source, fr.schemas.InputSource):
+                G.add_edge(
+                    f"{node_name}-inputs-{source.port}",
+                    f"{node_name}-outputs-{target_port}",
+                )
+            else:
+                child_outputs = list(child_recipes[source.node].outputs)
+                src_port = _output_port_label(source.port, child_outputs)
+                G.add_edge(
+                    f"{node_name}-{source.node}-outputs-{src_port}",
+                    f"{node_name}-outputs-{target_port}",
+                )
+
+    _add_node(workflow, root_label, workflow_label=root_label)
+    return G
+
+
+def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str, Any]]:
+    hash_dict: dict[str, dict[str, Any]] = {}
+    for node in nx.topological_sort(G):
+        data = G.nodes[node]
+        if data.get("step") != "node":
+            for term in ("hash", "value"):
+                if term in data:
+                    continue
+                for predecessor in G.predecessors(node):
+                    predecessor_data = G.nodes[predecessor]
+                    if term in predecessor_data:
+                        data[term] = predecessor_data[term]
+                        break
+            continue
+
+        hash_dict_tmp: dict[str, Any] = {
+            "inputs": {},
+            "outputs": [
+                G.nodes[out].get("label", out.split("-")[-1])
+                for out in G.successors(node)
+            ],
+            "node": copy.deepcopy(data.get("function")),
+        }
+        if hash_dict_tmp["node"] is None:
+            continue
+        hash_dict_tmp["node"]["connected_inputs"] = []
+        missing_input = False
+        for inp in G.predecessors(node):
+            inp_data = G.nodes[inp]
+            inp_name = inp.split("-")[-1]
+            if "hash" in inp_data:
+                hash_dict_tmp["inputs"][inp_name] = inp_data["hash"]
+                hash_dict_tmp["node"]["connected_inputs"].append(inp_name)
+            elif "value" in inp_data:
+                value = inp_data["value"]
+                if is_dataclass(value) and not isinstance(value, type):
+                    hash_dict_tmp["inputs"][inp_name] = asdict(value)
+                else:
+                    hash_dict_tmp["inputs"][inp_name] = value
+            else:
+                missing_input = True
+                break
+        if missing_input:
+            continue
+        h = sha256(
+            json.dumps(hash_dict_tmp, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+        for out in G.successors(node):
+            G.nodes[out]["hash"] = (
+                h + "@" + G.nodes[out].get("label", out.split("-")[-1])
+            )
+        hash_dict_tmp["hash"] = h
+        hash_dict[node] = hash_dict_tmp
+    return hash_dict
+
+
 def serialize_and_convert_to_networkx(
-    wf_dict: dict,
+    workflow: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
     hash_data: bool = True,
     prefix: str | None = None,
 ) -> SemantikonDiGraph:
     """
-    Serialize a workflow dictionary into a SemantikonDiGraph, optionally
+    Serialize a flowrep workflow into a SemantikonDiGraph, optionally
     hashing node data.
 
     Args:
-        wf_dict (dict): The workflow dictionary to serialize.
+        workflow (dict | DagData | WorkflowRecipe): Workflow representation.
         hash_data (bool): Whether to hash node data.
         prefix (str | None): Optional prefix for node names.
 
     Returns:
         SemantikonDiGraph: The serialized workflow graph.
     """
-    G_nx = _WorkflowGraphSerializer.serialize(wf_dict)
-    G = SemantikonDiGraph(G_nx, prefix=prefix)
+    if isinstance(workflow, dict):
+        workflow = dict_to_nodedata(workflow)
+    if isinstance(workflow, fr.schemas.WorkflowRecipe):
+        workflow = fr.schemas.DagData.from_recipe(workflow)
+    if not isinstance(workflow, fr.schemas.DagData):
+        raise TypeError(
+            f"Invalid workflow type. Expected dict, flowrep {fr.schemas.DagData.__name__!r}, or "
+            f"flowrep {fr.schemas.WorkflowRecipe.__name__!r}, but got {type(workflow)}."
+        )
+
+    G = _workflow_to_networkx(workflow, prefix=prefix)
     if hash_data:
         try:
-            hashed_dict = {}
-            for key, value in get_hashed_node_dict(wf_dict).items():
-                key = G.name + "-" + key
-                hashed_dict[key.replace(".", "-")] = value
+            hashed_dict = _get_hashed_node_dict_from_graph(G)
         except Exception as e:
             raise RuntimeError(
                 "Failed to hash workflow data - use only hashable inputs or set hash_data=False"
