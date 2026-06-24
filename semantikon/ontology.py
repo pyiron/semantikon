@@ -587,9 +587,7 @@ def _function_to_graph(
     return g
 
 
-def _graph_to_function(
-    graph: Graph, f_node: URIRef | None = None
-) -> dict[str, Any]:
+def _graph_to_function(graph: Graph, f_node: URIRef | None = None) -> dict[str, Any]:
     """
     Extract function metadata from an RDF graph produced by ``_function_to_graph``.
 
@@ -720,7 +718,9 @@ def _graph_to_function(
         for restriction_node in graph.objects(arg_node, SNS.has_constraint):
             if (restriction_node, RDF.type, OWL.Restriction) in graph:
                 pairs = tuple(
-                    pair for pair in _restriction_pairs(restriction_node) if pair[0] != RDF.type
+                    pair
+                    for pair in _restriction_pairs(restriction_node)
+                    if pair[0] != RDF.type
                 )
             elif (restriction_node, RDF.type, SH.NodeShape) in graph:
                 property_shape = graph.value(restriction_node, SH.property)
