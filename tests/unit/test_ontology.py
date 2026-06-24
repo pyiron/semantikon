@@ -1031,6 +1031,40 @@ class TestOntology(unittest.TestCase):
         g = onto.function_to_knowledge_graph(prepare_pizza)
         self.assertEqual(list(g.query(query))[0][0].toPython(), "output_0")
 
+    def test_graph_to_function(self):
+        graph = onto.function_to_knowledge_graph(get_kinetic_energy)
+        parsed = onto._graph_to_function(graph)
+
+        self.assertEqual(parsed["data"]["qualname"], "get_kinetic_energy")
+        self.assertEqual(parsed["data"]["module"], __name__)
+        self.assertEqual(parsed["uri"], EX.get_kinetic_energy)
+        self.assertListEqual(
+            [item["arg"] for item in parsed["input_args"]], ["mass", "velocity"]
+        )
+        self.assertListEqual(
+            [item["arg"] for item in parsed["output_args"]], ["kinetic_energy"]
+        )
+        self.assertTrue(
+            compare.isomorphic(graph, onto._function_to_graph(**parsed)),
+        )
+
+    def test_graph_to_function_with_restrictions(self):
+        graph = onto.function_to_knowledge_graph(sell)
+        parsed = onto._graph_to_function(graph)
+
+        self.assertEqual(parsed["data"]["qualname"], "sell")
+        self.assertIn("restrictions", parsed["input_args"][0])
+        self.assertEqual(len(parsed["input_args"][0]["restrictions"]), 2)
+        self.assertTrue(
+            compare.isomorphic(graph, onto._function_to_graph(**parsed)),
+        )
+
+    def test_graph_to_function_requires_f_node_when_ambiguous(self):
+        graph = onto.function_to_knowledge_graph(get_speed)
+        graph += onto.function_to_knowledge_graph(get_kinetic_energy)
+        with self.assertRaisesRegex(ValueError, "Multiple workflow functions found"):
+            _ = onto._graph_to_function(graph)
+
     def test_unhashable(self):
         uh = Unhashable()
         wf_data = fr.tools.run_recipe(my_unhashable_inputs.flowrep_recipe, uh=uh)
