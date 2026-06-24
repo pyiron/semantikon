@@ -55,8 +55,8 @@ def request_values(
     """
     if isinstance(wf_dict, dict):
         warnings.warn(
-            "Passing a dict to 'get_knowledge_graph' is deprecated and will be",
-            " removed in a future version." " Pass a 'flowrep' object instead.",
+            "Passing a dict to 'get_knowledge_graph' is deprecated and will be removed"
+            " in a future version. Pass a 'flowrep' object instead.",
             DeprecationWarning,
             stacklevel=2,
         )
