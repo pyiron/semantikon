@@ -587,14 +587,13 @@ def _function_to_graph(
     return g
 
 
-def _graph_to_function(graph: Graph, f_node: URIRef | None = None) -> dict[str, Any]:
+def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     """
     Extract function metadata from an RDF graph produced by ``_function_to_graph``.
 
     Args:
         graph (Graph): RDF graph containing function metadata.
-        f_node (URIRef | None): Optional function node to extract. If omitted,
-            exactly one workflow function must be present in the graph.
+        f_node (URIRef): Function node to extract.
 
     Returns:
         dict[str, Any]: Data payload compatible with ``_function_to_graph``.
@@ -606,16 +605,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef | None = None) -> dict[str, 
     def _restriction_pairs(node: IdentifiedNode) -> tuple[tuple[URIRef, Any], ...]:
         return tuple((p, _to_python(o)) for p, o in graph.predicate_objects(node))
 
-    function_nodes = list(graph.subjects(RDF.type, SNS.workflow_function))
-    if f_node is None:
-        if len(function_nodes) == 0:
-            raise ValueError("No workflow function found in graph.")
-        if len(function_nodes) > 1:
-            raise ValueError(
-                "Multiple workflow functions found; provide `f_node` explicitly."
-            )
-        f_node = function_nodes[0]
-    elif f_node not in function_nodes:
+    if (f_node, RDF.type, SNS.workflow_function) not in graph:
         raise ValueError(f"Function node {f_node!r} is not present in the graph.")
 
     function_name_nodes = [
