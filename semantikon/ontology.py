@@ -1815,54 +1815,106 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.DagData:
             nodes = {}
             edges = []
 
+            # First collect all direct children
+            direct_children = {}
             for child_label, child_node in G.nodes.items():
                 if (
                     child_node.get("step") == "node"
                     and child_node.get("parent") == node_name
                 ):
-                    child_short_label = child_label.split("-", 1)[1]
+                    # Extract child short label correctly by removing parent prefix
+                    if child_label.startswith(node_name + "-"):
+                        child_short_label = child_label[len(node_name) + 1:]
+                    else:
+                        child_short_label = child_label.split("-", 1)[1]
+                    direct_children[child_short_label] = child_label
                     nodes[child_short_label] = _process_node(child_label)
+
+            def _find_child_for_io(io_node_name: str) -> str | None:
+                """Find the child node (short label) that owns this IO node."""
+                for child_label in direct_children.values():
+                    if io_node_name.startswith(child_label + "-"):
+                        # Extract child short label correctly
+                        if child_label.startswith(node_name + "-"):
+                            child_short_label = child_label[len(node_name) + 1:]
+                        else:
+                            child_short_label = child_label.split("-", 1)[1]
+                        return child_short_label
+                return None
+
+            def _is_direct_io(node_id: str) -> bool:
+                """Check if this is a direct IO of the workflow."""
+                if not node_id.startswith(node_name + "-"):
+                    return False
+                rest = node_id[len(node_name) + 1:]
+                parts = rest.split("-")
+                # Direct IO is like "inputs-arg" or "outputs-arg" (2 parts)
+                return len(parts) == 2
+
+            def _is_child_io(node_id: str) -> bool:
+                """Check if this is an IO of a direct child (and only direct child)."""
+                for child_label in direct_children.values():
+                    if node_id.startswith(child_label + "-"):
+                        # Make sure it's not a grandchild IO
+                        rest = node_id[len(child_label) + 1:]
+                        parts = rest.split("-")
+                        # Direct child IO is like "inputs-arg" or "outputs-arg" (2 parts)
+                        if len(parts) == 2:
+                            node = G.nodes.get(node_id)
+                            if node and node.get("step") in ["inputs", "outputs"]:
+                                return True
+                return False
 
             for u, v in G.edges:
                 u_data = G.nodes[u]
                 v_data = G.nodes[v]
                 u_step = u_data.get("step")
                 v_step = v_data.get("step")
+                u_parent = u_data.get("parent")
+                v_parent = v_data.get("parent")
+
+                # Only process edges where both endpoints are direct to this workflow
+                u_is_direct_io = _is_direct_io(u)
+                v_is_direct_io = _is_direct_io(v)
+                u_is_child_io = _is_child_io(u)
+                v_is_child_io = _is_child_io(v)
+                u_is_child = u_parent == node_name
+                v_is_child = v_parent == node_name
 
                 if u_step == "inputs" and v_step == "inputs":
-                    u_port = u_data["arg"]
-                    v_parts = v.split("-")
-                    if len(v_parts) >= 3:
-                        v_child = v_parts[1]
-                        v_port = v_data["arg"]
-                        edges.append((f"inputs.{u_port}", f"{v_child}.inputs.{v_port}"))
+                    if u_is_direct_io and v_is_child_io:
+                        u_port = u_data["arg"]
+                        v_child = _find_child_for_io(v)
+                        if v_child is not None:
+                            v_port = v_data["arg"]
+                            edges.append((f"inputs.{u_port}", f"{v_child}.inputs.{v_port}"))
                 elif u_step == "outputs" and v_step == "inputs":
-                    u_parts = u.split("-")
-                    v_parts = v.split("-")
-                    if len(u_parts) >= 3 and len(v_parts) >= 3:
-                        u_child = u_parts[1]
-                        v_child = v_parts[1]
-                        u_port = u_data["arg"]
-                        v_port = v_data["arg"]
-                        edges.append(
-                            (
-                                f"{u_child}.outputs.{u_port}",
-                                f"{v_child}.inputs.{v_port}",
+                    if u_is_child_io and v_is_child_io:
+                        u_child = _find_child_for_io(u)
+                        v_child = _find_child_for_io(v)
+                        if u_child is not None and v_child is not None:
+                            u_port = u_data["arg"]
+                            v_port = v_data["arg"]
+                            edges.append(
+                                (
+                                    f"{u_child}.outputs.{u_port}",
+                                    f"{v_child}.inputs.{v_port}",
+                                )
                             )
-                        )
-                elif u_step == "inputs" and v_step == "outputs" and u != v:
-                    u_port = u_data["arg"]
-                    v_port = v_data["arg"]
-                    edges.append((f"inputs.{u_port}", f"outputs.{v_port}"))
-                elif u_step == "outputs" and v_step == "outputs" and u != v:
-                    u_parts = u.split("-")
-                    if len(u_parts) >= 3:
-                        u_child = u_parts[1]
+                elif u_step == "inputs" and v_step == "outputs":
+                    if u_is_direct_io and v_is_direct_io:
                         u_port = u_data["arg"]
                         v_port = v_data["arg"]
-                        edges.append(
-                            (f"{u_child}.outputs.{u_port}", f"outputs.{v_port}")
-                        )
+                        edges.append((f"inputs.{u_port}", f"outputs.{v_port}"))
+                elif u_step == "outputs" and v_step == "outputs" and u != v:
+                    if u_is_child_io and v_is_direct_io:
+                        u_child = _find_child_for_io(u)
+                        if u_child is not None:
+                            u_port = u_data["arg"]
+                            v_port = v_data["arg"]
+                            edges.append(
+                                (f"{u_child}.outputs.{u_port}", f"outputs.{v_port}")
+                            )
 
             if nodes:
                 result["nodes"] = nodes
