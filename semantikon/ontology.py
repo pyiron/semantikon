@@ -619,7 +619,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     if qualname is None:
         raise ValueError("Function name node is missing `SNS.has_value`.")
 
-    data: dict[str, Any] = {"qualname": qualname.toPython()}
+    data: dict[str, Any] = {"function": {"qualname": qualname.toPython()}}
 
     docstring_nodes = [
         node
@@ -631,7 +631,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     if len(docstring_nodes) == 1:
         docstring = graph.value(docstring_nodes[0], SNS.has_value)
         if docstring is not None:
-            data["docstring"] = docstring.toPython()
+            data["function"]["docstring"] = docstring.toPython()
 
     hash_nodes = [
         node
@@ -643,7 +643,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     if len(hash_nodes) == 1:
         hash_value = graph.value(hash_nodes[0], SNS.has_value)
         if hash_value is not None:
-            data["hash"] = hash_value.toPython()
+            data["function"]["hash"] = hash_value.toPython()
 
     module_nodes = [
         node
@@ -655,7 +655,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     if len(module_nodes) == 1:
         module = graph.value(module_nodes[0], SNS.has_value)
         if module is not None:
-            data["module"] = module.toPython()
+            data["function"]["module"] = module.toPython()
 
     instance_nodes = [node for node in graph.objects(f_node, SNS.is_about)]
     if len(instance_nodes) > 1:
