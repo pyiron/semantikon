@@ -12,6 +12,7 @@ from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, compare
 from rdflib.compare import graph_diff
 
+from semantikon import kg_to_flowrep as kgf
 from semantikon import ontology as onto
 from semantikon.metadata import SemantikonURI, meta
 from semantikon.visualize import visualize_recipe
@@ -1034,7 +1035,7 @@ class TestOntology(unittest.TestCase):
     def test_graph_to_function(self):
         graph = onto.function_to_knowledge_graph(get_kinetic_energy)
         f_node = next(graph.subjects(RDF.type, onto.SNS.workflow_function))
-        parsed = onto._graph_to_function(graph, f_node)
+        parsed = kgf._graph_to_function(graph, f_node)
 
         self.assertEqual(parsed["data"]["qualname"], "get_kinetic_energy")
         self.assertEqual(parsed["data"]["module"], __name__)
@@ -1052,7 +1053,7 @@ class TestOntology(unittest.TestCase):
     def test_graph_to_function_with_restrictions(self):
         graph = onto.function_to_knowledge_graph(sell)
         f_node = next(graph.subjects(RDF.type, onto.SNS.workflow_function))
-        parsed = onto._graph_to_function(graph, f_node)
+        parsed = kgf._graph_to_function(graph, f_node)
 
         self.assertEqual(parsed["data"]["qualname"], "sell")
         self.assertIn("restrictions", parsed["input_args"][0])
@@ -1064,14 +1065,14 @@ class TestOntology(unittest.TestCase):
     def test_graph_to_function_requires_present_f_node(self):
         graph = onto.function_to_knowledge_graph(get_speed)
         with self.assertRaisesRegex(ValueError, "is not present in the graph"):
-            _ = onto._graph_to_function(graph, EX.missing_function)
+            _ = kgf._graph_to_function(graph, EX.missing_function)
 
     def test_serialize_deserialize_round_trip(self):
         wf_data = fr.tools.run_recipe(
             my_kinetic_energy_workflow.flowrep_recipe, distance=2, time=1, mass=4
         )
         G = onto.serialize_and_convert_to_networkx(wf_data, hash_data=False)
-        wf_data_reconstructed = onto.serialize_and_networkx_to_data(G)
+        wf_data_reconstructed = kgf.serialize_and_networkx_to_data(G)
 
         self.assertEqual(
             wf_data_reconstructed.input_ports.keys(), wf_data.input_ports.keys()
@@ -1087,7 +1088,7 @@ class TestOntology(unittest.TestCase):
         G = onto.serialize_and_convert_to_networkx(
             my_kinetic_energy_workflow.flowrep_recipe, hash_data=False
         )
-        wf_data = onto.serialize_and_networkx_to_data(G)
+        wf_data = kgf.serialize_and_networkx_to_data(G)
 
         self.assertIsNotNone(wf_data.recipe)
         self.assertIn("get_speed_0", wf_data.nodes)

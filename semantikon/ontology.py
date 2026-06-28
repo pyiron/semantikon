@@ -599,145 +599,9 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
         dict[str, Any]: Data payload compatible with ``_function_to_graph``.
     """
 
-    def _to_python(value: IdentifiedNode | Literal | None) -> Any:
-        return value.toPython() if isinstance(value, Literal) else value
+    from semantikon.kg_to_flowrep import _graph_to_function as _graph_to_function_impl
 
-    def _restriction_pairs(node: IdentifiedNode) -> tuple[tuple[URIRef, Any], ...]:
-        return tuple((p, _to_python(o)) for p, o in graph.predicate_objects(node))
-
-    if (f_node, RDF.type, SNS.workflow_function) not in graph:
-        raise ValueError(f"Function node {f_node!r} is not present in the graph.")
-
-    function_name_nodes = [
-        node
-        for node in graph.objects(f_node, SNS.denoted_by)
-        if (node, RDF.type, SNS.function_name) in graph
-    ]
-    if len(function_name_nodes) != 1:
-        raise ValueError("Expected exactly one function name node.")
-    qualname = graph.value(function_name_nodes[0], SNS.has_value)
-    if qualname is None:
-        raise ValueError("Function name node is missing `SNS.has_value`.")
-
-    data: dict[str, Any] = {"function": {"qualname": qualname.toPython()}}
-
-    docstring_nodes = [
-        node
-        for node in graph.subjects(SNS.is_about, f_node)
-        if (node, RDF.type, SNS.textual_entity) in graph
-    ]
-    if len(docstring_nodes) > 1:
-        raise ValueError("Expected at most one docstring node.")
-    if len(docstring_nodes) == 1:
-        docstring = graph.value(docstring_nodes[0], SNS.has_value)
-        if docstring is not None:
-            data["function"]["docstring"] = docstring.toPython()
-
-    hash_nodes = [
-        node
-        for node in graph.objects(f_node, SNS.denoted_by)
-        if (node, RDF.type, SNS.identifier) in graph
-    ]
-    if len(hash_nodes) > 1:
-        raise ValueError("Expected at most one hash node.")
-    if len(hash_nodes) == 1:
-        hash_value = graph.value(hash_nodes[0], SNS.has_value)
-        if hash_value is not None:
-            data["function"]["hash"] = hash_value.toPython()
-
-    module_nodes = [
-        node
-        for node in graph.objects(f_node, SNS.denoted_by)
-        if (node, RDF.type, SNS.import_path) in graph
-    ]
-    if len(module_nodes) > 1:
-        raise ValueError("Expected at most one module node.")
-    if len(module_nodes) == 1:
-        module = graph.value(module_nodes[0], SNS.has_value)
-        if module is not None:
-            data["function"]["module"] = module.toPython()
-
-    instance_nodes = [node for node in graph.objects(f_node, SNS.is_about)]
-    if len(instance_nodes) > 1:
-        raise ValueError("Expected at most one instance node.")
-    uri: URIRef | None = None
-    if len(instance_nodes) == 1:
-        instance_types = list(graph.objects(instance_nodes[0], RDF.type))
-        if len(instance_types) > 1:
-            raise ValueError("Expected at most one RDF type for the function instance.")
-        if len(instance_types) == 1:
-            uri = cast(URIRef, instance_types[0])
-
-    input_args: list[dict[str, Any]] = []
-    output_args: list[dict[str, Any]] = []
-
-    for arg_node in graph.objects(f_node, SNS.has_part):
-        if (arg_node, RDF.type, SNS.input_specification) in graph:
-            target = input_args
-        elif (arg_node, RDF.type, SNS.output_specification) in graph:
-            target = output_args
-        else:
-            continue
-
-        arg_data: dict[str, Any] = {}
-        local_identifier = graph.value(arg_node, SNS.local_identifier)
-        if local_identifier is not None:
-            arg_data["arg"] = local_identifier.toPython()
-        position = graph.value(arg_node, SNS.has_parameter_position)
-        if position is not None:
-            arg_data["position"] = position.toPython()
-        default = graph.value(arg_node, SNS.has_default_literal_value)
-        if default is not None:
-            arg_data["default"] = default.toPython()
-
-        uri_restrictions = [
-            restriction_node
-            for restriction_node in graph.objects(arg_node, RDF.type)
-            if (restriction_node, RDF.type, OWL.Restriction) in graph
-            and (restriction_node, OWL.onProperty, SNS.is_about) in graph
-            and graph.value(restriction_node, OWL.allValuesFrom) is not None
-        ]
-        if len(uri_restrictions) > 1:
-            raise ValueError("Expected at most one URI restriction per argument.")
-        if len(uri_restrictions) == 1:
-            arg_data["uri"] = cast(
-                URIRef, graph.value(uri_restrictions[0], OWL.allValuesFrom)
-            )
-
-        restrictions = []
-        for restriction_node in graph.objects(arg_node, SNS.has_constraint):
-            if (restriction_node, RDF.type, OWL.Restriction) in graph:
-                pairs = tuple(
-                    pair
-                    for pair in _restriction_pairs(restriction_node)
-                    if pair[0] != RDF.type
-                )
-            elif (restriction_node, RDF.type, SH.NodeShape) in graph:
-                property_shape = graph.value(restriction_node, SH.property)
-                if property_shape is None:
-                    continue
-                pairs = tuple(
-                    pair
-                    for pair in _restriction_pairs(property_shape)
-                    if pair[0] != RDF.type
-                )
-            else:
-                continue
-            restrictions.append(pairs)
-        if len(restrictions) > 0:
-            arg_data["restrictions"] = tuple(restrictions)
-
-        target.append(arg_data)
-
-    input_args.sort(key=lambda d: (d.get("position", 10**9), str(d.get("arg", ""))))
-    output_args.sort(key=lambda d: (d.get("position", 10**9), str(d.get("arg", ""))))
-    return {
-        "f_node": f_node,
-        "data": data,
-        "input_args": input_args,
-        "output_args": output_args,
-        "uri": uri,
-    }
+    return _graph_to_function_impl(graph, f_node)
 
 
 def _wf_node_to_graph(
@@ -1737,7 +1601,11 @@ def serialize_and_networkx_to_data(G: nx.DiGraph) -> fr.schemas.DagData:
     Returns:
         fr.schemas.DagData: The reconstructed workflow data.
     """
-    return _networkx_to_dict(G)
+    from semantikon.kg_to_flowrep import (
+        serialize_and_networkx_to_data as serialize_and_networkx_to_data_impl,
+    )
+
+    return serialize_and_networkx_to_data_impl(G)
 
 
 def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.DagData:
