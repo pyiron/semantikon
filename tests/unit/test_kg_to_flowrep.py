@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import flowrep as fr
 import networkx as nx
-from rdflib import Graph, Literal, RDFS, URIRef
+from rdflib import RDFS, Graph, Literal, URIRef
 
 from semantikon import get_knowledge_graph, knowledge_graph_to_flowrep_recipe
 from semantikon import kg_to_flowrep as kgf
