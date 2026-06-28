@@ -683,3 +683,15 @@ def knowledge_graph_to_flowrep_recipe(
         fr.schemas.WorkflowRecipe: Flowrep workflow recipe.
     """
     return knowledge_graph_to_flowrep_data(graph, workflow_name=workflow_name).recipe
+
+
+def knowledge2data(graph: Graph, workflow_name: str | None = None) -> fr.schemas.DagData:
+    """Flowrep-style alias for ``knowledge_graph_to_flowrep_data``."""
+    return knowledge_graph_to_flowrep_data(graph, workflow_name=workflow_name)
+
+
+def knowledge2recipe(
+    graph: Graph, workflow_name: str | None = None
+) -> fr.schemas.WorkflowRecipe:
+    """Flowrep-style alias for ``knowledge_graph_to_flowrep_recipe``."""
+    return knowledge_graph_to_flowrep_recipe(graph, workflow_name=workflow_name)

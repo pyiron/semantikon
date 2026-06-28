@@ -5,7 +5,7 @@ import flowrep as fr
 import networkx as nx
 from rdflib import RDFS, Graph, Literal, URIRef
 
-from semantikon import get_knowledge_graph, knowledge_graph_to_flowrep_recipe
+from semantikon import get_knowledge_graph, knowledge2recipe, knowledge_graph_to_flowrep_recipe
 from semantikon import kg_to_flowrep as kgf
 from semantikon.workflow import workflow
 
@@ -46,7 +46,7 @@ def multiply_by_two(x=2):
 class TestKgToFlowrep(unittest.TestCase):
     def test_round_trip_from_knowledge_graph(self):
         graph = get_knowledge_graph(my_workflow.flowrep_recipe)
-        reconstructed = knowledge_graph_to_flowrep_recipe(graph)
+        reconstructed = knowledge2recipe(graph)
 
         original_result = fr.tools.run_recipe(my_workflow.flowrep_recipe, x=3, y=5)
         converted_result = fr.tools.run_recipe(reconstructed, x=3, y=5)

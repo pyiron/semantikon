@@ -3,6 +3,8 @@ from semantikon.converter import parse_metadata, semantikon_dataclass
 from semantikon.datastructure import FunctionMetadata, TypeMetadata
 from semantikon.flowrep_dict import annotation_to_type_hint, annotation_to_type_metadata
 from semantikon.kg_to_flowrep import (
+    knowledge2data,
+    knowledge2recipe,
     knowledge_graph_to_flowrep_data,
     knowledge_graph_to_flowrep_recipe,
 )
@@ -17,6 +19,8 @@ __all__ = [
     "annotation_to_type_hint",
     "annotation_to_type_metadata",
     "get_knowledge_graph",
+    "knowledge2data",
+    "knowledge2recipe",
     "knowledge_graph_to_flowrep_data",
     "knowledge_graph_to_flowrep_recipe",
     "meta",
