@@ -6,11 +6,13 @@ from typing import Any, cast
 
 import flowrep as fr
 import networkx as nx
+from pyiron_snippets import retrieve
 from rdflib import OWL, RDF, RDFS, Graph, Literal, URIRef
 from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
-from semantikon.ontology import SNS, _networkx_to_dict
+from semantikon.flowrep_dict import dict_to_nodedata
+from semantikon.ontology import SNS
 
 
 def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
@@ -177,6 +179,187 @@ def serialize_and_networkx_to_data(G: nx.DiGraph) -> fr.schemas.DagData:
         fr.schemas.DagData: The reconstructed workflow data.
     """
     return _networkx_to_dict(G)
+
+
+def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.DagData:
+    """
+    Convert a NetworkX DiGraph into flowrep DagData.
+
+    Args:
+        G (nx.DiGraph): Graph to convert, using Semantikon node/edge attributes.
+
+    Returns:
+        fr.schemas.DagData: Reconstructed workflow data.
+    """
+
+    def _extract_io_data(io_name: str) -> dict[str, Any]:
+        data = {}
+        node_data = G.nodes[io_name]
+        if "value" in node_data:
+            data["value"] = node_data["value"]
+        if "dtype" in node_data:
+            data["dtype"] = node_data["dtype"]
+        if "default" in node_data:
+            data["default"] = node_data["default"]
+        for key in ["uri", "units", "unit", "triples", "derived_from", "restrictions"]:
+            if key in node_data:
+                data[key] = node_data[key]
+        return data
+
+    def _get_function_from_dict(func_dict: dict[str, Any]) -> Any:
+        """Try to reconstruct the function from the stored metadata."""
+        if not isinstance(func_dict, dict):
+            return func_dict
+        try:
+            module = func_dict.get("module")
+            qualname = func_dict.get("qualname")
+            if module and qualname:
+                fqn = f"{module}.{qualname}"
+                return retrieve.import_from_string(fqn)
+        except Exception:
+            pass
+        return None
+
+    def _process_node(node_name: str) -> dict[str, Any]:
+        node_data = G.nodes[node_name]
+        node_type = node_data.get("type", "atomic")
+
+        result: dict[str, Any] = {"type": node_type}
+
+        if "function" in node_data:
+            func_obj = _get_function_from_dict(node_data["function"])
+            if func_obj is not None:
+                result["function"] = func_obj
+
+        if "label" in node_data:
+            result["label"] = node_data["label"]
+
+        input_ports = {}
+        output_ports = {}
+        for predecessor in G.predecessors(node_name):
+            pred_data = G.nodes[predecessor]
+            if pred_data.get("step") == "inputs":
+                port_name = pred_data["arg"]
+                input_ports[port_name] = _extract_io_data(predecessor)
+        for successor in G.successors(node_name):
+            succ_data = G.nodes[successor]
+            if succ_data.get("step") == "outputs":
+                port_name = succ_data["arg"]
+                output_ports[port_name] = _extract_io_data(successor)
+
+        if input_ports:
+            result["inputs"] = input_ports
+        if output_ports:
+            result["outputs"] = output_ports
+
+        if node_type == "workflow":
+            nodes = {}
+            edges = []
+
+            # First collect all direct children
+            direct_children = {}
+            for child_label, child_node in G.nodes.items():
+                if (
+                    child_node.get("step") == "node"
+                    and child_node.get("parent") == node_name
+                ):
+                    # Extract child short label correctly by removing parent prefix
+                    if child_label.startswith(node_name + "-"):
+                        child_short_label = child_label[len(node_name) + 1 :]
+                    else:
+                        child_short_label = child_label.split("-", 1)[1]
+                    direct_children[child_short_label] = child_label
+                    nodes[child_short_label] = _process_node(child_label)
+
+            def _find_child_for_io(io_node_name: str) -> str | None:
+                """Find the child node (short label) that owns this IO node."""
+                for child_label in direct_children.values():
+                    if io_node_name.startswith(child_label + "-"):
+                        # Extract child short label correctly
+                        if child_label.startswith(node_name + "-"):
+                            child_short_label = child_label[len(node_name) + 1 :]
+                        else:
+                            child_short_label = child_label.split("-", 1)[1]
+                        return child_short_label
+                return None
+
+            def _is_direct_io(node_id: str) -> bool:
+                """Check if this is a direct IO of the workflow."""
+                if not node_id.startswith(node_name + "-"):
+                    return False
+                rest = node_id[len(node_name) + 1 :]
+                parts = rest.split("-")
+                # Direct IO is like "inputs-arg" or "outputs-arg" (2 parts)
+                return len(parts) == 2
+
+            def _is_child_io(node_id: str) -> bool:
+                """Check if this is an IO of a direct child (and only direct child)."""
+                for child_label in direct_children.values():
+                    if node_id.startswith(child_label + "-"):
+                        # Make sure it's not a grandchild IO
+                        rest = node_id[len(child_label) + 1 :]
+                        parts = rest.split("-")
+                        # Direct child IO is like "inputs-arg" or "outputs-arg" (2 parts)
+                        if len(parts) == 2:
+                            node = G.nodes.get(node_id)
+                            if node and node.get("step") in ["inputs", "outputs"]:
+                                return True
+                return False
+
+            for u, v in G.edges:
+                u_data = G.nodes[u]
+                v_data = G.nodes[v]
+                u_step = u_data.get("step")
+                v_step = v_data.get("step")
+
+                u_is_direct_io = _is_direct_io(u)
+                v_is_direct_io = _is_direct_io(v)
+                u_is_child_io = _is_child_io(u)
+                v_is_child_io = _is_child_io(v)
+
+                if u_step == "inputs" and v_step == "inputs":
+                    if u_is_direct_io and v_is_child_io:
+                        u_port = u_data["arg"]
+                        v_child = _find_child_for_io(v)
+                        if v_child is not None:
+                            v_port = v_data["arg"]
+                            edges.append((f"inputs.{u_port}", f"{v_child}.inputs.{v_port}"))
+                elif u_step == "outputs" and v_step == "inputs":
+                    if u_is_child_io and v_is_child_io:
+                        u_child = _find_child_for_io(u)
+                        v_child = _find_child_for_io(v)
+                        if u_child is not None and v_child is not None:
+                            u_port = u_data["arg"]
+                            v_port = v_data["arg"]
+                            edges.append(
+                                (
+                                    f"{u_child}.outputs.{u_port}",
+                                    f"{v_child}.inputs.{v_port}",
+                                )
+                            )
+                elif u_step == "inputs" and v_step == "outputs":
+                    if u_is_direct_io and v_is_direct_io:
+                        u_port = u_data["arg"]
+                        v_port = v_data["arg"]
+                        edges.append((f"inputs.{u_port}", f"outputs.{v_port}"))
+                elif u_step == "outputs" and v_step == "outputs" and u != v:
+                    if u_is_child_io and v_is_direct_io:
+                        u_child = _find_child_for_io(u)
+                        if u_child is not None:
+                            u_port = u_data["arg"]
+                            v_port = v_data["arg"]
+                            edges.append((f"{u_child}.outputs.{u_port}", f"outputs.{v_port}"))
+
+            if nodes:
+                result["nodes"] = nodes
+            if edges:
+                result["edges"] = edges
+
+        return result
+
+    root_node = G.name
+    wf_dict = _process_node(root_node)
+    return cast(fr.schemas.DagData, dict_to_nodedata(wf_dict))
 
 
 def _get_restriction(
