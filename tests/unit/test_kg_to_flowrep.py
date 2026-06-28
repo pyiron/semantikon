@@ -63,9 +63,7 @@ class TestKgToFlowrep(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "multiple root workflows"):
             _ = knowledge2recipe(graph)
 
-        reconstructed = knowledge2recipe(
-            graph, workflow_name="multiply_by_two"
-        )
+        reconstructed = knowledge2recipe(graph, workflow_name="multiply_by_two")
         converted_result = fr.tools.run_recipe(reconstructed, x=7)
         self.assertEqual(converted_result.output_ports["result"].value, 14)
 
