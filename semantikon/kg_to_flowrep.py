@@ -641,9 +641,7 @@ def _select_workflow(
     return names[0]
 
 
-def kg2data(
-    graph: Graph, workflow_name: str | None = None
-) -> fr.schemas.DagData:
+def kg2data(graph: Graph, workflow_name: str | None = None) -> fr.schemas.DagData:
     """
     Translate a Semantikon knowledge graph workflow back to flowrep ``DagData``.
 
