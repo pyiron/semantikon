@@ -424,7 +424,7 @@ def _reorganize_output_edges(
         pred = list(graph.predecessors(n))
         assert len(pred) == 1 and pred[0] not in io_dict
         io_dict[pred[0]] = n
-    keys = sorted(io_dict.keys(), key=position.get)[::-1]
+    keys = sorted(io_dict.keys(), key=lambda item: position[item])[::-1]
     nodes = [io_dict[k] for k in keys]
     for n in nodes[:-1]:
         graph.remove_edge(n, node)
@@ -439,7 +439,7 @@ def _reorganize_input_edges(
         succ = list(graph.successors(n))
         assert len(succ) == 1 and succ[0] not in io_dict
         io_dict[succ[0]] = n
-    node_keys = sorted(io_dict.keys(), key=position.get)
+    node_keys = sorted(io_dict.keys(), key=lambda item: position[item])
     for i, key_one in enumerate(node_keys):
         for key_two in node_keys[i + 1 :]:
             if (key_one, key_two) in graph.edges:
