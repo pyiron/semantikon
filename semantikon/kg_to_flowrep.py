@@ -145,7 +145,9 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
                 if property_shape is None:
                     continue
                 pairs = tuple(
-                    pair for pair in _restriction_pairs(property_shape) if pair[0] != RDF.type
+                    pair
+                    for pair in _restriction_pairs(property_shape)
+                    if pair[0] != RDF.type
                 )
             else:
                 continue
@@ -323,7 +325,9 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.DagData:
                         v_child = _find_child_for_io(v)
                         if v_child is not None:
                             v_port = v_data["arg"]
-                            edges.append((f"inputs.{u_port}", f"{v_child}.inputs.{v_port}"))
+                            edges.append(
+                                (f"inputs.{u_port}", f"{v_child}.inputs.{v_port}")
+                            )
                 elif u_step == "outputs" and v_step == "inputs":
                     if u_is_child_io and v_is_child_io:
                         u_child = _find_child_for_io(u)
@@ -348,7 +352,9 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.DagData:
                         if u_child is not None:
                             u_port = u_data["arg"]
                             v_port = v_data["arg"]
-                            edges.append((f"{u_child}.outputs.{u_port}", f"outputs.{v_port}"))
+                            edges.append(
+                                (f"{u_child}.outputs.{u_port}", f"outputs.{v_port}")
+                            )
 
             if nodes:
                 result["nodes"] = nodes
@@ -410,7 +416,9 @@ def _node_functions(graph: Graph) -> dict[URIRef, URIRef]:
     return dict(graph.query(query))
 
 
-def _reorganize_output_edges(graph: nx.DiGraph, node: URIRef, position: dict[URIRef, int]):
+def _reorganize_output_edges(
+    graph: nx.DiGraph, node: URIRef, position: dict[URIRef, int]
+):
     io_dict: dict[URIRef, URIRef] = {}
     for n in graph.predecessors(node):
         pred = list(graph.predecessors(n))
@@ -423,7 +431,9 @@ def _reorganize_output_edges(graph: nx.DiGraph, node: URIRef, position: dict[URI
     graph.add_edges_from(zip(nodes[:-1], nodes[1:]))
 
 
-def _reorganize_input_edges(graph: nx.DiGraph, node: URIRef, position: dict[URIRef, int]):
+def _reorganize_input_edges(
+    graph: nx.DiGraph, node: URIRef, position: dict[URIRef, int]
+):
     io_dict: dict[URIRef, URIRef] = {}
     for n in graph.successors(node):
         succ = list(graph.successors(n))
@@ -458,7 +468,9 @@ def _add_io_nodes(
         )
     else:
         io_query = graph.query(
-            _get_connection_query(SNS.workflow_node, SNS.has_part, SNS.output_assignment)
+            _get_connection_query(
+                SNS.workflow_node, SNS.has_part, SNS.output_assignment
+            )
         )
     for node, io_node in io_query:
         if io_type == "input":
@@ -485,12 +497,18 @@ def _add_io_nodes(
 
 def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
     function_nodes = list(graph.subjects(RDF.type, SNS.workflow_function))
-    function_dict = {f_node: _graph_to_function(graph, f_node) for f_node in function_nodes}
+    function_dict = {
+        f_node: _graph_to_function(graph, f_node) for f_node in function_nodes
+    }
     node_function_dict = _node_functions(graph)
 
     workflow_graph = nx.DiGraph()
-    _add_io_nodes(graph, workflow_graph, function_dict, node_function_dict, io_type="input")
-    _add_io_nodes(graph, workflow_graph, function_dict, node_function_dict, io_type="output")
+    _add_io_nodes(
+        graph, workflow_graph, function_dict, node_function_dict, io_type="input"
+    )
+    _add_io_nodes(
+        graph, workflow_graph, function_dict, node_function_dict, io_type="output"
+    )
 
     for out_assignment, data_node in graph.query(
         _get_connection_query(
@@ -541,7 +559,11 @@ def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
             _reconnect_io(workflow_graph, node)
 
     workflow_graph.remove_nodes_from(
-        [node for node, data in workflow_graph.nodes.data() if data.get("step") == "data"]
+        [
+            node
+            for node, data in workflow_graph.nodes.data()
+            if data.get("step") == "data"
+        ]
     )
     workflow_graph.remove_edges_from(
         [
@@ -559,7 +581,9 @@ def _workflow_roots(graph: Graph) -> dict[str, URIRef]:
     workflow_nodes = list(graph.subjects(RDFS.subClassOf, SNS.workflow_node))
     node_graph.add_nodes_from(workflow_nodes)
     node_graph.add_edges_from(
-        graph.query(_get_connection_query(SNS.workflow_node, SNS.has_part, SNS.workflow_node))
+        graph.query(
+            _get_connection_query(SNS.workflow_node, SNS.has_part, SNS.workflow_node)
+        )
     )
     roots = [node for node in node_graph.nodes if node_graph.in_degree(node) == 0]
     return {_label(graph, root): root for root in roots}
