@@ -641,7 +641,7 @@ def _select_workflow(
     return names[0]
 
 
-def knowledge2data(
+def kg2data(
     graph: Graph, workflow_name: str | None = None
 ) -> fr.schemas.DagData:
     """
@@ -669,8 +669,8 @@ def knowledge2data(
     return serialize_and_networkx_to_data(workflows[selected_name])
 
 
-def knowledge2recipe(
+def kg2recipe(
     graph: Graph, workflow_name: str | None = None
 ) -> fr.schemas.WorkflowRecipe:
-    """Flowrep-style alias for ``knowledge2data``."""
-    return knowledge2data(graph, workflow_name=workflow_name).recipe
+    """Flowrep-style alias for ``kg2data``."""
+    return kg2data(graph, workflow_name=workflow_name).recipe

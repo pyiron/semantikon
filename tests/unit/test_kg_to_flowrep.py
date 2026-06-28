@@ -5,7 +5,7 @@ import flowrep as fr
 import networkx as nx
 from rdflib import RDFS, Graph, Literal, URIRef
 
-from semantikon import get_knowledge_graph, knowledge2data, knowledge2recipe
+from semantikon import get_knowledge_graph, kg2data, kg2recipe
 from semantikon import kg_to_flowrep as kgf
 from semantikon.workflow import workflow
 
@@ -46,7 +46,7 @@ def multiply_by_two(x=2):
 class TestKgToFlowrep(unittest.TestCase):
     def test_round_trip_from_knowledge_graph(self):
         graph = get_knowledge_graph(my_workflow.flowrep_recipe)
-        reconstructed_data = knowledge2data(graph)
+        reconstructed_data = kg2data(graph)
         reconstructed = reconstructed_data.recipe
 
         original_result = fr.tools.run_recipe(my_workflow.flowrep_recipe, x=3, y=5)
@@ -61,16 +61,16 @@ class TestKgToFlowrep(unittest.TestCase):
         graph += get_knowledge_graph(multiply_by_two.flowrep_recipe, prefix="T")
 
         with self.assertRaisesRegex(ValueError, "multiple root workflows"):
-            _ = knowledge2recipe(graph)
+            _ = kg2recipe(graph)
 
-        reconstructed = knowledge2recipe(graph, workflow_name="multiply_by_two")
+        reconstructed = kg2recipe(graph, workflow_name="multiply_by_two")
         converted_result = fr.tools.run_recipe(reconstructed, x=7)
         self.assertEqual(converted_result.output_ports["result"].value, 14)
 
     def test_requires_t_box_information(self):
         graph = get_knowledge_graph(my_workflow.flowrep_recipe, include_t_box=False)
         with self.assertRaisesRegex(ValueError, "No workflow nodes found in graph"):
-            _ = knowledge2recipe(graph)
+            _ = kg2recipe(graph)
 
     def test_identifier_and_label_fallbacks(self):
         graph = Graph()
