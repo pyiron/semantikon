@@ -5,8 +5,6 @@ from semantikon.flowrep_dict import annotation_to_type_hint, annotation_to_type_
 from semantikon.kg_to_flowrep import (
     knowledge2data,
     knowledge2recipe,
-    knowledge_graph_to_flowrep_data,
-    knowledge_graph_to_flowrep_recipe,
 )
 from semantikon.metadata import SemantikonURI, meta, u
 from semantikon.ontology import get_knowledge_graph, validate_values
@@ -21,8 +19,6 @@ __all__ = [
     "get_knowledge_graph",
     "knowledge2data",
     "knowledge2recipe",
-    "knowledge_graph_to_flowrep_data",
-    "knowledge_graph_to_flowrep_recipe",
     "meta",
     "parse_metadata",
     "query_io_completer",
