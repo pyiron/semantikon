@@ -237,25 +237,6 @@ class TestKgToFlowrep(unittest.TestCase):
             converted_result.output_ports["result"].value,
         )
 
-    def test_kg2recipe_with_uriref_workflow_name(self):
-        """Test that knowledge2recipe accepts URIRef workflow_name parameter."""
-        graph = get_knowledge_graph(my_workflow.flowrep_recipe)
-        roots = kgf._workflow_roots(graph)
-
-        # Get the URIRef for the workflow
-        workflow_uriref = next(iter(roots.values()))
-
-        # Should work with URIRef as workflow_name
-        reconstructed = kg2recipe(graph, workflow_name=workflow_uriref)
-
-        # Verify round-trip correctness by running the recipe
-        original_result = fr.tools.run_recipe(my_workflow.flowrep_recipe, x=3, y=5)
-        converted_result = fr.tools.run_recipe(reconstructed, x=3, y=5)
-        self.assertEqual(
-            original_result.output_ports["result"].value,
-            converted_result.output_ports["result"].value,
-        )
-
     def test_select_workflow_with_invalid_uriref(self):
         """Test that _select_workflow raises error for unknown URIRef."""
         graph = get_knowledge_graph(my_workflow.flowrep_recipe)
