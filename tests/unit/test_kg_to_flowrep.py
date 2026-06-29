@@ -222,13 +222,13 @@ class TestKgToFlowrep(unittest.TestCase):
         """Test that kg2recipe accepts URIRef workflow_name parameter."""
         graph = get_knowledge_graph(my_workflow.flowrep_recipe)
         roots = kgf._workflow_roots(graph)
-        
+
         # Get the URIRef for the workflow
         workflow_uriref = next(iter(roots.keys()))
-        
+
         # Should work with URIRef as workflow_name
         reconstructed = kg2recipe(graph, workflow_name=workflow_uriref)
-        
+
         # Verify round-trip correctness by running the recipe
         original_result = fr.tools.run_recipe(my_workflow.flowrep_recipe, x=3, y=5)
         converted_result = fr.tools.run_recipe(reconstructed, x=3, y=5)
@@ -241,13 +241,13 @@ class TestKgToFlowrep(unittest.TestCase):
         """Test that knowledge2recipe accepts URIRef workflow_name parameter."""
         graph = get_knowledge_graph(my_workflow.flowrep_recipe)
         roots = kgf._workflow_roots(graph)
-        
+
         # Get the URIRef for the workflow
         workflow_uriref = next(iter(roots.values()))
-        
+
         # Should work with URIRef as workflow_name
         reconstructed = kg2recipe(graph, workflow_name=workflow_uriref)
-        
+
         # Verify round-trip correctness by running the recipe
         original_result = fr.tools.run_recipe(my_workflow.flowrep_recipe, x=3, y=5)
         converted_result = fr.tools.run_recipe(reconstructed, x=3, y=5)
@@ -262,15 +262,15 @@ class TestKgToFlowrep(unittest.TestCase):
         roots = kgf._workflow_roots(graph)
         workflow_graph = kgf._build_workflow_graph(graph)
         workflows = kgf._split_by_roots(graph, workflow_graph, roots)
-        
+
         # Create a non-existent URIRef
         invalid_uriref = URIRef("http://example.org/nonexistent")
-        
+
         with self.assertRaises(ValueError) as context:
             kgf._select_workflow(
                 graph, roots, workflows.keys(), workflow_name=invalid_uriref
             )
-        
+
         self.assertIn("Unknown workflow URIRef", str(context.exception))
 
     def test_select_workflow_with_string_vs_uriref(self):
@@ -282,7 +282,7 @@ class TestKgToFlowrep(unittest.TestCase):
         # Get the workflow label and URIRef (now keys are URIRefs, values are labels)
         workflow_uriref = next(iter(roots.keys()))
         workflow_label = roots[workflow_uriref]
-        
+
         # Both should select the same workflow
         result_from_string = kgf._select_workflow(
             graph, roots, workflows.keys(), workflow_name=workflow_label
@@ -290,7 +290,7 @@ class TestKgToFlowrep(unittest.TestCase):
         result_from_uriref = kgf._select_workflow(
             graph, roots, workflows.keys(), workflow_name=workflow_uriref
         )
-        
+
         self.assertEqual(result_from_string, result_from_uriref)
 
 
