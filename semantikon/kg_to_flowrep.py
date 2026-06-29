@@ -214,74 +214,10 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
                 f"Failed to import {fqn!r} while reconstructing a workflow from a knowledge graph."
             ) from exc
 
-    def _split_endpoint(endpoint: str) -> tuple[str | None, str, str]:
-        if endpoint.startswith("inputs.") or endpoint.startswith("outputs."):
-            io, port = endpoint.split(".", 1)
-            return None, io, port
-        parts = endpoint.rsplit(".", 2)
-        if len(parts) != 3 or parts[1] not in {"inputs", "outputs"}:
-            raise ValueError(f"Malformed workflow edge endpoint: {endpoint!r}")
-        return parts[0], parts[1], parts[2]
-
     def _normalize_output_label(label: str, recipe_outputs: list[str]) -> str:
         if label == "output" and recipe_outputs == ["output_0"]:
             return "output_0"
         return label
-
-    def _edges_to_flowrep(
-        edge_endpoints: list[tuple[str, str]],
-        nodes: dict[str, fr.schemas.RecipeDiscrimination],
-        workflow_outputs: list[str],
-    ) -> tuple[fr.schemas.InputEdges, fr.schemas.Edges, fr.schemas.OutputEdges]:
-        input_edges: fr.schemas.InputEdges = {}
-        edges: fr.schemas.Edges = {}
-        output_edges: fr.schemas.OutputEdges = {}
-        for src, tgt in edge_endpoints:
-            src_node, src_io, src_port = _split_endpoint(src)
-            tgt_node, tgt_io, tgt_port = _split_endpoint(tgt)
-            if (
-                src_node is None
-                and src_io == "inputs"
-                and tgt_node is not None
-                and tgt_io == "inputs"
-            ):
-                input_edges[fr.schemas.TargetHandle(node=tgt_node, port=tgt_port)] = (
-                    fr.schemas.InputSource(port=src_port)
-                )
-            elif (
-                src_node is not None
-                and src_io == "outputs"
-                and tgt_node is not None
-                and tgt_io == "inputs"
-            ):
-                src_port = _normalize_output_label(src_port, nodes[src_node].outputs)
-                edges[fr.schemas.TargetHandle(node=tgt_node, port=tgt_port)] = (
-                    fr.schemas.SourceHandle(node=src_node, port=src_port)
-                )
-            elif (
-                tgt_node is None
-                and tgt_io == "outputs"
-                and src_node is None
-                and src_io == "inputs"
-            ):
-                tgt_port = _normalize_output_label(tgt_port, workflow_outputs)
-                output_edges[fr.schemas.OutputTarget(port=tgt_port)] = (
-                    fr.schemas.InputSource(port=src_port)
-                )
-            elif (
-                tgt_node is None
-                and tgt_io == "outputs"
-                and src_node is not None
-                and src_io == "outputs"
-            ):
-                src_port = _normalize_output_label(src_port, nodes[src_node].outputs)
-                tgt_port = _normalize_output_label(tgt_port, workflow_outputs)
-                output_edges[fr.schemas.OutputTarget(port=tgt_port)] = (
-                    fr.schemas.SourceHandle(node=src_node, port=src_port)
-                )
-            else:
-                raise ValueError(f"Malformed workflow edge: {src!r} -> {tgt!r}")
-        return input_edges, edges, output_edges
 
     def _process_node(node_name: str) -> fr.schemas.RecipeDiscrimination:
         node_data = G.nodes[node_name]
@@ -292,7 +228,9 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
         if node_type == "workflow":
             base_recipe = _flowrep_recipe_from_callable(func_obj, node_type="workflow")
             nodes: dict[str, fr.schemas.RecipeDiscrimination] = {}
-            edge_endpoints: list[tuple[str, str]] = []
+            input_edges: fr.schemas.InputEdges = {}
+            edges: fr.schemas.Edges = {}
+            output_edges: fr.schemas.OutputEdges = {}
 
             # First collect all direct children
             direct_children: dict[str, str] = {}
@@ -361,9 +299,8 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
                         v_child = _find_child_for_io(v)
                         if v_child is not None:
                             v_port = v_data["arg"]
-                            edge_endpoints.append(
-                                (f"inputs.{u_port}", f"{v_child}.inputs.{v_port}")
-                            )
+                            edges_key = fr.schemas.TargetHandle(node=v_child, port=v_port)
+                            input_edges[edges_key] = fr.schemas.InputSource(port=u_port)
                 elif u_step == "outputs" and v_step == "inputs":
                     if u_is_child_io and v_is_child_io:
                         u_child = _find_child_for_io(u)
@@ -371,31 +308,38 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
                         if u_child is not None and v_child is not None:
                             u_port = u_data["arg"]
                             v_port = v_data["arg"]
-                            edge_endpoints.append(
-                                (
-                                    f"{u_child}.outputs.{u_port}",
-                                    f"{v_child}.inputs.{v_port}",
-                                )
+                            u_port = _normalize_output_label(
+                                u_port, nodes[u_child].outputs
+                            )
+                            edges_key = fr.schemas.TargetHandle(node=v_child, port=v_port)
+                            edges[edges_key] = fr.schemas.SourceHandle(
+                                node=u_child, port=u_port
                             )
                 elif u_step == "inputs" and v_step == "outputs":
                     if u_is_direct_io and v_is_direct_io:
                         u_port = u_data["arg"]
                         v_port = v_data["arg"]
-                        edge_endpoints.append((f"inputs.{u_port}", f"outputs.{v_port}"))
+                        v_port = _normalize_output_label(
+                            v_port, list(base_recipe.outputs)
+                        )
+                        output_edges[fr.schemas.OutputTarget(port=v_port)] = (
+                            fr.schemas.InputSource(port=u_port)
+                        )
                 elif u_step == "outputs" and v_step == "outputs" and u != v:
                     if u_is_child_io and v_is_direct_io:
                         u_child = _find_child_for_io(u)
                         if u_child is not None:
                             u_port = u_data["arg"]
                             v_port = v_data["arg"]
-                            edge_endpoints.append(
-                                (f"{u_child}.outputs.{u_port}", f"outputs.{v_port}")
+                            u_port = _normalize_output_label(
+                                u_port, nodes[u_child].outputs
                             )
-            input_edges, edges, output_edges = _edges_to_flowrep(
-                edge_endpoints=edge_endpoints,
-                nodes=nodes,
-                workflow_outputs=list(base_recipe.outputs),
-            )
+                            v_port = _normalize_output_label(
+                                v_port, list(base_recipe.outputs)
+                            )
+                            output_edges[fr.schemas.OutputTarget(port=v_port)] = (
+                                fr.schemas.SourceHandle(node=u_child, port=u_port)
+                            )
             return fr.schemas.WorkflowRecipe(
                 inputs=list(base_recipe.inputs),
                 outputs=list(base_recipe.outputs),
