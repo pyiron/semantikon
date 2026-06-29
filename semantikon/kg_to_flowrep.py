@@ -168,21 +168,6 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     }
 
 
-def serialize_and_networkx_to_data(G: nx.DiGraph) -> fr.schemas.DagData:
-    """
-    Convert a NetworkX DiGraph back into flowrep DagData structure.
-
-    This is the inverse of ``serialize_and_convert_to_networkx``.
-
-    Args:
-        G (nx.DiGraph): Serialized workflow graph with Semantikon node/edge schema.
-
-    Returns:
-        fr.schemas.DagData: The reconstructed workflow data.
-    """
-    return fr.schemas.DagData.from_recipe(_networkx_to_dict(G))
-
-
 def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
     """
     Convert a NetworkX DiGraph into flowrep WorkflowRecipe.
