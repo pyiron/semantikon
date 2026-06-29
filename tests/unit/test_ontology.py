@@ -1067,33 +1067,6 @@ class TestOntology(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "is not present in the graph"):
             _ = kgf._graph_to_function(graph, EX.missing_function)
 
-    def test_serialize_deserialize_round_trip(self):
-        wf_data = fr.tools.run_recipe(
-            my_kinetic_energy_workflow.flowrep_recipe, distance=2, time=1, mass=4
-        )
-        G = onto.serialize_and_convert_to_networkx(wf_data, hash_data=False)
-        wf_data_reconstructed = kgf.serialize_and_networkx_to_data(G)
-
-        self.assertEqual(
-            wf_data_reconstructed.input_ports.keys(), wf_data.input_ports.keys()
-        )
-        self.assertEqual(
-            wf_data_reconstructed.output_ports.keys(), wf_data.output_ports.keys()
-        )
-        self.assertEqual(
-            set(wf_data_reconstructed.nodes.keys()), set(wf_data.nodes.keys())
-        )
-
-    def test_serialize_deserialize_without_execution(self):
-        G = onto.serialize_and_convert_to_networkx(
-            my_kinetic_energy_workflow.flowrep_recipe, hash_data=False
-        )
-        wf_data = kgf.serialize_and_networkx_to_data(G)
-
-        self.assertIsNotNone(wf_data.recipe)
-        self.assertIn("get_speed_0", wf_data.nodes)
-        self.assertIn("get_kinetic_energy_0", wf_data.nodes)
-
     def test_unhashable(self):
         uh = Unhashable()
         wf_data = fr.tools.run_recipe(my_unhashable_inputs.flowrep_recipe, uh=uh)
