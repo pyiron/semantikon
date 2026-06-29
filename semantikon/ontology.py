@@ -1589,22 +1589,6 @@ def serialize_and_convert_to_networkx(
     return G
 
 
-def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.DagData:
-    """
-    Convert a NetworkX DiGraph into flowrep DagData.
-
-    Args:
-        G (nx.DiGraph): Graph to convert, using Semantikon node/edge attributes.
-
-    Returns:
-        fr.schemas.DagData: Reconstructed workflow data.
-    """
-
-    from semantikon.kg_to_flowrep import _networkx_to_dict as _networkx_to_recipe_impl
-
-    return fr.schemas.DagData.from_recipe(_networkx_to_recipe_impl(G))
-
-
 def _to_owl_restriction(
     base_node: URIRef | None,
     on_property: URIRef,
