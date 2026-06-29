@@ -5,7 +5,7 @@ import flowrep as fr
 import networkx as nx
 from rdflib import RDFS, Graph, Literal, URIRef
 
-from semantikon import get_knowledge_graph, kg2data, kg2recipe
+from semantikon import get_knowledge_graph, kg2recipe
 from semantikon import kg_to_flowrep as kgf
 from semantikon.workflow import workflow
 
@@ -46,8 +46,7 @@ def multiply_by_two(x=2):
 class TestKgToFlowrep(unittest.TestCase):
     def test_round_trip_from_knowledge_graph(self):
         graph = get_knowledge_graph(my_workflow.flowrep_recipe)
-        reconstructed_data = kg2data(graph)
-        reconstructed = reconstructed_data.recipe
+        reconstructed = kg2recipe(graph)
 
         original_result = fr.tools.run_recipe(my_workflow.flowrep_recipe, x=3, y=5)
         converted_result = fr.tools.run_recipe(reconstructed, x=3, y=5)
@@ -219,17 +218,16 @@ class TestKgToFlowrep(unittest.TestCase):
         self.assertIn((out_node, input_one), reconnect.edges)
         self.assertIn((out_node, input_two), reconnect.edges)
 
-    def test_kg2data_with_uriref_workflow_name(self):
-        """Test that knowledge2data accepts URIRef workflow_name parameter."""
+    def test_kg2recipe_with_uriref_workflow_name(self):
+        """Test that kg2recipe accepts URIRef workflow_name parameter."""
         graph = get_knowledge_graph(my_workflow.flowrep_recipe)
         roots = kgf._workflow_roots(graph)
         
         # Get the URIRef for the workflow
-        workflow_uriref = next(iter(roots.values()))
+        workflow_uriref = next(iter(roots.keys()))
         
         # Should work with URIRef as workflow_name
-        reconstructed_data = kg2data(graph, workflow_name=workflow_uriref)
-        reconstructed = reconstructed_data.recipe
+        reconstructed = kg2recipe(graph, workflow_name=workflow_uriref)
         
         # Verify round-trip correctness by running the recipe
         original_result = fr.tools.run_recipe(my_workflow.flowrep_recipe, x=3, y=5)
