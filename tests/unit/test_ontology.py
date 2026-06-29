@@ -12,6 +12,7 @@ from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, compare
 from rdflib.compare import graph_diff
 
+from semantikon import kg_to_flowrep as kgf
 from semantikon import ontology as onto
 from semantikon.metadata import SemantikonURI, meta
 from semantikon.visualize import visualize_recipe
@@ -1030,6 +1031,68 @@ class TestOntology(unittest.TestCase):
             }"""
         g = onto.function_to_knowledge_graph(prepare_pizza)
         self.assertEqual(list(g.query(query))[0][0].toPython(), "output_0")
+
+    def test_graph_to_function(self):
+        graph = onto.function_to_knowledge_graph(get_kinetic_energy)
+        f_node = next(graph.subjects(RDF.type, onto.SNS.workflow_function))
+        parsed = kgf._graph_to_function(graph, f_node)
+
+        self.assertEqual(parsed["data"]["qualname"], "get_kinetic_energy")
+        self.assertEqual(parsed["data"]["module"], __name__)
+        self.assertEqual(parsed["uri"], EX.get_kinetic_energy)
+        self.assertListEqual(
+            [item["arg"] for item in parsed["input_args"]], ["mass", "velocity"]
+        )
+        self.assertListEqual(
+            [item["arg"] for item in parsed["output_args"]], ["kinetic_energy"]
+        )
+        self.assertTrue(
+            compare.isomorphic(graph, onto._function_to_graph(**parsed)),
+        )
+
+    def test_graph_to_function_with_restrictions(self):
+        graph = onto.function_to_knowledge_graph(sell)
+        f_node = next(graph.subjects(RDF.type, onto.SNS.workflow_function))
+        parsed = kgf._graph_to_function(graph, f_node)
+
+        self.assertEqual(parsed["data"]["qualname"], "sell")
+        self.assertIn("restrictions", parsed["input_args"][0])
+        self.assertEqual(len(parsed["input_args"][0]["restrictions"]), 2)
+        self.assertTrue(
+            compare.isomorphic(graph, onto._function_to_graph(**parsed)),
+        )
+
+    def test_graph_to_function_requires_present_f_node(self):
+        graph = onto.function_to_knowledge_graph(get_speed)
+        with self.assertRaisesRegex(ValueError, "is not present in the graph"):
+            _ = kgf._graph_to_function(graph, EX.missing_function)
+
+    def test_serialize_deserialize_round_trip(self):
+        wf_data = fr.tools.run_recipe(
+            my_kinetic_energy_workflow.flowrep_recipe, distance=2, time=1, mass=4
+        )
+        G = onto.serialize_and_convert_to_networkx(wf_data, hash_data=False)
+        wf_data_reconstructed = kgf.serialize_and_networkx_to_data(G)
+
+        self.assertEqual(
+            wf_data_reconstructed.input_ports.keys(), wf_data.input_ports.keys()
+        )
+        self.assertEqual(
+            wf_data_reconstructed.output_ports.keys(), wf_data.output_ports.keys()
+        )
+        self.assertEqual(
+            set(wf_data_reconstructed.nodes.keys()), set(wf_data.nodes.keys())
+        )
+
+    def test_serialize_deserialize_without_execution(self):
+        G = onto.serialize_and_convert_to_networkx(
+            my_kinetic_energy_workflow.flowrep_recipe, hash_data=False
+        )
+        wf_data = kgf.serialize_and_networkx_to_data(G)
+
+        self.assertIsNotNone(wf_data.recipe)
+        self.assertIn("get_speed_0", wf_data.nodes)
+        self.assertIn("get_kinetic_energy_0", wf_data.nodes)
 
     def test_unhashable(self):
         uh = Unhashable()
