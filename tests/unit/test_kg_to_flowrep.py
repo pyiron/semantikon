@@ -94,8 +94,8 @@ class TestKgToFlowrep(unittest.TestCase):
         graph.add((uri_1, kgf.SNS.local_identifier, Literal("wf_a")))
         graph.add((uri_2, kgf.SNS.local_identifier, Literal("wf_b")))
 
-        roots = {"label_a": uri_1, "label_b": uri_2}
-        workflows = roots.keys()
+        roots = {uri_1: "label_a", uri_2: "label_b"}
+        workflows = roots.values()
 
         self.assertEqual(
             kgf._select_workflow(graph, roots, workflows, workflow_name="label_a"),
@@ -115,32 +115,36 @@ class TestKgToFlowrep(unittest.TestCase):
         ambiguous_uri_2 = URIRef("http://example.org/wf_same_2")
         for uri in (ambiguous_uri_1, ambiguous_uri_2):
             ambiguous_graph.add((uri, kgf.SNS.local_identifier, Literal("wf_same")))
-        ambiguous_roots = {"label_1": ambiguous_uri_1, "label_2": ambiguous_uri_2}
+        ambiguous_roots = {ambiguous_uri_1: "label_1", ambiguous_uri_2: "label_2"}
         with self.assertRaisesRegex(ValueError, "ambiguous"):
             _ = kgf._select_workflow(
                 ambiguous_graph,
                 ambiguous_roots,
-                ambiguous_roots.keys(),
+                ambiguous_roots.values(),
                 workflow_name="wf_same",
             )
 
     def test_split_by_roots_errors(self):
         graph = Graph()
 
+        # Test 1: Graph with no roots
         no_root_graph = nx.DiGraph()
-        no_root_graph.add_node("unrelated_node")
+        no_root_graph.add_node(URIRef("http://example.org/unrelated"))
         with self.assertRaisesRegex(ValueError, "Could not assign"):
             _ = kgf._split_by_roots(graph, no_root_graph, roots={})
 
+        # Test 2: Multiple roots in same component
         multi_root_graph = nx.DiGraph()
-        multi_root_graph.add_edge("root_a", "root_b")
+        root_a = URIRef("http://example.org/root_a")
+        root_b = URIRef("http://example.org/root_b")
+        multi_root_graph.add_edge(root_a, root_b)
         with self.assertRaisesRegex(ValueError, "more than one root workflow"):
             _ = kgf._split_by_roots(
                 graph,
                 multi_root_graph,
                 roots={
-                    "root_a": URIRef("http://example.org/root_a"),
-                    "root_b": URIRef("http://example.org/root_b"),
+                    root_a: "root_a",
+                    root_b: "root_b",
                 },
             )
 
@@ -214,6 +218,82 @@ class TestKgToFlowrep(unittest.TestCase):
         kgf._reconnect_io(reconnect, data_node)
         self.assertIn((out_node, input_one), reconnect.edges)
         self.assertIn((out_node, input_two), reconnect.edges)
+
+    def test_kg2data_with_uriref_workflow_name(self):
+        """Test that knowledge2data accepts URIRef workflow_name parameter."""
+        graph = get_knowledge_graph(my_workflow.flowrep_recipe)
+        roots = kgf._workflow_roots(graph)
+        
+        # Get the URIRef for the workflow
+        workflow_uriref = next(iter(roots.values()))
+        
+        # Should work with URIRef as workflow_name
+        reconstructed_data = kg2data(graph, workflow_name=workflow_uriref)
+        reconstructed = reconstructed_data.recipe
+        
+        # Verify round-trip correctness by running the recipe
+        original_result = fr.tools.run_recipe(my_workflow.flowrep_recipe, x=3, y=5)
+        converted_result = fr.tools.run_recipe(reconstructed, x=3, y=5)
+        self.assertEqual(
+            original_result.output_ports["result"].value,
+            converted_result.output_ports["result"].value,
+        )
+
+    def test_kg2recipe_with_uriref_workflow_name(self):
+        """Test that knowledge2recipe accepts URIRef workflow_name parameter."""
+        graph = get_knowledge_graph(my_workflow.flowrep_recipe)
+        roots = kgf._workflow_roots(graph)
+        
+        # Get the URIRef for the workflow
+        workflow_uriref = next(iter(roots.values()))
+        
+        # Should work with URIRef as workflow_name
+        reconstructed = kg2recipe(graph, workflow_name=workflow_uriref)
+        
+        # Verify round-trip correctness by running the recipe
+        original_result = fr.tools.run_recipe(my_workflow.flowrep_recipe, x=3, y=5)
+        converted_result = fr.tools.run_recipe(reconstructed, x=3, y=5)
+        self.assertEqual(
+            original_result.output_ports["result"].value,
+            converted_result.output_ports["result"].value,
+        )
+
+    def test_select_workflow_with_invalid_uriref(self):
+        """Test that _select_workflow raises error for unknown URIRef."""
+        graph = get_knowledge_graph(my_workflow.flowrep_recipe)
+        roots = kgf._workflow_roots(graph)
+        workflow_graph = kgf._build_workflow_graph(graph)
+        workflows = kgf._split_by_roots(graph, workflow_graph, roots)
+        
+        # Create a non-existent URIRef
+        invalid_uriref = URIRef("http://example.org/nonexistent")
+        
+        with self.assertRaises(ValueError) as context:
+            kgf._select_workflow(
+                graph, roots, workflows.keys(), workflow_name=invalid_uriref
+            )
+        
+        self.assertIn("Unknown workflow URIRef", str(context.exception))
+
+    def test_select_workflow_with_string_vs_uriref(self):
+        """Test that string and URIRef selection produce same result."""
+        graph = get_knowledge_graph(my_workflow.flowrep_recipe)
+        roots = kgf._workflow_roots(graph)
+        workflow_graph = kgf._build_workflow_graph(graph)
+        workflows = kgf._split_by_roots(graph, workflow_graph, roots)
+        # Get the workflow label and URIRef (now keys are URIRefs, values are labels)
+        workflow_uriref = next(iter(roots.keys()))
+        workflow_label = roots[workflow_uriref]
+        
+        # Both should select the same workflow
+        result_from_string = kgf._select_workflow(
+            graph, roots, workflows.keys(), workflow_name=workflow_label
+        )
+        result_from_uriref = kgf._select_workflow(
+            graph, roots, workflows.keys(), workflow_name=workflow_uriref
+        )
+        
+        self.assertEqual(result_from_string, result_from_uriref)
 
 
 if __name__ == "__main__":
