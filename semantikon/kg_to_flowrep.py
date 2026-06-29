@@ -208,19 +208,25 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.DagData:
                 data[key] = node_data[key]
         return data
 
-    def _get_function_from_dict(func_dict: dict[str, Any]) -> Any:
+    def _get_function_from_dict(func_dict: Any) -> Any:
         """Try to reconstruct the function from the stored metadata."""
         if not isinstance(func_dict, dict):
             return func_dict
+
+        module = func_dict.get("module")
+        qualname = func_dict.get("qualname")
+        if not module or not qualname:
+            raise ValueError(
+                f"Cannot reconstruct function; missing 'module'/'qualname' in {func_dict!r}"
+            )
+
+        fqn = f"{module}.{qualname}"
         try:
-            module = func_dict.get("module")
-            qualname = func_dict.get("qualname")
-            if module and qualname:
-                fqn = f"{module}.{qualname}"
-                return retrieve.import_from_string(fqn)
-        except Exception:
-            pass
-        return None
+            return retrieve.import_from_string(fqn)
+        except Exception as exc:
+            raise ImportError(
+                f"Failed to import {fqn!r} while reconstructing a workflow from a knowledge graph."
+            ) from exc
 
     def _process_node(node_name: str) -> dict[str, Any]:
         node_data = G.nodes[node_name]
