@@ -278,7 +278,7 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
                 u_is_child_io = _is_child_io(u)
                 v_is_child_io = _is_child_io(v)
 
-                if u_step == "inputs" and v_step == "inputs":
+                if u_step == v_step == "inputs":
                     if u_is_direct_io and v_is_child_io:
                         u_port = u_data["arg"]
                         v_child = _find_child_for_io(v)
@@ -304,17 +304,7 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
                             edges[edges_key] = fr.schemas.SourceHandle(
                                 node=u_child, port=u_port
                             )
-                elif u_step == "inputs" and v_step == "outputs":
-                    if u_is_direct_io and v_is_direct_io:
-                        u_port = u_data["arg"]
-                        v_port = v_data["arg"]
-                        v_port = _normalize_output_label(
-                            v_port, list(base_recipe.outputs)
-                        )
-                        output_edges[fr.schemas.OutputTarget(port=v_port)] = (
-                            fr.schemas.InputSource(port=u_port)
-                        )
-                elif u_step == "outputs" and v_step == "outputs" and u != v:
+                elif u_step == v_step == "outputs" and u != v:
                     if u_is_child_io and v_is_direct_io:
                         u_child = _find_child_for_io(u)
                         if u_child is not None:
