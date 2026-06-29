@@ -11,7 +11,7 @@ from rdflib import OWL, RDF, RDFS, Graph, Literal, URIRef
 from rdflib.namespace import SH
 from rdflib.term import IdentifiedNode
 
-from semantikon.flowrep_dict import dict_to_nodedata
+from semantikon.flowrep_dict import _flowrep_recipe_from_callable
 from semantikon.ontology import SNS
 
 
@@ -180,33 +180,19 @@ def serialize_and_networkx_to_data(G: nx.DiGraph) -> fr.schemas.DagData:
     Returns:
         fr.schemas.DagData: The reconstructed workflow data.
     """
-    return _networkx_to_dict(G)
+    return fr.schemas.DagData.from_recipe(_networkx_to_dict(G))
 
 
-def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.DagData:
+def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
     """
-    Convert a NetworkX DiGraph into flowrep DagData.
+    Convert a NetworkX DiGraph into flowrep WorkflowRecipe.
 
     Args:
         G (nx.DiGraph): Graph to convert, using Semantikon node/edge attributes.
 
     Returns:
-        fr.schemas.DagData: Reconstructed workflow data.
+        fr.schemas.WorkflowRecipe: Reconstructed workflow recipe.
     """
-
-    def _extract_io_data(io_name: str) -> dict[str, Any]:
-        data = {}
-        node_data = G.nodes[io_name]
-        if "value" in node_data:
-            data["value"] = node_data["value"]
-        if "dtype" in node_data:
-            data["dtype"] = node_data["dtype"]
-        if "default" in node_data:
-            data["default"] = node_data["default"]
-        for key in ["uri", "units", "unit", "triples", "derived_from", "restrictions"]:
-            if key in node_data:
-                data[key] = node_data[key]
-        return data
 
     def _get_function_from_dict(func_dict: Any) -> Any:
         """Try to reconstruct the function from the stored metadata."""
@@ -228,44 +214,88 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.DagData:
                 f"Failed to import {fqn!r} while reconstructing a workflow from a knowledge graph."
             ) from exc
 
-    def _process_node(node_name: str) -> dict[str, Any]:
+    def _split_endpoint(endpoint: str) -> tuple[str | None, str, str]:
+        if endpoint.startswith("inputs.") or endpoint.startswith("outputs."):
+            io, port = endpoint.split(".", 1)
+            return None, io, port
+        parts = endpoint.rsplit(".", 2)
+        if len(parts) != 3 or parts[1] not in {"inputs", "outputs"}:
+            raise ValueError(f"Malformed workflow edge endpoint: {endpoint!r}")
+        return parts[0], parts[1], parts[2]
+
+    def _normalize_output_label(label: str, recipe_outputs: list[str]) -> str:
+        if label == "output" and recipe_outputs == ["output_0"]:
+            return "output_0"
+        return label
+
+    def _edges_to_flowrep(
+        edge_endpoints: list[tuple[str, str]],
+        nodes: dict[str, fr.schemas.RecipeDiscrimination],
+        workflow_outputs: list[str],
+    ) -> tuple[fr.schemas.InputEdges, fr.schemas.Edges, fr.schemas.OutputEdges]:
+        input_edges: fr.schemas.InputEdges = {}
+        edges: fr.schemas.Edges = {}
+        output_edges: fr.schemas.OutputEdges = {}
+        for src, tgt in edge_endpoints:
+            src_node, src_io, src_port = _split_endpoint(src)
+            tgt_node, tgt_io, tgt_port = _split_endpoint(tgt)
+            if (
+                src_node is None
+                and src_io == "inputs"
+                and tgt_node is not None
+                and tgt_io == "inputs"
+            ):
+                input_edges[fr.schemas.TargetHandle(node=tgt_node, port=tgt_port)] = (
+                    fr.schemas.InputSource(port=src_port)
+                )
+            elif (
+                src_node is not None
+                and src_io == "outputs"
+                and tgt_node is not None
+                and tgt_io == "inputs"
+            ):
+                src_port = _normalize_output_label(src_port, nodes[src_node].outputs)
+                edges[fr.schemas.TargetHandle(node=tgt_node, port=tgt_port)] = (
+                    fr.schemas.SourceHandle(node=src_node, port=src_port)
+                )
+            elif (
+                tgt_node is None
+                and tgt_io == "outputs"
+                and src_node is None
+                and src_io == "inputs"
+            ):
+                tgt_port = _normalize_output_label(tgt_port, workflow_outputs)
+                output_edges[fr.schemas.OutputTarget(port=tgt_port)] = (
+                    fr.schemas.InputSource(port=src_port)
+                )
+            elif (
+                tgt_node is None
+                and tgt_io == "outputs"
+                and src_node is not None
+                and src_io == "outputs"
+            ):
+                src_port = _normalize_output_label(src_port, nodes[src_node].outputs)
+                tgt_port = _normalize_output_label(tgt_port, workflow_outputs)
+                output_edges[fr.schemas.OutputTarget(port=tgt_port)] = (
+                    fr.schemas.SourceHandle(node=src_node, port=src_port)
+                )
+            else:
+                raise ValueError(f"Malformed workflow edge: {src!r} -> {tgt!r}")
+        return input_edges, edges, output_edges
+
+    def _process_node(node_name: str) -> fr.schemas.RecipeDiscrimination:
         node_data = G.nodes[node_name]
         node_type = node_data.get("type", "atomic")
-
-        result: dict[str, Any] = {"type": node_type}
-
-        if "function" in node_data:
-            func_obj = _get_function_from_dict(node_data["function"])
-            if func_obj is not None:
-                result["function"] = func_obj
-
-        if "label" in node_data:
-            result["label"] = node_data["label"]
-
-        input_ports = {}
-        output_ports = {}
-        for predecessor in G.predecessors(node_name):
-            pred_data = G.nodes[predecessor]
-            if pred_data.get("step") == "inputs":
-                port_name = pred_data["arg"]
-                input_ports[port_name] = _extract_io_data(predecessor)
-        for successor in G.successors(node_name):
-            succ_data = G.nodes[successor]
-            if succ_data.get("step") == "outputs":
-                port_name = succ_data["arg"]
-                output_ports[port_name] = _extract_io_data(successor)
-
-        if input_ports:
-            result["inputs"] = input_ports
-        if output_ports:
-            result["outputs"] = output_ports
-
+        if "function" not in node_data:
+            raise ValueError(f"Node {node_name!r} is missing function metadata.")
+        func_obj = _get_function_from_dict(node_data["function"])
         if node_type == "workflow":
-            nodes = {}
-            edges = []
+            base_recipe = _flowrep_recipe_from_callable(func_obj, node_type="workflow")
+            nodes: dict[str, fr.schemas.RecipeDiscrimination] = {}
+            edge_endpoints: list[tuple[str, str]] = []
 
             # First collect all direct children
-            direct_children = {}
+            direct_children: dict[str, str] = {}
             for child_label, child_node in G.nodes.items():
                 if (
                     child_node.get("step") == "node"
@@ -331,7 +361,7 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.DagData:
                         v_child = _find_child_for_io(v)
                         if v_child is not None:
                             v_port = v_data["arg"]
-                            edges.append(
+                            edge_endpoints.append(
                                 (f"inputs.{u_port}", f"{v_child}.inputs.{v_port}")
                             )
                 elif u_step == "outputs" and v_step == "inputs":
@@ -341,7 +371,7 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.DagData:
                         if u_child is not None and v_child is not None:
                             u_port = u_data["arg"]
                             v_port = v_data["arg"]
-                            edges.append(
+                            edge_endpoints.append(
                                 (
                                     f"{u_child}.outputs.{u_port}",
                                     f"{v_child}.inputs.{v_port}",
@@ -351,27 +381,42 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.DagData:
                     if u_is_direct_io and v_is_direct_io:
                         u_port = u_data["arg"]
                         v_port = v_data["arg"]
-                        edges.append((f"inputs.{u_port}", f"outputs.{v_port}"))
+                        edge_endpoints.append((f"inputs.{u_port}", f"outputs.{v_port}"))
                 elif u_step == "outputs" and v_step == "outputs" and u != v:
                     if u_is_child_io and v_is_direct_io:
                         u_child = _find_child_for_io(u)
                         if u_child is not None:
                             u_port = u_data["arg"]
                             v_port = v_data["arg"]
-                            edges.append(
+                            edge_endpoints.append(
                                 (f"{u_child}.outputs.{u_port}", f"outputs.{v_port}")
                             )
-
-            if nodes:
-                result["nodes"] = nodes
-            if edges:
-                result["edges"] = edges
-
-        return result
+            input_edges, edges, output_edges = _edges_to_flowrep(
+                edge_endpoints=edge_endpoints,
+                nodes=nodes,
+                workflow_outputs=list(base_recipe.outputs),
+            )
+            return fr.schemas.WorkflowRecipe(
+                inputs=list(base_recipe.inputs),
+                outputs=list(base_recipe.outputs),
+                nodes=nodes,
+                input_edges=input_edges,
+                edges=edges,
+                output_edges=output_edges,
+                reference=base_recipe.reference,
+                description=base_recipe.description,
+            )
+        if node_type == "atomic":
+            return _flowrep_recipe_from_callable(func_obj, node_type="atomic")
+        raise TypeError(f"Unsupported workflow node type: {node_type!r}")
 
     root_node = G.name
-    wf_dict = _process_node(root_node)
-    return cast(fr.schemas.DagData, dict_to_nodedata(wf_dict))
+    recipe = _process_node(root_node)
+    if not isinstance(recipe, fr.schemas.WorkflowRecipe):
+        raise TypeError(
+            f"Root node {root_node!r} must be a workflow, got {type(recipe).__name__!r}."
+        )
+    return recipe
 
 
 def _get_restriction(
@@ -695,4 +740,4 @@ def kg2recipe(
     selected_name = _select_workflow(
         graph, roots, workflows.keys(), workflow_name=workflow_name
     )
-    return serialize_and_networkx_to_data(workflows[selected_name]).recipe
+    return _networkx_to_dict(workflows[selected_name])

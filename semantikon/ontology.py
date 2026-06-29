@@ -1600,9 +1600,9 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.DagData:
         fr.schemas.DagData: Reconstructed workflow data.
     """
 
-    from semantikon.kg_to_flowrep import _networkx_to_dict as _networkx_to_dict_impl
+    from semantikon.kg_to_flowrep import _networkx_to_dict as _networkx_to_recipe_impl
 
-    return _networkx_to_dict_impl(G)
+    return fr.schemas.DagData.from_recipe(_networkx_to_recipe_impl(G))
 
 
 def _to_owl_restriction(
