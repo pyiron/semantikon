@@ -408,6 +408,28 @@ def get_knowledge_graph(
         )
 
     G = serialize_and_convert_to_networkx(wf_dict, hash_data=hash_data, prefix=prefix)
+    return _get_knowledge_graph_from_digraph(
+        G,
+        include_t_box=include_t_box,
+        include_a_box=include_a_box,
+        remove_data=remove_data,
+        extract_dataclasses=extract_dataclasses,
+        store_data=store_data,
+        file_name=file_name,
+        pmdco_uri=pmdco_uri,
+    )
+
+
+def _get_knowledge_graph_from_digraph(
+    G: SemantikonDiGraph,
+    include_t_box: bool = True,
+    include_a_box: bool = True,
+    remove_data: bool = False,
+    extract_dataclasses: bool = False,
+    store_data: bool = False,
+    file_name: str | None = None,
+    pmdco_uri: str = "https://w3id.org/pmd/co/3.0.0",
+) -> Graph:
     _check_consistency_of_digraph(G)
     graph = _get_bound_graph()
     graph += _import_pmdco(pmdco_uri=pmdco_uri)
