@@ -11,21 +11,18 @@ class TestCWL(unittest.TestCase):
     def setUpClass(cls):
         cls.static_dir = Path(__file__).parent.parent / "static"
 
-    @unittest.skipIf(os.name == "nt", "Skipping test on Windows")
     def test_returns_semantikon_digraph(self):
         g = cwl.get_knowledge_graph(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         self.assertIsInstance(g, SemantikonDiGraph)
 
-    @unittest.skipIf(os.name == "nt", "Skipping test on Windows")
     def test_graph_prefix(self):
         g = cwl.get_knowledge_graph(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         self.assertEqual(g.graph["prefix"], "kinetic_energy_workflow")
 
-    @unittest.skipIf(os.name == "nt", "Skipping test on Windows")
     def test_workflow_input_nodes(self):
         g = cwl.get_knowledge_graph(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
@@ -37,14 +34,12 @@ class TestCWL(unittest.TestCase):
         }
         self.assertTrue(expected_inputs.issubset(set(g.nodes)))
 
-    @unittest.skipIf(os.name == "nt", "Skipping test on Windows")
     def test_workflow_output_nodes(self):
         g = cwl.get_knowledge_graph(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         self.assertIn("kinetic_energy_workflow-outputs-kinetic_energy", g.nodes)
 
-    @unittest.skipIf(os.name == "nt", "Skipping test on Windows")
     def test_step_nodes(self):
         g = cwl.get_knowledge_graph(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
@@ -52,7 +47,6 @@ class TestCWL(unittest.TestCase):
         self.assertIn("kinetic_energy_workflow-get_speed", g.nodes)
         self.assertIn("kinetic_energy_workflow-get_kinetic_energy", g.nodes)
 
-    @unittest.skipIf(os.name == "nt", "Skipping test on Windows")
     def test_node_step_attributes(self):
         g = cwl.get_knowledge_graph(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
@@ -65,7 +59,6 @@ class TestCWL(unittest.TestCase):
         )
         self.assertEqual(g.nodes["kinetic_energy_workflow-get_speed"]["step"], "node")
 
-    @unittest.skipIf(os.name == "nt", "Skipping test on Windows")
     def test_input_binding_position(self):
         g = cwl.get_knowledge_graph(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
@@ -77,7 +70,6 @@ class TestCWL(unittest.TestCase):
             g.nodes["kinetic_energy_workflow-get_speed-inputs-time"]["position"], 2
         )
 
-    @unittest.skipIf(os.name == "nt", "Skipping test on Windows")
     def test_data_flow_edges(self):
         g = cwl.get_knowledge_graph(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
@@ -114,7 +106,6 @@ class TestCWL(unittest.TestCase):
             g.edges,
         )
 
-    @unittest.skipIf(os.name == "nt", "Skipping test on Windows")
     def test_get_name(self):
         self.assertEqual(
             cwl._get_name("file:///path/to/file.cwl#local_name"), "local_name"
