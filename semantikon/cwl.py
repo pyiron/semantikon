@@ -1,25 +1,76 @@
+from __future__ import annotations
+
+from pathlib import Path
+
 from cwl_utils import parser
 
 from semantikon import ontology
 
 
-def get_knowledge_graph(uri):
+def get_knowledge_graph(uri: str | Path) -> ontology.SemantikonDiGraph:
+    """
+    Parse a CWL document and build a knowledge graph.
+
+    Args:
+        uri (str | Path): Path or URI to the CWL file.
+
+    Returns:
+        ontology.SemantikonDiGraph: A directed graph representing the workflow
+            structure, with nodes for inputs, outputs, and steps, and edges
+            representing data flow between them.
+    """
     wf = parser.load_document_by_uri(uri)
     return _add_node(wf)
 
 
-def _get_name(tag):
+def _get_name(tag: str) -> str:
+    """
+    Extract the local name from a CWL identifier URI.
+
+    CWL identifiers are typically full URIs or fragment identifiers of the form
+    ``file:///path/to/file.cwl#local_name``. This function returns the part after
+    the ``#`` character, or the full string if no ``#`` is present.
+
+    Args:
+        tag (str): A CWL identifier string.
+
+    Returns:
+        str: The local name extracted from the identifier.
+    """
     return tag.split("#")[-1]
 
 
-def _add_node(wf, G=None, prefix=None):
+def _add_node(
+    wf: parser.CommandLineTool | parser.Workflow,
+    G: ontology.SemantikonDiGraph | None = None,
+    prefix: str | None = None,
+) -> ontology.SemantikonDiGraph:
+    """
+    Recursively add nodes and edges for a CWL process to the knowledge graph.
+
+    For a ``CommandLineTool``, input and output nodes are added. For a
+    ``Workflow``, step nodes are also added along with edges representing the
+    data flow between steps.
+
+    Args:
+        wf (parser.CommandLineTool | parser.Workflow): The CWL process to add
+            to the graph.
+        G (ontology.SemantikonDiGraph | None): The graph to populate. If
+            ``None``, a new graph is created using the workflow's filename as
+            the prefix.
+        prefix (str | None): The node name prefix. If ``None``, derived from
+            the CWL filename (without the ``.cwl`` extension).
+
+    Returns:
+        ontology.SemantikonDiGraph: The populated knowledge graph.
+    """
     if prefix is None:
         prefix = wf.id.split("/")[-1].replace(".cwl", "")
     if G is None:
         G = ontology.SemantikonDiGraph(prefix=prefix)
 
     for inp in wf.inputs:
-        metadata = {"step": "inputs"}
+        metadata: dict = {"step": "inputs"}
         if inp.inputBinding is not None:
             metadata["position"] = inp.inputBinding.position
         G.add_node(f"{prefix}-inputs-{_get_name(inp.id)}", **metadata)
