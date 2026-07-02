@@ -63,9 +63,7 @@ class TestCWL(unittest.TestCase):
         self.assertEqual(
             g.nodes["kinetic_energy_workflow-outputs-kinetic_energy"]["step"], "outputs"
         )
-        self.assertEqual(
-            g.nodes["kinetic_energy_workflow-get_speed"]["step"], "node"
-        )
+        self.assertEqual(g.nodes["kinetic_energy_workflow-get_speed"]["step"], "node")
 
     @unittest.skipIf(os.name == "nt", "Skipping test on Windows")
     def test_input_binding_position(self):
@@ -118,7 +116,9 @@ class TestCWL(unittest.TestCase):
 
     @unittest.skipIf(os.name == "nt", "Skipping test on Windows")
     def test_get_name(self):
-        self.assertEqual(cwl._get_name("file:///path/to/file.cwl#local_name"), "local_name")
+        self.assertEqual(
+            cwl._get_name("file:///path/to/file.cwl#local_name"), "local_name"
+        )
         self.assertEqual(cwl._get_name("no_fragment"), "no_fragment")
         self.assertEqual(cwl._get_name("a#b#c"), "c")
 
