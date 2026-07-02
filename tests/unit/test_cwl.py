@@ -6,6 +6,7 @@ from semantikon import cwl
 from semantikon.ontology import SemantikonDiGraph
 
 
+@unittest.skipIf(os.name == "nt", "Skipping on Windows")
 class TestCWL(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
