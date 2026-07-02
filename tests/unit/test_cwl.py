@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from semantikon import ontology, cwl
+from semantikon import cwl
 
 
 class TestOntology(unittest.TestCase):

@@ -34,19 +34,22 @@ def _add_node(wf, G=None, prefix=None):
         G.add_node(node_name, step="node")
         for inp in step.in_:
             source = _get_name(inp.source)
-            source = source.replace('/', '-outputs-') if "/" in source else f"inputs-{source}"
+            source = (
+                source.replace("/", "-outputs-")
+                if "/" in source
+                else f"inputs-{source}"
+            )
             dest = f"{prefix}-{_get_name(inp.id).replace('/', '-inputs-')}"
             G.add_edge(f"{prefix}-{source}", dest)
             G.add_edge(dest, node_name)
         for out in step.out:
             G.add_edge(
-                node_name,
-                f"{prefix}-{_get_name(out).replace('/', '-outputs-')}"
+                node_name, f"{prefix}-{_get_name(out).replace('/', '-outputs-')}"
             )
         G = _add_node(parser.load_document_by_uri(step.run), G, prefix=node_name)
     for out in wf.outputs:
         G.add_edge(
             f"{prefix}-{_get_name(out.outputSource.replace('/', '-outputs-'))}",
-            f"{prefix}-outputs-{_get_name(out.id)}"
+            f"{prefix}-outputs-{_get_name(out.id)}",
         )
     return G
