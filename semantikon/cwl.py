@@ -70,7 +70,7 @@ def _add_node(
         G = ontology.SemantikonDiGraph(prefix=prefix)
 
     for inp in wf.inputs:
-        metadata: dict = {"step": "inputs"}
+        metadata: dict[str, str | int] = {"step": "inputs"}
         if inp.inputBinding is not None:
             metadata["position"] = inp.inputBinding.position
         G.add_node(f"{prefix}-inputs-{_get_name(inp.id)}", **metadata)
