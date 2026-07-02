@@ -419,6 +419,7 @@ def get_knowledge_graph(
         pmdco_uri=pmdco_uri,
     )
 
+
 def _get_knowledge_graph_from_digraph(
     G: SemantikonDiGraph,
     include_t_box: bool = True,
