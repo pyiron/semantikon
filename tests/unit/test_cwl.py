@@ -2,7 +2,8 @@ import os
 import unittest
 from pathlib import Path
 
-from semantikon import cwl
+if os.name != "nt":
+    from semantikon import cwl
 from semantikon.ontology import SemantikonDiGraph
 
 
