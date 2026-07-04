@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from cwl_utils import parser
+try:
+    from cwl_utils import parser
+except ModuleNotFoundError as exc:  # pragma: no cover
+    raise ImportError(
+        "semantikon.cwl requires optional CWL dependencies. Install with `pip install semantikon[cwl]`."
+    ) from exc
 
 from semantikon import ontology
 
