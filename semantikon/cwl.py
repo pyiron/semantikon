@@ -95,9 +95,10 @@ def _add_node(
             G.add_edge(f"{prefix}-{source}", dest)
             G.add_edge(dest, node_name)
         for out in step.out:
-            G.add_edge(
-                node_name, f"{prefix}-{_get_name(out).replace('/', '-outputs-')}"
-            )
+            out_name = _get_name(out)
+            if "/" in out_name:
+                out_name = out_name.split("/")[-1]
+            G.add_edge(node_name, f"{node_name}-outputs-{out_name}")
         G = _add_node(parser.load_document_by_uri(step.run), G, prefix=node_name)
     for out in wf.outputs:
         G.add_edge(
