@@ -2,12 +2,18 @@ import os
 import unittest
 from pathlib import Path
 
-if os.name != "nt":
+try:
     from semantikon import cwl
+except ImportError:
+    cwl = None
+
 from semantikon.ontology import SemantikonDiGraph
 
 
-@unittest.skipIf(os.name == "nt", "Skipping on Windows")
+@unittest.skipIf(
+    os.name == "nt" or cwl is None,
+    "Skipping CWL tests (Windows or optional CWL dependencies not installed)",
+)
 class TestCWL(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
