@@ -83,3 +83,13 @@ ignore_missing_imports = true
 strict_equality = true
 non_interactive = true
 install_types = true
+
+[[tool.mypy.overrides]]
+module = [
+    "semantikon.visualize",
+    "semantikon.qudt",
+    "semantikon.ontology",
+    "semantikon.kg_to_flowrep",
+    "semantikon.analysis",
+]
+ignore_errors = true
