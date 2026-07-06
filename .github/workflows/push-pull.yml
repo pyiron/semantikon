@@ -9,7 +9,7 @@ on:
 
 jobs:
   pyiron:
-    uses: pyiron/actions/.github/workflows/push-pull.yml@actions-4.0.8
+    uses: pyiron/actions/.github/workflows/push-pull.yml@actions-4.2.1
     with:
       runner: 'ubuntu-22.04' # with ubuntu > 22.04, pip is broken
       python-version-alt1: '3.11'
