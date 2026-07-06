@@ -26,4 +26,17 @@ jobs:
       alternate-tests-env-files: .ci_support/lower_bound.yml
       alternate-tests-python-version: '3.11'
       alternate-tests-dir: tests/unit
+      runner-alt1: 'exclude'  # Defaults to windows -- which cannot access CWL dependency
     secrets: inherit
+
+  windows:
+    runs-on: 'windows-latest'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pyiron/actions/unit-tests@actions-4.2.1
+        with:
+          python-version: '3.13'  # Copy pyiron/python-version
+          env-files: .ci_support/environment.yml  # WITHOUT optional CWL dependency
+          add-standard-codacy-env: false  # Not needed, override default
+          add-standard-coveralls-env: false  # Not needed, override default
+        timeout-minutes: 10
