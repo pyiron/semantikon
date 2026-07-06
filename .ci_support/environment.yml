@@ -17,4 +17,3 @@ dependencies:
 - flowrep =0.5.2
 - networkx =3.6.1
 - bagofholding =0.1.12
-- cwltool =3.2.20260413085819

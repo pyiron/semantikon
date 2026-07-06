@@ -1,0 +1,4 @@
+channels:
+- conda-forge
+dependencies:
+- cwltool =3.2.20260413085819
