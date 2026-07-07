@@ -9,9 +9,8 @@ from typing import Annotated
 
 import flowrep as fr
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, compare
+from rdflib import OWL, RDF, RDFS, SH, Graph, Literal, Namespace, compare
 from rdflib.compare import graph_diff
-
 
 from semantikon import kg_to_flowrep as kgf
 from semantikon import ontology as onto
