@@ -1152,5 +1152,6 @@ class TestOntology(unittest.TestCase):
             workflow_with_wrong_derived_from_in_output.flowrep_recipe,
         )
 
+
 if __name__ == "__main__":
     unittest.main()
