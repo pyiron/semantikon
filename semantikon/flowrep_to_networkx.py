@@ -45,7 +45,9 @@ class SemantikonDiGraph(nx.DiGraph):
     @cache
     def _get_data_node(self, io: str) -> str:
         while True:
-            candidate = [c for c in self.predecessors(io) if self.nodes[c]["step"] != "node"]
+            candidate = [
+                c for c in self.predecessors(io) if self.nodes[c]["step"] != "node"
+            ]
             assert len(candidate) <= 1
             if len(candidate) == 0:
                 return f"{io}_data"
@@ -91,7 +93,9 @@ class SemantikonDiGraph(nx.DiGraph):
 
                 child_label = current_label
                 if child_label is None:
-                    child_label = self.nodes[child].get("label", self.nodes[child]["arg"])
+                    child_label = self.nodes[child].get(
+                        "label", self.nodes[child]["arg"]
+                    )
 
                 self.nodes[child]["hash"] = current_hash + f"@{child_label}"
                 stack.append((child, current_hash, child_label))
@@ -164,7 +168,11 @@ def _node_data_to_metadata(
             metadata.update(function._semantikon_metadata)
         function_data = get_function_dict(function)
         function_data["identifier"] = ".".join(
-            (function_data["module"], function_data["qualname"], function_data["version"])
+            (
+                function_data["module"],
+                function_data["qualname"],
+                function_data["version"],
+            )
         )
         metadata["function"] = function_data
     return metadata
@@ -221,7 +229,9 @@ def _workflow_to_networkx(
                 child,
                 child_name,
                 parent_name=node_name,
-                workflow_label=(child_label if isinstance(child, fr.schemas.DagData) else None),
+                workflow_label=(
+                    child_label if isinstance(child, fr.schemas.DagData) else None
+                ),
             )
 
         child_recipes = recipe.nodes
@@ -273,7 +283,10 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
 
         hash_dict_tmp: dict[str, Any] = {
             "inputs": {},
-            "outputs": [G.nodes[out].get("label", out.split("-")[-1]) for out in G.successors(node)],
+            "outputs": [
+                G.nodes[out].get("label", out.split("-")[-1])
+                for out in G.successors(node)
+            ],
             "node": copy.deepcopy(data.get("function")),
         }
         if hash_dict_tmp["node"] is None:
@@ -297,9 +310,13 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
                 break
         if missing_input:
             continue
-        h = sha256(json.dumps(hash_dict_tmp, sort_keys=True).encode("utf-8")).hexdigest()
+        h = sha256(
+            json.dumps(hash_dict_tmp, sort_keys=True).encode("utf-8")
+        ).hexdigest()
         for out in G.successors(node):
-            G.nodes[out]["hash"] = h + "@" + G.nodes[out].get("label", out.split("-")[-1])
+            G.nodes[out]["hash"] = (
+                h + "@" + G.nodes[out].get("label", out.split("-")[-1])
+            )
         hash_dict_tmp["hash"] = h
         hash_dict[node] = hash_dict_tmp
     return hash_dict
@@ -365,7 +382,9 @@ class _HashGraph:
         elif isinstance(obj, (int, float, bool)) or obj is None:
             return obj
         else:
-            raise TypeError(f"Unsupported type for normalization: {type(obj)} of value {obj}")
+            raise TypeError(
+                f"Unsupported type for normalization: {type(obj)} of value {obj}"
+            )
 
     def _canonical_json(self, data: dict) -> str:
         """

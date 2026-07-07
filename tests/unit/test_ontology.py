@@ -12,8 +12,8 @@ from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, compare
 from rdflib.compare import graph_diff
 
-from semantikon import kg_to_flowrep as kgf
 from semantikon import flowrep_to_networkx as ftn
+from semantikon import kg_to_flowrep as kgf
 from semantikon import ontology as onto
 from semantikon.metadata import SemantikonURI, meta
 from semantikon.visualize import visualize_recipe
