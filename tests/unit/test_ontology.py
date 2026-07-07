@@ -13,6 +13,7 @@ from rdflib import OWL, RDF, RDFS, SH, BNode, Graph, Literal, Namespace, compare
 from rdflib.compare import graph_diff
 
 from semantikon import kg_to_flowrep as kgf
+from semantikon import flowrep_to_networkx as ftn
 from semantikon import ontology as onto
 from semantikon.metadata import SemantikonURI, meta
 from semantikon.visualize import visualize_recipe
@@ -636,9 +637,9 @@ class TestOntology(unittest.TestCase):
 
     def test_hash(self):
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
-        G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
-        self.assertIsInstance(onto._get_graph_hash(G), str)
-        self.assertEqual(len(onto._get_graph_hash(G)), 32)
+        G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
+        self.assertIsInstance(ftn._get_graph_hash(G), str)
+        self.assertEqual(len(ftn._get_graph_hash(G)), 32)
         self.assertIn(
             "dtype",
             G.nodes["my_kinetic_energy_workflow-get_speed_0-inputs-distance"],
@@ -660,44 +661,44 @@ class TestOntology(unittest.TestCase):
         )
         wf_dict_one = my_kinetic_energy_workflow.run(distance=1.0, time=2.0, mass=3.0)
         wf_dict_two = my_kinetic_energy_workflow.run(distance=4.0, time=5.0, mass=6.0)
-        G_one = onto.serialize_and_convert_to_networkx(wf_dict_one, hash_data=True)
-        G_two = onto.serialize_and_convert_to_networkx(wf_dict_two, hash_data=True)
+        G_one = ftn.serialize_and_convert_to_networkx(wf_dict_one, hash_data=True)
+        G_two = ftn.serialize_and_convert_to_networkx(wf_dict_two, hash_data=True)
         self.assertEqual(
-            onto._get_graph_hash(G_one, with_global_inputs=False),
-            onto._get_graph_hash(G_two, with_global_inputs=False),
+            ftn._get_graph_hash(G_one, with_global_inputs=False),
+            ftn._get_graph_hash(G_two, with_global_inputs=False),
         )
 
         wf_dict = workflow_with_default_values.get_semantikon_dict()
         wf_dict_run = workflow_with_default_values.run(distance=2, time=1, mass=4)
-        G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
-        G_run = onto.serialize_and_convert_to_networkx(wf_dict_run, hash_data=False)
-        self.assertEqual(onto._get_graph_hash(G), onto._get_graph_hash(G_run))
-        G_hash = onto.serialize_and_convert_to_networkx(wf_dict_run, hash_data=True)
+        G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
+        G_run = ftn.serialize_and_convert_to_networkx(wf_dict_run, hash_data=False)
+        self.assertEqual(ftn._get_graph_hash(G), ftn._get_graph_hash(G_run))
+        G_hash = ftn.serialize_and_convert_to_networkx(wf_dict_run, hash_data=True)
         self.assertDictEqual(
             {key.split("@")[1]: value for key, value in G_hash.get_hash_dict().items()},
             {"kinetic_energy": 8.0, "speed": 2.0},
         )
         with self.assertRaises(TypeError):
             wf_dict["inputs"]["distance"]["default"] = NewSpeedData
-            G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=True)
-            onto._get_graph_hash(G, with_global_inputs=True)
+            G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=True)
+            ftn._get_graph_hash(G, with_global_inputs=True)
         with self.assertRaises(TypeError):
             wf_dict["inputs"]["distance"]["default"] = BNode()
-            G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=True)
-            onto._get_graph_hash(G, with_global_inputs=True)
+            G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=True)
+            ftn._get_graph_hash(G, with_global_inputs=True)
 
     def test_hash_with_value(self):
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
-        G = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
+        G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         wf_dict = my_kinetic_energy_workflow.run(distance=1, time=2, mass=3)
-        G_run = onto.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
+        G_run = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         self.assertEqual(
-            onto._get_graph_hash(G, with_global_inputs=False),
-            onto._get_graph_hash(G_run, with_global_inputs=False),
+            ftn._get_graph_hash(G, with_global_inputs=False),
+            ftn._get_graph_hash(G_run, with_global_inputs=False),
         )
         self.assertNotEqual(
-            onto._get_graph_hash(G_run, with_global_inputs=False),
-            onto._get_graph_hash(G_run, with_global_inputs=True),
+            ftn._get_graph_hash(G_run, with_global_inputs=False),
+            ftn._get_graph_hash(G_run, with_global_inputs=True),
         )
 
     def test_shacl_validation(self):
@@ -1228,7 +1229,7 @@ class TestOntology(unittest.TestCase):
                 fr.schemas.OutputTarget(port="y"): fr.schemas.InputSource(port="x")
             },
         )
-        self.assertEqual(onto._infer_workflow_label(recipe), "")
+        self.assertEqual(ftn._infer_workflow_label(recipe), "")
 
     def test_serialize_workflow_recipe_with_input_passthrough(self):
         self.assertTrue(
@@ -1237,7 +1238,7 @@ class TestOntology(unittest.TestCase):
                 for source in passthrough_input_workflow.flowrep_recipe.output_edges.values()
             )
         )
-        G = onto.serialize_and_convert_to_networkx(
+        G = ftn.serialize_and_convert_to_networkx(
             passthrough_input_workflow.flowrep_recipe,
             hash_data=False,
         )
@@ -1262,8 +1263,8 @@ class TestOntology(unittest.TestCase):
         )
         data = fr.schemas.DagData.from_recipe(recipe)
         data.input_ports["x"].value = 1.0
-        G = onto._workflow_to_networkx(data)
-        hashed = onto._get_hashed_node_dict_from_graph(G)
+        G = ftn._workflow_to_networkx(data)
+        hashed = ftn._get_hashed_node_dict_from_graph(G)
         self.assertEqual(hashed, {})
 
 
