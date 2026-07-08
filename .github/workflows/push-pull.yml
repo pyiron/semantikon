@@ -9,7 +9,7 @@ on:
 
 jobs:
   pyiron:
-    uses: pyiron/actions/.github/workflows/push-pull.yml@actions-4.0.8
+    uses: pyiron/actions/.github/workflows/push-pull.yml@actions-4.2.1
     with:
       runner: 'ubuntu-22.04' # with ubuntu > 22.04, pip is broken
       python-version-alt1: '3.11'
@@ -19,6 +19,7 @@ jobs:
       do-codecov: true
       do-coveralls: false
       do-mypy: true
+      mypy-env-files: .ci_support/environment.yml
       alternate-tests-env-files: .ci_support/lower_bound.yml
       alternate-tests-python-version: '3.11'
       alternate-tests-dir: tests/unit
