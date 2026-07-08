@@ -19,6 +19,7 @@ jobs:
       do-codecov: true
       do-coveralls: false
       do-mypy: true
+      mypy-env-files: .ci_support/environment.yml
       alternate-tests-env-files: .ci_support/lower_bound.yml
       alternate-tests-python-version: '3.11'
       alternate-tests-dir: tests/unit
