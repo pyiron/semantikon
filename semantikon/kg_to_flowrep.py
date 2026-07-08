@@ -9,7 +9,8 @@ import networkx as nx
 from pyiron_snippets import retrieve
 from rdflib import OWL, RDF, RDFS, Graph, Literal, URIRef
 from rdflib.namespace import SH
-from rdflib.term import IdentifiedNode
+from rdflib.query import ResultRow
+from rdflib.term import IdentifiedNode, Node
 
 from semantikon.flowrep_dict import _flowrep_recipe_from_callable
 from semantikon.ontology import SNS
@@ -27,11 +28,13 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
         dict[str, Any]: Data payload compatible with ``_function_to_graph``.
     """
 
-    def _to_python(value: IdentifiedNode | Literal | None) -> Any:
+    def _to_python(value: Node | None) -> Any:
         return value.toPython() if isinstance(value, Literal) else value
 
     def _restriction_pairs(node: IdentifiedNode) -> tuple[tuple[URIRef, Any], ...]:
-        return tuple((p, _to_python(o)) for p, o in graph.predicate_objects(node))
+        return tuple(
+            (cast(URIRef, p), _to_python(o)) for p, o in graph.predicate_objects(node)
+        )
 
     if (f_node, RDF.type, SNS.workflow_function) not in graph:
         raise ValueError(f"Function node {f_node!r} is not present in the graph.")
@@ -47,7 +50,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     if qualname is None:
         raise ValueError("Function name node is missing `SNS.has_value`.")
 
-    data: dict[str, Any] = {"qualname": qualname.toPython()}
+    data: dict[str, Any] = {"qualname": cast(Literal, qualname).toPython()}
 
     docstring_nodes = [
         node
@@ -59,7 +62,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     if len(docstring_nodes) == 1:
         docstring = graph.value(docstring_nodes[0], SNS.has_value)
         if docstring is not None:
-            data["docstring"] = docstring.toPython()
+            data["docstring"] = cast(Literal, docstring).toPython()
 
     hash_nodes = [
         node
@@ -71,7 +74,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     if len(hash_nodes) == 1:
         hash_value = graph.value(hash_nodes[0], SNS.has_value)
         if hash_value is not None:
-            data["hash"] = hash_value.toPython()
+            data["hash"] = cast(Literal, hash_value).toPython()
 
     module_nodes = [
         node
@@ -83,7 +86,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     if len(module_nodes) == 1:
         module = graph.value(module_nodes[0], SNS.has_value)
         if module is not None:
-            data["module"] = module.toPython()
+            data["module"] = cast(Literal, module).toPython()
 
     instance_nodes = [node for node in graph.objects(f_node, SNS.is_about)]
     if len(instance_nodes) > 1:
@@ -110,13 +113,13 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
         arg_data: dict[str, Any] = {}
         local_identifier = graph.value(arg_node, SNS.local_identifier)
         if local_identifier is not None:
-            arg_data["arg"] = local_identifier.toPython()
+            arg_data["arg"] = cast(Literal, local_identifier).toPython()
         position = graph.value(arg_node, SNS.has_parameter_position)
         if position is not None:
-            arg_data["position"] = position.toPython()
+            arg_data["position"] = cast(Literal, position).toPython()
         default = graph.value(arg_node, SNS.has_default_literal_value)
         if default is not None:
-            arg_data["default"] = default.toPython()
+            arg_data["default"] = cast(Literal, default).toPython()
 
         uri_restrictions = [
             restriction_node
@@ -137,7 +140,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
             if (restriction_node, RDF.type, OWL.Restriction) in graph:
                 pairs = tuple(
                     pair
-                    for pair in _restriction_pairs(restriction_node)
+                    for pair in _restriction_pairs(cast(IdentifiedNode, restriction_node))
                     if pair[0] != RDF.type
                 )
             elif (restriction_node, RDF.type, SH.NodeShape) in graph:
@@ -146,7 +149,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
                     continue
                 pairs = tuple(
                     pair
-                    for pair in _restriction_pairs(property_shape)
+                    for pair in _restriction_pairs(cast(IdentifiedNode, property_shape))
                     if pair[0] != RDF.type
                 )
             else:
@@ -365,17 +368,17 @@ def _get_connection_query(
 def _identifier(graph: Graph, node: URIRef) -> str:
     local_identifier = graph.value(node, SNS.local_identifier)
     if local_identifier is not None:
-        return local_identifier.toPython()
+        return cast(Literal, local_identifier).toPython()
     label = graph.value(node, RDFS.label)
     if label is not None:
-        return label.toPython()
+        return cast(Literal, label).toPython()
     return str(node)
 
 
 def _label(graph: Graph, node: URIRef) -> str:
     label = graph.value(node, RDFS.label)
     if label is not None:
-        return label.toPython()
+        return cast(Literal, label).toPython()
     return _identifier(graph, node)
 
 
@@ -446,13 +449,15 @@ def _add_io_nodes(
                 SNS.workflow_node, SNS.has_part, SNS.output_assignment
             )
         )
-    for node, io_node in io_query:
+    for row in io_query:
+        node, io_node = cast(ResultRow, row)
         if io_type == "input":
             workflow_graph.add_edge(io_node, node)
         else:
             workflow_graph.add_edge(node, io_node)
 
-        function_data = function_dict.get(node_function_dict.get(node))
+        func_node = node_function_dict.get(cast(URIRef, node))
+        function_data = function_dict.get(func_node) if func_node is not None else None
         if function_data is None:
             continue
         workflow_graph.add_node(node, step="node", function=function_data["data"])
@@ -460,7 +465,7 @@ def _add_io_nodes(
         arg_values = list(graph.objects(io_node, SNS.local_identifier))
         if len(arg_values) != 1:
             raise ValueError(f"Expected one local identifier for {io_node!r}.")
-        arg = arg_values[0].toPython()
+        arg = cast(Literal, arg_values[0]).toPython()
         for data in function_data[f"{io_type}_args"]:
             if arg == data["arg"]:
                 workflow_graph.add_node(io_node, step=f"{io_type}s", **data)
@@ -470,8 +475,8 @@ def _add_io_nodes(
 
 
 def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
-    function_nodes = list(graph.subjects(RDF.type, SNS.workflow_function))
-    function_dict = {
+    function_nodes = list(cast(Iterable[URIRef], graph.subjects(RDF.type, SNS.workflow_function)))
+    function_dict: dict[URIRef, dict[str, Any]] = {
         f_node: _graph_to_function(graph, f_node) for f_node in function_nodes
     }
     node_function_dict = _node_functions(graph)
@@ -484,31 +489,34 @@ def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
         graph, workflow_graph, function_dict, node_function_dict, io_type="output"
     )
 
-    for out_assignment, data_node in graph.query(
+    for row in graph.query(
         _get_connection_query(
             SNS.output_assignment, SNS.has_participant, SNS.value_specification
         )
     ):
+        out_assignment, data_node = cast(ResultRow, row)
         workflow_graph.add_edge(out_assignment, data_node)
         workflow_graph.add_node(data_node, step="data")
 
-    for in_assignment, data_node in graph.query(
+    for row in graph.query(
         _get_connection_query(
             SNS.input_assignment, SNS.has_participant, SNS.value_specification
         )
     ):
+        in_assignment, data_node = cast(ResultRow, row)
         workflow_graph.add_edge(data_node, in_assignment)
         workflow_graph.add_node(data_node, step="data")
 
-    for parent, child in graph.query(
+    for row in graph.query(
         _get_connection_query(SNS.workflow_node, SNS.has_part, SNS.workflow_node)
     ):
+        parent, child = cast(ResultRow, row)
         workflow_graph.add_edge(parent, child)
         if parent not in workflow_graph:
             workflow_graph.add_node(parent, step="node")
         if child not in workflow_graph:
             workflow_graph.add_node(child, step="node")
-        workflow_graph.nodes[child]["parent"] = _label(graph, parent)
+        workflow_graph.nodes[child]["parent"] = _label(graph, cast(URIRef, parent))
         workflow_graph.nodes[parent]["type"] = "workflow"
         workflow_graph.nodes[child]["type"] = workflow_graph.nodes[child].get(
             "type", "atomic"

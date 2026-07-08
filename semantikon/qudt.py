@@ -154,18 +154,20 @@ def get_units_dict(graph: Graph) -> dict[str, term.Node]:
     units_dict : dict
         A dictionary mapping unit names to their URIs.
     """
-    ureg = UnitRegistry()
-    units_dict = {}
+    ureg: UnitRegistry = UnitRegistry()
+    units_dict: dict[str, term.Node] = {}
     for uri, tag in graph.subject_objects(None):
         units_dict[str(tag)] = uri
-        tag = re.sub(r"(?<=[a-zA-Z]) (?=[a-zA-Z])", "_", tag)
+        tag_str: str = re.sub(r"(?<=[a-zA-Z]) (?=[a-zA-Z])", "_", str(tag))
         for _ in range(2):
             try:
                 # this is safe and works for both Quantity and Unit
-                tag = str(ureg[tag].units)
-                if tag not in units_dict or len(str(uri)) < len(str(units_dict[tag])):
-                    units_dict[tag] = uri
+                tag_str = str(ureg.parse_expression(tag_str).units)
+                if tag_str not in units_dict or len(str(uri)) < len(
+                    str(units_dict[tag_str])
+                ):
+                    units_dict[tag_str] = uri
             except Exception:
                 pass
-            tag = str(tag).lower()
+            tag_str = tag_str.lower()
     return units_dict
