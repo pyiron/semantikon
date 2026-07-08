@@ -140,7 +140,9 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
             if (restriction_node, RDF.type, OWL.Restriction) in graph:
                 pairs = tuple(
                     pair
-                    for pair in _restriction_pairs(cast(IdentifiedNode, restriction_node))
+                    for pair in _restriction_pairs(
+                        cast(IdentifiedNode, restriction_node)
+                    )
                     if pair[0] != RDF.type
                 )
             elif (restriction_node, RDF.type, SH.NodeShape) in graph:
@@ -475,7 +477,9 @@ def _add_io_nodes(
 
 
 def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
-    function_nodes = list(cast(Iterable[URIRef], graph.subjects(RDF.type, SNS.workflow_function)))
+    function_nodes = list(
+        cast(Iterable[URIRef], graph.subjects(RDF.type, SNS.workflow_function))
+    )
     function_dict: dict[URIRef, dict[str, Any]] = {
         f_node: _graph_to_function(graph, f_node) for f_node in function_nodes
     }
