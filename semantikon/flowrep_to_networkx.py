@@ -11,7 +11,7 @@ from typing import Any
 import flowrep as fr
 import networkx as nx
 from pyiron_snippets import retrieve
-from rdflib import BNode, Namespace
+from rdflib import BNode, Namespace, URIRef
 from rdflib.term import IdentifiedNode
 
 from semantikon.converter import get_function_dict
@@ -26,7 +26,7 @@ BASE: Namespace = Namespace("http://pyiron.org/ontology/")
 
 class SemantikonDiGraph(nx.DiGraph):
     @cached_property
-    def t_ns(self):
+    def t_ns(self) -> Namespace:
         h = (
             "W" + _get_graph_hash(self, with_global_inputs=False)[:8]
             if self.graph["prefix"] is None
@@ -35,11 +35,11 @@ class SemantikonDiGraph(nx.DiGraph):
         return Namespace(BASE + h + "_")
 
     @cached_property
-    def a_ns(self):
+    def a_ns(self) -> Namespace:
         h = _get_graph_hash(self, with_global_inputs=True)
         return Namespace(BASE + h + "_")
 
-    def get_a_node(self, node_name: str) -> IdentifiedNode:
+    def get_a_node(self, node_name: str) -> URIRef:
         return self.a_ns[node_name]
 
     @cache

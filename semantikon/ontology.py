@@ -13,6 +13,7 @@ from owlrl import DeductiveClosure, RDFS_Semantics
 from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
+from rdflib.query import ResultRow
 from rdflib.term import IdentifiedNode
 
 from semantikon.converter import (
@@ -93,7 +94,7 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
         return units
     key = ud[units]
     if key is not None:
-        return key
+        return cast(URIRef, key)
     return URIRef(units)
 
 
@@ -362,8 +363,9 @@ def _store_data(graph: Graph, file_name: str | Path):
     file_path_id = sha256(file_path.encode("utf-8")).hexdigest()
     file_data_item = BNode(f"file_{file_path_id}")
     data_dict = {}
-    for n, h, v in graph.query(query):
-        data_dict[h.toPython()] = v.toPython()
+    for row in graph.query(query):
+        n, h, v = cast(ResultRow, row)
+        data_dict[cast(Literal, h).toPython()] = cast(Literal, v).toPython()
         if (file_data_item, RDF.type, SNS.file_data_item) not in graph:
             graph.add((file_data_item, RDF.type, SNS.file_data_item))
             graph.add((file_data_item, SNS.has_url, Literal(file_path)))
@@ -678,7 +680,7 @@ def _translate_triples(
         s_n = _local_str_to_uriref(s)
         o_n = _local_str_to_uriref(o)
         if t_box:
-            g += _to_owl_restriction(s_n, p, o_n)
+            g += _to_owl_restriction(cast(URIRef | None, s_n), p, cast(URIRef, o_n))
         else:
             g.add((s_n, p, o_n))
             for t in [s, o]:
@@ -1240,15 +1242,15 @@ def extract_dataclass(
     )
 
     for subj, obj in graph.subject_objects(SNS.has_value):
-        py_value = obj.toPython()
+        py_value = cast(Literal, obj).toPython()
         if not is_dataclass(py_value):
             continue
 
         t_node = graph.value(subj, RDF.type, any=False)
 
         out += translator.translate(
-            a_node=subj,
-            t_node=t_node,
+            a_node=cast(URIRef, subj),
+            t_node=cast(URIRef, t_node),
             value=py_value,
             dtype=type(py_value),
         )
@@ -1391,9 +1393,10 @@ class _OWLToSHACLConverter:
                 continue
 
             # Create a NodeShape for the class if it doesn't exist
-            if not (ns := node_shapes.get(cls)):
+            cls_uri = cast(URIRef, cls)
+            if not (ns := node_shapes.get(cls_uri)):
                 ns = BNode()
-                node_shapes[cls] = ns
+                node_shapes[cls_uri] = ns
                 shacl_graph.add((ns, RDF.type, SH.NodeShape))
                 shacl_graph.add((ns, SH.targetClass, cls))
 
