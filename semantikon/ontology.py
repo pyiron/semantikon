@@ -13,7 +13,6 @@ from owlrl import DeductiveClosure, RDFS_Semantics
 from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
-from rdflib.query import ResultRow
 from rdflib.term import IdentifiedNode
 
 from semantikon.converter import (
@@ -364,15 +363,14 @@ def _store_data(graph: Graph, file_name: str | Path):
     file_data_item = BNode(f"file_{file_path_id}")
     data_dict = {}
     for row in graph.query(query):
-        n, h, v = row
-        data_dict[cast(Literal, h).toPython()] = cast(Literal, v).toPython()
+        data_dict[cast(Literal, row[1]).toPython()] = cast(Literal, row[2]).toPython()
         if (file_data_item, RDF.type, SNS.file_data_item) not in graph:
             graph.add((file_data_item, RDF.type, SNS.file_data_item))
             graph.add((file_data_item, SNS.has_url, Literal(file_path)))
             data_format_spec = BNode(f"filefmt_{file_path_id}")
             graph.add((file_data_item, SNS.has_part, data_format_spec))
             graph.add((data_format_spec, RDF.type, SNS.hdf5))
-        file_part_id = sha256(str(n).encode("utf-8")).hexdigest()
+        file_part_id = sha256(str(row[0]).encode("utf-8")).hexdigest()
         file_part = BNode(f"filepart_{file_part_id}")
         graph.add((file_data_item, SNS.has_part, file_part))
         graph.add((file_part, SNS.has_url, Literal(f"object/{h}")))
