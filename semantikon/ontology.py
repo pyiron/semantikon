@@ -5,7 +5,7 @@ import warnings
 from dataclasses import dataclass, fields, is_dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, Callable, TypeAlias, cast
+from typing import Any, Callable, TypeAlias
 
 import bagofholding
 import flowrep as fr
@@ -13,7 +13,6 @@ from owlrl import DeductiveClosure, RDFS_Semantics
 from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SH
-from rdflib.query import ResultRow
 from rdflib.term import IdentifiedNode
 
 from semantikon.converter import (
@@ -94,7 +93,8 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
         return units
     key = ud[units]
     if key is not None:
-        return cast(URIRef, key)
+        assert isinstance(key, URIRef)
+        return key
     return URIRef(units)
 
 
@@ -364,19 +364,20 @@ def _store_data(graph: Graph, file_name: str | Path):
     file_data_item = BNode(f"file_{file_path_id}")
     data_dict = {}
     for row in graph.query(query):
-        n, h, v = cast(ResultRow, row)
-        data_dict[cast(Literal, h).toPython()] = cast(Literal, v).toPython()
+        assert not isinstance(row, bool)
+        assert isinstance(row[1], Literal) and isinstance(row[2], Literal)
+        data_dict[row[1].toPython()] = row[2].toPython()
         if (file_data_item, RDF.type, SNS.file_data_item) not in graph:
             graph.add((file_data_item, RDF.type, SNS.file_data_item))
             graph.add((file_data_item, SNS.has_url, Literal(file_path)))
             data_format_spec = BNode(f"filefmt_{file_path_id}")
             graph.add((file_data_item, SNS.has_part, data_format_spec))
             graph.add((data_format_spec, RDF.type, SNS.hdf5))
-        file_part_id = sha256(str(n).encode("utf-8")).hexdigest()
+        file_part_id = sha256(str(row[0]).encode("utf-8")).hexdigest()
         file_part = BNode(f"filepart_{file_part_id}")
         graph.add((file_data_item, SNS.has_part, file_part))
-        graph.add((file_part, SNS.has_url, Literal(f"object/{h}")))
-        graph.add((file_part, SNS.is_about, n))
+        graph.add((file_part, SNS.has_url, Literal(f"object/{row[1]}")))
+        graph.add((file_part, SNS.is_about, row[0]))
     bagofholding.H5Bag.save(data_dict, file_name)
 
 
@@ -680,7 +681,9 @@ def _translate_triples(
         s_n = _local_str_to_uriref(s)
         o_n = _local_str_to_uriref(o)
         if t_box:
-            g += _to_owl_restriction(cast(URIRef | None, s_n), p, cast(URIRef, o_n))
+            assert isinstance(s_n, URIRef | None)
+            assert isinstance(o_n, URIRef)
+            g += _to_owl_restriction(s_n, p, o_n)
         else:
             g.add((s_n, p, o_n))
             for t in [s, o]:
@@ -690,7 +693,9 @@ def _translate_triples(
 
 
 def _restrictions_to_triples(
-    restrictions: _rest_type, data_node: URIRef, predicate: URIRef | None = None
+    restrictions: _rest_type | tuple[_rest_type, ...],
+    data_node: URIRef,
+    predicate: URIRef | None = None,
 ) -> Graph:
     """
     Converts restrictions into triples for OWL restrictions or SHACL constraints.
@@ -708,7 +713,7 @@ def _restrictions_to_triples(
     assert isinstance(restrictions, tuple | list)
     assert isinstance(restrictions[0], tuple | list)
     if not isinstance(restrictions[0][0], tuple | list):
-        restrictions = cast(_rest_type, (restrictions,))
+        restrictions = (restrictions,)
 
     for r_set in restrictions:
         # Determine whether the restriction is OWL or SHACL based on the predicates
@@ -1242,15 +1247,18 @@ def extract_dataclass(
     )
 
     for subj, obj in graph.subject_objects(SNS.has_value):
-        py_value = cast(Literal, obj).toPython()
+        assert isinstance(obj, Literal)
+        py_value = obj.toPython()
         if not is_dataclass(py_value):
             continue
 
         t_node = graph.value(subj, RDF.type, any=False)
 
+        assert isinstance(subj, URIRef)
+        assert isinstance(t_node, URIRef)
         out += translator.translate(
-            a_node=cast(URIRef, subj),
-            t_node=cast(URIRef, t_node),
+            a_node=subj,
+            t_node=t_node,
             value=py_value,
             dtype=type(py_value),
         )
@@ -1393,10 +1401,10 @@ class _OWLToSHACLConverter:
                 continue
 
             # Create a NodeShape for the class if it doesn't exist
-            cls_uri = cast(URIRef, cls)
-            if not (ns := node_shapes.get(cls_uri)):
+            assert isinstance(cls, URIRef)
+            if not (ns := node_shapes.get(cls)):
                 ns = BNode()
-                node_shapes[cls_uri] = ns
+                node_shapes[cls] = ns
                 shacl_graph.add((ns, RDF.type, SH.NodeShape))
                 shacl_graph.add((ns, SH.targetClass, cls))
 
