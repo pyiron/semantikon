@@ -693,7 +693,9 @@ def _translate_triples(
 
 
 def _restrictions_to_triples(
-    restrictions: _rest_type | tuple[_rest_type, ...], data_node: URIRef, predicate: URIRef | None = None
+    restrictions: _rest_type | tuple[_rest_type, ...],
+    data_node: URIRef,
+    predicate: URIRef | None = None,
 ) -> Graph:
     """
     Converts restrictions into triples for OWL restrictions or SHACL constraints.
