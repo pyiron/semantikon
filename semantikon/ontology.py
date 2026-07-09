@@ -373,8 +373,8 @@ def _store_data(graph: Graph, file_name: str | Path):
         file_part_id = sha256(str(row[0]).encode("utf-8")).hexdigest()
         file_part = BNode(f"filepart_{file_part_id}")
         graph.add((file_data_item, SNS.has_part, file_part))
-        graph.add((file_part, SNS.has_url, Literal(f"object/{h}")))
-        graph.add((file_part, SNS.is_about, n))
+        graph.add((file_part, SNS.has_url, Literal(f"object/{row[1]}")))
+        graph.add((file_part, SNS.is_about, row[0]))
     bagofholding.H5Bag.save(data_dict, file_name)
 
 
