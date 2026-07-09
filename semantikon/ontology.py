@@ -711,7 +711,6 @@ def _restrictions_to_triples(
     assert isinstance(restrictions, tuple | list)
     assert isinstance(restrictions[0], tuple | list)
     if not isinstance(restrictions[0][0], tuple | list):
-        assert isinstance((restrictions,), _rest_type)
         restrictions = (restrictions,)
 
     for r_set in restrictions:
