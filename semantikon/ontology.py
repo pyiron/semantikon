@@ -363,6 +363,7 @@ def _store_data(graph: Graph, file_name: str | Path):
     file_data_item = BNode(f"file_{file_path_id}")
     data_dict = {}
     for row in graph.query(query):
+        assert not isinstance(row, bool)
         data_dict[cast(Literal, row[1]).toPython()] = cast(Literal, row[2]).toPython()
         if (file_data_item, RDF.type, SNS.file_data_item) not in graph:
             graph.add((file_data_item, RDF.type, SNS.file_data_item))
