@@ -364,7 +364,7 @@ def _store_data(graph: Graph, file_name: str | Path):
     file_data_item = BNode(f"file_{file_path_id}")
     data_dict = {}
     for row in graph.query(query):
-        n, h, v = cast(ResultRow, row)
+        n, h, v = row
         data_dict[cast(Literal, h).toPython()] = cast(Literal, v).toPython()
         if (file_data_item, RDF.type, SNS.file_data_item) not in graph:
             graph.add((file_data_item, RDF.type, SNS.file_data_item))
