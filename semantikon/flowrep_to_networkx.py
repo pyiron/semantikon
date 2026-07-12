@@ -11,7 +11,7 @@ from typing import Any
 import flowrep as fr
 import networkx as nx
 from pyiron_snippets import retrieve
-from rdflib import BNode, Namespace, URIRef
+from rdflib import BNode
 from rdflib.term import IdentifiedNode
 
 from semantikon.converter import get_function_dict
@@ -21,26 +21,30 @@ from semantikon.flowrep_dict import (
     dict_to_nodedata,
 )
 
-BASE: Namespace = Namespace("http://pyiron.org/ontology/")
-
 
 class SemantikonDiGraph(nx.DiGraph):
+    """Workflow graph with deterministic namespace fragments.
+
+    The graph only stores suffix fragments (e.g. ``abc123_``) for type- and
+    assertion-level identifiers. Ontology-specific base namespaces are applied
+    later by the ontology serialization layer.
+    """
+
     @cached_property
-    def t_ns(self) -> Namespace:
+    def t_ns(self) -> str:
+        """Type-level namespace fragment for this graph."""
         h = (
             "W" + _get_graph_hash(self, with_global_inputs=False)[:8]
             if self.graph["prefix"] is None
             else self.graph["prefix"]
         )
-        return Namespace(BASE + h + "_")
+        return h + "_"
 
     @cached_property
-    def a_ns(self) -> Namespace:
+    def a_ns(self) -> str:
+        """Assertion-level namespace fragment for this graph."""
         h = _get_graph_hash(self, with_global_inputs=True)
-        return Namespace(BASE + h + "_")
-
-    def get_a_node(self, node_name: str) -> URIRef:
-        return self.a_ns[node_name]
+        return h + "_"
 
     @cache
     def _get_data_node(self, io: str) -> str:
@@ -334,7 +338,8 @@ def serialize_and_convert_to_networkx(
     Args:
         workflow (dict | DagData | WorkflowRecipe): Workflow representation.
         hash_data (bool): Whether to hash node data.
-        prefix (str | None): Optional prefix for node names.
+        prefix (str | None): Optional fixed prefix for type-level namespace
+            fragments.
 
     Returns:
         SemantikonDiGraph: The serialized workflow graph.

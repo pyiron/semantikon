@@ -13,6 +13,24 @@ from tests.unit.test_ontology import (
 
 
 class TestFlowrepToNetworkx(unittest.TestCase):
+    def test_namespace_fragments_are_base_agnostic(self):
+        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
+        G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
+
+        self.assertIsInstance(G.t_ns, str)
+        self.assertIsInstance(G.a_ns, str)
+        self.assertTrue(G.t_ns.endswith("_"))
+        self.assertTrue(G.a_ns.endswith("_"))
+        self.assertNotIn("http://", G.t_ns)
+        self.assertNotIn("http://", G.a_ns)
+
+        G_prefixed = ftn.serialize_and_convert_to_networkx(
+            wf_dict,
+            hash_data=False,
+            prefix="custom",
+        )
+        self.assertEqual(G_prefixed.t_ns, "custom_")
+
     def test_hash(self):
         wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
         G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
