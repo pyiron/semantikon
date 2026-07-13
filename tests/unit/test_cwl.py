@@ -20,19 +20,19 @@ class TestCWL(unittest.TestCase):
         cls.static_dir = Path(__file__).parent.parent / "static"
 
     def test_returns_semantikon_digraph(self):
-        g = cwl.get_knowledge_graph(
+        g = cwl.serialize_and_convert_to_networkx(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         self.assertIsInstance(g, SemantikonDiGraph)
 
     def test_graph_prefix(self):
-        g = cwl.get_knowledge_graph(
+        g = cwl.serialize_and_convert_to_networkx(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         self.assertEqual(g.graph["prefix"], "kinetic_energy_workflow")
 
     def test_workflow_input_nodes(self):
-        g = cwl.get_knowledge_graph(
+        g = cwl.serialize_and_convert_to_networkx(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         expected_inputs = {
@@ -43,20 +43,20 @@ class TestCWL(unittest.TestCase):
         self.assertTrue(expected_inputs.issubset(set(g.nodes)))
 
     def test_workflow_output_nodes(self):
-        g = cwl.get_knowledge_graph(
+        g = cwl.serialize_and_convert_to_networkx(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         self.assertIn("kinetic_energy_workflow-outputs-kinetic_energy", g.nodes)
 
     def test_step_nodes(self):
-        g = cwl.get_knowledge_graph(
+        g = cwl.serialize_and_convert_to_networkx(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         self.assertIn("kinetic_energy_workflow-get_speed", g.nodes)
         self.assertIn("kinetic_energy_workflow-get_kinetic_energy", g.nodes)
 
     def test_node_step_attributes(self):
-        g = cwl.get_knowledge_graph(
+        g = cwl.serialize_and_convert_to_networkx(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         self.assertEqual(
@@ -68,7 +68,7 @@ class TestCWL(unittest.TestCase):
         self.assertEqual(g.nodes["kinetic_energy_workflow-get_speed"]["step"], "node")
 
     def test_input_binding_position(self):
-        g = cwl.get_knowledge_graph(
+        g = cwl.serialize_and_convert_to_networkx(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         self.assertEqual(
@@ -79,7 +79,7 @@ class TestCWL(unittest.TestCase):
         )
 
     def test_data_flow_edges(self):
-        g = cwl.get_knowledge_graph(
+        g = cwl.serialize_and_convert_to_networkx(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         # distance flows from workflow input -> get_speed input -> get_speed step

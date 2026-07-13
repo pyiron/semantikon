@@ -12,7 +12,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover
 from semantikon import ontology
 
 
-def get_knowledge_graph(uri: str | Path) -> ontology.SemantikonDiGraph:
+def serialize_and_convert_to_networkx(uri: str | Path) -> ontology.SemantikonDiGraph:
     """
     Parse a CWL document and build a knowledge graph.
 
