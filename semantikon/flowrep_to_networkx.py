@@ -39,7 +39,6 @@ class Metadata(pydantic.BaseModel):
         return v
 
 
-
 class SemantikonDiGraph(nx.DiGraph):
     """Workflow graph with deterministic namespace fragments.
 
@@ -219,7 +218,9 @@ def _workflow_to_networkx(
         parent_name: str | None = None,
         workflow_label: str | None = None,
     ):
-        node_attrs = _node_data_to_metadata(node_data, label=workflow_label, parent=parent_name)
+        node_attrs = _node_data_to_metadata(
+            node_data, label=workflow_label, parent=parent_name
+        )
         G.add_node(node_name, step="node", **node_attrs)
 
         output_labels = list(node_data.output_ports)
