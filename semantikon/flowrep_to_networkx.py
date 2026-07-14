@@ -415,7 +415,7 @@ class _HashGraph:
             attrs = {
                 key: value
                 for key, value in G.nodes[node].items()
-                if key not in {"dtype", "hash", "function", "default", "value"}
+                if key not in {"dtype", "hash", "default", "value"}
             }
             if G.in_degree(node) == 0 and with_global_inputs:
                 if "value" in G.nodes[node]:
