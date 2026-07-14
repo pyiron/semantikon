@@ -412,11 +412,9 @@ class _HashGraph:
         G_tmp = nx.DiGraph()
 
         for node in G.nodes:
-            attrs = {
-                key: value
-                for key, value in G.nodes[node].items()
-                if key not in {"dtype", "hash", "function", "default", "value"}
-            }
+            attrs = {}
+            if "arg" in G.nodes[node]:
+                attrs["arg"] = G.nodes[node]["arg"]
             if "function" in G.nodes[node]:
                 func = G.nodes[node]["function"]
                 attrs["function"] = func.get("hash") or func.get("identifier")
