@@ -544,7 +544,7 @@ class TestOntology(unittest.TestCase):
         PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
 
         ASK {{
-            ?output a sns:W40d1a80f_my_kinetic_energy_workflow-outputs-kinetic_energy .
+            ?output a sns:Wd1d86cce_my_kinetic_energy_workflow-outputs-kinetic_energy .
             ?output ro:0000057 ?data .
             ?data qudt:hasUnit unit:J .
         }}"""
