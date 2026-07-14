@@ -414,10 +414,9 @@ class _HashGraph:
         for node in G.nodes:
             attrs = {}
             if "function" in G.nodes[node]:
-                if "hash" in G.nodes[node]["function"]:
-                    attrs["hash"] = G.nodes[node]["function"]["hash"]
-                elif "identifier" in G.nodes[node]["function"]:
-                    attrs["hash"] = G.nodes[node]["function"]["identifier"]
+                attrs["hash"] = G.nodes[node]["function"].get(
+                    "hash", G.nodes[node]["function"].get("identifier")
+                )
             if G.in_degree(node) == 0 and with_global_inputs:
                 if "value" in G.nodes[node]:
                     attrs["value"] = G.nodes[node]["value"]
