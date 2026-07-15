@@ -23,7 +23,7 @@ from semantikon.flowrep_dict import (
 )
 
 
-class Metadata(pydantic.BaseModel):
+class NodeData(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(frozen=True)
 
     type: str
@@ -199,7 +199,7 @@ def _node_data_to_metadata(
         metadata["function"] = function_data
     if parent is not None:
         metadata["parent"] = parent
-    return Metadata(**metadata).model_dump()
+    return NodeData(**metadata).model_dump()
 
 
 def _workflow_to_networkx(
