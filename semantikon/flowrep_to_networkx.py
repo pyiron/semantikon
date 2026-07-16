@@ -40,6 +40,21 @@ class NodeData(pydantic.BaseModel):
         return v
 
 
+class IOData(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(frozen=True, extra="allow")
+
+    arg: str
+    position: int
+    step: str
+    value: Any
+
+    @pydantic.field_validator("step")
+    def validate_step(cls, v: str) -> str:
+        if v not in {"inputs", "outputs"}:
+            raise ValueError("step must be either 'inputs' or 'outputs'")
+        return v
+
+
 class SemantikonDiGraph(nx.DiGraph):
     """Workflow graph with deterministic namespace fragments.
 
@@ -151,20 +166,25 @@ def _output_port_label(port: str, outputs: list[str]) -> str:
 
 def _port_to_dict(
     *,
+    step: str,
+    arg: str,
+    position: int,
     value: Any,
     annotation: Any,
     default: Any = fr.schemas.NOT_DATA,
 ) -> dict[str, Any]:
-    data: dict[str, Any] = {}
-    if not isinstance(value, fr.schemas.NotData):
-        data["value"] = value
+    data: dict[str, Any] = {
+        "step": step,
+        "arg": arg,
+        "position": position,
+        "value": value,
+        "default": default,
+    }
     if type_hint := annotation_to_type_hint(annotation):
         data["dtype"] = type_hint
     if type_metadata := annotation_to_type_metadata(annotation):
         data.update(type_metadata.to_dictionary())
-    if not isinstance(default, fr.schemas.NotData):
-        data["default"] = default
-    return data
+    return {key: value for key, value in IOData(**data).model_dump().items() if not isinstance(value, fr.schemas.NotData)}
 
 
 def _node_data_to_metadata(
@@ -231,17 +251,26 @@ def _workflow_to_networkx(
         for position, (label, port) in enumerate(node_data.input_ports.items()):
             io_name = f"{node_name}-inputs-{label}"
             io_data = _port_to_dict(
+                step="inputs",
+                arg=label,
+                position=position,
                 value=port.value,
                 annotation=port.annotation,
                 default=port.default,
             )
-            G.add_node(io_name, step="inputs", arg=label, position=position, **io_data)
+            G.add_node(io_name, **io_data)
             G.add_edge(io_name, node_name)
         for position, (raw_label, port) in enumerate(node_data.output_ports.items()):
             label = output_labels[position] if raw_label == "output_0" else raw_label
             io_name = f"{node_name}-outputs-{label}"
-            io_data = _port_to_dict(value=port.value, annotation=port.annotation)
-            G.add_node(io_name, step="outputs", arg=label, position=position, **io_data)
+            io_data = _port_to_dict(
+                step="outputs",
+                arg=label,
+                position=position,
+                value=port.value,
+                annotation=port.annotation
+            )
+            G.add_node(io_name, **io_data)
             G.add_edge(node_name, io_name)
 
         if not isinstance(node_data, fr.schemas.DagData):
