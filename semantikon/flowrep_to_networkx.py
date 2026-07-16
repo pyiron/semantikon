@@ -27,6 +27,7 @@ class NodeData(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(frozen=True)
 
     type: str
+    step: str = "node"
     identifier: str | None = None
     label: str | None = None
     function: dict | None = None
@@ -36,21 +37,6 @@ class NodeData(pydantic.BaseModel):
     def validate_type(cls, v: str) -> str:
         if v not in {"atomic", "workflow"}:
             raise ValueError("type must be either 'atomic' or 'workflow'")
-        return v
-
-
-class IOData(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(frozen=True, extra="allow")
-
-    arg: str
-    position: int
-    step: str
-    value: Any
-
-    @pydantic.field_validator("step")
-    def validate_step(cls, v: str) -> str:
-        if v not in {"inputs", "outputs"}:
-            raise ValueError("step must be either 'inputs' or 'outputs'")
         return v
 
 
@@ -165,29 +151,20 @@ def _output_port_label(port: str, outputs: list[str]) -> str:
 
 def _port_to_dict(
     *,
-    step: str,
-    arg: str,
-    position: int,
     value: Any,
     annotation: Any,
     default: Any = fr.schemas.NOT_DATA,
 ) -> dict[str, Any]:
-    data: dict[str, Any] = {
-        "step": step,
-        "arg": arg,
-        "position": position,
-        "value": value,
-        "default": default,
-    }
+    data: dict[str, Any] = {}
+    if not isinstance(value, fr.schemas.NotData):
+        data["value"] = value
     if type_hint := annotation_to_type_hint(annotation):
         data["dtype"] = type_hint
     if type_metadata := annotation_to_type_metadata(annotation):
         data.update(type_metadata.to_dictionary())
-    return {
-        key: value
-        for key, value in IOData(**data).model_dump().items()
-        if not isinstance(value, fr.schemas.NotData)
-    }
+    if not isinstance(default, fr.schemas.NotData):
+        data["default"] = default
+    return data
 
 
 def _node_data_to_metadata(
@@ -196,7 +173,7 @@ def _node_data_to_metadata(
     label: str | None = None,
     parent: str | None = None,
 ) -> dict[str, Any]:
-    metadata: dict[str, Any] = {}
+    metadata: dict[str, Any] = {"step": "node"}
     function = None
     if isinstance(data, fr.schemas.AtomicData):
         metadata["type"] = "atomic"
@@ -245,7 +222,7 @@ def _workflow_to_networkx(
         node_attrs = _node_data_to_metadata(
             node_data, label=workflow_label, parent=parent_name
         )
-        G.add_node(node_name, step="node", **node_attrs)
+        G.add_node(node_name, **node_attrs)
 
         output_labels = list(node_data.output_ports)
         if len(output_labels) == 1 and output_labels[0] == "output_0":
@@ -254,26 +231,17 @@ def _workflow_to_networkx(
         for position, (label, port) in enumerate(node_data.input_ports.items()):
             io_name = f"{node_name}-inputs-{label}"
             io_data = _port_to_dict(
-                step="inputs",
-                arg=label,
-                position=position,
                 value=port.value,
                 annotation=port.annotation,
                 default=port.default,
             )
-            G.add_node(io_name, **io_data)
+            G.add_node(io_name, step="inputs", arg=label, position=position, **io_data)
             G.add_edge(io_name, node_name)
         for position, (raw_label, port) in enumerate(node_data.output_ports.items()):
             label = output_labels[position] if raw_label == "output_0" else raw_label
             io_name = f"{node_name}-outputs-{label}"
-            io_data = _port_to_dict(
-                step="outputs",
-                arg=label,
-                position=position,
-                value=port.value,
-                annotation=port.annotation,
-            )
-            G.add_node(io_name, **io_data)
+            io_data = _port_to_dict(value=port.value, annotation=port.annotation)
+            G.add_node(io_name, step="outputs", arg=label, position=position, **io_data)
             G.add_edge(node_name, io_name)
 
         if not isinstance(node_data, fr.schemas.DagData):
