@@ -10,6 +10,7 @@ from typing import Any
 
 import flowrep as fr
 import networkx as nx
+import pydantic
 from pyiron_snippets import retrieve
 from rdflib import BNode
 from rdflib.term import IdentifiedNode
@@ -20,6 +21,23 @@ from semantikon.flowrep_dict import (
     annotation_to_type_metadata,
     dict_to_nodedata,
 )
+
+
+class NodeData(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(frozen=True)
+
+    type: str
+    step: str = "node"
+    identifier: str | None = None
+    label: str | None = None
+    function: dict | None = None
+    parent: str | None = None
+
+    @pydantic.field_validator("type")
+    def validate_type(cls, v: str) -> str:
+        if v not in {"atomic", "workflow"}:
+            raise ValueError("type must be either 'atomic' or 'workflow'")
+        return v
 
 
 class SemantikonDiGraph(nx.DiGraph):
@@ -153,8 +171,9 @@ def _node_data_to_metadata(
     data: fr.schemas.NodeData,
     *,
     label: str | None = None,
+    parent: str | None = None,
 ) -> dict[str, Any]:
-    metadata: dict[str, Any] = {}
+    metadata: dict[str, Any] = {"step": "node"}
     function = None
     if isinstance(data, fr.schemas.AtomicData):
         metadata["type"] = "atomic"
@@ -179,7 +198,9 @@ def _node_data_to_metadata(
             )
         )
         metadata["function"] = function_data
-    return metadata
+    if parent is not None:
+        metadata["parent"] = parent
+    return NodeData(**metadata).model_dump()
 
 
 def _workflow_to_networkx(
@@ -198,10 +219,10 @@ def _workflow_to_networkx(
         parent_name: str | None = None,
         workflow_label: str | None = None,
     ):
-        node_attrs = _node_data_to_metadata(node_data, label=workflow_label)
-        if parent_name is not None:
-            node_attrs["parent"] = parent_name
-        G.add_node(node_name, step="node", **node_attrs)
+        node_attrs = _node_data_to_metadata(
+            node_data, label=workflow_label, parent=parent_name
+        )
+        G.add_node(node_name, **node_attrs)
 
         output_labels = list(node_data.output_ports)
         if len(output_labels) == 1 and output_labels[0] == "output_0":
