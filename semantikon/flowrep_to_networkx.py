@@ -27,7 +27,6 @@ class NodeData(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(frozen=True)
 
     type: str
-    step: str = "node"
     identifier: str | None = None
     label: str | None = None
     function: dict | None = None
@@ -242,7 +241,7 @@ def _workflow_to_networkx(
         node_attrs = _node_data_to_metadata(
             node_data, label=workflow_label, parent=parent_name
         )
-        G.add_node(node_name, **node_attrs)
+        G.add_node(node_name, step="node", **node_attrs)
 
         output_labels = list(node_data.output_ports)
         if len(output_labels) == 1 and output_labels[0] == "output_0":
