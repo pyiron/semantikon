@@ -183,7 +183,11 @@ def _port_to_dict(
         data["dtype"] = type_hint
     if type_metadata := annotation_to_type_metadata(annotation):
         data.update(type_metadata.to_dictionary())
-    return {key: value for key, value in IOData(**data).model_dump().items() if not isinstance(value, fr.schemas.NotData)}
+    return {
+        key: value
+        for key, value in IOData(**data).model_dump().items()
+        if not isinstance(value, fr.schemas.NotData)
+    }
 
 
 def _node_data_to_metadata(
@@ -267,7 +271,7 @@ def _workflow_to_networkx(
                 arg=label,
                 position=position,
                 value=port.value,
-                annotation=port.annotation
+                annotation=port.annotation,
             )
             G.add_node(io_name, **io_data)
             G.add_edge(node_name, io_name)
