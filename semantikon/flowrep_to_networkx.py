@@ -3,14 +3,13 @@ from __future__ import annotations
 import copy
 import json
 import unicodedata
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, dataclass, field, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
 from typing import Any
 
 import flowrep as fr
 import networkx as nx
-import pydantic
 from pyiron_snippets import retrieve
 from rdflib import BNode
 from rdflib.term import IdentifiedNode
@@ -23,21 +22,77 @@ from semantikon.flowrep_dict import (
 )
 
 
-class NodeData(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(frozen=True)
-
+@dataclass(frozen=True, slots=True)
+class TNode:
     type: str
     step: str = "node"
     identifier: str | None = None
     label: str | None = None
     function: dict | None = None
     parent: str | None = None
+    extras: dict[str, Any] = field(default_factory=dict)
 
-    @pydantic.field_validator("type")
-    def validate_type(cls, v: str) -> str:
-        if v not in {"atomic", "workflow"}:
+    def __post_init__(self):
+        if self.type not in {"atomic", "workflow"}:
             raise ValueError("type must be either 'atomic' or 'workflow'")
-        return v
+
+    def to_attrs(self) -> dict[str, Any]:
+        attrs: dict[str, Any] = {
+            "type": self.type,
+            "step": self.step,
+        }
+        if self.identifier is not None:
+            attrs["identifier"] = self.identifier
+        if self.label is not None:
+            attrs["label"] = self.label
+        if self.function is not None:
+            attrs["function"] = self.function
+        if self.parent is not None:
+            attrs["parent"] = self.parent
+        attrs.update(self.extras)
+        return attrs
+
+
+@dataclass(frozen=True, slots=True)
+class TIO:
+    arg: str
+    position: int
+    step: str = field(default="", init=False)
+    dtype: Any | None = None
+    value: Any | None = None
+    has_value: bool = False
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_attrs(self) -> dict[str, Any]:
+        attrs: dict[str, Any] = {
+            "step": self.step,
+            "arg": self.arg,
+            "position": self.position,
+        }
+        if self.dtype is not None:
+            attrs["dtype"] = self.dtype
+        if self.has_value:
+            attrs["value"] = self.value
+        attrs.update(self.metadata)
+        return attrs
+
+
+@dataclass(frozen=True, slots=True)
+class TInput(TIO):
+    step: str = field(default="inputs", init=False)
+    default: Any | None = None
+    has_default: bool = False
+
+    def to_attrs(self) -> dict[str, Any]:
+        attrs = super(TInput, self).to_attrs()
+        if self.has_default:
+            attrs["default"] = self.default
+        return attrs
+
+
+@dataclass(frozen=True, slots=True)
+class TOutput(TIO):
+    step: str = field(default="outputs", init=False)
 
 
 class SemantikonDiGraph(nx.DiGraph):
@@ -47,6 +102,58 @@ class SemantikonDiGraph(nx.DiGraph):
     assertion-level identifiers. Ontology-specific base namespaces are applied
     later by the ontology serialization layer.
     """
+
+    def _validate_semantikon_attrs(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        if "step" not in attrs:
+            return attrs
+
+        step = attrs["step"]
+        if step == "node":
+            known = {"type", "step", "identifier", "label", "function", "parent"}
+            node_meta = TNode(
+                type=attrs["type"],
+                step=step,
+                identifier=attrs.get("identifier"),
+                label=attrs.get("label"),
+                function=attrs.get("function"),
+                parent=attrs.get("parent"),
+                extras={k: v for k, v in attrs.items() if k not in known},
+            )
+            return node_meta.to_attrs()
+
+        if step == "inputs":
+            known = {"step", "arg", "position", "dtype", "value", "default"}
+            input_meta = TInput(
+                arg=attrs["arg"],
+                position=attrs["position"],
+                dtype=attrs.get("dtype"),
+                value=attrs.get("value"),
+                has_value="value" in attrs,
+                default=attrs.get("default"),
+                has_default="default" in attrs,
+                metadata={k: v for k, v in attrs.items() if k not in known},
+            )
+            return input_meta.to_attrs()
+
+        if step == "outputs":
+            known = {"step", "arg", "position", "dtype", "value"}
+            output_meta = TOutput(
+                arg=attrs["arg"],
+                position=attrs["position"],
+                dtype=attrs.get("dtype"),
+                value=attrs.get("value"),
+                has_value="value" in attrs,
+                metadata={k: v for k, v in attrs.items() if k not in known},
+            )
+            return output_meta.to_attrs()
+
+        raise ValueError(
+            f"Unknown step {step!r}. Expected one of 'node', 'inputs', or 'outputs'."
+        )
+
+    def add_node(self, node_for_adding, **attr):  # type: ignore[override]
+        normalized_attr = self._validate_semantikon_attrs(attr)
+        super().add_node(node_for_adding, **normalized_attr)
 
     @cached_property
     def t_ns(self) -> str:
@@ -149,60 +256,6 @@ def _output_port_label(port: str, outputs: list[str]) -> str:
     return port
 
 
-def _port_to_dict(
-    *,
-    value: Any,
-    annotation: Any,
-    default: Any = fr.schemas.NOT_DATA,
-) -> dict[str, Any]:
-    data: dict[str, Any] = {}
-    if not isinstance(value, fr.schemas.NotData):
-        data["value"] = value
-    if type_hint := annotation_to_type_hint(annotation):
-        data["dtype"] = type_hint
-    if type_metadata := annotation_to_type_metadata(annotation):
-        data.update(type_metadata.to_dictionary())
-    if not isinstance(default, fr.schemas.NotData):
-        data["default"] = default
-    return data
-
-
-def _node_data_to_metadata(
-    data: fr.schemas.NodeData,
-    *,
-    label: str | None = None,
-    parent: str | None = None,
-) -> dict[str, Any]:
-    metadata: dict[str, Any] = {"step": "node"}
-    function = None
-    if isinstance(data, fr.schemas.AtomicData):
-        metadata["type"] = "atomic"
-        function = data.function
-    elif isinstance(data, fr.schemas.DagData):
-        metadata["type"] = "workflow"
-        if label is not None:
-            metadata["label"] = label
-        if data.recipe.reference is not None:
-            function = retrieve.import_from_string(
-                data.recipe.reference.info.fully_qualified_name
-            )
-    if function is not None:
-        if hasattr(function, "_semantikon_metadata"):
-            metadata.update(function._semantikon_metadata)
-        function_data = get_function_dict(function)
-        function_data["identifier"] = ".".join(
-            (
-                function_data["module"],
-                function_data["qualname"],
-                function_data["version"],
-            )
-        )
-        metadata["function"] = function_data
-    if parent is not None:
-        metadata["parent"] = parent
-    return NodeData(**metadata).model_dump()
-
-
 def _workflow_to_networkx(
     workflow: fr.schemas.DagData,
     *,
@@ -219,10 +272,35 @@ def _workflow_to_networkx(
         parent_name: str | None = None,
         workflow_label: str | None = None,
     ):
-        node_attrs = _node_data_to_metadata(
-            node_data, label=workflow_label, parent=parent_name
-        )
-        G.add_node(node_name, **node_attrs)
+        metadata: dict[str, Any] = {"step": "node"}
+        function = None
+        if isinstance(node_data, fr.schemas.AtomicData):
+            metadata["type"] = "atomic"
+            function = node_data.function
+        else:
+            metadata["type"] = "workflow"
+            if workflow_label is not None:
+                metadata["label"] = workflow_label
+            if node_data.recipe.reference is not None:
+                function = retrieve.import_from_string(
+                    node_data.recipe.reference.info.fully_qualified_name
+                )
+
+        if function is not None:
+            if hasattr(function, "_semantikon_metadata"):
+                metadata.update(function._semantikon_metadata)
+            function_data = get_function_dict(function)
+            function_data["identifier"] = ".".join(
+                (
+                    function_data["module"],
+                    function_data["qualname"],
+                    function_data["version"],
+                )
+            )
+            metadata["function"] = function_data
+        if parent_name is not None:
+            metadata["parent"] = parent_name
+        G.add_node(node_name, **metadata)
 
         output_labels = list(node_data.output_ports)
         if len(output_labels) == 1 and output_labels[0] == "output_0":
@@ -230,18 +308,36 @@ def _workflow_to_networkx(
 
         for position, (label, port) in enumerate(node_data.input_ports.items()):
             io_name = f"{node_name}-inputs-{label}"
-            io_data = _port_to_dict(
-                value=port.value,
-                annotation=port.annotation,
-                default=port.default,
-            )
-            G.add_node(io_name, step="inputs", arg=label, position=position, **io_data)
+            io_data: dict[str, Any] = {
+                "step": "inputs",
+                "arg": label,
+                "position": position,
+            }
+            if not isinstance(port.value, fr.schemas.NotData):
+                io_data["value"] = port.value
+            if type_hint := annotation_to_type_hint(port.annotation):
+                io_data["dtype"] = type_hint
+            if type_metadata := annotation_to_type_metadata(port.annotation):
+                io_data.update(type_metadata.to_dictionary())
+            if not isinstance(port.default, fr.schemas.NotData):
+                io_data["default"] = port.default
+            G.add_node(io_name, **io_data)
             G.add_edge(io_name, node_name)
         for position, (raw_label, port) in enumerate(node_data.output_ports.items()):
             label = output_labels[position] if raw_label == "output_0" else raw_label
             io_name = f"{node_name}-outputs-{label}"
-            io_data = _port_to_dict(value=port.value, annotation=port.annotation)
-            G.add_node(io_name, step="outputs", arg=label, position=position, **io_data)
+            io_data = {
+                "step": "outputs",
+                "arg": label,
+                "position": position,
+            }
+            if not isinstance(port.value, fr.schemas.NotData):
+                io_data["value"] = port.value
+            if type_hint := annotation_to_type_hint(port.annotation):
+                io_data["dtype"] = type_hint
+            if type_metadata := annotation_to_type_metadata(port.annotation):
+                io_data.update(type_metadata.to_dictionary())
+            G.add_node(io_name, **io_data)
             G.add_edge(node_name, io_name)
 
         if not isinstance(node_data, fr.schemas.DagData):

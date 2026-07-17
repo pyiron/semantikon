@@ -74,13 +74,21 @@ def _add_node(
     if G is None:
         G = ontology.SemantikonDiGraph(prefix=prefix)
 
-    for inp in wf.inputs:
-        metadata: dict[str, str | int] = {"step": "inputs"}
-        if inp.inputBinding is not None:
+    for position, inp in enumerate(wf.inputs):
+        metadata: dict[str, str | int] = {
+            "step": "inputs",
+            "arg": _get_name(inp.id),
+            "position": position,
+        }
+        if inp.inputBinding is not None and inp.inputBinding.position is not None:
             metadata["position"] = inp.inputBinding.position
         G.add_node(f"{prefix}-inputs-{_get_name(inp.id)}", **metadata)
-    for out in wf.outputs:
-        metadata = {"step": "outputs"}
+    for position, out in enumerate(wf.outputs):
+        metadata = {
+            "step": "outputs",
+            "arg": _get_name(out.id),
+            "position": position,
+        }
         G.add_node(f"{prefix}-outputs-{_get_name(out.id)}", **metadata)
 
     if isinstance(wf, parser.CommandLineTool):
@@ -88,7 +96,9 @@ def _add_node(
 
     for step in wf.steps:
         node_name = f"{prefix}-{_get_name(step.id)}"
-        G.add_node(node_name, step="node")
+        run_doc = parser.load_document_by_uri(step.run)
+        node_type = "workflow" if isinstance(run_doc, parser.Workflow) else "atomic"
+        G.add_node(node_name, step="node", type=node_type)
         for inp in step.in_:
             source = _get_name(inp.source)
             source = (
@@ -104,7 +114,7 @@ def _add_node(
             if "/" in out_name:
                 out_name = out_name.split("/")[-1]
             G.add_edge(node_name, f"{node_name}-outputs-{out_name}")
-        G = _add_node(parser.load_document_by_uri(step.run), G, prefix=node_name)
+        G = _add_node(run_doc, G, prefix=node_name)
     for out in wf.outputs:
         G.add_edge(
             f"{prefix}-{_get_name(out.outputSource.replace('/', '-outputs-'))}",
