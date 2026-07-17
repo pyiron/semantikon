@@ -146,6 +146,23 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         hashed = ftn._get_hashed_node_dict_from_graph(G)
         self.assertEqual(hashed, {})
 
+    def test_add_node_validates_semantikon_metadata(self):
+        G = ftn.SemantikonDiGraph()
+        G.add_node("n", step="node", type="atomic")
+        self.assertEqual(G.nodes["n"]["step"], "node")
+        self.assertEqual(G.nodes["n"]["type"], "atomic")
+
+        G.add_node("in", step="inputs", arg="x", position=0, value=None)
+        self.assertIn("value", G.nodes["in"])
+        self.assertIsNone(G.nodes["in"]["value"])
+
+    def test_add_node_rejects_invalid_semantikon_metadata(self):
+        G = ftn.SemantikonDiGraph()
+        with self.assertRaises(ValueError):
+            G.add_node("n", step="node", type="invalid")
+        with self.assertRaises(ValueError):
+            G.add_node("n", step="banana")
+
 
 if __name__ == "__main__":
     unittest.main()
