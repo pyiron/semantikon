@@ -1,7 +1,7 @@
 """
 Convert node data trees to the legacy nested-dictionary format.
 
-This module bridges :mod:`flowrep.retrospective` objects (instance data with associated
+This module bridges :mod:`flowrep` retrospective objects (instance data with associated
 recipe) to the ``dict`` structure historically produced by
 :func:`flowrep.workflow.get_workflow_dict` in versions <0.3.0
 and consumed by downstream packages such as *semantikon*.
@@ -28,17 +28,15 @@ Edge string format
 
 from __future__ import annotations
 
-import collections
-import copy
 import dataclasses
 import hashlib
 import json
-import re
 from collections.abc import Mapping
 from typing import Annotated, Any, cast, get_args, get_origin
 
+import flowrep as fr
 import networkx as nx
-from flowrep.api import schemas as frs
+from pydantic import ValidationError
 from pyiron_snippets import retrieve
 
 from semantikon.converter import (
@@ -50,33 +48,40 @@ from semantikon.converter import (
 from semantikon.datastructure import TypeMetadata
 
 
+def dict_to_nodedata(node: dict[str, Any]) -> fr.schemas.NodeData:
+    """Convert a legacy semantikon workflow dict into flowrep node data."""
+    try:
+        match node["type"]:
+            case "atomic":
+                return _dict_to_atomic_data(node)
+            case "workflow":
+                return _dict_to_workflow_data(node)
+            case other:
+                raise TypeError(f"Unsupported workflow dict node type: {other!r}")
+    except ValidationError as exc:
+        raise AssertionError(str(exc)) from exc
+
+
 def nodedata2dict(
-    node: frs.NodeData,
+    node: fr.schemas.NodeData,
     *,
-    with_io: bool = False,
-    with_function: bool = False,
     label: str | None = None,
 ) -> dict[str, Any]:
     """Convert a data node to the nested dictionary format.
 
     Args:
         node: The node data to convert (pre- or post-run).
-        with_io: Include ``"inputs"`` / ``"outputs"`` port dictionaries.
-        with_function: Store raw callables (``True``) or
-            :func:`get_function_metadata` dicts (``False``).
         label: Override the inferred label.
 
     Returns:
         A nested dictionary matching the structure of the legacy
         ``get_workflow_dict`` output.
     """
-    if isinstance(node, frs.AtomicData):
-        return _atomic_to_dict(node, with_io=with_io, with_function=with_function)
-    if isinstance(node, frs.DagData):
-        return _workflow_to_dict(
-            node, with_io=with_io, with_function=with_function, label=label
-        )
-    if isinstance(node, frs.FlowControlData):
+    if isinstance(node, fr.schemas.AtomicData):
+        return _atomic_to_dict(node)
+    if isinstance(node, fr.schemas.DagData):
+        return _workflow_to_dict(node, label=label)
+    if isinstance(node, fr.schemas.FlowControlData):
         raise NotImplementedError(
             "FlowControl → dict conversion is not yet implemented.  "
             "The legacy format flattens body-workflow children into the "
@@ -85,24 +90,184 @@ def nodedata2dict(
     raise TypeError(f"Unsupported data node type: {type(node).__name__}")
 
 
+def _dict_to_annotation(port: dict[str, Any]) -> Any | None:
+    dtype = port.get("dtype")
+    metadata = {
+        key: value
+        for key, value in port.items()
+        if key not in {"value", "dtype", "default"}
+    }
+    if dtype is None and not metadata:
+        return None
+    if metadata:
+        return Annotated[dtype if dtype is not None else Any, metadata]
+    return dtype
+
+
+def _dict_to_input_port(port: dict[str, Any]) -> fr.schemas.InputDataPort:
+    return fr.schemas.InputDataPort(
+        value=port["value"] if "value" in port else fr.schemas.NOT_DATA,
+        annotation=_dict_to_annotation(port),
+        default=port["default"] if "default" in port else fr.schemas.NOT_DATA,
+    )
+
+
+def _dict_to_output_port(port: dict[str, Any]) -> fr.schemas.OutputDataPort:
+    return fr.schemas.OutputDataPort(
+        value=port["value"] if "value" in port else fr.schemas.NOT_DATA,
+        annotation=_dict_to_annotation(port),
+    )
+
+
+def _flowrep_recipe_from_callable(function: Any, *, node_type: str):
+    if hasattr(function, "flowrep_recipe"):
+        return function.flowrep_recipe
+    decorator = fr.tools.atomic if node_type == "atomic" else fr.tools.workflow
+    return decorator(function).flowrep_recipe
+
+
+def _dict_to_atomic_recipe(node: dict[str, Any]) -> fr.schemas.AtomicRecipe:
+    function = node["function"]
+    return _flowrep_recipe_from_callable(function, node_type="atomic")
+
+
+def _dict_to_recipe(node: dict[str, Any]) -> fr.schemas.RecipeDiscrimination:
+    match node["type"]:
+        case "atomic":
+            return _dict_to_atomic_recipe(node)
+        case "workflow":
+            return _dict_to_workflow_recipe(node)
+        case other:
+            raise TypeError(f"Unsupported workflow dict node type: {other!r}")
+
+
+def _dict_to_atomic_data(node: dict[str, Any]) -> fr.schemas.AtomicData:
+    data = fr.schemas.AtomicData.from_recipe(_dict_to_atomic_recipe(node))
+    data.function = node["function"]
+    data.input_ports = {
+        label: _dict_to_input_port(port)
+        for label, port in node.get("inputs", {}).items()
+    }
+    data.output_ports = {
+        label: _dict_to_output_port(port)
+        for label, port in node.get("outputs", {}).items()
+    }
+    return data
+
+
+def _split_endpoint(endpoint: str) -> tuple[str | None, str, str]:
+    if endpoint.startswith("inputs.") or endpoint.startswith("outputs."):
+        io, port = endpoint.split(".", 1)
+        return None, io, port
+    parts = endpoint.rsplit(".", 2)
+    if len(parts) != 3 or parts[1] not in {"inputs", "outputs"}:
+        raise ValueError(f"Malformed workflow edge endpoint: {endpoint!r}")
+    return parts[0], parts[1], parts[2]
+
+
+def _normalize_output_label(label: str, recipe_outputs: list[str]) -> str:
+    if label == "output" and recipe_outputs == ["output_0"]:
+        return "output_0"
+    return label
+
+
+def _dict_to_workflow_recipe(node: dict[str, Any]) -> fr.schemas.WorkflowRecipe:
+    function = node.get("function")
+    if function is None:
+        raise TypeError("Workflow dict entries must carry a callable.")
+    base_recipe = _flowrep_recipe_from_callable(function, node_type="workflow")
+    nodes = {
+        label: _dict_to_recipe(child_node)
+        for label, child_node in node.get("nodes", {}).items()
+    }
+    input_edges: fr.schemas.InputEdges = {}
+    edges: fr.schemas.Edges = {}
+    output_edges: fr.schemas.OutputEdges = {}
+    for src, tgt in node.get("edges", []):
+        src_node, src_io, src_port = _split_endpoint(src)
+        tgt_node, tgt_io, tgt_port = _split_endpoint(tgt)
+        if (
+            src_node is None
+            and src_io == "inputs"
+            and tgt_node is not None
+            and tgt_io == "inputs"
+        ):
+            input_edges[fr.schemas.TargetHandle(node=tgt_node, port=tgt_port)] = (
+                fr.schemas.InputSource(port=src_port)
+            )
+        elif (
+            src_node is not None
+            and src_io == "outputs"
+            and tgt_node is not None
+            and tgt_io == "inputs"
+        ):
+            src_port = _normalize_output_label(src_port, nodes[src_node].outputs)
+            edges[fr.schemas.TargetHandle(node=tgt_node, port=tgt_port)] = (
+                fr.schemas.SourceHandle(node=src_node, port=src_port)
+            )
+        elif (
+            tgt_node is None
+            and tgt_io == "outputs"
+            and src_node is None
+            and src_io == "inputs"
+        ):
+            tgt_port = _normalize_output_label(tgt_port, list(base_recipe.outputs))
+            output_edges[fr.schemas.OutputTarget(port=tgt_port)] = (
+                fr.schemas.InputSource(port=src_port)
+            )
+        elif (
+            tgt_node is None
+            and tgt_io == "outputs"
+            and src_node is not None
+            and src_io == "outputs"
+        ):
+            src_port = _normalize_output_label(src_port, nodes[src_node].outputs)
+            tgt_port = _normalize_output_label(tgt_port, list(base_recipe.outputs))
+            output_edges[fr.schemas.OutputTarget(port=tgt_port)] = (
+                fr.schemas.SourceHandle(node=src_node, port=src_port)
+            )
+        else:
+            raise ValueError(f"Malformed workflow edge: {src!r} -> {tgt!r}")
+    return fr.schemas.WorkflowRecipe(
+        inputs=list(base_recipe.inputs),
+        outputs=list(base_recipe.outputs),
+        nodes=nodes,
+        input_edges=input_edges,
+        edges=edges,
+        output_edges=output_edges,
+        reference=base_recipe.reference,
+        description=base_recipe.description,
+    )
+
+
+def _dict_to_workflow_data(node: dict[str, Any]) -> fr.schemas.DagData:
+    recipe = _dict_to_workflow_recipe(node)
+    data = fr.schemas.DagData.from_recipe(recipe)
+    data.input_ports = {
+        label: _dict_to_input_port(port)
+        for label, port in node.get("inputs", {}).items()
+    }
+    data.output_ports = {
+        label: _dict_to_output_port(port)
+        for label, port in node.get("outputs", {}).items()
+    }
+    data.nodes = {
+        label: dict_to_nodedata(child_node)
+        for label, child_node in node.get("nodes", {}).items()
+    }
+    return data
+
+
 # ---------------------------------------------------------------------------
 # Atomic
 # ---------------------------------------------------------------------------
 
 
-def _atomic_to_dict(
-    node: frs.AtomicData,
-    *,
-    with_io: bool,
-    with_function: bool,
-) -> dict[str, Any]:
+def _atomic_to_dict(node: fr.schemas.AtomicData) -> dict[str, Any]:
     result: dict[str, Any] = {"type": "atomic"}
-    result["function"] = (
-        node.function if with_function else get_function_metadata(node.function)
-    )
-    if with_io:
-        result["inputs"] = _input_ports_to_dict(node.input_ports)
-        result["outputs"] = _output_ports_to_dict(node.output_ports)
+    result["function"] = node.function
+    result["inputs"] = _input_ports_to_dict(node.input_ports)
+    result["outputs"] = _output_ports_to_dict(node.output_ports)
     if hasattr(node.function, "_semantikon_metadata"):
         result.update(node.function._semantikon_metadata)
     return result
@@ -113,46 +278,33 @@ def _atomic_to_dict(
 # ---------------------------------------------------------------------------
 
 
-def _workflow_to_dict(
-    node: frs.DagData,
-    *,
-    with_io: bool,
-    with_function: bool,
-    label: str | None,
-) -> dict[str, Any]:
+def _workflow_to_dict(node: fr.schemas.DagData, *, label: str | None) -> dict[str, Any]:
     recipe = node.recipe
-    assert isinstance(recipe, frs.WorkflowRecipe)
+    assert isinstance(recipe, fr.schemas.WorkflowRecipe)
 
     result: dict[str, Any] = {
         "type": "workflow",
         "label": label or _infer_label(recipe),
         "nodes": {
-            child_label: nodedata2dict(
-                child_node,
-                with_io=with_io,
-                with_function=with_function,
-                label=child_label,
-            )
+            child_label: nodedata2dict(child_node, label=child_label)
             for child_label, child_node in node.nodes.items()
         },
         "edges": _workflow_edges(recipe),
     }
 
-    if with_io:
-        result["inputs"] = _input_ports_to_dict(node.input_ports)
-        result["outputs"] = _output_ports_to_dict(node.output_ports)
+    result["inputs"] = _input_ports_to_dict(node.input_ports)
+    result["outputs"] = _output_ports_to_dict(node.output_ports)
 
     if recipe.reference is not None:
         func = retrieve.import_from_string(recipe.reference.info.fully_qualified_name)
         if hasattr(func, "_semantikon_metadata"):
             result.update(func._semantikon_metadata)
-        if with_function:
-            result["function"] = func
+        result["function"] = func
 
     return result
 
 
-def _infer_label(recipe: frs.LiveWorkflowNode) -> str:
+def _infer_label(recipe: fr.schemas.LiveWorkflowNode) -> str:
     """Best-effort label from a workflow recipe's reference."""
     if recipe.reference is not None:
         return recipe.reference.info.fully_qualified_name.rsplit(".", 1)[-1]
@@ -164,7 +316,7 @@ def _infer_label(recipe: frs.LiveWorkflowNode) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _workflow_edges(recipe: frs.WorkflowRecipe) -> list[tuple[str, str]]:
+def _workflow_edges(recipe: fr.schemas.WorkflowRecipe) -> list[tuple[str, str]]:
     """Flatten typed edge objects into ``("src", "tgt")`` string tuples."""
     edges: list[tuple[str, str]] = []
 
@@ -202,7 +354,7 @@ def _workflow_edges(recipe: frs.WorkflowRecipe) -> list[tuple[str, str]]:
 
     # Child output/passthrough input → workflow output
     for target, source in recipe.output_edges.items():
-        if isinstance(source, frs.InputSource):
+        if isinstance(source, fr.schemas.InputSource):
             edges.append(
                 (
                     f"inputs.{source.port}",
@@ -226,16 +378,16 @@ def _workflow_edges(recipe: frs.WorkflowRecipe) -> list[tuple[str, str]]:
 
 
 def _port_dict(
-    value: Any, annotation: Any, default: Any = frs.NOT_DATA
+    value: Any, annotation: Any, default: Any = fr.schemas.NOT_DATA
 ) -> dict[str, Any]:
     d: dict[str, Any] = {}
-    if not isinstance(value, frs.NotData):
+    if not isinstance(value, fr.schemas.NotData):
         d["value"] = value
     if type_hint := annotation_to_type_hint(annotation):
         d["dtype"] = type_hint
     if type_metadata := annotation_to_type_metadata(annotation):
         d.update(type_metadata.to_dictionary())
-    if not isinstance(default, frs.NotData):
+    if not isinstance(default, fr.schemas.NotData):
         d["default"] = default
     return d
 
@@ -294,7 +446,7 @@ def _unwrap_annotated(annotation: Any) -> Any:
 
 
 def _input_ports_to_dict(
-    ports: Mapping[str, frs.InputDataPort],
+    ports: Mapping[str, fr.schemas.InputDataPort],
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     for name, port in ports.items():
@@ -303,7 +455,7 @@ def _input_ports_to_dict(
 
 
 def _output_ports_to_dict(
-    ports: Mapping[str, frs.OutputDataPort],
+    ports: Mapping[str, fr.schemas.OutputDataPort],
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     if len(ports) == 1 and next(iter(ports.keys())) == "output_0":
@@ -488,201 +640,6 @@ def _get_missing_edges(edge_list: list[tuple[str, str]]) -> list[tuple[str, str]
             if new_edge not in extra_edges:
                 extra_edges.append(new_edge)
     return edge_list + extra_edges
-
-
-def _simple_run(G: nx.DiGraph) -> nx.DiGraph:
-    for node in nx.topological_sort(G):
-        data = G.nodes[node]
-        if data["step"] == "node":
-            if all("value" in G.nodes[succ] for succ in G.successors(node)):
-                continue
-            kwargs = {}
-            for inp in G.predecessors(node):
-                kwargs[inp.split("@")[-1]] = G.nodes[inp]["value"]
-            outputs = data["function"](**kwargs)
-            successors = list(G.successors(node))
-            if len(successors) == 1:
-                G.nodes[successors[0]]["value"] = outputs
-            else:
-                for succ in successors:
-                    G.nodes[succ]["value"] = outputs[
-                        int(G.nodes[succ].get("position", succ.split("@")[-1]))
-                    ]
-            continue
-        if "default" in data and "value" not in data:
-            data["value"] = data["default"]
-        if G.in_degree(node) == 0 and "value" not in data:
-            raise ValueError(f"Input values not given for {node}")
-        assert "value" in data
-        for succ in G.successors(node):
-            if G.nodes[succ].get("type") != "atomic":
-                G.nodes[succ]["value"] = data["value"]
-    return G
-
-
-class GNode:
-    def __init__(self, key: str):
-        self.key = key
-
-    @property
-    def node(self) -> str | None:
-        if "@" in self.key and ":" not in self.key:
-            return None
-        return self.key.split(":")[0]
-
-    @property
-    def node_list(self) -> list[str]:
-        if self.node is None:
-            return []
-        return self.node.split("/")
-
-    @property
-    def io(self) -> str | None:
-        arg = re.search(r":(inputs|outputs)@", self.key)
-        if arg is not None:
-            return arg.group(1)
-        arg = re.search(r"(inputs|outputs)@", self.key)
-        if arg is not None:
-            return arg.group(1)
-        return None
-
-    @property
-    def arg(self) -> str | None:
-        return self.key.split("@")[-1] if "@" in self.key else None
-
-    @property
-    def is_io(self) -> bool:
-        return self.io is not None
-
-
-def _graph_to_wf_dict(G: nx.DiGraph) -> dict:
-    """
-    Convert a directed graph representation of a workflow into a workflow
-    dictionary.
-
-    Args:
-        G (nx.DiGraph): A directed graph representing the workflow.
-
-    Returns:
-        dict: The dictionary representation of the workflow.
-    """
-    wf_dict = dict_to_recursive_dd({})
-
-    for node, metadata in list(G.nodes.data()):
-        gn = GNode(node)
-        d = wf_dict
-        for n in gn.node_list:
-            d = d["nodes"][n]
-        if gn.is_io:
-            d[gn.io][gn.arg] = {
-                key: value for key, value in metadata.items() if key != "step"
-            }
-        else:
-            d.update({key: value for key, value in metadata.items() if key != "step"})
-
-    for edge in G.edges:
-        orig = GNode(edge[0])
-        dest = GNode(edge[1])
-        if not orig.is_io or not dest.is_io:
-            continue
-        elif orig.io is None or orig.arg is None or dest.io is None or dest.arg is None:
-            raise ValueError("Origin and/or destination GNodes hit a non-stringy case.")
-        if len(orig.node_list) == len(dest.node_list):
-            nodes = orig.node_list[:-1]
-            if len(orig.node_list) == 0:
-                edge = (
-                    ".".join([orig.io, orig.arg]),
-                    ".".join([dest.io, dest.arg]),
-                )
-            else:
-                edge = (
-                    ".".join([orig.node_list[-1], orig.io, orig.arg]),
-                    ".".join([dest.node_list[-1], dest.io, dest.arg]),
-                )
-        elif len(orig.node_list) > len(dest.node_list):
-            nodes = dest.node_list
-            edge = (
-                ".".join([orig.node_list[-1], orig.io, orig.arg]),
-                ".".join([dest.io, dest.arg]),
-            )
-        else:
-            nodes = orig.node_list
-            edge = (
-                ".".join([orig.io, orig.arg]),
-                ".".join([dest.node_list[-1], dest.io, dest.arg]),
-            )
-        d = wf_dict
-        for node in nodes:
-            d = d["nodes"][node]
-        if not isinstance(d["edges"], list):
-            d["edges"] = []
-        d["edges"].append(edge)
-    for key, value in G.graph.items():
-        d = wf_dict
-        if key != "":
-            for n in key.split("/"):
-                d = d["nodes"][n]
-        for k, v in value.items():
-            d[k] = v
-    return recursive_dd_to_dict(wf_dict)
-
-
-# ---------------------------------------------------------------------------
-# Tools
-# ---------------------------------------------------------------------------
-
-
-def serialize_functions(data: dict[str, Any]) -> dict[str, Any]:
-    """
-    Return a deep-copied version of the data dictionary with any function
-    objects replaced by their serialized metadata.
-
-    Args:
-        data (dict[str, Any]): The data dictionary containing nodes and
-            functions.
-
-    Returns:
-        dict[str, Any]: The modified data dictionary where function objects
-            (e.g. in ``"function"`` or ``"test"["function"]`` fields) have
-            been replaced by the result of :func:`get_function_metadata`.
-    """
-    data = copy.deepcopy(data)
-    if "nodes" in data:
-        for key, node in data["nodes"].items():
-            data["nodes"][key] = serialize_functions(node)
-    elif "function" in data and not isinstance(data["function"], str):
-        data["function"] = get_function_metadata(data["function"])
-    return data
-
-
-def recursive_defaultdict() -> collections.defaultdict:
-    """
-    Create a recursively nested collections.defaultdict.
-
-    Example:
-    >>> d = recursive_defaultdict()
-    >>> d['a']['b']['c'] = 1
-    >>> print(d)
-
-    Output: 1
-    """
-    return collections.defaultdict(recursive_defaultdict)
-
-
-def dict_to_recursive_dd(d: dict | collections.defaultdict) -> collections.defaultdict:
-    """Convert a regular dict to a recursively nested collections.defaultdict."""
-    if isinstance(d, dict) and not isinstance(d, collections.defaultdict):
-        return collections.defaultdict(
-            recursive_defaultdict, {k: dict_to_recursive_dd(v) for k, v in d.items()}
-        )
-    return d
-
-
-def recursive_dd_to_dict(d: dict | collections.defaultdict) -> dict:
-    """Convert a recursively nested collections.defaultdict to a regular dict."""
-    if isinstance(d, collections.defaultdict):
-        return {k: recursive_dd_to_dict(v) for k, v in d.items()}
-    return d
 
 
 # ---------------------------------------------------------------------------

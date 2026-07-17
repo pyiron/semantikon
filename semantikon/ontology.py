@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import copy
-import json
-import unicodedata
 import warnings
-from dataclasses import asdict, dataclass, fields, is_dataclass
-from functools import cache, cached_property
+from dataclasses import dataclass, fields, is_dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, Callable, TypeAlias, cast
+from typing import Any, Callable, TypeAlias
 
 import bagofholding
-import networkx as nx
+import flowrep as fr
 from owlrl import DeductiveClosure, RDFS_Semantics
 from pyshacl import validate
 from rdflib import OWL, RDF, RDFS, BNode, Graph, Literal, Namespace, URIRef
@@ -24,7 +21,12 @@ from semantikon.converter import (
     parse_input_args,
     parse_output_args,
 )
-from semantikon.flowrep_dict import _WorkflowGraphSerializer, get_hashed_node_dict
+from semantikon.flowrep_dict import dict_to_nodedata
+from semantikon.flowrep_to_networkx import (
+    SemantikonDiGraph,
+    _get_graph_hash,
+    serialize_and_convert_to_networkx,
+)
 from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
@@ -91,105 +93,9 @@ def _units_to_uri(units: str | URIRef) -> URIRef:
         return units
     key = ud[units]
     if key is not None:
+        assert isinstance(key, URIRef)
         return key
     return URIRef(units)
-
-
-class SemantikonDiGraph(nx.DiGraph):
-    @cached_property
-    def t_ns(self):
-        h = (
-            "W" + _get_graph_hash(self, with_global_inputs=False)[:8]
-            if self.graph["prefix"] is None
-            else self.graph["prefix"]
-        )
-        return Namespace(BASE + h + "_")
-
-    @cached_property
-    def a_ns(self):
-        h = _get_graph_hash(self, with_global_inputs=True)
-        return Namespace(BASE + h + "_")
-
-    def get_a_node(self, node_name: str) -> IdentifiedNode:
-        return self.a_ns[node_name]
-
-    @cache
-    def _get_data_node(self, io: str) -> str:
-        while True:
-            candidate = [
-                c for c in self.predecessors(io) if self.nodes[c]["step"] != "node"
-            ]
-            assert len(candidate) <= 1
-            if len(candidate) == 0:
-                return f"{io}_data"
-            io = candidate[0]
-
-    def append_hash(
-        self,
-        node: str,
-        hash_value: str,
-        label: str | None = None,
-    ):
-        """
-        Propagates a hash value through the descendants of a given node in a
-        directed graph.
-
-        This function iteratively traverses the descendants of the graph and
-        appends a hash value to each descendant node. The hash value is
-        updated based on the label of each node. Optionally, it can remove
-        specific data (e.g., "value") from the nodes.
-
-        Parameters:
-            node (str): The starting node from which the hash propagation begins.
-            hash_value (str): The initial hash value to propagate through the
-                descendants.
-            label (str | None, optional): A label to use for hash computation.
-                If not provided, the label is derived from the node's data
-                (e.g., "label" or "arg"). Defaults to None.
-
-        Notes:
-            - The function uses an iterative approach to avoid recursion,
-                making it suitable for graphs with deep hierarchies.
-            - The hash value for each node is updated in the format:
-                `parent_hash@child_label`.
-
-        """
-        # Use a stack to keep track of nodes to process
-        stack = [(node, hash_value, label)]
-
-        while stack:
-            current_node, current_hash, current_label = stack.pop()
-
-            for child in self.successors(current_node):
-                if self.nodes[child]["step"] == "node":
-                    continue
-
-                # Determine the label for this specific child
-                child_label = current_label
-                if child_label is None:
-                    child_label = self.nodes[child].get(
-                        "label", self.nodes[child]["arg"]
-                    )
-
-                # Update the hash for the child node
-                self.nodes[child]["hash"] = current_hash + f"@{child_label}"
-
-                # Add the child to the stack for further processing
-                stack.append((child, current_hash, child_label))
-
-    def get_hash_dict(self) -> dict[str, str]:
-        """
-        Get a dictionary mapping node names to their hash values.
-
-        Returns:
-            dict[str, str]: A dictionary where keys are node names and values
-                are their corresponding hash values.
-        """
-        hash_dict = {}
-        for _, data in self.nodes.data():
-            if "hash" in data and "value" in data:
-                hash_dict[data["hash"]] = data["value"]
-        return hash_dict
 
 
 def _inherit_properties(graph: Graph, n_max: int = 1000):
@@ -249,7 +155,7 @@ def _extract_shacl_shapes(input_graph: Graph) -> Graph:
 
 
 def validate_values(
-    graph: Graph,
+    graph: Graph | dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
     run_reasoner: bool = True,
     copy_graph: bool = True,
     strict_typing: bool = True,
@@ -258,7 +164,8 @@ def validate_values(
     Validate if all values required by restrictions are present in the graph
 
     Args:
-        graph (Graph): input RDF graph
+        graph (Graph|dict |fr.schemas.DagData|fr.schemas.WorkflowRecipe): input RDF graph, or
+            something coercible to one via ``get_knowledge_graph``.
         run_reasoner (bool): if True, run OWL RL reasoner before validation
         copy_graph (bool): if True, work on a copy of the graph. When the graph
             is not copied and reasoner is run, the input graph is modified by
@@ -270,6 +177,9 @@ def validate_values(
     Returns:
         (tuple): validation result and message from pyshacl
     """
+    if not isinstance(graph, Graph):
+        graph = get_knowledge_graph(graph)
+
     g = copy.deepcopy(graph) if copy_graph and run_reasoner else graph
     excluded = []
     if not strict_typing:
@@ -350,7 +260,7 @@ def _check_consistency_of_digraph(G: SemantikonDiGraph):
 
 
 def get_knowledge_graph(
-    wf_dict: dict,
+    wf_dict: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
     include_t_box: bool = True,
     include_a_box: bool = True,
     hash_data: bool = True,
@@ -362,10 +272,12 @@ def get_knowledge_graph(
     pmdco_uri: str = "https://w3id.org/pmd/co/3.0.0",
 ) -> Graph:
     """
-    Generate RDF graph from a dictionary containing workflow information
+    Generate RDF graph from workflow information
 
     Args:
-        wf_dict (dict): dictionary containing workflow information
+        wf_dict (fr.schemas.DagData|fr.schemas.WorkflowRecipe): ``flowrep``
+            object containing workflow information. Passing a ``dict`` is
+            deprecated and will be removed in a future version.
         include_t_box (bool): if True, include T-Box information
         include_a_box (bool): if True, include A-Box information
         hash_data (bool): if True, compute and include hash values for data nodes
@@ -377,7 +289,47 @@ def get_knowledge_graph(
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
+    if isinstance(wf_dict, dict):
+        warnings.warn(
+            "Passing a dict to 'get_knowledge_graph' is deprecated and will be removed in a future version. "
+            "Please pass a 'flowrep' object instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        wf_dict = dict_to_nodedata(wf_dict)
+    if isinstance(wf_dict, fr.schemas.WorkflowRecipe):
+        wf_dict = fr.schemas.DagData.from_recipe(wf_dict)
+    elif isinstance(wf_dict, fr.schemas.DagData):
+        pass
+    else:
+        raise TypeError(
+            f"Invalid input type. Expected dict, flowrep {fr.schemas.DagData.__name__!r}, or "
+            f"flowrep {fr.schemas.WorkflowRecipe.__name__!r}, but got {type(wf_dict)}."
+        )
+
     G = serialize_and_convert_to_networkx(wf_dict, hash_data=hash_data, prefix=prefix)
+    return _get_knowledge_graph_from_digraph(
+        G,
+        include_t_box=include_t_box,
+        include_a_box=include_a_box,
+        remove_data=remove_data,
+        extract_dataclasses=extract_dataclasses,
+        store_data=store_data,
+        file_name=file_name,
+        pmdco_uri=pmdco_uri,
+    )
+
+
+def _get_knowledge_graph_from_digraph(
+    G: SemantikonDiGraph,
+    include_t_box: bool = True,
+    include_a_box: bool = True,
+    remove_data: bool = False,
+    extract_dataclasses: bool = False,
+    store_data: bool = False,
+    file_name: str | None = None,
+    pmdco_uri: str = "https://w3id.org/pmd/co/3.0.0",
+) -> Graph:
     _check_consistency_of_digraph(G)
     graph = _get_bound_graph()
     graph += _import_pmdco(pmdco_uri=pmdco_uri)
@@ -411,19 +363,21 @@ def _store_data(graph: Graph, file_name: str | Path):
     file_path_id = sha256(file_path.encode("utf-8")).hexdigest()
     file_data_item = BNode(f"file_{file_path_id}")
     data_dict = {}
-    for n, h, v in graph.query(query):
-        data_dict[h.toPython()] = v.toPython()
+    for row in graph.query(query):
+        assert not isinstance(row, bool)
+        assert isinstance(row[1], Literal) and isinstance(row[2], Literal)
+        data_dict[row[1].toPython()] = row[2].toPython()
         if (file_data_item, RDF.type, SNS.file_data_item) not in graph:
             graph.add((file_data_item, RDF.type, SNS.file_data_item))
             graph.add((file_data_item, SNS.has_url, Literal(file_path)))
             data_format_spec = BNode(f"filefmt_{file_path_id}")
             graph.add((file_data_item, SNS.has_part, data_format_spec))
             graph.add((data_format_spec, RDF.type, SNS.hdf5))
-        file_part_id = sha256(str(n).encode("utf-8")).hexdigest()
+        file_part_id = sha256(str(row[0]).encode("utf-8")).hexdigest()
         file_part = BNode(f"filepart_{file_part_id}")
         graph.add((file_data_item, SNS.has_part, file_part))
-        graph.add((file_part, SNS.has_url, Literal(f"object/{h}")))
-        graph.add((file_part, SNS.is_about, n))
+        graph.add((file_part, SNS.has_url, Literal(f"object/{row[1]}")))
+        graph.add((file_part, SNS.is_about, row[0]))
     bagofholding.H5Bag.save(data_dict, file_name)
 
 
@@ -557,6 +511,23 @@ def _function_to_graph(
     return g
 
 
+def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
+    """
+    Extract function metadata from an RDF graph produced by ``_function_to_graph``.
+
+    Args:
+        graph (Graph): RDF graph containing function metadata.
+        f_node (URIRef): Function node to extract.
+
+    Returns:
+        dict[str, Any]: Data payload compatible with ``_function_to_graph``.
+    """
+
+    from semantikon.kg_to_flowrep import _graph_to_function as _graph_to_function_impl
+
+    return _graph_to_function_impl(graph, f_node)
+
+
 def _wf_node_to_graph(
     node_name: str,
     data: dict,
@@ -575,15 +546,15 @@ def _wf_node_to_graph(
                 uri=data.get("uri"),
             )
     if t_box:
-        node = G.t_ns[node_name]
+        node = BASE[G.t_ns + node_name]
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
                 g += _to_owl_restriction(
                     node,
                     SNS.has_part,
-                    G.t_ns[item],
+                    BASE[G.t_ns + item],
                 )
-        g.add((G.t_ns[node_name], RDFS.subClassOf, SNS.workflow_node))
+        g.add((BASE[G.t_ns + node_name], RDFS.subClassOf, SNS.workflow_node))
         if "function" in data:
             g += _to_owl_restriction(
                 node,
@@ -593,23 +564,23 @@ def _wf_node_to_graph(
             )
         g.add((node, RDFS.label, Literal(node_name)))
         g.add((node, SNS.local_identifier, Literal(node_name.split("-")[-1])))
-        if "parent" in data:
+        if data.get("parent"):
             g += _to_owl_restriction(
-                G.t_ns[data["parent"]],
+                BASE[G.t_ns + data["parent"]],
                 SNS.has_part,
                 node,
             )
     else:
-        node = G.get_a_node(node_name)
-        g.add((node, RDF.type, G.t_ns[node_name]))
+        node = BASE[G.a_ns + node_name]
+        g.add((node, RDF.type, BASE[G.t_ns + node_name]))
         for inp in G.predecessors(node_name):
-            g.add((node, SNS.has_part, G.get_a_node(inp)))
+            g.add((node, SNS.has_part, BASE[G.a_ns + inp]))
         for out in G.successors(node_name):
-            g.add((node, SNS.has_part, G.get_a_node(out)))
+            g.add((node, SNS.has_part, BASE[G.a_ns + out]))
         if "function" in data:
             g.add((node, SNS.concretizes, f_node))
-        if "parent" in data:
-            g.add((G.get_a_node(data["parent"]), SNS.has_part, node))
+        if data.get("parent"):
+            g.add((BASE[G.a_ns + data["parent"]], SNS.has_part, node))
     return g
 
 
@@ -647,8 +618,12 @@ def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
             return True
         return _input_is_connected(candidate[0], G)
     elif n_predecessors == 2 and _is_macro_output(io, G, tuple(candidate)):
-        return _input_is_connected(candidate[0], G) and _input_is_connected(
-            candidate[1], G
+        return all(
+            [
+                _input_is_connected(cc, G)
+                for cc in candidate
+                if G.nodes[cc]["step"] != "node"
+            ]
         )
     else:
         predecessor_steps = {c: G.nodes[c]["step"] for c in candidate}
@@ -694,7 +669,7 @@ def _translate_triples(
         else:
             assert isinstance(t, str)
             io = _detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)
-            return G.t_ns[io] if t_box else G.get_a_node(io)
+            return BASE[G.t_ns + io] if t_box else BASE[G.a_ns + io]
 
     g = _get_bound_graph()
     for triple in triples:
@@ -706,6 +681,8 @@ def _translate_triples(
         s_n = _local_str_to_uriref(s)
         o_n = _local_str_to_uriref(o)
         if t_box:
+            assert isinstance(s_n, URIRef | None)
+            assert isinstance(o_n, URIRef)
             g += _to_owl_restriction(s_n, p, o_n)
         else:
             g.add((s_n, p, o_n))
@@ -716,7 +693,9 @@ def _translate_triples(
 
 
 def _restrictions_to_triples(
-    restrictions: _rest_type, data_node: URIRef, predicate: URIRef | None = None
+    restrictions: _rest_type | tuple[_rest_type, ...],
+    data_node: URIRef,
+    predicate: URIRef | None = None,
 ) -> Graph:
     """
     Converts restrictions into triples for OWL restrictions or SHACL constraints.
@@ -734,7 +713,7 @@ def _restrictions_to_triples(
     assert isinstance(restrictions, tuple | list)
     assert isinstance(restrictions[0], tuple | list)
     if not isinstance(restrictions[0][0], tuple | list):
-        restrictions = cast(_rest_type, (restrictions,))
+        restrictions = (restrictions,)
 
     for r_set in restrictions:
         # Determine whether the restriction is OWL or SHACL based on the predicates
@@ -786,7 +765,7 @@ def _wf_input_to_graph(
             " supported for inputs."
         )
     if t_box:
-        data_node = G.t_ns[G._get_data_node(io=node_name)]
+        data_node = BASE[G.t_ns + G._get_data_node(io=node_name)]
         if _input_is_connected(node_name, G):
             out = list(G.predecessors(node_name))
             assert len(out) <= 1
@@ -794,7 +773,7 @@ def _wf_input_to_graph(
                 assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
                 if G.nodes[out[0]]["step"] == "outputs":
                     g += _to_owl_restriction(
-                        G.t_ns[out[0]], SNS.has_participant, data_node
+                        BASE[G.t_ns + out[0]], SNS.has_participant, data_node
                     )
         if units is not None:
             g += _to_owl_restriction(
@@ -813,7 +792,7 @@ def _wf_input_to_graph(
         if "restrictions" in data:
             g += _restrictions_to_triples(data["restrictions"], data_node=data_node)
     else:
-        data_node = G.get_a_node(G._get_data_node(io=node_name))
+        data_node = BASE[G.a_ns + G._get_data_node(io=node_name)]
         if not _input_is_connected(node_name, G):
             if units is not None:
                 g.add((data_node, QUDT.hasUnit, _units_to_uri(units)))
@@ -841,7 +820,7 @@ def _wf_output_to_graph(
 ) -> Graph:
     g = _get_bound_graph()
     if t_box:
-        data_node = G.t_ns[G._get_data_node(io=node_name)]
+        data_node = BASE[G.t_ns + G._get_data_node(io=node_name)]
         if not _output_is_connected(node_name, G):
             if "uri" in data:
                 g += _to_owl_restriction(
@@ -859,7 +838,7 @@ def _wf_output_to_graph(
                     restriction_type=OWL.hasValue,
                 )
     else:
-        data_node = G.get_a_node(G._get_data_node(io=node_name))
+        data_node = BASE[G.a_ns + G._get_data_node(io=node_name)]
         units = data.get("units", data.get("unit"))
         if units is not None:
             g.add((data_node, QUDT.hasUnit, _units_to_uri(units)))
@@ -888,7 +867,7 @@ def _wf_io_to_graph(
     has_specified_io: URIRef,
     t_box: bool,
 ) -> Graph:
-    node = G.t_ns[node_name] if t_box else G.get_a_node(node_name)
+    node = BASE[G.t_ns + node_name] if t_box else BASE[G.a_ns + node_name]
     g = _get_bound_graph()
     g.add((node, RDFS.label, Literal(node_name)))
     g.add((node, SNS.local_identifier, Literal(node_name.split("-")[-1])))
@@ -899,12 +878,12 @@ def _wf_io_to_graph(
         if "hash" in data:
             g += _to_owl_restriction(data_node, SNS.denoted_by, SNS.identifier)
     else:
-        g.add((data_node, RDF.type, G.t_ns[G._get_data_node(io=node_name)]))
+        g.add((data_node, RDF.type, BASE[G.t_ns + G._get_data_node(io=node_name)]))
         g.add((node, has_specified_io, data_node))
         if "value" in data and g.value(data_node, SNS.has_value) is None:
             g.add((data_node, SNS.has_value, Literal(data["value"])))
         if "hash" in data:
-            hash_bnode = G.get_a_node(G._get_data_node(io=node_name) + "_hash")
+            hash_bnode = BASE[G.a_ns + G._get_data_node(io=node_name) + "_hash"]
             g.add((data_node, SNS.denoted_by, hash_bnode))
             g.add((hash_bnode, RDF.type, SNS.identifier))
             g.add((hash_bnode, SNS.has_value, Literal(data["hash"])))
@@ -935,17 +914,17 @@ def _parse_precedes(
             if t_box:
                 for succ in successors:
                     g += _to_owl_restriction(
-                        G.t_ns[node[0]],
+                        BASE[G.t_ns + node[0]],
                         SNS.precedes,
-                        G.t_ns[succ],
+                        BASE[G.t_ns + succ],
                     )
             else:
                 for succ in successors:
                     g.add(
                         (
-                            G.get_a_node(node[0]),
+                            BASE[G.a_ns + node[0]],
                             SNS.precedes,
-                            G.get_a_node(succ),
+                            BASE[G.a_ns + succ],
                         )
                     )
     return g
@@ -971,10 +950,10 @@ def _parse_global_io(
                 g += _to_owl_restriction(
                     workflow_node,
                     SNS.has_part,
-                    G.t_ns[io[0]],
+                    BASE[G.t_ns + io[0]],
                 )
             else:
-                g.add((workflow_node, SNS.has_part, G.get_a_node(io[0])))
+                g.add((workflow_node, SNS.has_part, BASE[G.a_ns + io[0]]))
     return g
 
 
@@ -984,9 +963,9 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
         data = data.copy()
         step = data.pop("step")
         if t_box:
-            g.add((G.t_ns[node_name], RDF.type, OWL.Class))
+            g.add((BASE[G.t_ns + node_name], RDF.type, OWL.Class))
         else:
-            g.add((G.get_a_node(node_name), RDF.type, G.t_ns[node_name]))
+            g.add((BASE[G.a_ns + node_name], RDF.type, BASE[G.t_ns + node_name]))
         assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
         if step == "node":
             g += _wf_node_to_graph(
@@ -1268,12 +1247,15 @@ def extract_dataclass(
     )
 
     for subj, obj in graph.subject_objects(SNS.has_value):
+        assert isinstance(obj, Literal)
         py_value = obj.toPython()
         if not is_dataclass(py_value):
             continue
 
         t_node = graph.value(subj, RDF.type, any=False)
 
+        assert isinstance(subj, URIRef)
+        assert isinstance(t_node, URIRef)
         out += translator.translate(
             a_node=subj,
             t_node=t_node,
@@ -1289,40 +1271,6 @@ def _get_successor_nodes(G, node_name):
         for inp in G.successors(out):
             for node in G.successors(inp):
                 yield node
-
-
-def serialize_and_convert_to_networkx(
-    wf_dict: dict,
-    hash_data: bool = True,
-    prefix: str | None = None,
-) -> SemantikonDiGraph:
-    """
-    Serialize a workflow dictionary into a SemantikonDiGraph, optionally
-    hashing node data.
-
-    Args:
-        wf_dict (dict): The workflow dictionary to serialize.
-        hash_data (bool): Whether to hash node data.
-        prefix (str | None): Optional prefix for node names.
-
-    Returns:
-        SemantikonDiGraph: The serialized workflow graph.
-    """
-    G_nx = _WorkflowGraphSerializer.serialize(wf_dict)
-    G = SemantikonDiGraph(G_nx, prefix=prefix)
-    if hash_data:
-        try:
-            hashed_dict = {}
-            for key, value in get_hashed_node_dict(wf_dict).items():
-                key = G.name + "-" + key
-                hashed_dict[key.replace(".", "-")] = value
-        except Exception as e:
-            raise RuntimeError(
-                "Failed to hash workflow data - use only hashable inputs or set hash_data=False"
-            ) from e
-        for node, data in hashed_dict.items():
-            G.append_hash(node, data["hash"])
-    return G
 
 
 def _to_owl_restriction(
@@ -1348,88 +1296,6 @@ def _to_owl_restriction(
         g.add((base_node, RDFS.subClassOf, restriction_node))
 
     return g
-
-
-class _HashGraph:
-    def _normalize(self, obj: Any) -> Any:
-        """
-        Convert objects into a deterministic, JSON-safe representation.
-        """
-        if is_dataclass(obj) and not isinstance(obj, type):
-            return {k: self._normalize(v) for k, v in asdict(obj).items()}
-        elif isinstance(obj, dict):
-            return {k: self._normalize(v) for k, v in obj.items()}
-        elif isinstance(obj, IdentifiedNode):
-            if isinstance(obj, BNode):
-                raise TypeError("Blank nodes cannot be normalized for hashing.")
-            return {"__type__": "URIRef", "value": self._normalize(str(obj))}
-        elif isinstance(obj, (list, tuple)):
-            return [self._normalize(v) for v in obj]
-        elif isinstance(obj, str):
-            return unicodedata.normalize("NFC", obj)
-        elif isinstance(obj, (int, float, bool)) or obj is None:
-            return obj
-        else:
-            raise TypeError(
-                f"Unsupported type for normalization: {type(obj)} of value {obj}"
-            )
-
-    def _canonical_json(self, data: dict) -> str:
-        """
-        Deterministic JSON serialization.
-        """
-        return json.dumps(
-            self._normalize(data),
-            sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=False,
-        )
-
-    def _get_graph_hash(
-        self, G: SemantikonDiGraph, with_global_inputs: bool = True
-    ) -> str:
-        """
-        Generate a deterministic hash for a graph, independent of OS,
-        Python version, and non-serializable runtime values.
-        """
-        G_tmp = nx.DiGraph()
-
-        for node in G.nodes:
-            attrs = {
-                key: value
-                for key, value in G.nodes[node].items()
-                if key not in {"dtype", "hash", "function", "default", "value"}
-            }
-            if G.in_degree(node) == 0 and with_global_inputs:
-                if "value" in G.nodes[node]:
-                    attrs["value"] = G.nodes[node]["value"]
-                elif "default" in G.nodes[node]:
-                    attrs["value"] = G.nodes[node]["default"]
-            G_tmp.add_node(node, canon=self._canonical_json(attrs))
-        for u, v in G.edges:
-            G_tmp.add_edge(u, v)
-
-        return nx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash(
-            G_tmp,
-            node_attr="canon",
-        )
-
-
-def _get_graph_hash(G: SemantikonDiGraph, with_global_inputs: bool = True) -> str:
-    """
-    Generate a hash for a NetworkX graph, making sure that data types and
-    values (except for the global ones) because they can often not be
-    serialized.
-
-    Args:
-        G (SemantikonDiGraph): input graph
-        with_global_inputs (bool): if True, keep values for global inputs
-
-    Returns:
-        (str): hash of the graph
-    """
-    hasher = _HashGraph()
-    return hasher._get_graph_hash(G, with_global_inputs)
 
 
 def _get_undefined_connections(g, term):
@@ -1535,6 +1401,7 @@ class _OWLToSHACLConverter:
                 continue
 
             # Create a NodeShape for the class if it doesn't exist
+            assert isinstance(cls, URIRef)
             if not (ns := node_shapes.get(cls)):
                 ns = BNode()
                 node_shapes[cls] = ns
