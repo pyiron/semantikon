@@ -9,7 +9,7 @@ on:
 
 jobs:
   pyiron:
-    uses: pyiron/actions/.github/workflows/push-pull.yml@actions-4.0.8
+    uses: pyiron/actions/.github/workflows/push-pull.yml@actions-4.2.1
     with:
       runner: 'ubuntu-22.04' # with ubuntu > 22.04, pip is broken
       python-version-alt1: '3.11'
@@ -19,7 +19,24 @@ jobs:
       do-codecov: true
       do-coveralls: false
       do-mypy: true
+      mypy-env-files: .ci_support/environment.yml .ci_support/environment-cwl.yml
+      tests-env-files: .ci_support/environment.yml .ci_support/environment-cwl.yml
+      docs-env-files: .ci_support/environment.yml .ci_support/environment-cwl.yml
+      notebooks-env-files: .ci_support/environment.yml .ci_support/environment-cwl.yml
       alternate-tests-env-files: .ci_support/lower_bound.yml
       alternate-tests-python-version: '3.11'
       alternate-tests-dir: tests/unit
+      runner-alt1: 'exclude'  # Defaults to windows -- which cannot access CWL dependency
     secrets: inherit
+
+  windows:
+    runs-on: 'windows-latest'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pyiron/actions/unit-tests@actions-4.2.1
+        with:
+          python-version: '3.13'  # Copy pyiron/python-version
+          env-files: .ci_support/environment.yml  # WITHOUT optional CWL dependency
+          add-standard-codacy-env: false  # Not needed, override default
+          add-standard-coveralls-env: false  # Not needed, override default
+        timeout-minutes: 10

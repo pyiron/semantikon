@@ -18,3 +18,4 @@ dependencies:
 - networkx =3.4.2
 - networkx =3.5
 - bagofholding =0.1.5
+- cwltool =3.1

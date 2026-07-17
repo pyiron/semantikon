@@ -1,8 +1,10 @@
 from hashlib import sha256
+from typing import cast
 
 import networkx as nx
 from graphviz import Digraph
 from rdflib import OWL, RDF, RDFS, Graph, URIRef
+from rdflib.query import ResultRow
 
 subclass_color_dict = {
     "pmdco:0000011": "lightpink",
@@ -27,7 +29,8 @@ def _get_triples(graph: Graph):
         ?bnode R_TYPE ?child .
     }"""
     for style, rest in rest_types.items():
-        for subj, pred, obj in graph.query(query.replace("R_TYPE", rest)):
+        for row in graph.query(query.replace("R_TYPE", rest)):
+            subj, pred, obj = cast(ResultRow, row)
             yield subj, pred, obj, style
 
 
@@ -55,7 +58,7 @@ def _color_predicate(pred: str) -> str:
     return edge_dict.get(pred, "black")
 
 
-def _get_parent_class(comp: str, graph: Graph) -> str:
+def _get_parent_class(comp: URIRef, graph: Graph) -> str:
     for pred in [RDFS.subClassOf, RDF.type]:
         parent_classes = [
             item for item in graph.objects(comp, pred) if isinstance(item, URIRef)
@@ -69,7 +72,7 @@ def _get_parent_class(comp: str, graph: Graph) -> str:
     return ""
 
 
-def _get_node_color(comp: str, graph: Graph) -> str:
+def _get_node_color(comp: URIRef, graph: Graph) -> str:
     parent_class = _get_parent_class(comp, graph)
     if parent_class in subclass_color_dict:
         return subclass_color_dict[parent_class]

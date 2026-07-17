@@ -88,7 +88,7 @@ def return_dict(
 
 
 @units
-def test_kwargs(x: u(float, units="meter"), **kwargs) -> u(float, units="meter"):
+def kwargs_example(x: u(float, units="meter"), **kwargs) -> u(float, units="meter"):
     assert isinstance(x, float | int), type(x)
     assert len(kwargs) == 0, kwargs
     return x
@@ -96,7 +96,7 @@ def test_kwargs(x: u(float, units="meter"), **kwargs) -> u(float, units="meter")
 
 # Imitate effects of from __future__ import annotations
 @units
-def test_future(x: 'u(float, units="meter")') -> 'u(float, units="meter")':
+def future_example(x: 'u(float, units="meter")') -> 'u(float, units="meter")':
     assert isinstance(x, float | int), type(x)
     return x
 
@@ -217,34 +217,34 @@ class TestUnits(unittest.TestCase):
         self.assertIsInstance(return_dict(1 * ureg.meter, 1 * ureg.second), dict)
 
     def test_kwargs(self):
-        self.assertEqual(test_kwargs(1), 1)
+        self.assertEqual(kwargs_example(1), 1)
         ureg = UnitRegistry()
         self.assertEqual(
-            test_kwargs(1 * ureg.meter),
+            kwargs_example(1 * ureg.meter),
             1 * ureg.meter,
         )
         self.assertEqual(
-            test_kwargs(1 * ureg.millimeter),
+            kwargs_example(1 * ureg.millimeter),
             1 / 1000 * ureg.meter,
         )
         self.assertEqual(
-            test_kwargs(1 * ureg.millimeter, a=1),
+            kwargs_example(1 * ureg.millimeter, a=1),
             1 / 1000 * ureg.meter,
         )
         self.assertEqual(
-            test_kwargs(1 * ureg.millimeter, a=1, b=2),
+            kwargs_example(1 * ureg.millimeter, a=1, b=2),
             1 / 1000 * ureg.meter,
         )
 
     def test_future(self):
-        self.assertEqual(test_future(1), 1)
+        self.assertEqual(future_example(1), 1)
         ureg = UnitRegistry()
         self.assertEqual(
-            test_future(1 * ureg.meter),
+            future_example(1 * ureg.meter),
             1 * ureg.meter,
         )
         self.assertEqual(
-            test_future(1 * ureg.millimeter),
+            future_example(1 * ureg.millimeter),
             1 / 1000 * ureg.meter,
         )
 

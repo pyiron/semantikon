@@ -5,11 +5,12 @@ import warnings
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Iterable
+from typing import Any, Iterable, cast
 
 import flowrep as fr
 import networkx as nx
 from rdflib import RDFS, Graph, Literal, URIRef
+from rdflib.query import ResultRow
 
 from semantikon.converter import to_identifier
 from semantikon.flowrep_dict import dict_to_nodedata
@@ -35,7 +36,7 @@ def identifier_to_uri(graph: Graph, identifier: str) -> list[URIRef]:
     }"""
     result = list(graph.query(query, initBindings={"identifier": Literal(identifier)}))
     assert len(result) > 0, f"No result found for {identifier}"
-    return [r[0] for r in result]
+    return [cast(URIRef, cast(ResultRow, r)[0]) for r in result]
 
 
 def request_values(
@@ -104,8 +105,9 @@ def request_values(
     # Execute the batched query and build a mapping from hash to value.
     hash_to_value: dict[str, Any] = {}
     for row in graph.query(query):
-        h_val = row[0].toPython()
-        v_val = row[1].toPython()
+        row = cast(ResultRow, row)
+        h_val = cast(Literal, row[0]).toPython()
+        v_val = cast(Literal, row[1]).toPython()
         # Preserve existing behavior: only the first value per hash is used.
         if h_val not in hash_to_value:
             hash_to_value[h_val] = v_val
@@ -185,10 +187,10 @@ class _Node:
 
     def __and__(self, other: _Node | URIRef | _QueryHolder) -> _QueryHolder:
         if isinstance(other, _Node) or isinstance(other, URIRef):
-            nodes = [self, other]
+            nodes: list[_Node | URIRef] = [self, other]
         else:
             assert isinstance(other, _QueryHolder)
-            nodes = [self] + other._nodes
+            nodes = [self, *other._nodes]
         return _QueryHolder(nodes, self._graph)
 
     def __rand__(self, other: URIRef) -> _QueryHolder:
@@ -214,7 +216,7 @@ class _QueryHolder:
         constructed and executed.
     """
 
-    _nodes: list[_Node]
+    _nodes: list[_Node | URIRef]
     _graph: Graph
 
     def to_query_graph(self, fallback_to_hash: bool = False) -> Graph:
@@ -267,21 +269,26 @@ class _QueryHolder:
         """
         text = self.to_query_text(fallback_to_hash=fallback_to_hash)
         return [
-            tuple([a if a is None else a.toPython() for a in item])
+            tuple(
+                [
+                    a if a is None else cast(Literal, a).toPython()
+                    for a in cast(ResultRow, item)
+                ]
+            )
             for item in self._graph.query(text)
         ]
 
     def __and__(self, other: _Node | URIRef | _QueryHolder) -> _QueryHolder:
         if isinstance(other, _Node) or isinstance(other, URIRef):
-            nodes = self._nodes + [other]
+            nodes: list[_Node | URIRef] = [*self._nodes, other]
         else:
             assert isinstance(other, _QueryHolder)
-            nodes = self._nodes + other._nodes
+            nodes = [*self._nodes, *other._nodes]
         return _QueryHolder(nodes, self._graph)
 
     def __rand__(self, other: URIRef) -> _QueryHolder:
         assert isinstance(other, URIRef)
-        return _QueryHolder([other] + self._nodes, self._graph)
+        return _QueryHolder([other, *self._nodes], self._graph)
 
 
 class Completer(_Node):
@@ -407,7 +414,8 @@ class SparqlWriter:
             ?bnode owl:someValuesFrom ?child .
         }"""
         G = nx.DiGraph()
-        for subj, pred, obj in self._graph.query(query):
+        for row in self._graph.query(query):
+            subj, pred, obj = cast(ResultRow, row)
             G.add_edge(subj, obj, predicate=pred)
         return G
 

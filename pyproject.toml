@@ -25,13 +25,13 @@ classifiers = [
 dependencies = [
     "graphviz==0.21",
     "numpy==2.4.6",
-    "owlrl==7.1.4",
+    "owlrl==7.6.1",
     "pint==0.25.3",
     "rdflib==7.6.0",
     "pyshacl==0.31.0",
     "requests==2.34.2",
     "typeguard==4.5.2",
-    "flowrep==0.5.1",
+    "flowrep==0.5.2",
     "networkx==3.6.1",
     "bagofholding==0.1.12",
 ]
@@ -47,6 +47,9 @@ file = "LICENSE"
 Homepage = "https://pyiron.org/"
 Documentation = "https://semantikon.readthedocs.io"
 Repository = "https://github.com/pyiron/semantikon"
+
+[project.optional-dependencies]
+cwl = ["cwltool==3.2.20260413085819"]
 
 [tool.hatch.build]
 include = [
