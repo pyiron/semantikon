@@ -83,7 +83,7 @@ class TInput(TIO):
     has_default: bool = False
 
     def to_attrs(self) -> dict[str, Any]:
-        attrs = super().to_attrs()
+        attrs = super(TInput, self).to_attrs()
         if self.has_default:
             attrs["default"] = self.default
         return attrs

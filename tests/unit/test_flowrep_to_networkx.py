@@ -1,15 +1,64 @@
 import unittest
+from dataclasses import dataclass, field
+from typing import Annotated
 
 import flowrep as fr
-from rdflib import BNode
+from rdflib import BNode, Namespace
 
 from semantikon import flowrep_to_networkx as ftn
-from tests.unit.test_ontology import (
-    NewSpeedData,
-    my_kinetic_energy_workflow,
-    passthrough_input_workflow,
-    workflow_with_default_values,
-)
+from semantikon.metadata import meta
+from semantikon.workflow import workflow
+
+EX: Namespace = Namespace("http://example.org/")
+PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
+
+
+@dataclass
+class NewSpeedData:
+    distance: Annotated[float, {"uri": PMD["0040001"], "units": "meter"}]
+    time: float = field(metadata={"units": "second"})
+
+
+def get_speed(
+    distance: Annotated[
+        float, {"uri": PMD["0040001"], "units": "meter", "label": "Distance"}
+    ],
+    time: Annotated[float, {"units": "second"}],
+) -> Annotated[float, {"units": "meter/second", "uri": EX.Velocity, "label": "speed"}]:
+    """some random docstring"""
+    speed = distance / time
+    return speed
+
+
+@meta(uri=EX.get_kinetic_energy)
+def get_kinetic_energy(
+    mass: Annotated[float, {"uri": PMD["0020133"], "units": "kilogram"}],
+    velocity: Annotated[float, {"units": "meter/second", "uri": EX.Velocity}],
+) -> Annotated[
+    float, {"uri": PMD["0020142"], "units": "joule", "label": "kinetic_energy"}
+]:
+    return 0.5 * mass * velocity**2
+
+
+@workflow
+def my_kinetic_energy_workflow(
+    distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
+):
+    speed = get_speed(distance, time)
+    kinetic_energy = get_kinetic_energy(mass, speed)
+    return kinetic_energy
+
+
+@workflow
+def passthrough_input_workflow(x):
+    return x
+
+
+@workflow
+def workflow_with_default_values(distance=2, time=1, mass=4):
+    speed = get_speed(distance, time)
+    kinetic_energy = get_kinetic_energy(mass, speed)
+    return kinetic_energy
 
 
 class TestFlowrepToNetworkx(unittest.TestCase):
