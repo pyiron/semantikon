@@ -37,7 +37,7 @@ class TNode:
             raise ValueError("type must be either 'atomic' or 'workflow'")
 
     def to_attrs(self) -> dict[str, Any]:
-        attrs = {
+        attrs: dict[str, Any] = {
             "type": self.type,
             "step": self.step,
         }
@@ -57,13 +57,14 @@ class TNode:
 class TIO:
     arg: str
     position: int
+    step: str = field(default="", init=False)
     dtype: Any | None = None
     value: Any | None = None
     has_value: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_attrs(self) -> dict[str, Any]:
-        attrs = {
+        attrs: dict[str, Any] = {
             "step": self.step,
             "arg": self.arg,
             "position": self.position,
