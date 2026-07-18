@@ -155,6 +155,30 @@ class SemantikonDiGraph(nx.DiGraph):
         normalized_attr = self._validate_semantikon_attrs(attr)
         super().add_node(node_for_adding, **normalized_attr)
 
+    def add_nodes_from(self, nodes_for_adding, **attr):
+        normalized_attr = self._validate_semantikon_attrs(attr)
+
+        def normalized_nodes():
+            for n in nodes_for_adding:
+                try:
+                    n not in self._node
+                except TypeError:
+                    n, ndict = n
+                    ndict = self._validate_semantikon_attrs(ndict)
+                    if normalized_attr:
+                        merged = normalized_attr.copy()
+                        merged.update(ndict)
+                        yield n, merged
+                    else:
+                        yield n, ndict
+                else:
+                    if normalized_attr:
+                        yield n, normalized_attr
+                    else:
+                        yield n
+
+        super().add_nodes_from(normalized_nodes())
+
     @cached_property
     def t_ns(self) -> str:
         """Type-level namespace fragment for this graph."""
