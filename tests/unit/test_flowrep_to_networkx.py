@@ -232,7 +232,9 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         self.assertEqual(dict(G.nodes["n1"]), {})
         self.assertEqual(dict(G.nodes["n2"]), {})
 
-    def test_add_nodes_from_validates_per_node_semantikon_metadata_without_shared_attrs(self):
+    def test_add_nodes_from_validates_per_node_semantikon_metadata_without_shared_attrs(
+        self,
+    ):
         G = ftn.SemantikonDiGraph()
         G.add_nodes_from(
             [
