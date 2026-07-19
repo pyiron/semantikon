@@ -212,6 +212,80 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         with self.assertRaises(ValueError):
             G.add_node("n", step="banana")
 
+    def test_add_nodes_from_validates_semantikon_metadata(self):
+        G = ftn.SemantikonDiGraph()
+        G.add_nodes_from(["n1", "n2"], step="inputs", arg="x", position=0, value=None)
+
+        for node in ("n1", "n2"):
+            self.assertEqual(G.nodes[node]["step"], "inputs")
+            self.assertEqual(G.nodes[node]["arg"], "x")
+            self.assertEqual(G.nodes[node]["position"], 0)
+            self.assertIn("value", G.nodes[node])
+            self.assertIsNone(G.nodes[node]["value"])
+
+    def test_add_nodes_from_allows_plain_nodes_without_shared_attrs(self):
+        G = ftn.SemantikonDiGraph()
+        G.add_nodes_from(["n1", "n2"])
+
+        self.assertIn("n1", G.nodes)
+        self.assertIn("n2", G.nodes)
+        self.assertEqual(dict(G.nodes["n1"]), {})
+        self.assertEqual(dict(G.nodes["n2"]), {})
+
+    def test_add_nodes_from_validates_per_node_semantikon_metadata_without_shared_attrs(
+        self,
+    ):
+        G = ftn.SemantikonDiGraph()
+        G.add_nodes_from(
+            [
+                ("n1", {"step": "inputs", "arg": "x", "position": 0, "value": 1}),
+                ("n2", {"step": "inputs", "arg": "y", "position": 1}),
+            ]
+        )
+
+        self.assertEqual(G.nodes["n1"]["arg"], "x")
+        self.assertEqual(G.nodes["n1"]["position"], 0)
+        self.assertEqual(G.nodes["n1"]["value"], 1)
+
+        self.assertEqual(G.nodes["n2"]["arg"], "y")
+        self.assertEqual(G.nodes["n2"]["position"], 1)
+        self.assertNotIn("value", G.nodes["n2"])
+
+    def test_add_nodes_from_merges_per_node_semantikon_metadata(self):
+        G = ftn.SemantikonDiGraph()
+        G.add_nodes_from(
+            [
+                ("n1", {"step": "inputs", "arg": "x", "position": 0, "value": 1}),
+                ("n2", {"step": "inputs", "arg": "y", "position": 1}),
+            ],
+            value=None,
+            dtype="float",
+        )
+
+        self.assertEqual(G.nodes["n1"]["arg"], "x")
+        self.assertEqual(G.nodes["n1"]["position"], 0)
+        self.assertEqual(G.nodes["n1"]["dtype"], "float")
+        self.assertEqual(G.nodes["n1"]["value"], 1)
+
+        self.assertEqual(G.nodes["n2"]["arg"], "y")
+        self.assertEqual(G.nodes["n2"]["position"], 1)
+        self.assertEqual(G.nodes["n2"]["dtype"], "float")
+        self.assertIsNone(G.nodes["n2"]["value"])
+
+    def test_add_nodes_from_rejects_invalid_semantikon_metadata(self):
+        G = ftn.SemantikonDiGraph()
+        with self.assertRaises(ValueError):
+            G.add_nodes_from(["n"], step="node", type="invalid")
+        with self.assertRaises(ValueError):
+            G.add_nodes_from(["n"], step="banana")
+
+    def test_add_nodes_from_rejects_invalid_per_node_semantikon_metadata(self):
+        G = ftn.SemantikonDiGraph()
+        with self.assertRaises(ValueError):
+            G.add_nodes_from([("n", {"step": "node", "type": "invalid"})])
+        with self.assertRaises(ValueError):
+            G.add_nodes_from([("n", {"step": "banana"})])
+
 
 if __name__ == "__main__":
     unittest.main()
