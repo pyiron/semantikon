@@ -21,7 +21,6 @@ from semantikon.converter import (
     parse_input_args,
     parse_output_args,
 )
-from semantikon.flowrep_dict import dict_to_nodedata
 from semantikon.flowrep_to_networkx import (
     SemantikonDiGraph,
     _get_graph_hash,
