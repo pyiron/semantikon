@@ -103,8 +103,12 @@ class TestFlowrepToNetworkx(unittest.TestCase):
                 "my_kinetic_energy_workflow-get_kinetic_energy_0-outputs-kinetic_energy"
             ),
         )
-        wf_dict_one = fr.wfms.run_recipe(my_kinetic_energy_workflow.flowrep_recipe, distance=1.0, time=2.0, mass=3.0)
-        wf_dict_two = fr.wfms.run_recipe(my_kinetic_energy_workflow.flowrep_recipe, distance=4.0, time=5.0, mass=6.0)
+        wf_dict_one = fr.wfms.run_recipe(
+            my_kinetic_energy_workflow.flowrep_recipe, distance=1.0, time=2.0, mass=3.0
+        )
+        wf_dict_two = fr.wfms.run_recipe(
+            my_kinetic_energy_workflow.flowrep_recipe, distance=4.0, time=5.0, mass=6.0
+        )
         G_one = ftn.serialize_and_convert_to_networkx(wf_dict_one, hash_data=True)
         G_two = ftn.serialize_and_convert_to_networkx(wf_dict_two, hash_data=True)
         self.assertEqual(
@@ -113,7 +117,9 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         )
 
         wf_dict = workflow_with_default_values.flowrep_recipe
-        wf_dict_run = fr.wfms.run_recipe(workflow_with_default_values.flowrep_recipe, distance=2, time=1, mass=4)
+        wf_dict_run = fr.wfms.run_recipe(
+            workflow_with_default_values.flowrep_recipe, distance=2, time=1, mass=4
+        )
         G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         G_run = ftn.serialize_and_convert_to_networkx(wf_dict_run, hash_data=False)
         self.assertEqual(ftn._get_graph_hash(G), ftn._get_graph_hash(G_run))
@@ -134,7 +140,9 @@ class TestFlowrepToNetworkx(unittest.TestCase):
     def test_hash_with_value(self):
         wf_dict = my_kinetic_energy_workflow.flowrep_recipe
         G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
-        wf_dict = fr.wfms.run_recipe(my_kinetic_energy_workflow.flowrep_recipe, distance=1, time=2, mass=3)
+        wf_dict = fr.wfms.run_recipe(
+            my_kinetic_energy_workflow.flowrep_recipe, distance=1, time=2, mass=3
+        )
         G_run = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
         self.assertEqual(
             ftn._get_graph_hash(G, with_global_inputs=False),
