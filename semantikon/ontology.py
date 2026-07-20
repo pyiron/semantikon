@@ -21,7 +21,6 @@ from semantikon.converter import (
     parse_input_args,
     parse_output_args,
 )
-from semantikon.flowrep_dict import dict_to_nodedata
 from semantikon.flowrep_to_networkx import (
     SemantikonDiGraph,
     _get_graph_hash,
@@ -289,24 +288,6 @@ def get_knowledge_graph(
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
-    if isinstance(wf_dict, dict):
-        warnings.warn(
-            "Passing a dict to 'get_knowledge_graph' is deprecated and will be removed in a future version. "
-            "Please pass a 'flowrep' object instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        wf_dict = dict_to_nodedata(wf_dict)
-    if isinstance(wf_dict, fr.schemas.WorkflowRecipe):
-        wf_dict = fr.schemas.DagData.from_recipe(wf_dict)
-    elif isinstance(wf_dict, fr.schemas.DagData):
-        pass
-    else:
-        raise TypeError(
-            f"Invalid input type. Expected dict, flowrep {fr.schemas.DagData.__name__!r}, or "
-            f"flowrep {fr.schemas.WorkflowRecipe.__name__!r}, but got {type(wf_dict)}."
-        )
-
     G = serialize_and_convert_to_networkx(wf_dict, hash_data=hash_data, prefix=prefix)
     return _get_knowledge_graph_from_digraph(
         G,
