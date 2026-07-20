@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import unicodedata
+import warnings
 from dataclasses import asdict, dataclass, field, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
@@ -486,13 +487,21 @@ def serialize_and_convert_to_networkx(
         SemantikonDiGraph: The serialized workflow graph.
     """
     if isinstance(workflow, dict):
+        warnings.warn(
+            "Passing a dict to 'serialize_and_convert_to_networkx' is deprecated"
+            " and will be removed in a future version. Please pass a 'flowrep'"
+            " object instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         workflow = dict_to_nodedata(workflow)
     if isinstance(workflow, fr.schemas.WorkflowRecipe):
         workflow = fr.schemas.DagData.from_recipe(workflow)
     if not isinstance(workflow, fr.schemas.DagData):
         raise TypeError(
-            f"Invalid workflow type. Expected dict, flowrep {fr.schemas.DagData.__name__!r}, or "
-            f"flowrep {fr.schemas.WorkflowRecipe.__name__!r}, but got {type(workflow)}."
+            f"Invalid workflow type. Expected dict, flowrep"
+            f" {fr.schemas.DagData.__name__!r}, or flowrep"
+            f" {fr.schemas.WorkflowRecipe.__name__!r}, but got {type(workflow)}."
         )
 
     G = _workflow_to_networkx(workflow, prefix=prefix)
@@ -501,7 +510,8 @@ def serialize_and_convert_to_networkx(
             hashed_dict = _get_hashed_node_dict_from_graph(G)
         except Exception as e:
             raise RuntimeError(
-                "Failed to hash workflow data - use only hashable inputs or set hash_data=False"
+                "Failed to hash workflow data - use only hashable inputs or set"
+                " hash_data=False"
             ) from e
         for node, data in hashed_dict.items():
             G.append_hash(node, data["hash"])
