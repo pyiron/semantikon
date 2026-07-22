@@ -55,7 +55,8 @@ def get_kinetic_energy_unlabeled(
     mass: Annotated[float, {"uri": PMD["0020133"], "units": "kilogram"}],
     velocity: Annotated[float, {"units": "meter/second", "uri": EX.Velocity}],
 ) -> Annotated[float, {"uri": PMD["0020142"], "units": "joule"}]:
-    return 0.5 * mass * velocity**2
+    # Keep the return annotation unlabeled to reproduce the notebook regression.
+    return get_kinetic_energy(mass, velocity)
 
 
 @workflow

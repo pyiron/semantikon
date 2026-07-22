@@ -18,8 +18,9 @@ from semantikon.ontology import SNS, serialize_and_convert_to_networkx
 
 
 def _get_port_with_fallback(
-    ports: dict[str, Any], port_name: str
-) -> Any:
+    ports: dict[str, fr.schemas.InputDataPort | fr.schemas.OutputDataPort],
+    port_name: str,
+) -> fr.schemas.InputDataPort | fr.schemas.OutputDataPort:
     """
     Return a flowrep port, resolving the normalized single-output name.
 
@@ -28,7 +29,8 @@ def _get_port_with_fallback(
         port_name (str): Port name from the normalized graph representation.
 
     Returns:
-        Any: The matching flowrep port object.
+        fr.schemas.InputDataPort | fr.schemas.OutputDataPort:
+            The matching flowrep port object.
     """
     if port_name in ports:
         return ports[port_name]
