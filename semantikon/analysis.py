@@ -1,17 +1,47 @@
 from __future__ import annotations
 
 import string
+import warnings
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import cached_property
 from typing import Any, Iterable, cast
 
+import flowrep as fr
 import networkx as nx
 from rdflib import RDFS, Graph, Literal, URIRef
 from rdflib.query import ResultRow
 
 from semantikon.converter import to_identifier
+from semantikon.flowrep_dict import dict_to_nodedata
 from semantikon.ontology import SNS, serialize_and_convert_to_networkx
+
+
+def _get_port_with_fallback(
+    ports: dict[str, fr.schemas.InputDataPort | fr.schemas.OutputDataPort],
+    port_name: str,
+) -> fr.schemas.InputDataPort | fr.schemas.OutputDataPort:
+    """
+    Return a flowrep port, resolving the normalized single-output name.
+
+    Args:
+        ports (dict[str, Any]): Available flowrep ports.
+        port_name (str): Port name from the normalized graph representation.
+
+    Returns:
+        fr.schemas.InputDataPort | fr.schemas.OutputDataPort:
+            The matching flowrep port object.
+    """
+    if port_name in ports:
+        return ports[port_name]
+    # Flowrep stores unlabeled single-output node ports as "output_0",
+    # while the normalized graph representation uses "output".
+    if port_name == "output" and "output_0" in ports:
+        return ports["output_0"]
+    raise KeyError(
+        f"Port {port_name!r} not found after fallback resolution. "
+        f"Available ports: {tuple(ports)}"
+    )
 
 
 def identifier_to_uri(graph: Graph, identifier: str) -> list[URIRef]:
@@ -36,7 +66,9 @@ def identifier_to_uri(graph: Graph, identifier: str) -> list[URIRef]:
     return [cast(URIRef, cast(ResultRow, r)[0]) for r in result]
 
 
-def request_values(wf_dict: dict, graph: Graph) -> dict:
+def request_values(
+    wf_dict: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe, graph: Graph
+) -> fr.schemas.DagData:
     """
     Given a workflow dictionary and an RDF graph, this function
     populates the workflow dictionary with values extracted from the graph
@@ -49,6 +81,16 @@ def request_values(wf_dict: dict, graph: Graph) -> dict:
     Returns:
         dict: The updated workflow dictionary with populated values.
     """
+    if isinstance(wf_dict, dict):
+        warnings.warn(
+            "Passing a dict to 'request_values' is deprecated and will be removed"
+            " in a future version. Pass a 'flowrep' object instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        wf_dict = dict_to_nodedata(wf_dict)
+    if isinstance(wf_dict, fr.schemas.WorkflowRecipe):
+        wf_dict = fr.schemas.DagData.from_recipe(wf_dict)
     G = serialize_and_convert_to_networkx(wf_dict)
 
     # Collect all hashes that need values, along with their target locations.
@@ -105,9 +147,15 @@ def request_values(wf_dict: dict, graph: Graph) -> dict:
             continue
         value = hash_to_value[h]
         if len(keys) == 3:
-            wf_dict["nodes"][keys[0]][keys[1]][keys[2]]["value"] = value
+            _get_port_with_fallback(
+                wf_dict.nodes[keys[0]].__getattribute__(f"{keys[1][:-1]}_ports"),
+                keys[2],
+            ).value = value
         elif len(keys) == 2:
-            wf_dict[keys[0]][keys[1]]["value"] = value
+            _get_port_with_fallback(
+                wf_dict.__getattribute__(f"{keys[0][:-1]}_ports"),
+                keys[1],
+            ).value = value
     return wf_dict
 
 
