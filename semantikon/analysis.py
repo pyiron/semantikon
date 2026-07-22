@@ -17,11 +17,13 @@ from semantikon.flowrep_dict import dict_to_nodedata
 from semantikon.ontology import SNS, serialize_and_convert_to_networkx
 
 
-def _get_port(
+def _get_port_with_fallback(
     ports: dict[str, Any], port_name: str
 ) -> Any:
     if port_name in ports:
         return ports[port_name]
+    # Flowrep stores unlabeled single-output node ports as "output_0",
+    # while the normalized graph representation uses "output".
     if port_name == "output" and "output_0" in ports:
         return ports["output_0"]
     raise KeyError(port_name)
@@ -130,12 +132,12 @@ def request_values(
             continue
         value = hash_to_value[h]
         if len(keys) == 3:
-            _get_port(
+            _get_port_with_fallback(
                 wf_dict.nodes[keys[0]].__getattribute__(f"{keys[1][:-1]}_ports"),
                 keys[2],
             ).value = value
         elif len(keys) == 2:
-            _get_port(
+            _get_port_with_fallback(
                 wf_dict.__getattribute__(f"{keys[0][:-1]}_ports"),
                 keys[1],
             ).value = value
