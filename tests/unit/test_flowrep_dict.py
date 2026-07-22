@@ -364,7 +364,7 @@ class TestFlowControlStub(unittest.TestCase):
         recipe = frs.ForEachRecipe(
             inputs=["xs"],
             outputs=["ys"],
-            body_node=frs.LabeledRecipe(label="body", node=negate.flowrep_recipe),
+            body_node=frs.LabeledRecipe(label="body", recipe=negate.flowrep_recipe),
             input_edges={
                 frs.TargetHandle(node="body", port="x"): frs.InputSource(port="xs")
             },
