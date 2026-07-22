@@ -20,13 +20,26 @@ from semantikon.ontology import SNS, serialize_and_convert_to_networkx
 def _get_port_with_fallback(
     ports: dict[str, Any], port_name: str
 ) -> Any:
+    """
+    Return a flowrep port, resolving the normalized single-output name.
+
+    Args:
+        ports (dict[str, Any]): Available flowrep ports.
+        port_name (str): Port name from the normalized graph representation.
+
+    Returns:
+        Any: The matching flowrep port object.
+    """
     if port_name in ports:
         return ports[port_name]
     # Flowrep stores unlabeled single-output node ports as "output_0",
     # while the normalized graph representation uses "output".
     if port_name == "output" and "output_0" in ports:
         return ports["output_0"]
-    raise KeyError(port_name)
+    raise KeyError(
+        f"Port {port_name!r} not found after fallback resolution. "
+        f"Available ports: {tuple(ports)}"
+    )
 
 
 def identifier_to_uri(graph: Graph, identifier: str) -> list[URIRef]:
