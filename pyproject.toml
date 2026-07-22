@@ -28,7 +28,7 @@ dependencies = [
     "owlrl==7.6.2",
     "pint==0.25.3",
     "rdflib==7.6.0",
-    "pyshacl==0.31.0",
+    "pyshacl==0.40.0",
     "requests==2.34.2",
     "typeguard==4.5.2",
     "flowrep==0.6.0",
