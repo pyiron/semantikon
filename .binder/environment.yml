@@ -9,7 +9,7 @@ dependencies:
 - owlrl =7.6.2
 - pint =0.25.3
 - rdflib =7.6.0
-- pyshacl =0.31.0
+- pyshacl =0.40.0
 - python >=3.11,<3.15
 - python-graphviz =0.21
 - requests =2.34.2
