@@ -20,7 +20,7 @@ dependencies:
 - python-graphviz =0.21
 - requests =2.34.2
 - typeguard =4.5.2
-- flowrep =0.5.2
+- flowrep =0.6.0
 - networkx =3.6.1
 - bagofholding =0.1.12
 - cwltool =3.2.20260413085819
