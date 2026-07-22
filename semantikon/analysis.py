@@ -17,6 +17,16 @@ from semantikon.flowrep_dict import dict_to_nodedata
 from semantikon.ontology import SNS, serialize_and_convert_to_networkx
 
 
+def _get_port(
+    ports: dict[str, Any], port_name: str
+) -> Any:
+    if port_name in ports:
+        return ports[port_name]
+    if port_name == "output" and "output_0" in ports:
+        return ports["output_0"]
+    raise KeyError(port_name)
+
+
 def identifier_to_uri(graph: Graph, identifier: str) -> list[URIRef]:
     """
     Convert a local identifier (pmdco:0000128) to its corresponding URIRef in the graph.
@@ -120,11 +130,15 @@ def request_values(
             continue
         value = hash_to_value[h]
         if len(keys) == 3:
-            wf_dict.nodes[keys[0]].__getattribute__(f"{keys[1][:-1]}_ports")[
-                keys[2]
-            ].value = value
+            _get_port(
+                wf_dict.nodes[keys[0]].__getattribute__(f"{keys[1][:-1]}_ports"),
+                keys[2],
+            ).value = value
         elif len(keys) == 2:
-            wf_dict.__getattribute__(f"{keys[0][:-1]}_ports")[keys[1]].value = value
+            _get_port(
+                wf_dict.__getattribute__(f"{keys[0][:-1]}_ports"),
+                keys[1],
+            ).value = value
     return wf_dict
 
 

@@ -51,6 +51,13 @@ def get_kinetic_energy(
     return 0.5 * mass * velocity**2
 
 
+def get_kinetic_energy_unlabeled(
+    mass: Annotated[float, {"uri": PMD["0020133"], "units": "kilogram"}],
+    velocity: Annotated[float, {"units": "meter/second", "uri": EX.Velocity}],
+) -> Annotated[float, {"uri": PMD["0020142"], "units": "joule"}]:
+    return 0.5 * mass * velocity**2
+
+
 @workflow
 def my_kinetic_energy_workflow(
     distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
@@ -71,6 +78,13 @@ def workflow_with_dataclass(data: SpeedData, mass):
 def only_get_speed_workflow(distance, time):
     speed = get_speed(distance=distance, time=time)
     return speed
+
+
+@workflow
+def unlabeled_kinetic_energy_workflow(distance, time, mass):
+    speed = get_speed(distance, time)
+    kinetic_energy = get_kinetic_energy_unlabeled(mass, speed)
+    return kinetic_energy
 
 
 class TestAnalysis(unittest.TestCase):
@@ -191,6 +205,24 @@ class TestAnalysis(unittest.TestCase):
             wf_dict.nodes["get_speed_0"].output_ports["speed"].value,
             msg="data not stored",
         )
+
+    def test_request_values_with_unlabeled_node_output(self):
+        wf_dict = fr.schemas.DagData.from_recipe(
+            unlabeled_kinetic_energy_workflow.flowrep_recipe
+        )
+        wf_dict.input_ports["distance"].value = 1.0
+        wf_dict.input_ports["time"].value = 2.0
+        wf_dict.input_ports["mass"].value = 3.0
+        graph = onto.get_knowledge_graph(
+            fr.tools.run_recipe(
+                unlabeled_kinetic_energy_workflow.flowrep_recipe,
+                distance=1.0,
+                time=2.0,
+                mass=3.0,
+            )
+        )
+        wf_dict = asis.request_values(wf_dict, graph)
+        self.assertEqual(wf_dict.output_ports["kinetic_energy"].value, 0.375)
 
     def test_sparql_writer(self):
         wf_data = fr.tools.run_recipe(
