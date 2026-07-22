@@ -70,7 +70,7 @@ In the realm of the workflow management systems, there are well defined inputs a
 
 ```
 
-The `workflow` decorator from `semantikon.workflow` allows you to define a workflow that uses the above functions in semantikon. You can use any workflow management system that can export the workflow in the [`flowrep`](https://github.com/pyiron/flowrep)-format. Via `semantikon.get_knowledge_graph` you can extract a knowledge graph from the workflow. The knowledge graph schematically has the following structure:
+The `workflow` decorator from `flowrep.workflow` allows you to define a workflow that uses the above functions in semantikon. You can use any workflow management system that can export the workflow in the [`flowrep`](https://github.com/pyiron/flowrep)-format. Via `semantikon.get_knowledge_graph` you can extract a knowledge graph from the workflow. The knowledge graph schematically has the following structure:
 
 ```mermaid
 graph TD

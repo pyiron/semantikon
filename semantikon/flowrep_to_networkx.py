@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import unicodedata
+import warnings
 from dataclasses import asdict, dataclass, field, is_dataclass
 from functools import cache, cached_property
 from hashlib import sha256
@@ -154,6 +155,30 @@ class SemantikonDiGraph(nx.DiGraph):
     def add_node(self, node_for_adding, **attr):  # type: ignore[override]
         normalized_attr = self._validate_semantikon_attrs(attr)
         super().add_node(node_for_adding, **normalized_attr)
+
+    def add_nodes_from(self, nodes_for_adding, **attr):
+        normalized_attr = self._validate_semantikon_attrs(attr)
+
+        def normalized_nodes():
+            for n in nodes_for_adding:
+                try:
+                    n not in self._node
+                except TypeError:
+                    n, ndict = n
+                    ndict = self._validate_semantikon_attrs(ndict)
+                    if normalized_attr:
+                        merged = normalized_attr.copy()
+                        merged.update(ndict)
+                        yield n, merged
+                    else:
+                        yield n, ndict
+                else:
+                    if normalized_attr:
+                        yield n, normalized_attr
+                    else:
+                        yield n
+
+        super().add_nodes_from(normalized_nodes())
 
     @cached_property
     def t_ns(self) -> str:
@@ -462,13 +487,21 @@ def serialize_and_convert_to_networkx(
         SemantikonDiGraph: The serialized workflow graph.
     """
     if isinstance(workflow, dict):
+        warnings.warn(
+            "Passing a dict to 'serialize_and_convert_to_networkx' is deprecated"
+            " and will be removed in a future version. Please pass a 'flowrep'"
+            " object instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         workflow = dict_to_nodedata(workflow)
     if isinstance(workflow, fr.schemas.WorkflowRecipe):
         workflow = fr.schemas.DagData.from_recipe(workflow)
     if not isinstance(workflow, fr.schemas.DagData):
         raise TypeError(
-            f"Invalid workflow type. Expected dict, flowrep {fr.schemas.DagData.__name__!r}, or "
-            f"flowrep {fr.schemas.WorkflowRecipe.__name__!r}, but got {type(workflow)}."
+            f"Invalid workflow type. Expected dict, flowrep"
+            f" {fr.schemas.DagData.__name__!r}, or flowrep"
+            f" {fr.schemas.WorkflowRecipe.__name__!r}, but got {type(workflow)}."
         )
 
     G = _workflow_to_networkx(workflow, prefix=prefix)
@@ -477,7 +510,8 @@ def serialize_and_convert_to_networkx(
             hashed_dict = _get_hashed_node_dict_from_graph(G)
         except Exception as e:
             raise RuntimeError(
-                "Failed to hash workflow data - use only hashable inputs or set hash_data=False"
+                "Failed to hash workflow data - use only hashable inputs or set"
+                " hash_data=False"
             ) from e
         for node, data in hashed_dict.items():
             G.append_hash(node, data["hash"])
