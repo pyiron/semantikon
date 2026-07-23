@@ -5,9 +5,15 @@ import unittest
 
 from flowrep.api import schemas as frs
 from flowrep.api import tools as frt
+from rdflib import RDF, RDFS
 
 from semantikon import datastructure, flowrep_dict
 from semantikon.metadata import u
+from semantikon.ontology import PMD, get_knowledge_graph
+
+# PMD terms probed below; see https://w3id.org/pmd/co
+PMD_PROCESS = PMD["0000010"]
+PMD_FUNCTION_NAME = PMD["0000100"]
 
 
 @frt.atomic
@@ -356,6 +362,69 @@ class TestWorkflowToDict(unittest.TestCase):
         self.assertEqual(
             flowrep_dict.nodedata2dict(node)["edges"],
             wf_dict["edges"],
+        )
+
+
+class TestFunctionlessWorkflow(unittest.TestCase):
+    """A workflow dict without a ``function`` key (e.g. a pyiron_workflow generic
+    ``Workflow``) is a reference-free flowrep workflow: IO is taken from the dict."""
+
+    def _wf_dict(self):
+        return {
+            "type": "workflow",
+            "label": "manual_wf",
+            "inputs": {"a": {}, "b": {}},
+            "outputs": {"total": {}},
+            "nodes": {
+                "add": {
+                    "type": "atomic",
+                    "function": my_add,
+                    "inputs": {"a": {}, "b": {}},
+                    "outputs": {"output": {}},
+                },
+            },
+            "edges": [
+                ("inputs.a", "add.inputs.a"),
+                ("inputs.b", "add.inputs.b"),
+                ("add.outputs.output", "outputs.total"),
+            ],
+        }
+
+    def test_recipe_is_reference_free(self):
+        recipe = flowrep_dict._dict_to_workflow_recipe(self._wf_dict())
+        self.assertIsInstance(recipe, frs.WorkflowRecipe)
+        self.assertIsNone(recipe.reference)
+        self.assertEqual(list(recipe.inputs), ["a", "b"])
+        self.assertEqual(list(recipe.outputs), ["total"])
+
+    def test_dict_to_nodedata(self):
+        node = flowrep_dict.dict_to_nodedata(self._wf_dict())
+        self.assertIsInstance(node, frs.DagData)
+        self.assertEqual(list(node.input_ports), ["a", "b"])
+        self.assertEqual(list(node.output_ports), ["total"])
+
+    def test_knowledge_graph_is_populated(self):
+        """The reference-free workflow still yields a real, non-empty graph: its
+        own IO ports and its child atomic's process are all represented."""
+        g = get_knowledge_graph(flowrep_dict._dict_to_workflow_recipe(self._wf_dict()))
+        self.assertGreater(len(g), 0)
+        labels = {str(o) for _, p, o in g if p == RDFS.label}
+        # the child atomic, carrying its function semantics, is in the graph
+        self.assertIn("Function name 'my_add'", labels)
+
+    def test_knowledge_graph_omits_workflow_process(self):
+        """ "Simple": a reference-free workflow contributes structure but no process
+        of its own. Only the child atomic appears as a process/function -- a
+        function-bearing workflow would additionally represent the workflow itself
+        (e.g. the diamond workflow yields four such nodes, one per child plus root)."""
+        g = get_knowledge_graph(flowrep_dict._dict_to_workflow_recipe(self._wf_dict()))
+        processes = [s for s, p, o in g if p == RDF.type and o == PMD_PROCESS]
+        function_names = [
+            s for s, p, o in g if p == RDF.type and o == PMD_FUNCTION_NAME
+        ]
+        self.assertEqual(len(processes), 1, "only the child atomic is a process")
+        self.assertEqual(
+            len(function_names), 1, "the workflow root carries no function"
         )
 
 
