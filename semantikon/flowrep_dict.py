@@ -173,9 +173,19 @@ def _normalize_output_label(label: str, recipe_outputs: list[str]) -> str:
 
 def _dict_to_workflow_recipe(node: dict[str, Any]) -> fr.schemas.WorkflowRecipe:
     function = node.get("function")
-    if function is None:
-        raise TypeError("Workflow dict entries must carry a callable.")
-    base_recipe = _flowrep_recipe_from_callable(function, node_type="workflow")
+    if function is not None:
+        base_recipe = _flowrep_recipe_from_callable(function, node_type="workflow")
+        inputs = list(base_recipe.inputs)
+        outputs = list(base_recipe.outputs)
+        reference = base_recipe.reference
+        description = base_recipe.description
+    else:
+        # Function-less workflows (e.g. pyiron_workflow generic ``Workflow``s) map
+        # to reference-free flowrep workflows; take IO from the dict itself.
+        inputs = list(node.get("inputs", {}))
+        outputs = list(node.get("outputs", {}))
+        reference = None
+        description = None
     nodes = {
         label: _dict_to_recipe(child_node)
         for label, child_node in node.get("nodes", {}).items()
@@ -211,7 +221,7 @@ def _dict_to_workflow_recipe(node: dict[str, Any]) -> fr.schemas.WorkflowRecipe:
             and src_node is None
             and src_io == "inputs"
         ):
-            tgt_port = _normalize_output_label(tgt_port, list(base_recipe.outputs))
+            tgt_port = _normalize_output_label(tgt_port, outputs)
             output_edges[fr.schemas.OutputTarget(port=tgt_port)] = (
                 fr.schemas.InputSource(port=src_port)
             )
@@ -222,21 +232,21 @@ def _dict_to_workflow_recipe(node: dict[str, Any]) -> fr.schemas.WorkflowRecipe:
             and src_io == "outputs"
         ):
             src_port = _normalize_output_label(src_port, nodes[src_node].outputs)
-            tgt_port = _normalize_output_label(tgt_port, list(base_recipe.outputs))
+            tgt_port = _normalize_output_label(tgt_port, outputs)
             output_edges[fr.schemas.OutputTarget(port=tgt_port)] = (
                 fr.schemas.SourceHandle(node=src_node, port=src_port)
             )
         else:
             raise ValueError(f"Malformed workflow edge: {src!r} -> {tgt!r}")
     return fr.schemas.WorkflowRecipe(
-        inputs=list(base_recipe.inputs),
-        outputs=list(base_recipe.outputs),
+        inputs=inputs,
+        outputs=outputs,
         nodes=nodes,
         input_edges=input_edges,
         edges=edges,
         output_edges=output_edges,
-        reference=base_recipe.reference,
-        description=base_recipe.description,
+        reference=reference,
+        description=description,
     )
 
 
