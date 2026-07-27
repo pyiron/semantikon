@@ -248,10 +248,11 @@ class TestParser(unittest.TestCase):
         def f(x):
             return x
 
-        with mock.patch(
-            "semantikon.converter.get_return_expressions", return_value=123
-        ), self.assertRaises(
-            TypeError, msg="expected None, a string, or a tuple of strings"
+        with (
+            mock.patch("semantikon.converter.get_return_expressions", return_value=123),
+            self.assertRaises(
+                TypeError, msg="expected None, a string, or a tuple of strings"
+            ),
         ):
             get_return_labels(f)
 

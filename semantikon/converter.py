@@ -98,9 +98,7 @@ def extract_undefined_name(error_message: str) -> str:
     match = re.search(r"name '(.+?)' is not defined", error_message)
     if match:
         return match.group(1)
-    raise ValueError(
-        f"No undefined name found in the error message: {error_message}"
-    )
+    raise ValueError(f"No undefined name found in the error message: {error_message}")
 
 
 def _resolve_annotation(annotation, func_globals=None):
