@@ -80,12 +80,12 @@ class SNS:
 
 ud = UnitsDict()
 
-TripleListType: TypeAlias = list[
+TripleList: TypeAlias = list[
     tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str | None]
 ]
 
 
-RestrictionTupleType: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
+RestrictionTuple: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
 
 
 def _units_to_uri(units: str | URIRef) -> URIRef:
@@ -633,7 +633,7 @@ def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: str) -> st
 
 
 def _translate_triples(
-    triples: TripleListType,
+    triples: TripleList,
     node_name: str,
     data_node: URIRef,
     G: SemantikonDiGraph,
@@ -673,7 +673,7 @@ def _translate_triples(
 
 
 def _restrictions_to_triples(
-    restrictions: RestrictionTupleType | tuple[RestrictionTupleType, ...],
+    restrictions: RestrictionTuple | tuple[RestrictionTuple, ...],
     data_node: URIRef,
     predicate: URIRef | None = None,
 ) -> Graph:
@@ -681,7 +681,7 @@ def _restrictions_to_triples(
     Converts restrictions into triples for OWL restrictions or SHACL constraints.
 
     Args:
-        restrictions (RestrictionTupleType): The restrictions to convert.
+        restrictions (RestrictionTuple): The restrictions to convert.
         data_node (URIRef): The node to which the restrictions apply.
         predicate (URIRef | None): The predicate to use for OWL restrictions
             (default: RDFS.subClassOf).
