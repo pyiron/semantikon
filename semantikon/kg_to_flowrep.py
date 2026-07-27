@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import itertools
 from collections.abc import Iterable
 from typing import Any, cast
 
@@ -309,21 +310,20 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
                             edges[edges_key] = fr.schemas.SourceHandle(
                                 node=u_child, port=u_port
                             )
-                elif u_step == v_step == "outputs" and u != v:
-                    if u_is_child_io and v_is_direct_io:
-                        u_child = _find_child_for_io(u)
-                        if u_child is not None:
-                            u_port = u_data["arg"]
-                            v_port = v_data["arg"]
-                            u_port = _normalize_output_label(
-                                u_port, nodes[u_child].outputs
-                            )
-                            v_port = _normalize_output_label(
-                                v_port, list(base_recipe.outputs)
-                            )
-                            output_edges[fr.schemas.OutputTarget(port=v_port)] = (
-                                fr.schemas.SourceHandle(node=u_child, port=u_port)
-                            )
+                elif u_step == v_step == "outputs" and u != v and u_is_child_io and v_is_direct_io:
+                    u_child = _find_child_for_io(u)
+                    if u_child is not None:
+                        u_port = u_data["arg"]
+                        v_port = v_data["arg"]
+                        u_port = _normalize_output_label(
+                            u_port, nodes[u_child].outputs
+                        )
+                        v_port = _normalize_output_label(
+                            v_port, list(base_recipe.outputs)
+                        )
+                        output_edges[fr.schemas.OutputTarget(port=v_port)] = (
+                            fr.schemas.SourceHandle(node=u_child, port=u_port)
+                        )
             return fr.schemas.WorkflowRecipe(
                 inputs=list(base_recipe.inputs),
                 outputs=list(base_recipe.outputs),
@@ -407,7 +407,7 @@ def _reorganize_output_edges(
     nodes = [io_dict[k] for k in keys]
     for n in nodes[:-1]:
         graph.remove_edge(n, node)
-    graph.add_edges_from(zip(nodes[:-1], nodes[1:]))
+    graph.add_edges_from(itertools.pairwise(nodes))
 
 
 def _reorganize_input_edges(

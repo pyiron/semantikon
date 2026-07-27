@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import itertools
 import string
 import warnings
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Iterable, cast
+from typing import Any, cast
 
 import flowrep as fr
 import networkx as nx
@@ -161,12 +163,12 @@ def request_values(
 
 class TrieNode:
     def __init__(self):
-        self.children: dict[str, "TrieNode"] = {}
+        self.children: dict[str, TrieNode] = {}
         self.terminal = False
 
 
 class _Node:
-    __slots__ = ("_node", "_path", "_graph", "_uri_dict")
+    __slots__ = ("_graph", "_node", "_path", "_uri_dict")
 
     def __init__(
         self,
@@ -217,7 +219,7 @@ class _Node:
         return self._uri_dict[tag]
 
     def __and__(self, other: _Node | URIRef | _QueryHolder) -> _QueryHolder:
-        if isinstance(other, _Node) or isinstance(other, URIRef):
+        if isinstance(other, (_Node, URIRef)):
             nodes: list[_Node | URIRef] = [self, other]
         else:
             assert isinstance(other, _QueryHolder)
@@ -310,7 +312,7 @@ class _QueryHolder:
         ]
 
     def __and__(self, other: _Node | URIRef | _QueryHolder) -> _QueryHolder:
-        if isinstance(other, _Node) or isinstance(other, URIRef):
+        if isinstance(other, (_Node, URIRef)):
             nodes: list[_Node | URIRef] = [*self._nodes, other]
         else:
             assert isinstance(other, _QueryHolder)
@@ -325,7 +327,7 @@ class _QueryHolder:
 class Completer(_Node):
     def __init__(self, uri_dict: dict[str, URIRef], graph: Graph):
         root = TrieNode()
-        for value in uri_dict.keys():
+        for value in uri_dict:
             node = root
             for part in value.split("-"):
                 node = node.children.setdefault(part, TrieNode())
@@ -492,7 +494,7 @@ class SparqlWriter:
             if isinstance(arg, _Node):
                 arg = arg.value()
             while self._is_io_port(arg):
-                arg = list(self.G.successors(arg))[0]
+                arg = next(iter(self.G.successors(arg)))
             data_nodes.append(arg)
             value_node = self._to_qname(data_nodes[-1] + "_value")
             hash_node = self._to_qname(data_nodes[-1] + "_hash")
@@ -533,7 +535,7 @@ class SparqlWriter:
             for node in data_nodes:
                 path = nx.shortest_path(self.G, head_node, node)
                 assert len(path) > 1
-                for u, v in zip(path[:-1], path[1:]):
+                for u, v in itertools.pairwise(path):
                     if not self.G.has_edge(u, v):
                         u, v = v, u
                     G.add_edge(

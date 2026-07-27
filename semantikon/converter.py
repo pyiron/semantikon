@@ -7,15 +7,14 @@ import importlib
 import inspect
 import re
 import string
-import sys
 import textwrap
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import wraps
 from typing import (
     Annotated,
     Any,
-    Callable,
     get_args,
     get_origin,
     get_type_hints,
@@ -100,7 +99,7 @@ def extract_undefined_name(error_message: str) -> str:
     if match:
         return match.group(1)
     raise ValueError(
-        "No undefined name found in the error message: {}".format(error_message)
+        f"No undefined name found in the error message: {error_message}"
     )
 
 
@@ -174,7 +173,7 @@ def get_return_expressions(
         return ret_list[0]
     elif (
         all(isinstance(exp, tuple) for exp in ret_list)
-        and len(set(len(r) for r in ret_list)) == 1
+        and len({len(r) for r in ret_list}) == 1
         and separate_tuple
         and not strict
     ):
@@ -221,20 +220,7 @@ def get_annotated_type_hints(func: Callable) -> dict[str, Any]:
         key "return".
     """
     try:
-        if sys.version_info >= (3, 11):
-            # Use the official, public API
-            return get_type_hints(func, include_extras=True)
-        else:
-            # Manually inspect __annotations__ and resolve them
-            hints = {}
-            sig = inspect.signature(func)
-            for name, param in sig.parameters.items():
-                hints[name] = _resolve_annotation(param.annotation, func.__globals__)
-            if sig.return_annotation is not inspect.Signature.empty:
-                hints["return"] = _resolve_annotation(
-                    sig.return_annotation, func.__globals__
-                )
-            return hints
+        return get_type_hints(func, include_extras=True)
     except NameError:
         hints = {}
         for key, value in func.__annotations__.items():
@@ -293,7 +279,7 @@ def _get_converter(func: Callable) -> Callable | None:
             args.append(value.get("units", value.get("unit")))
         else:
             args.append(None)
-    if any([arg is not None for arg in args]):
+    if any(arg is not None for arg in args):
         return _parse_wrap_args(args)
     else:
         return None
@@ -322,10 +308,8 @@ def _is_dimensionless(output: Quantity | tuple[Quantity, ...] | None) -> bool:
     if output is None:
         return True
     if isinstance(output, tuple):
-        return all([_is_dimensionless(oo) for oo in output])
-    if output.to_base_units().magnitude == 1.0 and output.dimensionless:
-        return True
-    return False
+        return all(_is_dimensionless(oo) for oo in output)
+    return bool(output.to_base_units().magnitude == 1.0 and output.dimensionless)
 
 
 def units(func: Callable) -> Callable:
@@ -502,7 +486,7 @@ def semantikon_dataclass(cls: type) -> type:
             setattr(cls, key, value)  # Append type hints to attributes
     except AttributeError:
         pass
-    setattr(cls, "_is_semantikon_class", True)
+    cls._is_semantikon_class = True
     return cls
 
 
@@ -546,10 +530,10 @@ def with_explicit_defaults(**messages) -> Callable:
         def wrapper(*args, **kwargs):
             bound = sig.bind_partial(*args, **kwargs)
 
-            for name in messages:
+            for name, message in messages.items():
                 if name not in bound.arguments:
-                    if messages[name] is not None:
-                        warnings.warn(messages[name])
+                    if message is not None:
+                        warnings.warn(message)
                     else:
                         warnings.warn(
                             f"'{name}' not provided,"

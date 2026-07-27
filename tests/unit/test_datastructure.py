@@ -9,7 +9,7 @@ from semantikon import datastructure
 @dataclasses.dataclass
 class ConcreteDC(datastructure._VariadicDataclass):
     complex_field: set[str]
-    optional_field: int | datastructure.Missing = datastructure.missing()
+    optional_field: int | datastructure.Missing = datastructure.MISSING
 
 
 class TestDataclasses(unittest.TestCase):

@@ -71,7 +71,7 @@ def complex_function(
 def complex_macro(
     x: u(float, units="meter") = 2.0,
 ):
-    a, b, c = complex_function(x)
+    _a, b, c = complex_function(x)
     return b, c
 
 
@@ -80,7 +80,7 @@ def complex_macro(
 def complex_workflow(
     x: u(float, units="meter") = 2.0,
 ):
-    b, c = complex_macro(x)
+    _b, c = complex_macro(x)
     return c
 
 

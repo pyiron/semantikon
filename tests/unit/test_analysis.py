@@ -256,7 +256,7 @@ class TestAnalysis(unittest.TestCase):
         self.assertEqual((A_dash & (C & B)).query(), [(1.0, 4.0, 8.0)])
         self.assertEqual((A_dash & C & D & B).query(), [(1.0, 4.0, 2.0, 8.0)])
         self.assertEqual(((A_dash & C) & (D & B)).query(), [(1.0, 4.0, 2.0, 8.0)])
-        self.assertEqual(list(graph.query(A.to_query_text()))[0][0].toPython(), 1.0)
+        self.assertEqual(next(iter(graph.query(A.to_query_text())))[0].toPython(), 1.0)
         with self.assertRaises(AttributeError):
             _ = comp.non_existing_node
         self.assertIsInstance(comp.my_kinetic_energy_workflow, asis._Node)

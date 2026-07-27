@@ -1,4 +1,5 @@
-from typing import Annotated, Any, Callable, Optional
+from collections.abc import Callable
+from typing import Annotated, Any
 from uuid import uuid4
 
 from rdflib import BNode, URIRef
@@ -175,7 +176,7 @@ class SemantikonURI(URIRef):
     """A class representing a URIRef with an associated blank node instance."""
 
     def __init__(
-        self, value: str, base: Optional[str] = None, instance: Optional[BNode] = None
+        self, value: str, base: str | None = None, instance: BNode | None = None
     ):
         """
         Initialize the SemantikonURI with a URIRef and an optional blank node instance.
