@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, fields, is_dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, TypeAlias
+from typing import Any, TypeAlias, cast
 
 import bagofholding
 import flowrep as fr
@@ -693,7 +693,7 @@ def _restrictions_to_triples(
     assert isinstance(restrictions, tuple | list)
     assert isinstance(restrictions[0], tuple | list)
     if not isinstance(restrictions[0][0], tuple | list):
-        restrictions = (restrictions,)
+        restrictions = cast("tuple[RestrictionTuple, ...]", (restrictions,))
 
     for r_set in restrictions:
         # Determine whether the restriction is OWL or SHACL based on the predicates
