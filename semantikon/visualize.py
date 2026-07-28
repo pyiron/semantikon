@@ -86,9 +86,7 @@ def _is_class(term: URIRef, graph: Graph) -> bool:
         return True
     if len(list(graph.objects(term, RDF.type))) > 0:
         return False
-    if len(list(graph.subjects(OWL.hasValue, term))) > 0:
-        return False
-    return True
+    return not len(list(graph.subjects(OWL.hasValue, term))) > 0
 
 
 def _rdflib_to_nx(graph: Graph) -> nx.DiGraph:

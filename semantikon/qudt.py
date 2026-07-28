@@ -2,9 +2,11 @@ import os
 import re
 from collections import defaultdict
 from functools import cached_property
+from tokenize import TokenError
 
 import requests
 from pint import UnitRegistry
+from pint.errors import PintError
 from rdflib import RDFS, Graph, URIRef, term
 
 
@@ -96,13 +98,13 @@ class UnitsDict:
     @cached_property
     def _base_units(self) -> dict[str, list[str]]:
         data = defaultdict(list)
-        for key in self._units_dict.keys():
+        for key in self._units_dict:
             try:
                 data[
                     str(self._ureg.parse_expression(key.lower()).to_base_units().units)
                 ].append(key)
-            except Exception:
-                pass
+            except (AssertionError, PintError, TokenError):
+                continue
         return data
 
     def __getitem__(self, key: str) -> term.Node | None:
@@ -167,7 +169,7 @@ def get_units_dict(graph: Graph) -> dict[str, term.Node]:
                     str(units_dict[tag_str])
                 ):
                     units_dict[tag_str] = uri
-            except Exception:
-                pass
+            except (AssertionError, PintError, TokenError):
+                continue
             tag_str = tag_str.lower()
     return units_dict

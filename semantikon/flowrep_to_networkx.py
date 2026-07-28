@@ -5,7 +5,7 @@ import json
 import unicodedata
 import warnings
 from dataclasses import asdict, dataclass, field, is_dataclass
-from functools import cache, cached_property
+from functools import cached_property
 from hashlib import sha256
 from typing import Any
 
@@ -162,7 +162,7 @@ class SemantikonDiGraph(nx.DiGraph):
         def normalized_nodes():
             for n in nodes_for_adding:
                 try:
-                    n not in self._node
+                    hash(n)
                 except TypeError:
                     n, ndict = n
                     ndict = self._validate_semantikon_attrs(ndict)
@@ -196,7 +196,6 @@ class SemantikonDiGraph(nx.DiGraph):
         h = _get_graph_hash(self, with_global_inputs=True)
         return h + "_"
 
-    @cache
     def _get_data_node(self, io: str) -> str:
         while True:
             candidate = [
