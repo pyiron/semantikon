@@ -484,7 +484,7 @@ def semantikon_dataclass(cls: type) -> type:
             setattr(cls, key, value)  # Append type hints to attributes
     except AttributeError:
         pass
-    setattr(cls, "_is_semantikon_class", True)
+    cls._is_semantikon_class = True
     return cls
 
 
