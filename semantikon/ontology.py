@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import copy
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass, fields, is_dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, Callable, TypeAlias
+from typing import Any, TypeAlias, cast
 
 import bagofholding
 import flowrep as fr
@@ -79,12 +80,12 @@ class SNS:
 
 ud = UnitsDict()
 
-_triple_type: TypeAlias = list[
+TripleList: TypeAlias = list[
     tuple[IdentifiedNode | str | None, URIRef, IdentifiedNode | str | None]
 ]
 
 
-_rest_type: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
+RestrictionTuple: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
 
 
 def _units_to_uri(units: str | URIRef) -> URIRef:
@@ -462,7 +463,7 @@ def _function_to_graph(
                 arg_name = arg["arg"]
             else:
                 arg_name = f"output_{ii}"
-            arg_node = URIRef("_".join([f_node, io, arg_name]))
+            arg_node = URIRef(f"{f_node}_{io}_{arg_name}")
             if io == "input":
                 g.add((arg_node, RDF.type, SNS.input_specification))
             else:
@@ -600,11 +601,9 @@ def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
         return _input_is_connected(candidate[0], G)
     elif n_predecessors == 2 and _is_macro_output(io, G, tuple(candidate)):
         return all(
-            [
-                _input_is_connected(cc, G)
-                for cc in candidate
-                if G.nodes[cc]["step"] != "node"
-            ]
+            _input_is_connected(cc, G)
+            for cc in candidate
+            if G.nodes[cc]["step"] != "node"
         )
     else:
         predecessor_steps = {c: G.nodes[c]["step"] for c in candidate}
@@ -622,7 +621,7 @@ def _is_macro_output(io: str, G: SemantikonDiGraph, candidates: tuple[str, str])
 
 
 def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: str) -> str:
-    assert seeked_io.startswith("inputs") or seeked_io.startswith("outputs")
+    assert seeked_io.startswith(("inputs", "outputs"))
     main_node = ref_io.replace(".", "-").split("-outputs-")[0].split("-inputs-")[0]
     candidate = (
         G.predecessors(main_node) if "inputs" in seeked_io else G.successors(main_node)
@@ -634,7 +633,7 @@ def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: str) -> st
 
 
 def _translate_triples(
-    triples: _triple_type,
+    triples: TripleList,
     node_name: str,
     data_node: URIRef,
     G: SemantikonDiGraph,
@@ -674,7 +673,7 @@ def _translate_triples(
 
 
 def _restrictions_to_triples(
-    restrictions: _rest_type | tuple[_rest_type, ...],
+    restrictions: RestrictionTuple | tuple[RestrictionTuple, ...],
     data_node: URIRef,
     predicate: URIRef | None = None,
 ) -> Graph:
@@ -682,7 +681,7 @@ def _restrictions_to_triples(
     Converts restrictions into triples for OWL restrictions or SHACL constraints.
 
     Args:
-        restrictions (_rest_type): The restrictions to convert.
+        restrictions (RestrictionTuple): The restrictions to convert.
         data_node (URIRef): The node to which the restrictions apply.
         predicate (URIRef | None): The predicate to use for OWL restrictions
             (default: RDFS.subClassOf).
@@ -694,7 +693,7 @@ def _restrictions_to_triples(
     assert isinstance(restrictions, tuple | list)
     assert isinstance(restrictions[0], tuple | list)
     if not isinstance(restrictions[0][0], tuple | list):
-        restrictions = (restrictions,)
+        restrictions = cast("tuple[RestrictionTuple, ...]", (restrictions,))
 
     for r_set in restrictions:
         # Determine whether the restriction is OWL or SHACL based on the predicates
@@ -1250,8 +1249,7 @@ def extract_dataclass(
 def _get_successor_nodes(G, node_name):
     for out in G.successors(node_name):
         for inp in G.successors(out):
-            for node in G.successors(inp):
-                yield node
+            yield from G.successors(inp)
 
 
 def _to_owl_restriction(

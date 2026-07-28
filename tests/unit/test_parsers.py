@@ -248,13 +248,13 @@ class TestParser(unittest.TestCase):
         def f(x):
             return x
 
-        with mock.patch(
-            "semantikon.converter.get_return_expressions", return_value=123
-        ):
-            with self.assertRaises(
+        with (
+            mock.patch("semantikon.converter.get_return_expressions", return_value=123),
+            self.assertRaises(
                 TypeError, msg="expected None, a string, or a tuple of strings"
-            ):
-                get_return_labels(f)
+            ),
+        ):
+            get_return_labels(f)
 
     def test_use_default(self):
 
@@ -329,7 +329,7 @@ class TestParser(unittest.TestCase):
 
         # Create a dynamically defined function using exec
         exec_globals = {}
-        exec("def dynamic_test_func(x):\n    return x + 1", exec_globals)
+        exec("def dynamic_test_func(x):\n    return x + 1", exec_globals)  # noqa: S102
         dynamic_func = exec_globals["dynamic_test_func"]
         hash_result = hash_function(dynamic_func)
         self.assertTrue(hash_result.startswith("dynamic_test_func:"))
