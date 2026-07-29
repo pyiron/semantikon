@@ -444,8 +444,8 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
             if "hash" in inp_data:
                 hash_dict_tmp["inputs"][inp_name] = inp_data["hash"]
                 hash_dict_tmp["node"]["connected_inputs"].append(inp_name)
-            elif "value" in inp_data:
-                value = inp_data["value"]
+            elif "value" in inp_data or "default" in inp_data:
+                value = inp_data.get("value", inp_data.get("default"))
                 if is_dataclass(value) and not isinstance(value, type):
                     hash_dict_tmp["inputs"][inp_name] = asdict(value)
                 else:
