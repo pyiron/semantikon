@@ -40,7 +40,7 @@ def download_data(version: str | None = None, store_data: bool = False) -> Graph
         The graph containing the QUDT data.
     """
     if version is None:
-        version = "3.1.0"
+        version = "3.5.0"
     data = requests.get(f"https://qudt.org/{version}/vocab/unit", timeout=300).text
     graph = Graph()
     graph.parse(data=data, format="ttl")
@@ -103,7 +103,7 @@ class UnitsDict:
                 data[
                     str(self._ureg.parse_expression(key.lower()).to_base_units().units)
                 ].append(key)
-            except (AssertionError, PintError, TokenError):
+            except (AssertionError, PintError, TokenError, AttributeError):
                 continue
         return data
 
@@ -169,7 +169,7 @@ def get_units_dict(graph: Graph) -> dict[str, term.Node]:
                     str(units_dict[tag_str])
                 ):
                     units_dict[tag_str] = uri
-            except (AssertionError, PintError, TokenError):
+            except (AssertionError, PintError, TokenError, AttributeError):
                 continue
             tag_str = tag_str.lower()
     return units_dict
