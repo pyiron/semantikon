@@ -103,7 +103,7 @@ class UnitsDict:
                 data[
                     str(self._ureg.parse_expression(key.lower()).to_base_units().units)
                 ].append(key)
-            except (AssertionError, PintError, TokenError):
+            except (AssertionError, PintError, TokenError, AttributeError):
                 continue
         return data
 
@@ -169,7 +169,7 @@ def get_units_dict(graph: Graph) -> dict[str, term.Node]:
                     str(units_dict[tag_str])
                 ):
                     units_dict[tag_str] = uri
-            except (AssertionError, PintError, TokenError):
+            except (AssertionError, PintError, TokenError, AttributeError):
                 continue
             tag_str = tag_str.lower()
     return units_dict
