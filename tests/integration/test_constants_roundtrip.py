@@ -59,7 +59,7 @@ class TestConstants(unittest.TestCase):
             """)
             self.assertEqual(len(tbox_constants), 1)
 
-            node, literal = next(iter(tbox_constants))
+            node, _ = next(iter(tbox_constants))
             node_label = node.rsplit(f"{wf.__name__}-")[1]
             self.assertEqual(
                 "constant_0",
