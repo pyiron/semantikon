@@ -43,7 +43,58 @@ def multiply_by_two(x=2):
     return result
 
 
+@fr.workflow
+def double_via_constant(x):
+    doubled = fr.std.mul(2, x)
+    return doubled
+
+
+def pick(options: list, index: int) -> int:
+    return options[index]
+
+
+@fr.workflow
+def pick_from_constant_list(i):
+    chosen = pick([10, 20, 30], i)
+    return chosen
+
+
+@fr.workflow
+def compare_to_constant_none(x):
+    missing = fr.std.is_(x, None)
+    return missing
+
+
 class TestKgToFlowrep(unittest.TestCase):
+    def test_round_trip_with_a_constant_node(self):
+        graph = get_knowledge_graph(double_via_constant.flowrep_recipe)
+        reconstructed = kg2recipe(graph)
+
+        constants = {
+            label: node
+            for label, node in reconstructed.nodes.items()
+            if isinstance(node, fr.schemas.ConstantRecipe)
+        }
+        self.assertEqual(
+            list(constants),
+            ["constant_0"],
+            msg="The constant node should survive the round trip as a constant, "
+            "not be dropped or demoted to an atomic node",
+        )
+        self.assertEqual(
+            constants["constant_0"].constant,
+            2,
+            msg="The reconstructed constant should carry the original value",
+        )
+
+        original = fr.tools.run_recipe(double_via_constant.flowrep_recipe, x=3)
+        converted = fr.tools.run_recipe(reconstructed, x=3)
+        self.assertEqual(
+            original.output_ports["doubled"].value,
+            converted.output_ports["doubled"].value,
+            msg="The reconstructed recipe should compute what the original does",
+        )
+
     def test_round_trip_from_knowledge_graph(self):
         graph = get_knowledge_graph(my_workflow.flowrep_recipe)
         reconstructed = kg2recipe(graph)
@@ -53,6 +104,48 @@ class TestKgToFlowrep(unittest.TestCase):
         self.assertEqual(
             original_result.output_ports["result"].value,
             converted_result.output_ports["result"].value,
+        )
+
+    def test_round_trip_with_a_container_constant(self):
+        graph = get_knowledge_graph(pick_from_constant_list.flowrep_recipe)
+        # Serialize and reparse: an in-memory rdflib Literal secretly keeps the
+        # original Python object, so only a persisted graph proves the value
+        # actually survives as RDF.
+        graph = Graph().parse(data=graph.serialize(format="turtle"), format="turtle")
+        reconstructed = kg2recipe(graph)
+
+        (constant,) = [
+            node
+            for node in reconstructed.nodes.values()
+            if isinstance(node, fr.schemas.ConstantRecipe)
+        ]
+        self.assertEqual(
+            constant.constant,
+            [10, 20, 30],
+            msg="A JSONable container constant should come back as the container "
+            "itself, not as its string repr",
+        )
+
+        original = fr.tools.run_recipe(pick_from_constant_list.flowrep_recipe, i=1)
+        converted = fr.tools.run_recipe(reconstructed, i=1)
+        self.assertEqual(
+            original.output_ports["chosen"].value,
+            converted.output_ports["chosen"].value,
+        )
+
+    def test_round_trip_with_a_none_constant(self):
+        graph = get_knowledge_graph(compare_to_constant_none.flowrep_recipe)
+        graph = Graph().parse(data=graph.serialize(format="turtle"), format="turtle")
+        reconstructed = kg2recipe(graph)
+
+        (constant,) = [
+            node
+            for node in reconstructed.nodes.values()
+            if isinstance(node, fr.schemas.ConstantRecipe)
+        ]
+        self.assertIsNone(
+            constant.constant,
+            msg="A None constant should come back as None, not the string 'None'",
         )
 
     def test_requires_disambiguation_for_multiple_workflows(self):
