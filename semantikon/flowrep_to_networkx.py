@@ -34,8 +34,8 @@ class TNode:
     extras: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
-        if self.type not in {"atomic", "workflow"}:
-            raise ValueError("type must be either 'atomic' or 'workflow'")
+        if self.type not in {"atomic", "constant", "workflow"}:
+            raise ValueError("type must be either 'atomic', 'constant', or 'workflow'")
 
     def to_attrs(self) -> dict[str, Any]:
         attrs: dict[str, Any] = {
@@ -301,6 +301,11 @@ def _workflow_to_networkx(
         if isinstance(node_data, fr.schemas.AtomicData):
             metadata["type"] = "atomic"
             function = node_data.function
+        elif isinstance(node_data, fr.schemas.ConstantData):
+            metadata["type"] = "constant"
+            metadata["constant_value"] = node_data.output_ports[
+                fr.schemas.ConstantRecipe.std_label
+            ].value
         else:
             metadata["type"] = "workflow"
             if workflow_label is not None:
