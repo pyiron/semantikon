@@ -1,6 +1,7 @@
 import unittest
 
 import flowrep as fr
+
 import semantikon
 from semantikon.ontology import SNS
 
