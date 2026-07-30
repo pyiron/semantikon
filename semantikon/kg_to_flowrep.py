@@ -14,7 +14,7 @@ from rdflib.query import ResultRow
 from rdflib.term import IdentifiedNode, Node
 
 from semantikon.flowrep_dict import _flowrep_recipe_from_callable
-from semantikon.ontology import SNS
+from semantikon.ontology import SNS, _literal_to_constant
 
 
 def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
@@ -213,6 +213,8 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
     def _process_node(node_name: str) -> fr.schemas.RecipeDiscrimination:
         node_data = G.nodes[node_name]
         node_type = node_data.get("type", "atomic")
+        if node_type == "constant":
+            return fr.schemas.ConstantRecipe(constant=node_data["constant_value"])
         if "function" not in node_data:
             raise ValueError(f"Node {node_name!r} is missing function metadata.")
         func_obj = _get_function_from_dict(node_data["function"])
@@ -398,6 +400,27 @@ def _node_functions(graph: Graph) -> dict[URIRef, URIRef]:
     return dict(graph.query(query))
 
 
+def _node_constants(graph: Graph) -> dict[URIRef, Any]:
+    """
+    Map each constant workflow node onto the value it emits.
+
+    Constant nodes have no function to concretize; their value is instead
+    attached to the node class itself by ``_wf_node_to_graph``.
+    """
+    query = f"""SELECT ?node ?value WHERE {{
+        ?node <{RDFS.subClassOf}> <{SNS.workflow_node}> .
+        ?node <{RDFS.subClassOf}> ?bnode .
+        ?bnode a <{OWL.Restriction}> .
+        ?bnode <{OWL.hasValue}> ?value .
+        ?bnode <{OWL.onProperty}> <{SNS.has_value}> .
+    }}"""
+    constants: dict[URIRef, Any] = {}
+    for row in graph.query(query):
+        node, value = cast(ResultRow, row)
+        constants[cast(URIRef, node)] = _literal_to_constant(cast(Literal, value))
+    return constants
+
+
 def _reorganize_output_edges(
     graph: nx.DiGraph, node: URIRef, position: dict[URIRef, int]
 ):
@@ -443,6 +466,7 @@ def _add_io_nodes(
     function_dict: dict[URIRef, dict[str, Any]],
     node_function_dict: dict[URIRef, URIRef],
     io_type: str,
+    node_constant_dict: dict[URIRef, Any] | None = None,
 ):
     if io_type == "input":
         io_query = graph.query(
@@ -460,6 +484,21 @@ def _add_io_nodes(
             workflow_graph.add_edge(io_node, node)
         else:
             workflow_graph.add_edge(node, io_node)
+
+        if node_constant_dict is not None and node in node_constant_dict:
+            workflow_graph.add_node(
+                node,
+                step="node",
+                type="constant",
+                constant_value=node_constant_dict[cast(URIRef, node)],
+            )
+            workflow_graph.add_node(
+                io_node,
+                step=f"{io_type}s",
+                arg=_identifier(graph, cast(URIRef, io_node)),
+                position=0,
+            )
+            continue
 
         func_node = node_function_dict.get(cast(URIRef, node))
         function_data = function_dict.get(func_node) if func_node is not None else None
@@ -487,14 +526,18 @@ def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
         f_node: _graph_to_function(graph, f_node) for f_node in function_nodes
     }
     node_function_dict = _node_functions(graph)
+    node_constant_dict = _node_constants(graph)
 
     workflow_graph = nx.DiGraph()
-    _add_io_nodes(
-        graph, workflow_graph, function_dict, node_function_dict, io_type="input"
-    )
-    _add_io_nodes(
-        graph, workflow_graph, function_dict, node_function_dict, io_type="output"
-    )
+    for io_type in ("input", "output"):
+        _add_io_nodes(
+            graph,
+            workflow_graph,
+            function_dict,
+            node_function_dict,
+            io_type=io_type,
+            node_constant_dict=node_constant_dict,
+        )
 
     for row in graph.query(
         _get_connection_query(
