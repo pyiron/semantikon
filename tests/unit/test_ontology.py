@@ -451,6 +451,23 @@ def workflow_with_constant(x):
     return doubled
 
 
+@fr.workflow
+def workflow_with_two_identical_constants(x):
+    doubled = fr.std.mul(2, x)
+    shifted = fr.std.add(2, doubled)
+    return shifted
+
+
+def tag(text: str, body: str) -> str:
+    return text + body
+
+
+@fr.workflow
+def workflow_with_markup_constant(body):
+    tagged = tag("<b> & </b>", body)
+    return tagged
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -765,11 +782,41 @@ class TestOntology(unittest.TestCase):
             dot.source,
             msg="The constant node itself should still be drawn",
         )
-        self.assertNotIn(
+        self.assertIn(
             "<U>2</U>",
             dot.source,
-            msg="The constant's value is a literal, not a class, so it should not "
-            "become a node of its own",
+            msg="The constant's value should be drawn in its own box, the way a "
+            "function node draws the function it concretizes",
+        )
+        self.assertIn(
+            "pmdco:has_value",
+            dot.source,
+            msg="The edge to the value box should be labelled like the other "
+            "renamed predicates, not by its bare PMD number",
+        )
+
+    def test_visualize_draws_one_value_box_per_constant_node(self):
+        g = onto.get_knowledge_graph(
+            workflow_with_two_identical_constants.flowrep_recipe
+        )
+        dot = visualize_recipe(g)
+
+        self.assertEqual(
+            dot.source.count("<U>2</U>"),
+            2,
+            msg="Two constant nodes that happen to hold the same value are one "
+            "RDF literal but two workflow nodes, so they need two boxes",
+        )
+
+    def test_visualize_escapes_constant_values(self):
+        g = onto.get_knowledge_graph(workflow_with_markup_constant.flowrep_recipe)
+        dot = visualize_recipe(g)
+
+        self.assertIn(
+            "&lt;b&gt; &amp; &lt;/b&gt;",
+            dot.source,
+            msg="Constant values are drawn inside an HTML-like label, so markup "
+            "in them must be escaped or the label is malformed",
         )
 
     def test_docstring(self):
