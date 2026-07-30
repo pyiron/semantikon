@@ -37,7 +37,7 @@ class TestConstants(unittest.TestCase):
             # We don't care about what order the two query results come, so use a sets
             ports_holding_constant = set()
             for query_result in abox_constants:
-                port, literal = query_result
+                port, _ = query_result
                 discovered_port = port.rsplit(f"{wf.__name__}-")[1]
                 ports_holding_constant.add(discovered_port)
 
