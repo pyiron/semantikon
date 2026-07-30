@@ -3,7 +3,7 @@ from typing import cast
 
 import networkx as nx
 from graphviz import Digraph
-from rdflib import OWL, RDF, RDFS, Graph, URIRef
+from rdflib import OWL, RDF, RDFS, Graph, Literal, URIRef
 from rdflib.query import ResultRow
 
 subclass_color_dict = {
@@ -31,6 +31,13 @@ def _get_triples(graph: Graph):
     for style, rest in rest_types.items():
         for row in graph.query(query.replace("R_TYPE", rest)):
             subj, pred, obj = cast(ResultRow, row)
+            if isinstance(obj, Literal):
+                # `owl:hasValue` may target an individual *or* a literal. This is
+                # a diagram of classes and individuals, and a literal is neither:
+                # it has no qname to draw and no identity to draw it at (two
+                # constants of `2` are the same literal but different nodes).
+                # Constant nodes still appear via their other restrictions.
+                continue
             yield subj, pred, obj, style
 
 
