@@ -1,3 +1,4 @@
+import json
 import unittest
 from dataclasses import dataclass, field
 from typing import Annotated
@@ -51,6 +52,12 @@ def my_kinetic_energy_workflow(
 @fr.workflow
 def passthrough_input_workflow(x):
     return x
+
+
+@fr.workflow
+def workflow_with_constant(x):
+    doubled = fr.std.mul(2, x)
+    return doubled
 
 
 @fr.workflow
@@ -151,6 +158,50 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         self.assertNotEqual(
             ftn._get_graph_hash(G_run, with_global_inputs=False),
             ftn._get_graph_hash(G_run, with_global_inputs=True),
+        )
+
+    def test_constant_node_carries_its_value(self):
+        G = ftn.serialize_and_convert_to_networkx(
+            workflow_with_constant.flowrep_recipe,
+            hash_data=False,
+        )
+        constants = [
+            node
+            for node, data in G.nodes.data()
+            if data.get("step") == "node" and data.get("type") == "constant"
+        ]
+        self.assertEqual(
+            constants,
+            ["workflow_with_constant-constant_0"],
+            msg="The literal 2 should show up as exactly one constant node",
+        )
+        constant = constants[0]
+
+        self.assertEqual(
+            G.nodes[constant]["constant_value"],
+            2,
+            msg="The node metadata should hold the constant itself, not a port, "
+            "annotation, or other proxy for it",
+        )
+        self.assertEqual(
+            json.loads(json.dumps(G.nodes[constant]["constant_value"])),
+            2,
+            msg="flowrep guarantees constants are JSONable, so the metadata must "
+            "survive a serialization round trip",
+        )
+
+        (output_port,) = G.successors(constant)
+        self.assertEqual(
+            G.nodes[output_port]["value"],
+            G.nodes[constant]["constant_value"],
+            msg="The node metadata should agree with the value on the constant's "
+            "output port",
+        )
+        (consumer,) = G.successors(output_port)
+        self.assertEqual(
+            consumer,
+            "workflow_with_constant-mul_0-inputs-a",
+            msg="The constant should feed the argument it was written for",
         )
 
     def test_infer_workflow_label_without_reference(self):
