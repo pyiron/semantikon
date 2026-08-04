@@ -60,6 +60,12 @@ def workflow_with_default_values(distance=2, time=1, mass=4):
     return kinetic_energy
 
 
+@fr.workflow
+def double_via_constant(x):
+    doubled = fr.std.mul(2, x)
+    return doubled
+
+
 class TestFlowrepToNetworkx(unittest.TestCase):
     def test_namespace_fragments_are_base_agnostic(self):
         wf_dict = my_kinetic_energy_workflow.flowrep_recipe
@@ -292,6 +298,14 @@ class TestFlowrepToNetworkx(unittest.TestCase):
             G.add_nodes_from([("n", {"step": "node", "type": "invalid"})])
         with self.assertRaises(ValueError):
             G.add_nodes_from([("n", {"step": "banana"})])
+
+    def test_constant(self):
+        G = ftn.serialize_and_convert_to_networkx(double_via_constant.flowrep_recipe)
+        self.assertIn("double_via_constant-constant_0", G.nodes)
+        self.assertEqual(G.nodes["double_via_constant-constant_0"]["type"], "constant")
+        self.assertEqual(
+            G.nodes["double_via_constant-constant_0-outputs-constant"]["value"], 2
+        )
 
 
 if __name__ == "__main__":
