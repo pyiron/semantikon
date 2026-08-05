@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import itertools
+import re
 from collections.abc import Iterable
 from typing import Any, cast
 
@@ -566,6 +567,165 @@ def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
     return workflow_graph
 
 
+def _extract_constant_values_from_kg(
+    rdf_graph: Graph, workflow_graph: nx.DiGraph
+) -> None:
+    """
+    Extract constant values from the RDF knowledge graph and add them to
+    input nodes in the workflow graph.
+
+    This extracts constant values that are stored as OWL.hasValue restrictions
+    on SNS.has_value in the data nodes.
+
+    Args:
+        rdf_graph (Graph): The RDF knowledge graph.
+        workflow_graph (nx.DiGraph): The workflow graph to modify in-place.
+    """
+    from semantikon.ontology import _literal_to_constant
+
+    # Query for all data nodes with hasValue restrictions on SNS.has_value
+    query = f"""\
+    PREFIX owl: <{OWL}>
+    PREFIX rdfs: <{RDFS}>
+    PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
+
+    SELECT ?subject ?value
+    WHERE {{
+        ?subject a ?class .
+        ?class rdfs:subClassOf ?restriction .
+        ?restriction a owl:Restriction .
+        ?restriction owl:onProperty pmdco:0000006 .
+        ?restriction owl:hasValue ?value .
+    }}
+    """
+
+    results = list(rdf_graph.query(query))
+    for data_node, value_literal in results:
+        # Extract constant value
+        if isinstance(value_literal, Literal):
+            const_value = _literal_to_constant(value_literal)
+        else:
+            const_value = value_literal
+
+        # Extract the node name from the data node URI
+        # Format: {namespace}{hash}_{node_name}_data
+        data_node_str = str(data_node)
+
+        # Remove namespace and hash prefix
+        match = re.search(r"^[^_]*_(.+)_data$", data_node_str)
+        if not match:
+            continue
+
+        node_name_part = match.group(1)
+
+        # Find matching input node in the workflow_graph
+        for input_node in workflow_graph.nodes():
+            input_data = workflow_graph.nodes[input_node]
+            if input_data.get("step") != "inputs":
+                continue
+
+            input_node_str = str(input_node)
+            # Check if the node name part matches the end of the input node
+            if input_node_str.endswith(node_name_part):
+                input_data["constant_value"] = const_value
+                break
+
+
+def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
+    """
+    Reconstruct constant nodes in a workflow graph by finding input nodes with
+    constant_value attributes and creating the appropriate constant node structure.
+
+    This reverses the _remove_constant operation from flowrep_to_networkx.
+
+    Args:
+        G (nx.DiGraph): Workflow graph to modify in-place.
+    """
+    constant_nodes_to_add = []
+    edges_to_add = []
+    used_indices: dict[str, int] = {}  # Track indices per parent_prefix
+
+    for node, data in tuple(G.nodes.data()):
+        if data.get("step") != "inputs" or "constant_value" not in data:
+            continue
+
+        constant_value = data["constant_value"]
+
+        # Extract the parent node and argument name
+        # Node format: parent-inputs-arg
+        parts = node.rsplit("-", 2)
+        if len(parts) != 3 or parts[1] != "inputs":
+            continue
+
+        parent_node = parts[0]
+        parts[2]
+        parent_data = G.nodes.get(parent_node)
+        if parent_data is None or parent_data.get("step") != "node":
+            continue
+
+        # Create constant node name using a unique counter
+        parent_data.get("label", parent_data.get("parent", parent_node))
+        if parent_data.get("parent"):
+            parent_prefix = parent_data["parent"] + "-"
+        else:
+            parent_prefix = parent_node + "-"
+
+        # Find the highest constant index for this parent
+        if parent_prefix not in used_indices:
+            # First time seeing this parent, find existing constant nodes
+            constant_index = 0
+            for existing_node in G.nodes():
+                if (
+                    existing_node.startswith(parent_prefix)
+                    and "constant_" in existing_node
+                ):
+                    try:
+                        idx = int(existing_node.split("constant_")[1].split("-")[0])
+                        constant_index = max(constant_index, idx + 1)
+                    except (ValueError, IndexError):
+                        pass
+            used_indices[parent_prefix] = constant_index
+        else:
+            constant_index = used_indices[parent_prefix]
+
+        const_node_name = f"{parent_prefix}constant_{constant_index}"
+        const_output_name = f"{const_node_name}-outputs-constant"
+
+        # Increment the index for the next constant with this parent
+        used_indices[parent_prefix] += 1
+
+        # Create the constant node
+        const_node_attrs = {
+            "type": "constant",
+            "step": "node",
+            "parent": parent_data.get("parent"),
+            "constant_value": constant_value,
+        }
+        constant_nodes_to_add.append((const_node_name, const_node_attrs))
+
+        # Create the constant output node
+        const_output_attrs = {
+            "step": "outputs",
+            "arg": "constant",
+            "position": 0,
+            "value": constant_value,
+        }
+        if "dtype" in data:
+            const_output_attrs["dtype"] = data["dtype"]
+        constant_nodes_to_add.append((const_output_name, const_output_attrs))
+
+        # Record edges to add
+        edges_to_add.append((const_node_name, const_output_name))
+        edges_to_add.append((const_output_name, node))
+
+    # Add all constant nodes and edges
+    for node_name, attrs in constant_nodes_to_add:
+        G.add_node(node_name, **attrs)
+
+    for u, v in edges_to_add:
+        G.add_edge(u, v)
+
+
 def _workflow_roots(graph: Graph) -> dict[URIRef, str]:
     node_graph = nx.DiGraph()
     workflow_nodes = list(graph.subjects(RDFS.subClassOf, SNS.workflow_node))
@@ -676,8 +836,11 @@ def kg2recipe(
             f"Available workflows: {wfs}"
         )
     workflow_graph = _build_workflow_graph(graph)
+    _extract_constant_values_from_kg(graph, workflow_graph)
     workflows = _split_by_roots(graph, workflow_graph, roots)
     selected_name = _select_workflow(
         graph, roots, workflows.keys(), workflow_name=workflow_name
     )
-    return _networkx_to_dict(workflows[selected_name])
+    selected_workflow = workflows[selected_name]
+    _reconstruct_constant_nodes(selected_workflow)
+    return _networkx_to_dict(selected_workflow)
