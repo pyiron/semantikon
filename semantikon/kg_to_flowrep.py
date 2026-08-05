@@ -599,8 +599,7 @@ def _extract_constant_values_from_kg(
     }}
     """
 
-    results = list(rdf_graph.query(query))
-    for data_node, value_literal in results:
+    for data_node, value_literal in rdf_graph.query(query):
         # Extract constant value
         if isinstance(value_literal, Literal):
             const_value = _literal_to_constant(value_literal)
