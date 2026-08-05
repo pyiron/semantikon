@@ -657,13 +657,11 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
             continue
 
         parent_node = parts[0]
-        parts[2]
         parent_data = G.nodes.get(parent_node)
         if parent_data is None or parent_data.get("step") != "node":
             continue
 
         # Create constant node name using a unique counter
-        parent_data.get("label", parent_data.get("parent", parent_node))
         if parent_data.get("parent"):
             parent_prefix = parent_data["parent"] + "-"
         else:
