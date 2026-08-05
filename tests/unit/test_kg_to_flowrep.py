@@ -7,6 +7,7 @@ from rdflib import RDFS, Graph, Literal, URIRef
 
 from semantikon import get_knowledge_graph, kg2recipe
 from semantikon import kg_to_flowrep as kgf
+from semantikon.flowrep_to_networkx import serialize_and_convert_to_networkx
 from semantikon.workflow import workflow
 
 
@@ -41,6 +42,12 @@ def times_two(x):
 def multiply_by_two(x=2):
     result = times_two(x)
     return result
+
+
+@fr.workflow
+def double_via_constant(x):
+    doubled = fr.std.mul(2, x)
+    return doubled
 
 
 class TestKgToFlowrep(unittest.TestCase):
@@ -273,6 +280,13 @@ class TestKgToFlowrep(unittest.TestCase):
         )
 
         self.assertEqual(result_from_string, result_from_uriref)
+
+    def test_round_trip_with_const(self):
+        G = serialize_and_convert_to_networkx(
+            double_via_constant.flowrep_recipe, remove_constant_nodes=False
+        )
+        wf = kgf._networkx_to_dict(G)
+        self.assertIn("constant_0", wf.nodes)
 
 
 if __name__ == "__main__":

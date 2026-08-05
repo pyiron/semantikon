@@ -476,7 +476,7 @@ def _remove_constant(G: SemantikonDiGraph) -> None:
     to_delete = []
     for node, data in G.nodes.data():
         if data["step"] == "node" and data["type"] == "constant":
-            output_node = list(G.successors(node))[0]
+            output_node = next(iter(G.successors(node)))
             to_delete.extend([node, output_node])
             for inp in G.successors(output_node):
                 G.nodes[inp]["constant_value"] = G.nodes[inp]["value"]

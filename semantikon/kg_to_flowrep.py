@@ -213,6 +213,8 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
     def _process_node(node_name: str) -> fr.schemas.RecipeDiscrimination:
         node_data = G.nodes[node_name]
         node_type = node_data.get("type", "atomic")
+        if node_type == "constant":
+            return fr.schemas.ConstantRecipe(constant=node_data["constant_value"])
         if "function" not in node_data:
             raise ValueError(f"Node {node_name!r} is missing function metadata.")
         func_obj = _get_function_from_dict(node_data["function"])

@@ -312,7 +312,9 @@ class TestFlowrepToNetworkx(unittest.TestCase):
             double_via_constant.flowrep_recipe, remove_constant_nodes=True
         )
         self.assertNotIn("double_via_constant-constant_0", G.nodes)
-        self.assertEqual(G.nodes["double_via_constant-mul_0-inputs-a"]["constant_value"], 2)
+        self.assertEqual(
+            G.nodes["double_via_constant-mul_0-inputs-a"]["constant_value"], 2
+        )
 
 
 if __name__ == "__main__":
