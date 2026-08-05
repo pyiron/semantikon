@@ -777,10 +777,10 @@ class TestOntology(unittest.TestCase):
         g = onto.get_knowledge_graph(workflow_with_constant.flowrep_recipe)
         dot = visualize_recipe(g)
 
-        self.assertIn(
+        self.assertNotIn(
             "workflow_with_constant-constant_0",
             dot.source,
-            msg="The constant node itself should still be drawn",
+            msg="The constant node itself should not be drawn",
         )
         self.assertIn(
             "<U>2</U>",

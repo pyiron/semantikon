@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass, fields, is_dataclass
@@ -86,6 +87,21 @@ TripleList: TypeAlias = list[
 
 
 RestrictionTuple: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
+
+
+def _constant_to_literal(value: fr.schemas.JSONABLE) -> Literal:
+    """
+    Represent a flowrep constant as an RDF literal.
+
+    Scalars become typed literals, so they stay queryable as numbers, booleans
+    and strings. ``None`` and containers have no XSD counterpart -- and rdflib
+    silently degrades them to their ``repr`` on serialization -- so they are
+    written as ``rdf:JSON``. flowrep guarantees constants are JSONable, so this
+    covers every legal value.
+    """
+    if value is None or isinstance(value, (list, dict)):
+        return Literal(json.dumps(value), datatype=RDF.JSON)
+    return Literal(value)
 
 
 def _literal_to_constant(literal: Literal) -> Any:
