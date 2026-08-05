@@ -88,6 +88,13 @@ TripleList: TypeAlias = list[
 RestrictionTuple: TypeAlias = tuple[tuple[URIRef, URIRef], ...]
 
 
+def _literal_to_constant(literal: Literal) -> Any:
+    """Invert :func:`_constant_to_literal`."""
+    if literal.datatype == RDF.JSON:
+        return json.loads(str(literal))
+    return literal.toPython()
+
+
 def _units_to_uri(units: str | URIRef) -> URIRef:
     if isinstance(units, URIRef):
         return units
@@ -771,6 +778,13 @@ def _wf_input_to_graph(
             )
         if "restrictions" in data:
             g += _restrictions_to_triples(data["restrictions"], data_node=data_node)
+        if "constant_value" in data:
+            g += _to_owl_restriction(
+                base_node=data_node,
+                on_property=SNS.has_value,
+                target_class=Literal(data["constant_value"]),
+                restriction_type=OWL.hasValue,
+            )
     else:
         data_node = BASE[G.a_ns + G._get_data_node(io=node_name)]
         if not _input_is_connected(node_name, G):
@@ -1255,7 +1269,7 @@ def _get_successor_nodes(G, node_name):
 def _to_owl_restriction(
     base_node: URIRef | None,
     on_property: URIRef,
-    target_class: URIRef,
+    target_class: URIRef | Literal,
     restriction_type: URIRef = OWL.someValuesFrom,
 ) -> Graph:
     g = _get_bound_graph()

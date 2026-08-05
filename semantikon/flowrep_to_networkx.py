@@ -472,10 +472,22 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
     return hash_dict
 
 
+def _remove_constant(G: SemantikonDiGraph) -> None:
+    to_delete = []
+    for node, data in G.nodes.data():
+        if data["step"] == "node" and data["type"] == "constant":
+            output_node = list(G.successors(node))[0]
+            to_delete.extend([node, output_node])
+            for inp in G.successors(output_node):
+                G.nodes[inp]["constant_value"] = G.nodes[inp]["value"]
+    G.remove_nodes_from(to_delete)
+
+
 def serialize_and_convert_to_networkx(
     workflow: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
     hash_data: bool = True,
     prefix: str | None = None,
+    remove_constant_nodes: bool = True,
 ) -> SemantikonDiGraph:
     """
     Serialize a flowrep workflow into a SemantikonDiGraph, optionally
@@ -486,6 +498,8 @@ def serialize_and_convert_to_networkx(
         hash_data (bool): Whether to hash node data.
         prefix (str | None): Optional fixed prefix for type-level namespace
             fragments.
+        remove_constant_nodes (bool): Whether to remove constant nodes from
+            the graph.
 
     Returns:
         SemantikonDiGraph: The serialized workflow graph.
@@ -519,6 +533,8 @@ def serialize_and_convert_to_networkx(
             ) from e
         for node, data in hashed_dict.items():
             G.append_hash(node, data["hash"])
+    if remove_constant_nodes:
+        _remove_constant(G)
     return G
 
 
