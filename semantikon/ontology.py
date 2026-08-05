@@ -798,7 +798,7 @@ def _wf_input_to_graph(
             g += _to_owl_restriction(
                 base_node=data_node,
                 on_property=SNS.has_value,
-                target_class=Literal(data["constant_value"]),
+                target_class=_constant_to_literal(data["constant_value"]),
                 restriction_type=OWL.hasValue,
             )
     else:
