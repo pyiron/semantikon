@@ -587,47 +587,27 @@ def _extract_constant_values_from_kg(
     query = f"""\
     PREFIX owl: <{OWL}>
     PREFIX rdfs: <{RDFS}>
-    PREFIX pmdco: <https://w3id.org/pmd/co/PMD_>
 
-    SELECT ?subject ?value
+    SELECT ?input_node ?value
     WHERE {{
-        ?subject a ?class .
-        ?class rdfs:subClassOf ?restriction .
-        ?restriction a owl:Restriction .
-        ?restriction owl:onProperty pmdco:0000006 .
-        ?restriction owl:hasValue ?value .
-    }}
-    """
+        ?input_node rdfs:subClassOf <{SNS.input_assignment}> .
+        ?i_rest a owl:Restriction .
+        ?i_rest owl:onProperty <{SNS.has_participant}> .
+        ?i_rest owl:someValuesFrom ?value_node .
+        ?input_node rdfs:subClassOf ?i_rest .
+        ?value_node rdfs:subClassOf <{SNS.value_specification}> .
+        ?value_node rdfs:subClassOf ?v_rest .
+        ?v_rest a owl:Restriction .
+        ?v_rest owl:onProperty <{SNS.has_value}> .
+        ?v_rest owl:hasValue ?value .
+    }}"""
 
-    for data_node, value_literal in rdf_graph.query(query):
-        # Extract constant value
-        if isinstance(value_literal, Literal):
-            const_value = _literal_to_constant(value_literal)
-        else:
-            const_value = value_literal
-
-        # Extract the node name from the data node URI
-        # Format: {namespace}{hash}_{node_name}_data
-        data_node_str = str(data_node)
-
-        # Remove namespace and hash prefix
-        match = re.search(r"^[^_]*_(.+)_data$", data_node_str)
-        if not match:
-            continue
-
-        node_name_part = match.group(1)
-
-        # Find matching input node in the workflow_graph
-        for input_node in workflow_graph.nodes():
-            input_data = workflow_graph.nodes[input_node]
-            if input_data.get("step") != "inputs":
-                continue
-
-            input_node_str = str(input_node)
-            # Check if the node name part matches the end of the input node
-            if input_node_str.endswith(node_name_part):
-                input_data["constant_value"] = const_value
-                break
+    for input_node, value_literal in rdf_graph.query(query):
+        workflow_graph.nodes[input_node]["constant_value"] = (
+            _literal_to_constant(value_literal)
+            if isinstance(value_literal, Literal)
+            else value_literal
+        )
 
 
 def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
