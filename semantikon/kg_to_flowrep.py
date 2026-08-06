@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import itertools
-import re
 from collections.abc import Iterable
 from typing import Any, cast
 
