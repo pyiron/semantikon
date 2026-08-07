@@ -619,9 +619,6 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
     Args:
         G (nx.DiGraph): Workflow graph to modify in-place.
     """
-    constant_nodes_to_add = []
-    edges_to_add = []
-    used_indices: dict[str, int] = {}  # Track indices per parent_prefix
 
     for node, data in tuple(G.nodes.data()):
         if data.get("step") != "inputs" or "constant_value" not in data:
@@ -650,29 +647,12 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
         ), f"Parent node {parent_node} is missing 'parent' attribute for {node}"
         parent_prefix = parent_data["parent"] + "-"
 
-        # Find the highest constant index for this parent
-        if parent_prefix not in used_indices:
-            # First time seeing this parent, find existing constant nodes
-            constant_index = 0
-            for existing_node in G.nodes():
-                if (
-                    existing_node.startswith(parent_prefix)
-                    and "constant_" in existing_node
-                ):
-                    try:
-                        idx = int(existing_node.split("constant_")[1].split("-")[0])
-                        constant_index = max(constant_index, idx + 1)
-                    except (ValueError, IndexError):
-                        pass
-            used_indices[parent_prefix] = constant_index
-        else:
-            constant_index = used_indices[parent_prefix]
+        for constant_index in range(1000):
+            const_node_name = f"{parent_prefix}constant_{constant_index}"
+            if const_node_name not in G:
+                break
 
-        const_node_name = f"{parent_prefix}constant_{constant_index}"
         const_output_name = f"{const_node_name}-outputs-constant"
-
-        # Increment the index for the next constant with this parent
-        used_indices[parent_prefix] += 1
 
         # Create the constant node
         const_node_attrs = {
@@ -681,7 +661,7 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
             "parent": parent_data.get("parent"),
             "constant_value": constant_value,
         }
-        constant_nodes_to_add.append((const_node_name, const_node_attrs))
+        G.add_node(const_node_name, **const_node_attrs)
 
         # Create the constant output node
         const_output_attrs = {
@@ -692,18 +672,11 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
         }
         if "dtype" in data:
             const_output_attrs["dtype"] = data["dtype"]
-        constant_nodes_to_add.append((const_output_name, const_output_attrs))
+        G.add_node(const_output_name, **const_output_attrs)
 
         # Record edges to add
-        edges_to_add.append((const_node_name, const_output_name))
-        edges_to_add.append((const_output_name, node))
-
-    # Add all constant nodes and edges
-    for node_name, attrs in constant_nodes_to_add:
-        G.add_node(node_name, **attrs)
-
-    for u, v in edges_to_add:
-        G.add_edge(u, v)
+        G.add_edge(const_node_name, const_output_name)
+        G.add_edge(const_output_name, node)
 
 
 def _workflow_roots(graph: Graph) -> dict[URIRef, str]:
