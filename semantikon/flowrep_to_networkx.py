@@ -303,9 +303,6 @@ def _workflow_to_networkx(
             function = node_data.function
         elif isinstance(node_data, fr.schemas.ConstantData):
             metadata["type"] = "constant"
-            metadata["constant_value"] = node_data.output_ports[
-                fr.schemas.ConstantRecipe.std_label
-            ].value
         else:
             metadata["type"] = "workflow"
             if workflow_label is not None:
