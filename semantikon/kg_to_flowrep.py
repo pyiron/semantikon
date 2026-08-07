@@ -14,6 +14,7 @@ from rdflib.query import ResultRow
 from rdflib.term import IdentifiedNode, Node
 
 from semantikon.flowrep_dict import _flowrep_recipe_from_callable
+from semantikon.flowrep_to_networkx import TNode, TOutput
 from semantikon.ontology import SNS
 
 
@@ -213,6 +214,12 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
     def _process_node(node_name: str) -> fr.schemas.RecipeDiscrimination:
         node_data = G.nodes[node_name]
         node_type = node_data.get("type", "atomic")
+        if node_type == "constant":
+            output_node = list(G.successors(node_name))
+            assert (
+                len(output_node) == 1
+            ), f"Constant node {node_name} should have one output."
+            return fr.schemas.ConstantRecipe(constant=G.nodes[output_node[0]]["value"])
         if "function" not in node_data:
             raise ValueError(f"Node {node_name!r} is missing function metadata.")
         func_obj = _get_function_from_dict(node_data["function"])
@@ -564,6 +571,114 @@ def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
     return workflow_graph
 
 
+def _extract_constant_values_from_kg(
+    rdf_graph: Graph, workflow_graph: nx.DiGraph
+) -> None:
+    """
+    Extract constant values from the RDF knowledge graph and add them to
+    input nodes in the workflow graph.
+
+    This extracts constant values that are stored as OWL.hasValue restrictions
+    on SNS.has_value in the data nodes.
+
+    Args:
+        rdf_graph (Graph): The RDF knowledge graph.
+        workflow_graph (nx.DiGraph): The workflow graph to modify in-place.
+    """
+    from semantikon.ontology import _literal_to_constant
+
+    # Query for all data nodes with hasValue restrictions on SNS.has_value
+    query = f"""\
+    PREFIX owl: <{OWL}>
+    PREFIX rdfs: <{RDFS}>
+
+    SELECT ?input_node ?value
+    WHERE {{
+        ?input_node rdfs:subClassOf <{SNS.input_assignment}> .
+        ?i_rest a owl:Restriction .
+        ?i_rest owl:onProperty <{SNS.has_participant}> .
+        ?i_rest owl:someValuesFrom ?value_node .
+        ?input_node rdfs:subClassOf ?i_rest .
+        ?value_node rdfs:subClassOf <{SNS.value_specification}> .
+        ?value_node rdfs:subClassOf ?v_rest .
+        ?v_rest a owl:Restriction .
+        ?v_rest owl:onProperty <{SNS.has_value}> .
+        ?v_rest owl:hasValue ?value .
+    }}"""
+
+    for input_node, value_literal in rdf_graph.query(query):  # type: ignore[misc]
+        workflow_graph.nodes[input_node]["constant_value"] = (
+            _literal_to_constant(value_literal)
+            if isinstance(value_literal, Literal)
+            else value_literal
+        )
+
+
+def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
+    """
+    Reconstruct constant nodes in a workflow graph by finding input nodes with
+    constant_value attributes and creating the appropriate constant node structure.
+
+    This reverses the _remove_constant operation from flowrep_to_networkx.
+
+    Args:
+        G (nx.DiGraph): Workflow graph to modify in-place.
+    """
+
+    for node, data in tuple(G.nodes.data()):
+        if data.get("step") != "inputs" or "constant_value" not in data:
+            continue
+
+        # Extract the parent node and argument name
+        # Node format: parent-inputs-arg
+        parts = node.rsplit("-", 2)
+        assert len(parts) == 3, f"Unexpected input node format: {node}"
+        assert parts[1] == "inputs", f"Expected 'inputs' in node name: {node}"
+
+        parent_node = parts[0]
+        parent_data = G.nodes.get(parent_node)
+        assert (
+            parent_data is not None
+        ), f"Parent node {parent_node} not found for {node}"
+        assert (
+            parent_data.get("step") == "node"
+        ), f"Parent node {parent_node} is not a workflow node for {node}"
+
+        # Create constant node name using a unique counter
+        assert (
+            "parent" in parent_data
+        ), f"Parent node {parent_node} is missing 'parent' attribute for {node}"
+        parent_prefix = parent_data["parent"] + "-"
+
+        for constant_index in range(1000):
+            const_node_name = f"{parent_prefix}constant_{constant_index}"
+            if const_node_name not in G:
+                break
+
+        const_output_name = f"{const_node_name}-outputs-constant"
+
+        # Create the constant node
+        const_node_attrs = TNode(
+            type="constant",
+            parent=parent_data.get("parent"),
+        )
+        G.add_node(const_node_name, **const_node_attrs.to_attrs())
+
+        # Create the constant output node
+        const_output_attrs = TOutput(
+            arg="constant",
+            position=0,
+            value=data["constant_value"],
+            has_value=True,
+            dtype=data.get("dtype", None),
+        )
+        G.add_node(const_output_name, **const_output_attrs.to_attrs())
+
+        # Record edges to add
+        G.add_edge(const_node_name, const_output_name)
+        G.add_edge(const_output_name, node)
+
+
 def _workflow_roots(graph: Graph) -> dict[URIRef, str]:
     node_graph = nx.DiGraph()
     workflow_nodes = list(graph.subjects(RDFS.subClassOf, SNS.workflow_node))
@@ -640,22 +755,7 @@ def _select_workflow(
     return names[0]
 
 
-def kg2recipe(
-    graph: Graph, workflow_name: str | URIRef | None = None
-) -> fr.schemas.WorkflowRecipe:
-    """
-    Translate a Semantikon knowledge graph workflow back to flowrep ``WorkflowRecipe``.
-
-    Args:
-        graph (Graph): RDF graph generated by ``semantikon.get_knowledge_graph``.
-        workflow_name (str | URIRef | None): Optional root workflow identifier. Can be:
-            - String: Local identifier label of the workflow
-            - URIRef: Direct URIRef to the workflow
-            - None: Required only when the graph contains a single root workflow.
-
-    Returns:
-        fr.schemas.WorkflowRecipe: Flowrep workflow recipe.
-    """
+def _kg2digraph(graph: Graph, workflow_name: str | URIRef | None = None) -> nx.DiGraph:
     roots = _workflow_roots(graph)
     if len(roots) == 0:
         raise ValueError(
@@ -674,8 +774,31 @@ def kg2recipe(
             f"Available workflows: {wfs}"
         )
     workflow_graph = _build_workflow_graph(graph)
+    _extract_constant_values_from_kg(graph, workflow_graph)
     workflows = _split_by_roots(graph, workflow_graph, roots)
     selected_name = _select_workflow(
         graph, roots, workflows.keys(), workflow_name=workflow_name
     )
-    return _networkx_to_dict(workflows[selected_name])
+    selected_workflow = workflows[selected_name]
+    _reconstruct_constant_nodes(selected_workflow)
+    return selected_workflow
+
+
+def kg2recipe(
+    graph: Graph, workflow_name: str | URIRef | None = None
+) -> fr.schemas.WorkflowRecipe:
+    """
+    Translate a Semantikon knowledge graph workflow back to flowrep ``WorkflowRecipe``.
+
+    Args:
+        graph (Graph): RDF graph generated by ``semantikon.get_knowledge_graph``.
+        workflow_name (str | URIRef | None): Optional root workflow identifier. Can be:
+            - String: Local identifier label of the workflow
+            - URIRef: Direct URIRef to the workflow
+            - None: Required only when the graph contains a single root workflow.
+
+    Returns:
+        fr.schemas.WorkflowRecipe: Flowrep workflow recipe.
+    """
+    selected_workflow = _kg2digraph(graph, workflow_name=workflow_name)
+    return _networkx_to_dict(selected_workflow)

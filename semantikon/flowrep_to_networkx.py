@@ -34,8 +34,8 @@ class TNode:
     extras: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
-        if self.type not in {"atomic", "workflow"}:
-            raise ValueError("type must be either 'atomic' or 'workflow'")
+        if self.type not in {"atomic", "constant", "workflow"}:
+            raise ValueError("type must be either 'atomic', 'constant', or 'workflow'")
 
     def to_attrs(self) -> dict[str, Any]:
         attrs: dict[str, Any] = {
@@ -301,6 +301,8 @@ def _workflow_to_networkx(
         if isinstance(node_data, fr.schemas.AtomicData):
             metadata["type"] = "atomic"
             function = node_data.function
+        elif isinstance(node_data, fr.schemas.ConstantData):
+            metadata["type"] = "constant"
         else:
             metadata["type"] = "workflow"
             if workflow_label is not None:
@@ -467,10 +469,23 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
     return hash_dict
 
 
+def _remove_constant(G: SemantikonDiGraph) -> None:
+    to_delete = []
+    for node, data in G.nodes.data():
+        if data["step"] == "node" and data["type"] == "constant":
+            output_node = next(iter(G.successors(node)))
+            const_value = G.nodes[output_node]["value"]
+            to_delete.extend([node, output_node])
+            for inp in G.successors(output_node):
+                G.nodes[inp]["constant_value"] = const_value
+    G.remove_nodes_from(to_delete)
+
+
 def serialize_and_convert_to_networkx(
     workflow: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
     hash_data: bool = True,
     prefix: str | None = None,
+    remove_constant_nodes: bool = True,
 ) -> SemantikonDiGraph:
     """
     Serialize a flowrep workflow into a SemantikonDiGraph, optionally
@@ -481,6 +496,8 @@ def serialize_and_convert_to_networkx(
         hash_data (bool): Whether to hash node data.
         prefix (str | None): Optional fixed prefix for type-level namespace
             fragments.
+        remove_constant_nodes (bool): Whether to remove constant nodes from
+            the graph.
 
     Returns:
         SemantikonDiGraph: The serialized workflow graph.
@@ -514,6 +531,8 @@ def serialize_and_convert_to_networkx(
             ) from e
         for node, data in hashed_dict.items():
             G.append_hash(node, data["hash"])
+    if remove_constant_nodes:
+        _remove_constant(G)
     return G
 
 
