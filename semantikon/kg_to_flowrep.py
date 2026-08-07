@@ -606,7 +606,7 @@ def _extract_constant_values_from_kg(
         ?v_rest owl:hasValue ?value .
     }}"""
 
-    for input_node, value_literal in rdf_graph.query(query):
+    for input_node, value_literal in rdf_graph.query(query):  # type: ignore[misc]
         workflow_graph.nodes[input_node]["constant_value"] = (
             _literal_to_constant(value_literal)
             if isinstance(value_literal, Literal)
