@@ -219,9 +219,7 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
             assert (
                 len(output_node) == 1
             ), f"Constant node {node_name} should have one output."
-            return fr.schemas.ConstantRecipe(
-                constant=G.nodes[output_node[0]]["value"]
-            )
+            return fr.schemas.ConstantRecipe(constant=G.nodes[output_node[0]]["value"])
         if "function" not in node_data:
             raise ValueError(f"Node {node_name!r} is missing function metadata.")
         func_obj = _get_function_from_dict(node_data["function"])
