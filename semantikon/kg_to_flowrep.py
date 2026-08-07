@@ -632,19 +632,23 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
         # Extract the parent node and argument name
         # Node format: parent-inputs-arg
         parts = node.rsplit("-", 2)
-        if len(parts) != 3 or parts[1] != "inputs":
-            continue
+        assert len(parts) == 3, f"Unexpected input node format: {node}"
+        assert parts[1] == "inputs", f"Expected 'inputs' in node name: {node}"
 
         parent_node = parts[0]
         parent_data = G.nodes.get(parent_node)
-        if parent_data is None or parent_data.get("step") != "node":
-            continue
+        assert (
+            parent_data is not None
+        ), f"Parent node {parent_node} not found for {node}"
+        assert (
+            parent_data.get("step") == "node"
+        ), f"Parent node {parent_node} is not a workflow node for {node}"
 
         # Create constant node name using a unique counter
-        if parent_data.get("parent"):
-            parent_prefix = parent_data["parent"] + "-"
-        else:
-            parent_prefix = parent_node + "-"
+        assert (
+            "parent" in parent_data
+        ), f"Parent node {parent_node} is missing 'parent' attribute for {node}"
+        parent_prefix = parent_data["parent"] + "-"
 
         # Find the highest constant index for this parent
         if parent_prefix not in used_indices:
