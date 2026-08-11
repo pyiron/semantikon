@@ -227,7 +227,7 @@ class SemantikonDiGraph(nx.DiGraph):
         h = _get_graph_hash(self, with_global_inputs=True)
         return h + "_"
 
-    def _get_data_node(self, io: str) -> str:
+    def _get_data_node(self, io: IO) -> str:
         while True:
             candidate = [
                 c for c in self.predecessors(io) if self.nodes[c]["step"] != "node"
@@ -416,28 +416,28 @@ def _workflow_to_networkx(
         for target, source in recipe.input_edges.items():
             G.add_edge(
                 Input(node=str(node_name), arg=source.port),
-                Input(node=f"{node_name}-{target.node}", arg=target.port)
+                Input(node=f"{node_name}-{target.node}", arg=target.port),
             )
         for target, source in recipe.edges.items():
             child_outputs = list(child_recipes[source.node].outputs)
             src_port = _output_port_label(source.port, child_outputs)
             G.add_edge(
                 Output(node=f"{node_name}-{source.node}", arg=src_port),
-                Input(node=f"{node_name}-{target.node}", arg=target.port)
+                Input(node=f"{node_name}-{target.node}", arg=target.port),
             )
         for target, source in recipe.output_edges.items():
             target_port = _output_port_label(target.port, list(recipe.outputs))
             if isinstance(source, fr.schemas.InputSource):
                 G.add_edge(
                     Input(node=str(node_name), arg=source.port),
-                    Output(node=str(node_name), arg=target_port)
+                    Output(node=str(node_name), arg=target_port),
                 )
             else:
                 child_outputs = list(child_recipes[source.node].outputs)
                 src_port = _output_port_label(source.port, child_outputs)
                 G.add_edge(
                     Output(node=f"{node_name}-{source.node}", arg=src_port),
-                    Output(node=str(node_name), arg=target_port)
+                    Output(node=str(node_name), arg=target_port),
                 )
 
     _add_node(workflow, Node(root_label), workflow_label=root_label)
@@ -462,8 +462,7 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
         hash_dict_tmp: dict[str, Any] = {
             "inputs": {},
             "outputs": [
-                G.nodes[out].get("label", out.arg)
-                for out in G.successors(node)
+                G.nodes[out].get("label", out.arg) for out in G.successors(node)
             ],
             "node": copy.deepcopy(data.get("function")),
         }
@@ -491,9 +490,7 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
             json.dumps(hash_dict_tmp, sort_keys=True).encode("utf-8")
         ).hexdigest()
         for out in G.successors(node):
-            G.nodes[out]["hash"] = (
-                h + "@" + G.nodes[out].get("label", out.arg)
-            )
+            G.nodes[out]["hash"] = h + "@" + G.nodes[out].get("label", out.arg)
         hash_dict_tmp["hash"] = h
         hash_dict[node] = hash_dict_tmp
     return hash_dict

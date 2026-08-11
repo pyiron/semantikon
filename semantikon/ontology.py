@@ -975,7 +975,9 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
         if t_box:
             g.add((BASE[G.t_ns + str(node_name)], RDF.type, OWL.Class))
         else:
-            g.add((BASE[G.a_ns + str(node_name)], RDF.type, BASE[G.t_ns + str(node_name)]))
+            g.add(
+                (BASE[G.a_ns + str(node_name)], RDF.type, BASE[G.t_ns + str(node_name)])
+            )
         assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
         if step == "node":
             g += _wf_node_to_graph(
