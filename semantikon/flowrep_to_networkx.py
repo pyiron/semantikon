@@ -485,7 +485,6 @@ def serialize_and_convert_to_networkx(
     workflow: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
     hash_data: bool = True,
     prefix: str | None = None,
-    remove_constant_nodes: bool = True,
 ) -> SemantikonDiGraph:
     """
     Serialize a flowrep workflow into a SemantikonDiGraph, optionally
@@ -496,8 +495,6 @@ def serialize_and_convert_to_networkx(
         hash_data (bool): Whether to hash node data.
         prefix (str | None): Optional fixed prefix for type-level namespace
             fragments.
-        remove_constant_nodes (bool): Whether to remove constant nodes from
-            the graph.
 
     Returns:
         SemantikonDiGraph: The serialized workflow graph.
@@ -531,8 +528,7 @@ def serialize_and_convert_to_networkx(
             ) from e
         for node, data in hashed_dict.items():
             G.append_hash(node, data["hash"])
-    if remove_constant_nodes:
-        _remove_constant(G)
+    _remove_constant(G)
     return G
 
 
