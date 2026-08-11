@@ -14,7 +14,7 @@ from rdflib.query import ResultRow
 from rdflib.term import IdentifiedNode, Node
 
 from semantikon.flowrep_dict import _flowrep_recipe_from_callable
-from semantikon.flowrep_to_networkx import TNode, TOutput
+from semantikon.flowrep_to_networkx import TNodeData, TOutputData
 from semantikon.ontology import SNS
 
 
@@ -660,14 +660,14 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
         const_output_name = f"{const_node_name}-outputs-constant"
 
         # Create the constant node
-        const_node_attrs = TNode(
+        const_node_attrs = TNodeData(
             type="constant",
             parent=parent_data.get("parent"),
         )
         G.add_node(const_node_name, **const_node_attrs.to_attrs())
 
         # Create the constant output node
-        const_output_attrs = TOutput(
+        const_output_attrs = TOutputData(
             arg=fr.schemas.ConstantRecipe.std_label,
             position=0,
             value=data["constant_value"],
