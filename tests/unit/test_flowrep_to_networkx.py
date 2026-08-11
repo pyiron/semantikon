@@ -300,9 +300,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
             G.add_nodes_from([("n", {"step": "banana"})])
 
     def test_constant(self):
-        G = ftn.serialize_and_convert_to_networkx(
-            double_via_constant.flowrep_recipe, remove_constant_nodes=True
-        )
+        G = ftn.serialize_and_convert_to_networkx(double_via_constant.flowrep_recipe)
         self.assertNotIn("double_via_constant-constant_0", G.nodes)
         self.assertEqual(
             G.nodes["double_via_constant-mul_0-inputs-a"]["constant_value"], 2

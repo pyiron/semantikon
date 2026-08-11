@@ -299,13 +299,6 @@ class TestKgToFlowrep(unittest.TestCase):
 
         self.assertEqual(result_from_string, result_from_uriref)
 
-    def test_round_trip_with_const(self):
-        G = serialize_and_convert_to_networkx(
-            double_via_constant.flowrep_recipe, remove_constant_nodes=False
-        )
-        wf = kgf._networkx_to_dict(G)
-        self.assertIn("constant_0", wf.nodes)
-
     def test_kg_to_recipe_with_constants(self):
         """Test converting knowledge graph back to recipe with constants preserved."""
         graph = get_knowledge_graph(double_via_constant.flowrep_recipe)
