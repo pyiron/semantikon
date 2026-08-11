@@ -9,7 +9,7 @@ from typing import Annotated
 
 import flowrep as fr
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, SH, Graph, Literal, Namespace, compare
+from rdflib import OWL, RDF, RDFS, SH, XSD, Graph, Literal, Namespace, compare
 from rdflib.compare import graph_diff
 
 from semantikon import kg_to_flowrep as kgf
@@ -445,6 +445,29 @@ def passthrough_input_workflow(x):
     return x
 
 
+@fr.workflow
+def workflow_with_constant(x):
+    doubled = fr.std.mul(2, x)
+    return doubled
+
+
+@fr.workflow
+def workflow_with_two_identical_constants(x):
+    doubled = fr.std.mul(2, x)
+    shifted = fr.std.add(2, doubled)
+    return shifted
+
+
+def tag(text: str, body: str) -> str:
+    return text + body
+
+
+@fr.workflow
+def workflow_with_markup_constant(body):
+    tagged = tag("<b> & </b>", body)
+    return tagged
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -750,6 +773,52 @@ class TestOntology(unittest.TestCase):
 
         self.assertIsInstance(visualize_recipe(g), Digraph)
 
+    def test_visualize_with_constant(self):
+        g = onto.get_knowledge_graph(workflow_with_constant.flowrep_recipe)
+        dot = visualize_recipe(g)
+
+        self.assertNotIn(
+            "workflow_with_constant-constant_0",
+            dot.source,
+            msg="The constant node itself should not be drawn",
+        )
+        self.assertIn(
+            "<U>2</U>",
+            dot.source,
+            msg="The constant's value should be drawn in its own box, the way a "
+            "function node draws the function it concretizes",
+        )
+        self.assertIn(
+            "pmdco:has_value",
+            dot.source,
+            msg="The edge to the value box should be labelled like the other "
+            "renamed predicates, not by its bare PMD number",
+        )
+
+    def test_visualize_draws_one_value_box_per_constant_node(self):
+        g = onto.get_knowledge_graph(
+            workflow_with_two_identical_constants.flowrep_recipe
+        )
+        dot = visualize_recipe(g)
+
+        self.assertEqual(
+            dot.source.count("<U>2</U>"),
+            2,
+            msg="Two constant nodes that happen to hold the same value are one "
+            "RDF literal but two workflow nodes, so they need two boxes",
+        )
+
+    def test_visualize_escapes_constant_values(self):
+        g = onto.get_knowledge_graph(workflow_with_markup_constant.flowrep_recipe)
+        dot = visualize_recipe(g)
+
+        self.assertIn(
+            "&lt;b&gt; &amp; &lt;/b&gt;",
+            dot.source,
+            msg="Constant values are drawn inside an HTML-like label, so markup "
+            "in them must be escaped or the label is malformed",
+        )
+
     def test_docstring(self):
         g = onto.get_knowledge_graph(my_kinetic_energy_workflow.flowrep_recipe)
         bnode = list(g.subjects(RDF.type, onto.SNS.textual_entity))
@@ -995,6 +1064,36 @@ class TestOntology(unittest.TestCase):
         graph = onto.function_to_knowledge_graph(get_speed)
         with self.assertRaisesRegex(ValueError, "is not present in the graph"):
             _ = kgf._graph_to_function(graph, EX.missing_function)
+
+    def test_constant_literals_survive_serialization(self):
+        for value in (2, 1.5, "two", True, False, None, [10, 20, 30], {"a": [1, None]}):
+            with self.subTest(value=value):
+                literal = onto._constant_to_literal(value)
+                graph = Graph()
+                graph.add((EX.subject, EX.predicate, literal))
+                reparsed = Graph().parse(
+                    data=graph.serialize(format="turtle"), format="turtle"
+                )
+                (reloaded,) = reparsed.objects()
+                self.assertEqual(
+                    onto._literal_to_constant(reloaded),
+                    value,
+                    msg=f"{value!r} should round trip through serialized RDF",
+                )
+
+    def test_constant_scalars_keep_their_xsd_types(self):
+        for value, datatype in (
+            (2, XSD.integer),
+            (1.5, XSD.double),
+            (True, XSD.boolean),
+        ):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    onto._constant_to_literal(value).datatype,
+                    datatype,
+                    msg="Scalar constants should stay queryable as typed literals "
+                    "rather than being flattened into JSON strings",
+                )
 
     def test_unhashable(self):
         uh = Unhashable()
