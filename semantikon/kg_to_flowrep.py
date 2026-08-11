@@ -662,6 +662,7 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
         # Create the constant node
         const_node_attrs = TNodeData(
             type="constant",
+            step="node",
             parent=parent_data.get("parent"),
         )
         G.add_node(const_node_name, **const_node_attrs.to_attrs())
