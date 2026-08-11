@@ -26,7 +26,7 @@ from semantikon.flowrep_dict import (
 @dataclass(frozen=True, slots=True)
 class TNode:
     type: str
-    step: str = "node"
+    step: str
     identifier: str | None = None
     label: str | None = None
     function: dict | None = None
@@ -58,7 +58,6 @@ class TNode:
 class TIO:
     arg: str
     position: int
-    step: str = field(default="", init=False)
     dtype: Any | None = None
     value: Any | None = None
     has_value: bool = False
@@ -66,7 +65,6 @@ class TIO:
 
     def to_attrs(self) -> dict[str, Any]:
         attrs: dict[str, Any] = {
-            "step": self.step,
             "arg": self.arg,
             "position": self.position,
         }
@@ -80,12 +78,12 @@ class TIO:
 
 @dataclass(frozen=True, slots=True)
 class TInput(TIO):
-    step: str = field(default="inputs", init=False)
     default: Any | None = None
     has_default: bool = False
 
     def to_attrs(self) -> dict[str, Any]:
         attrs = super(TInput, self).to_attrs()
+        attrs["step"] = "inputs"
         if self.has_default:
             attrs["default"] = self.default
         return attrs
@@ -93,7 +91,10 @@ class TInput(TIO):
 
 @dataclass(frozen=True, slots=True)
 class TOutput(TIO):
-    step: str = field(default="outputs", init=False)
+    def to_attrs(self) -> dict[str, Any]:
+        attrs = super(TOutput, self).to_attrs()
+        attrs["step"] = "outputs"
+        return attrs
 
 
 class SemantikonDiGraph(nx.DiGraph):
