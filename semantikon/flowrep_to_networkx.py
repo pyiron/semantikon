@@ -24,6 +24,36 @@ from semantikon.flowrep_dict import (
 
 
 @dataclass(frozen=True, slots=True)
+class Node:
+    name: str
+    parent: str | None = None
+
+    def __str__(self) -> str:
+        if self.parent:
+            return f"{self.parent}-{self.name}"
+        else:
+            return self.name
+
+
+@dataclass(frozen=True, slots=True)
+class IO:
+    node: str
+    arg: str
+
+
+@dataclass(frozen=True, slots=True)
+class Input(IO):
+    def __str__(self) -> str:
+        return f"{self.node}-inputs-{self.arg}"
+
+
+@dataclass(frozen=True, slots=True)
+class Output(IO):
+    def __str__(self) -> str:
+        return f"{self.node}-outputs-{self.arg}"
+
+
+@dataclass(frozen=True, slots=True)
 class TNodeData:
     type: str
     step: str
@@ -292,7 +322,7 @@ def _workflow_to_networkx(
 
     def _add_node(
         node_data: fr.schemas.NodeData,
-        node_name: str,
+        node_name: Node,
         *,
         parent_name: str | None = None,
         workflow_label: str | None = None,
@@ -334,7 +364,7 @@ def _workflow_to_networkx(
             output_labels = ["output"]
 
         for position, (label, port) in enumerate(node_data.input_ports.items()):
-            io_name = f"{node_name}-inputs-{label}"
+            io_name = Input(node=str(node_name), arg=label)
             io_data: dict[str, Any] = {
                 "step": "inputs",
                 "arg": label,
@@ -352,7 +382,7 @@ def _workflow_to_networkx(
             G.add_edge(io_name, node_name)
         for position, (raw_label, port) in enumerate(node_data.output_ports.items()):
             label = output_labels[position] if raw_label == "output_0" else raw_label
-            io_name = f"{node_name}-outputs-{label}"
+            io_name = Output(node=str(node_name), arg=label)
             io_data = {
                 "step": "outputs",
                 "arg": label,
@@ -372,7 +402,7 @@ def _workflow_to_networkx(
 
         recipe = node_data.recipe
         for child_label, child in node_data.nodes.items():
-            child_name = f"{node_name}-{child_label}"
+            child_name = Node(name=child_label, parent=node_name)
             _add_node(
                 child,
                 child_name,
@@ -385,32 +415,32 @@ def _workflow_to_networkx(
         child_recipes = recipe.nodes
         for target, source in recipe.input_edges.items():
             G.add_edge(
-                f"{node_name}-inputs-{source.port}",
-                f"{node_name}-{target.node}-inputs-{target.port}",
+                Input(node=str(node_name), arg=source.port),
+                Input(node=f"{node_name}-{target.node}", arg=target.port)
             )
         for target, source in recipe.edges.items():
             child_outputs = list(child_recipes[source.node].outputs)
             src_port = _output_port_label(source.port, child_outputs)
             G.add_edge(
-                f"{node_name}-{source.node}-outputs-{src_port}",
-                f"{node_name}-{target.node}-inputs-{target.port}",
+                Output(node=f"{node_name}-{source.node}", arg=src_port),
+                Input(node=f"{node_name}-{target.node}", arg=target.port)
             )
         for target, source in recipe.output_edges.items():
             target_port = _output_port_label(target.port, list(recipe.outputs))
             if isinstance(source, fr.schemas.InputSource):
                 G.add_edge(
-                    f"{node_name}-inputs-{source.port}",
-                    f"{node_name}-outputs-{target_port}",
+                    Input(node=str(node_name), arg=source.port),
+                    Output(node=str(node_name), arg=target_port)
                 )
             else:
                 child_outputs = list(child_recipes[source.node].outputs)
                 src_port = _output_port_label(source.port, child_outputs)
                 G.add_edge(
-                    f"{node_name}-{source.node}-outputs-{src_port}",
-                    f"{node_name}-outputs-{target_port}",
+                    Output(node=f"{node_name}-{source.node}", arg=src_port),
+                    Output(node=str(node_name), arg=target_port)
                 )
 
-    _add_node(workflow, root_label, workflow_label=root_label)
+    _add_node(workflow, Node(root_label), workflow_label=root_label)
     return G
 
 
@@ -432,7 +462,7 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
         hash_dict_tmp: dict[str, Any] = {
             "inputs": {},
             "outputs": [
-                G.nodes[out].get("label", out.split("-")[-1])
+                G.nodes[out].get("label", out.arg)
                 for out in G.successors(node)
             ],
             "node": copy.deepcopy(data.get("function")),
@@ -443,16 +473,15 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
         missing_input = False
         for inp in G.predecessors(node):
             inp_data = G.nodes[inp]
-            inp_name = inp.split("-")[-1]
             if "hash" in inp_data:
-                hash_dict_tmp["inputs"][inp_name] = inp_data["hash"]
-                hash_dict_tmp["node"]["connected_inputs"].append(inp_name)
+                hash_dict_tmp["inputs"][inp.arg] = inp_data["hash"]
+                hash_dict_tmp["node"]["connected_inputs"].append(inp.arg)
             elif "value" in inp_data or "default" in inp_data:
                 value = inp_data.get("value", inp_data.get("default"))
                 if is_dataclass(value) and not isinstance(value, type):
-                    hash_dict_tmp["inputs"][inp_name] = asdict(value)
+                    hash_dict_tmp["inputs"][inp.arg] = asdict(value)
                 else:
-                    hash_dict_tmp["inputs"][inp_name] = value
+                    hash_dict_tmp["inputs"][inp.arg] = value
             else:
                 missing_input = True
                 break
@@ -463,7 +492,7 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
         ).hexdigest()
         for out in G.successors(node):
             G.nodes[out]["hash"] = (
-                h + "@" + G.nodes[out].get("label", out.split("-")[-1])
+                h + "@" + G.nodes[out].get("label", out.arg)
             )
         hash_dict_tmp["hash"] = h
         hash_dict[node] = hash_dict_tmp

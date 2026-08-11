@@ -551,15 +551,15 @@ def _wf_node_to_graph(
                 uri=data.get("uri"),
             )
     if t_box:
-        node = BASE[G.t_ns + node_name]
+        node = BASE[G.t_ns + str(node_name)]
         for io in [G.predecessors(node_name), G.successors(node_name)]:
             for item in io:
                 g += _to_owl_restriction(
                     node,
                     SNS.has_part,
-                    BASE[G.t_ns + item],
+                    BASE[G.t_ns + str(item)],
                 )
-        g.add((BASE[G.t_ns + node_name], RDFS.subClassOf, SNS.workflow_node))
+        g.add((BASE[G.t_ns + str(node_name)], RDFS.subClassOf, SNS.workflow_node))
         if "function" in data:
             g += _to_owl_restriction(
                 node,
@@ -568,20 +568,20 @@ def _wf_node_to_graph(
                 restriction_type=OWL.hasValue,
             )
         g.add((node, RDFS.label, Literal(node_name)))
-        g.add((node, SNS.local_identifier, Literal(node_name.split("-")[-1])))
+        g.add((node, SNS.local_identifier, Literal(node_name.name)))
         if data.get("parent"):
             g += _to_owl_restriction(
-                BASE[G.t_ns + data["parent"]],
+                BASE[G.t_ns + str(data["parent"])],
                 SNS.has_part,
                 node,
             )
     else:
-        node = BASE[G.a_ns + node_name]
-        g.add((node, RDF.type, BASE[G.t_ns + node_name]))
+        node = BASE[G.a_ns + str(node_name)]
+        g.add((node, RDF.type, BASE[G.t_ns + str(node_name)]))
         for inp in G.predecessors(node_name):
-            g.add((node, SNS.has_part, BASE[G.a_ns + inp]))
+            g.add((node, SNS.has_part, BASE[G.a_ns + str(inp)]))
         for out in G.successors(node_name):
-            g.add((node, SNS.has_part, BASE[G.a_ns + out]))
+            g.add((node, SNS.has_part, BASE[G.a_ns + str(out)]))
         if "function" in data:
             g.add((node, SNS.concretizes, f_node))
         if data.get("parent"):
@@ -877,10 +877,10 @@ def _wf_io_to_graph(
     has_specified_io: URIRef,
     t_box: bool,
 ) -> Graph:
-    node = BASE[G.t_ns + node_name] if t_box else BASE[G.a_ns + node_name]
+    node = BASE[G.t_ns + str(node_name)] if t_box else BASE[G.a_ns + str(node_name)]
     g = _get_bound_graph()
     g.add((node, RDFS.label, Literal(node_name)))
-    g.add((node, SNS.local_identifier, Literal(node_name.split("-")[-1])))
+    g.add((node, SNS.local_identifier, Literal(node_name.arg)))
     if t_box:
         g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.subClassOf, io_assignment))
@@ -973,9 +973,9 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
         data = data.copy()
         step = data.pop("step")
         if t_box:
-            g.add((BASE[G.t_ns + node_name], RDF.type, OWL.Class))
+            g.add((BASE[G.t_ns + str(node_name)], RDF.type, OWL.Class))
         else:
-            g.add((BASE[G.a_ns + node_name], RDF.type, BASE[G.t_ns + node_name]))
+            g.add((BASE[G.a_ns + str(node_name)], RDF.type, BASE[G.t_ns + str(node_name)]))
         assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
         if step == "node":
             g += _wf_node_to_graph(
