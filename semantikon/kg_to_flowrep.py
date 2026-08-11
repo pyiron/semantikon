@@ -650,7 +650,7 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
         ), f"Parent node {parent_node} is missing 'parent' attribute for {node}"
         parent_prefix = parent_data["parent"] + "-"
 
-        for constant_index in range(1000):
+        for constant_index in itertools.count():
             const_node_name = f"{parent_prefix}constant_{constant_index}"
             if const_node_name not in G:
                 break
