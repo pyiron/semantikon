@@ -666,7 +666,7 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
 
         # Create the constant output node
         const_output_attrs = TOutput(
-            arg="constant",
+            arg=fr.schemas.ConstantRecipe.std_label,
             position=0,
             value=data["constant_value"],
             has_value=True,
