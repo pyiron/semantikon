@@ -24,7 +24,7 @@ from semantikon.flowrep_dict import (
 
 
 @dataclass(frozen=True, slots=True)
-class TNode:
+class TNodeData:
     type: str
     step: str
     identifier: str | None = None
@@ -55,7 +55,7 @@ class TNode:
 
 
 @dataclass(frozen=True, slots=True)
-class TIO:
+class TIOData:
     arg: str
     position: int
     dtype: Any | None = None
@@ -77,12 +77,12 @@ class TIO:
 
 
 @dataclass(frozen=True, slots=True)
-class TInput(TIO):
+class TInputData(TIOData):
     default: Any | None = None
     has_default: bool = False
 
     def to_attrs(self) -> dict[str, Any]:
-        attrs = super(TInput, self).to_attrs()
+        attrs = super().to_attrs()
         attrs["step"] = "inputs"
         if self.has_default:
             attrs["default"] = self.default
@@ -90,9 +90,9 @@ class TInput(TIO):
 
 
 @dataclass(frozen=True, slots=True)
-class TOutput(TIO):
+class TOutputData(TIOData):
     def to_attrs(self) -> dict[str, Any]:
-        attrs = super(TOutput, self).to_attrs()
+        attrs = super().to_attrs()
         attrs["step"] = "outputs"
         return attrs
 
@@ -112,7 +112,7 @@ class SemantikonDiGraph(nx.DiGraph):
         step = attrs["step"]
         if step == "node":
             known = {"type", "step", "identifier", "label", "function", "parent"}
-            node_meta = TNode(
+            node_meta = TNodeData(
                 type=attrs["type"],
                 step=step,
                 identifier=attrs.get("identifier"),
@@ -125,7 +125,7 @@ class SemantikonDiGraph(nx.DiGraph):
 
         if step == "inputs":
             known = {"step", "arg", "position", "dtype", "value", "default"}
-            input_meta = TInput(
+            input_meta = TInputData(
                 arg=attrs["arg"],
                 position=attrs["position"],
                 dtype=attrs.get("dtype"),
@@ -139,7 +139,7 @@ class SemantikonDiGraph(nx.DiGraph):
 
         if step == "outputs":
             known = {"step", "arg", "position", "dtype", "value"}
-            output_meta = TOutput(
+            output_meta = TOutputData(
                 arg=attrs["arg"],
                 position=attrs["position"],
                 dtype=attrs.get("dtype"),
