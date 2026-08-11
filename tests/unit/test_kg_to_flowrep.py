@@ -7,7 +7,6 @@ from rdflib import RDFS, Graph, Literal, URIRef
 
 from semantikon import get_knowledge_graph, kg2recipe
 from semantikon import kg_to_flowrep as kgf
-from semantikon.flowrep_to_networkx import serialize_and_convert_to_networkx
 from semantikon.workflow import workflow
 
 
