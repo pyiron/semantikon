@@ -651,7 +651,9 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
         parent_prefix = parent_data["parent"] + "-"
 
         for constant_index in itertools.count():
-            const_node_name = f"{parent_prefix}{fr.schemas.ConstantRecipe.std_label}_{constant_index}"
+            const_node_name = (
+                f"{parent_prefix}{fr.schemas.ConstantRecipe.std_label}_{constant_index}"
+            )
             if const_node_name not in G:
                 break
 
