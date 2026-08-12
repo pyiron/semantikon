@@ -27,7 +27,7 @@ from semantikon.flowrep_dict import (
 @dataclass(frozen=True, slots=True)
 class Node:
     name: str
-    parent: str | None = None
+    parent: Node | None = None
 
     def __str__(self) -> str:
         if self.parent:

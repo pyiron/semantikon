@@ -238,20 +238,14 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
                     and child_node.get("parent") == node_name
                 ):
                     # Extract child short label correctly by removing parent prefix
-                    child_short_label = child_label[len(node_name) + 1 :]
-                    direct_children[child_short_label] = child_label
-                    nodes[child_short_label] = _process_node(child_label)
+                    direct_children[child_label.name] = child_label
+                    nodes[child_label.name] = _process_node(child_label)
 
-            def _find_child_for_io(io_node_name: str) -> str | None:
+            def _find_child_for_io(io_node_name: IO) -> Node | None:
                 """Find the child node (short label) that owns this IO node."""
                 for child_label in direct_children.values():
-                    if io_node_name.startswith(child_label + "-"):
-                        # Extract child short label correctly
-                        if child_label.startswith(node_name + "-"):
-                            child_short_label = child_label[len(node_name) + 1 :]
-                        else:
-                            child_short_label = child_label.split("-", 1)[1]
-                        return child_short_label
+                    if io_node_name.node == str(child_label):
+                        return child_label.name
                 return None
 
             def _is_direct_io(node_id: str) -> bool:
