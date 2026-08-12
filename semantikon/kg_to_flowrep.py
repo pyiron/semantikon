@@ -14,7 +14,7 @@ from rdflib.query import ResultRow
 from rdflib.term import IdentifiedNode, Node
 
 from semantikon.flowrep_dict import _flowrep_recipe_from_callable
-from semantikon.flowrep_to_networkx import TNodeData, TOutputData
+from semantikon.flowrep_to_networkx import TNodeData, TOutputData, Node, Input, Output
 from semantikon.ontology import SNS
 
 
@@ -211,7 +211,7 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
             return "output_0"
         return label
 
-    def _process_node(node_name: str) -> fr.schemas.RecipeDiscrimination:
+    def _process_node(node_name: Node) -> fr.schemas.RecipeDiscrimination:
         node_data = G.nodes[node_name]
         node_type = node_data.get("type", "atomic")
         if node_type == "constant":
@@ -348,7 +348,7 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
             return _flowrep_recipe_from_callable(func_obj, node_type="atomic")
         raise TypeError(f"Unsupported workflow node type: {node_type!r}")
 
-    root_node = G.name
+    root_node = Node(G.name)
     recipe = _process_node(root_node)
     if not isinstance(recipe, fr.schemas.WorkflowRecipe):
         raise TypeError(
@@ -631,15 +631,13 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
 
         # Extract the parent node and argument name
         # Node format: parent-inputs-arg
-        parts = node.rsplit("-", 2)
-        assert len(parts) == 3, f"Unexpected input node format: {node}"
-        assert parts[1] == "inputs", f"Expected 'inputs' in node name: {node}"
+        assert isinstance(node, Input), f"Expected 'inputs' in node name: {node}"
 
-        parent_node = parts[0]
-        parent_data = G.nodes.get(parent_node)
+        parent_node = node.node
+        parent_data = G.nodes[parent_node]
         assert (
             parent_data is not None
-        ), f"Parent node {parent_node} not found for {node}"
+        ), f"Parent node {parent_node} not found for {node} in {G.nodes}"
         assert (
             parent_data.get("step") == "node"
         ), f"Parent node {parent_node} is not a workflow node for {node}"
@@ -715,7 +713,7 @@ def _split_by_roots(
         # Relabel nodes to strings after splitting
         mapping = {node: _label(graph, node) for node in subgraph.nodes}
         subgraph = nx.relabel_nodes(subgraph, mapping)
-        subgraph.name = name
+        subgraph.name = str(name)
         subgraphs[name] = subgraph
     return subgraphs
 
