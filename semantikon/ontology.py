@@ -27,6 +27,10 @@ from semantikon.flowrep_to_networkx import (
     SemantikonDiGraph,
     _get_graph_hash,
     serialize_and_convert_to_networkx,
+    IO,
+    Input,
+    Node,
+    Output,
 )
 from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
@@ -265,9 +269,7 @@ def _check_consistency_of_digraph(G: SemantikonDiGraph):
     for node, data in G.nodes.data():
         if "derived_from" not in data:
             continue
-        expected_input = node.rsplit("-outputs-", 1)[
-            0
-        ] + f"-{data['derived_from']}".replace(".", "-")
+        expected_input = Input(node=node.node, arg=data['derived_from'].replace("inputs.", ""))
         if expected_input not in G.nodes:
             raise ValueError(
                 f"Node '{node}' is derived from '{data['derived_from']}' but"
@@ -613,7 +615,7 @@ def _is_macro_input(io: str, G: SemantikonDiGraph, candidates: tuple[str, str]):
     return step_type == "inputs" and successor_types == input_edge_predecessors
 
 
-def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
+def _input_is_connected(io: IO | Node, G: SemantikonDiGraph) -> bool:
     candidate = list(G.predecessors(io))
     n_predecessors = len(candidate)
     if n_predecessors == 0:
@@ -636,28 +638,27 @@ def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
         )
 
 
-def _is_macro_output(io: str, G: SemantikonDiGraph, candidates: tuple[str, str]):
+def _is_macro_output(io: IO | Node, G: SemantikonDiGraph, candidates: tuple[str, str]):
     predecessor_types = {G.nodes[c]["step"] for c in candidates}
     step_type = G.nodes[io]["step"]
     output_edge_predecessors = {"node", "outputs"}
     return step_type == "outputs" and predecessor_types == output_edge_predecessors
 
 
-def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: str) -> str:
+def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: IO) -> str:
     assert seeked_io.startswith(("inputs", "outputs"))
-    main_node = ref_io.replace(".", "-").split("-outputs-")[0].split("-inputs-")[0]
-    candidate = (
-        G.predecessors(main_node) if "inputs" in seeked_io else G.successors(main_node)
-    )
-    for io in candidate:
-        if io.endswith(seeked_io.replace(".", "-")):
-            return G._get_data_node(io=io)
-    raise ValueError(f"IO {seeked_io} not found in graph")
+    if seeked_io.startswith("inputs"):
+        full_io = Input(node=ref_io.node, arg=seeked_io.replace("inputs.", ""))
+    else:
+        full_io = Output(node=ref_io.node, arg=seeked_io.replace("outputs.", ""))
+    if full_io not in G.nodes:
+        raise ValueError(f"IO {seeked_io} not found in graph")
+    return G._get_data_node(io=full_io)
 
 
 def _translate_triples(
     triples: TripleList,
-    node_name: str,
+    node_name: IO,
     data_node: URIRef,
     G: SemantikonDiGraph,
     t_box: bool,
@@ -755,7 +756,7 @@ def _restrictions_to_triples(
 
 
 def _wf_input_to_graph(
-    node_name: str,
+    node_name: Input,
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
@@ -823,7 +824,7 @@ def _wf_input_to_graph(
 
 
 def _wf_output_to_graph(
-    node_name: str,
+    node_name: Output,
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
@@ -869,7 +870,7 @@ def _wf_output_to_graph(
 
 
 def _wf_io_to_graph(
-    node_name: str,
+    node_name: IO,
     data: dict,
     data_node: URIRef,
     G: SemantikonDiGraph,
