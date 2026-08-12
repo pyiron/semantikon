@@ -244,7 +244,7 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
             def _find_child_for_io(io_node_name: IO) -> Node | None:
                 """Find the child node (short label) that owns this IO node."""
                 for child_label in direct_children.values():
-                    if io_node_name.node == str(child_label):
+                    if io_node_name.node == child_label:
                         return child_label.name
                 return None
 
@@ -252,7 +252,7 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
                 """Check if this is a direct IO of the workflow."""
                 if isinstance(node_id, Node):
                     return False
-                return node_id.parent == str(node_name)
+                return node_id.parent == node_name
 
             def _is_child_io(node_id: str) -> bool:
                 """Check if this is an IO of a direct child (and only direct child)."""

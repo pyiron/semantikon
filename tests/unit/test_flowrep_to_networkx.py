@@ -93,31 +93,52 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         self.assertIn(
             "dtype",
             G.nodes[
-                ftn.Input(node="my_kinetic_energy_workflow-get_speed_0", arg="distance")
+                ftn.Input(
+                    node=ftn.Node(
+                        parent=ftn.Node("my_kinetic_energy_workflow"),
+                        name="get_speed_0",
+                    ),
+                    arg="distance",
+                )
             ],
             msg="dtype should not be deleted after hashing",
         )
         self.assertEqual(
             G._get_data_node(
                 ftn.Input(
-                    node="my_kinetic_energy_workflow-get_kinetic_energy_0",
-                    arg="velocity",
-                )
-            ),
-            G._get_data_node(
-                ftn.Output(node="my_kinetic_energy_workflow-get_speed_0", arg="speed")
-            ),
-        )
-        self.assertNotEqual(
-            G._get_data_node(
-                ftn.Input(
-                    node="my_kinetic_energy_workflow-get_kinetic_energy_0",
+                    node=ftn.Node(
+                        parent=ftn.Node("my_kinetic_energy_workflow"),
+                        name="get_kinetic_energy_0",
+                    ),
                     arg="velocity",
                 )
             ),
             G._get_data_node(
                 ftn.Output(
-                    node="my_kinetic_energy_workflow-get_kinetic_energy_0",
+                    node=ftn.Node(
+                        parent=ftn.Node("my_kinetic_energy_workflow"),
+                        name="get_speed_0",
+                    ),
+                    arg="speed",
+                )
+            ),
+        )
+        self.assertNotEqual(
+            G._get_data_node(
+                ftn.Input(
+                    node=ftn.Node(
+                        parent=ftn.Node("my_kinetic_energy_workflow"),
+                        name="get_kinetic_energy_0"
+                    ),
+                    arg="velocity",
+                )
+            ),
+            G._get_data_node(
+                ftn.Output(
+                    node=ftn.Node(
+                        parent=ftn.Node("my_kinetic_energy_workflow"),
+                        name="get_kinetic_energy_0"
+                    ),
                     arg="kinetic_energy",
                 )
             ),
@@ -198,8 +219,8 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         )
         self.assertIn(
             (
-                ftn.Input(node="passthrough_input_workflow", arg="x"),
-                ftn.Output(node="passthrough_input_workflow", arg="x"),
+                ftn.Input(node=ftn.Node("passthrough_input_workflow"), arg="x"),
+                ftn.Output(node=ftn.Node("passthrough_input_workflow"), arg="x"),
             ),
             G.edges,
         )
@@ -314,14 +335,13 @@ class TestFlowrepToNetworkx(unittest.TestCase):
 
     def test_constant(self):
         G = ftn.serialize_and_convert_to_networkx(double_via_constant.flowrep_recipe)
-        self.assertNotIn(
-            ftn.Node(name="constant_0", parent="double_via_constant-constant_0"),
-            G.nodes,
-        )
         self.assertEqual(
-            G.nodes[ftn.Input(node="double_via_constant-mul_0", arg="a")][
-                "constant_value"
-            ],
+            G.nodes[
+                ftn.Input(
+                    node=ftn.Node(parent=ftn.Node("double_via_constant"), name="mul_0"),
+                    arg="a",
+                )
+            ]["constant_value"],
             2,
         )
 

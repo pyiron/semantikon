@@ -332,7 +332,7 @@ def _workflow_to_networkx(
         node_name: Node,
         *,
         parent_name: str | None = None,
-        workflow_label: str | None = None,
+        workflow_label: Node | None = None,
     ):
         metadata: dict[str, Any] = {"step": "node"}
         function = None
@@ -344,7 +344,7 @@ def _workflow_to_networkx(
         else:
             metadata["type"] = "workflow"
             if workflow_label is not None:
-                metadata["label"] = workflow_label
+                metadata["label"] = str(workflow_label)
             if node_data.recipe.reference is not None:
                 function = retrieve.import_from_string(
                     node_data.recipe.reference.info.fully_qualified_name
@@ -371,7 +371,7 @@ def _workflow_to_networkx(
             output_labels = ["output"]
 
         for position, (label, port) in enumerate(node_data.input_ports.items()):
-            io_name = Input(node=str(node_name), arg=label)
+            io_name = Input(node=node_name, arg=label)
             io_data: dict[str, Any] = {
                 "step": "inputs",
                 "arg": label,
@@ -389,7 +389,7 @@ def _workflow_to_networkx(
             G.add_edge(io_name, node_name)
         for position, (raw_label, port) in enumerate(node_data.output_ports.items()):
             label = output_labels[position] if raw_label == "output_0" else raw_label
-            io_name = Output(node=str(node_name), arg=label)
+            io_name = Output(node=node_name, arg=label)
             io_data = {
                 "step": "outputs",
                 "arg": label,
@@ -415,39 +415,39 @@ def _workflow_to_networkx(
                 child_name,
                 parent_name=node_name,
                 workflow_label=(
-                    child_label if isinstance(child, fr.schemas.DagData) else None
+                    Node(child_label) if isinstance(child, fr.schemas.DagData) else None
                 ),
             )
 
         child_recipes = recipe.nodes
         for target, source in recipe.input_edges.items():
             G.add_edge(
-                Input(node=str(node_name), arg=source.port),
-                Input(node=f"{node_name}-{target.node}", arg=target.port),
+                Input(node=node_name, arg=source.port),
+                Input(node=Node(parent=node_name, name=target.node), arg=target.port),
             )
         for target, source in recipe.edges.items():
             child_outputs = list(child_recipes[source.node].outputs)
             src_port = _output_port_label(source.port, child_outputs)
             G.add_edge(
-                Output(node=f"{node_name}-{source.node}", arg=src_port),
-                Input(node=f"{node_name}-{target.node}", arg=target.port),
+                Output(node=Node(parent=node_name, name=source.node), arg=src_port),
+                Input(node=Node(parent=node_name, name=target.node), arg=target.port),
             )
         for target, source in recipe.output_edges.items():
             target_port = _output_port_label(target.port, list(recipe.outputs))
             if isinstance(source, fr.schemas.InputSource):
                 G.add_edge(
-                    Input(node=str(node_name), arg=source.port),
-                    Output(node=str(node_name), arg=target_port),
+                    Input(node=node_name, arg=source.port),
+                    Output(node=node_name, arg=target_port),
                 )
             else:
                 child_outputs = list(child_recipes[source.node].outputs)
                 src_port = _output_port_label(source.port, child_outputs)
                 G.add_edge(
-                    Output(node=f"{node_name}-{source.node}", arg=src_port),
-                    Output(node=str(node_name), arg=target_port),
+                    Output(node=Node(parent=node_name, name=source.node), arg=src_port),
+                    Output(node=node_name, arg=target_port),
                 )
 
-    _add_node(workflow, Node(root_label), workflow_label=root_label)
+    _add_node(workflow, Node(root_label), workflow_label=Node(root_label))
     return G
 
 
