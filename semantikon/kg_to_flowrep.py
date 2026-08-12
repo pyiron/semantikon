@@ -238,10 +238,7 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
                     and child_node.get("parent") == node_name
                 ):
                     # Extract child short label correctly by removing parent prefix
-                    if child_label.startswith(node_name + "-"):
-                        child_short_label = child_label[len(node_name) + 1 :]
-                    else:
-                        child_short_label = child_label.split("-", 1)[1]
+                    child_short_label = child_label[len(node_name) + 1 :]
                     direct_children[child_short_label] = child_label
                     nodes[child_short_label] = _process_node(child_label)
 
