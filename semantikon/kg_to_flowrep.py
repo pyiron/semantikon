@@ -256,8 +256,6 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
 
             def _is_direct_io(node_id: str) -> bool:
                 """Check if this is a direct IO of the workflow."""
-                if not node_id.startswith(node_name + "-"):
-                    return False
                 rest = node_id[len(node_name) + 1 :]
                 parts = rest.split("-")
                 # Direct IO is like "inputs-arg" or "outputs-arg" (2 parts)
