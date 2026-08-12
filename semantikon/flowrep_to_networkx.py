@@ -4,6 +4,7 @@ import copy
 import json
 import unicodedata
 import warnings
+from abc import ABC
 from dataclasses import asdict, dataclass, field, is_dataclass
 from functools import cached_property
 from hashlib import sha256
@@ -34,11 +35,17 @@ class Node:
         else:
             return self.name
 
+    def __radd__(self, other: str) -> str:
+        return other + str(self)
+
 
 @dataclass(frozen=True, slots=True)
-class IO:
+class IO(ABC):
     node: str
     arg: str
+
+    def __radd__(self, other: str) -> str:
+        return other + str(self)
 
 
 @dataclass(frozen=True, slots=True)
