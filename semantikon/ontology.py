@@ -571,7 +571,7 @@ def _wf_node_to_graph(
                 f_node,
                 restriction_type=OWL.hasValue,
             )
-        g.add((node, RDFS.label, Literal(node_name)))
+        g.add((node, RDFS.label, Literal(str(node_name))))
         g.add((node, SNS.local_identifier, Literal(node_name.name)))
         if data.get("parent"):
             g += _to_owl_restriction(
@@ -882,7 +882,7 @@ def _wf_io_to_graph(
 ) -> Graph:
     node = BASE[G.t_ns + node_name] if t_box else BASE[G.a_ns + node_name]
     g = _get_bound_graph()
-    g.add((node, RDFS.label, Literal(node_name)))
+    g.add((node, RDFS.label, Literal(str(node_name))))
     g.add((node, SNS.local_identifier, Literal(node_name.arg)))
     if t_box:
         g += _to_owl_restriction(node, has_specified_io, data_node)
