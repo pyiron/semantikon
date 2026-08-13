@@ -128,7 +128,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
                 ftn.Input(
                     node=ftn.Node(
                         parent=ftn.Node("my_kinetic_energy_workflow"),
-                        name="get_kinetic_energy_0"
+                        name="get_kinetic_energy_0",
                     ),
                     arg="velocity",
                 )
@@ -137,7 +137,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
                 ftn.Output(
                     node=ftn.Node(
                         parent=ftn.Node("my_kinetic_energy_workflow"),
-                        name="get_kinetic_energy_0"
+                        name="get_kinetic_energy_0",
                     ),
                     arg="kinetic_energy",
                 )
@@ -244,94 +244,82 @@ class TestFlowrepToNetworkx(unittest.TestCase):
 
     def test_add_node_validates_semantikon_metadata(self):
         G = ftn.SemantikonDiGraph()
-        G.add_node("n", step="node", type="atomic")
-        self.assertEqual(G.nodes["n"]["step"], "node")
-        self.assertEqual(G.nodes["n"]["type"], "atomic")
+        G.add_node(ftn.Node("n"), type="atomic")
+        self.assertEqual(G.nodes[ftn.Node("n")]["type"], "atomic")
 
-        G.add_node("in", step="inputs", arg="x", position=0, value=None)
-        self.assertIn("value", G.nodes["in"])
-        self.assertIsNone(G.nodes["in"]["value"])
+        node_in = ftn.Input(node=ftn.Node("in"), arg="x")
+        G.add_node(node_in, position=0, value=None)
+        self.assertIn("value", G.nodes[node_in])
+        self.assertIsNone(G.nodes[node_in]["value"])
 
     def test_add_node_rejects_invalid_semantikon_metadata(self):
         G = ftn.SemantikonDiGraph()
         with self.assertRaises(ValueError):
-            G.add_node("n", step="node", type="invalid")
-        with self.assertRaises(ValueError):
-            G.add_node("n", step="banana")
+            G.add_node(ftn.Node("n"), type="invalid")
 
     def test_add_nodes_from_validates_semantikon_metadata(self):
         G = ftn.SemantikonDiGraph()
-        G.add_nodes_from(["n1", "n2"], step="inputs", arg="x", position=0, value=None)
+        G.add_nodes_from(
+            [ftn.Input(ftn.Node("n1"), arg="x"), ftn.Input(ftn.Node("n2"), arg="x")],
+            position=0,
+            value=None,
+        )
 
-        for node in ("n1", "n2"):
-            self.assertEqual(G.nodes[node]["step"], "inputs")
-            self.assertEqual(G.nodes[node]["arg"], "x")
+        for n in ("n1", "n2"):
+            node = ftn.Input(ftn.Node(n), arg="x")
             self.assertEqual(G.nodes[node]["position"], 0)
             self.assertIn("value", G.nodes[node])
             self.assertIsNone(G.nodes[node]["value"])
-
-    def test_add_nodes_from_allows_plain_nodes_without_shared_attrs(self):
-        G = ftn.SemantikonDiGraph()
-        G.add_nodes_from(["n1", "n2"])
-
-        self.assertIn("n1", G.nodes)
-        self.assertIn("n2", G.nodes)
-        self.assertEqual(dict(G.nodes["n1"]), {})
-        self.assertEqual(dict(G.nodes["n2"]), {})
 
     def test_add_nodes_from_validates_per_node_semantikon_metadata_without_shared_attrs(
         self,
     ):
         G = ftn.SemantikonDiGraph()
+        n_1 = ftn.Input(ftn.Node("n1"), arg="x")
+        n_2 = ftn.Input(ftn.Node("n2"), arg="y")
         G.add_nodes_from(
             [
-                ("n1", {"step": "inputs", "arg": "x", "position": 0, "value": 1}),
-                ("n2", {"step": "inputs", "arg": "y", "position": 1}),
+                (n_1, {"position": 0, "value": 1}),
+                (n_2, {"position": 1}),
             ]
         )
 
-        self.assertEqual(G.nodes["n1"]["arg"], "x")
-        self.assertEqual(G.nodes["n1"]["position"], 0)
-        self.assertEqual(G.nodes["n1"]["value"], 1)
+        self.assertEqual(G.nodes[n_1]["position"], 0)
+        self.assertEqual(G.nodes[n_1]["value"], 1)
 
-        self.assertEqual(G.nodes["n2"]["arg"], "y")
-        self.assertEqual(G.nodes["n2"]["position"], 1)
-        self.assertNotIn("value", G.nodes["n2"])
+        self.assertEqual(G.nodes[n_2]["position"], 1)
+        self.assertNotIn("value", G.nodes[n_2])
 
     def test_add_nodes_from_merges_per_node_semantikon_metadata(self):
         G = ftn.SemantikonDiGraph()
+        n_1 = ftn.Input(ftn.Node("n1"), arg="x")
+        n_2 = ftn.Input(ftn.Node("n2"), arg="y")
         G.add_nodes_from(
             [
-                ("n1", {"step": "inputs", "arg": "x", "position": 0, "value": 1}),
-                ("n2", {"step": "inputs", "arg": "y", "position": 1}),
+                (n_1, {"position": 0, "value": 1}),
+                (n_2, {"position": 1}),
             ],
             value=None,
             dtype="float",
         )
 
-        self.assertEqual(G.nodes["n1"]["arg"], "x")
-        self.assertEqual(G.nodes["n1"]["position"], 0)
-        self.assertEqual(G.nodes["n1"]["dtype"], "float")
-        self.assertEqual(G.nodes["n1"]["value"], 1)
+        self.assertEqual(G.nodes[n_1]["position"], 0)
+        self.assertEqual(G.nodes[n_1]["dtype"], "float")
+        self.assertEqual(G.nodes[n_1]["value"], 1)
 
-        self.assertEqual(G.nodes["n2"]["arg"], "y")
-        self.assertEqual(G.nodes["n2"]["position"], 1)
-        self.assertEqual(G.nodes["n2"]["dtype"], "float")
-        self.assertIsNone(G.nodes["n2"]["value"])
+        self.assertEqual(G.nodes[n_2]["position"], 1)
+        self.assertEqual(G.nodes[n_2]["dtype"], "float")
+        self.assertIsNone(G.nodes[n_2]["value"])
 
     def test_add_nodes_from_rejects_invalid_semantikon_metadata(self):
         G = ftn.SemantikonDiGraph()
         with self.assertRaises(ValueError):
-            G.add_nodes_from(["n"], step="node", type="invalid")
-        with self.assertRaises(ValueError):
-            G.add_nodes_from(["n"], step="banana")
+            G.add_nodes_from([ftn.Node("n")], type="invalid")
 
     def test_add_nodes_from_rejects_invalid_per_node_semantikon_metadata(self):
         G = ftn.SemantikonDiGraph()
         with self.assertRaises(ValueError):
-            G.add_nodes_from([("n", {"step": "node", "type": "invalid"})])
-        with self.assertRaises(ValueError):
-            G.add_nodes_from([("n", {"step": "banana"})])
+            G.add_nodes_from([(ftn.Node("n"), {"type": "invalid"})])
 
     def test_constant(self):
         G = ftn.serialize_and_convert_to_networkx(double_via_constant.flowrep_recipe)

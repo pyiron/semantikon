@@ -63,7 +63,6 @@ class Output(IO):
 @dataclass(frozen=True, slots=True)
 class TNodeData:
     type: str
-    step: str
     identifier: str | None = None
     label: str | None = None
     function: dict | None = None
@@ -76,7 +75,6 @@ class TNodeData:
     def to_attrs(self) -> dict[str, Any]:
         attrs: dict[str, Any] = {
             "type": self.type,
-            "step": self.step,
         }
         if self.identifier is not None:
             attrs["identifier"] = self.identifier
@@ -90,7 +88,6 @@ class TNodeData:
 
 @dataclass(frozen=True, slots=True)
 class TIOData:
-    arg: str
     position: int
     dtype: Any | None = None
     value: Any | None = None
@@ -99,7 +96,6 @@ class TIOData:
 
     def to_attrs(self) -> dict[str, Any]:
         attrs: dict[str, Any] = {
-            "arg": self.arg,
             "position": self.position,
         }
         if self.dtype is not None:
@@ -117,7 +113,6 @@ class TInputData(TIOData):
 
     def to_attrs(self) -> dict[str, Any]:
         attrs = super().to_attrs()
-        attrs["step"] = "inputs"
         if self.has_default:
             attrs["default"] = self.default
         return attrs
@@ -125,10 +120,7 @@ class TInputData(TIOData):
 
 @dataclass(frozen=True, slots=True)
 class TOutputData(TIOData):
-    def to_attrs(self) -> dict[str, Any]:
-        attrs = super().to_attrs()
-        attrs["step"] = "outputs"
-        return attrs
+    pass
 
 
 class SemantikonDiGraph(nx.DiGraph):
@@ -139,16 +131,14 @@ class SemantikonDiGraph(nx.DiGraph):
     later by the ontology serialization layer.
     """
 
-    def _validate_semantikon_attrs(self, attrs: dict[str, Any]) -> dict[str, Any]:
-        if "step" not in attrs:
-            return attrs
+    def _validate_semantikon_attrs(
+        self, step: IO | Node, attrs: dict[str, Any]
+    ) -> dict[str, Any]:
 
-        step = attrs["step"]
-        if step == "node":
-            known = {"type", "step", "identifier", "label", "function"}
+        if isinstance(step, Node):
+            known = {"type", "identifier", "label", "function"}
             node_meta = TNodeData(
                 type=attrs["type"],
-                step=step,
                 identifier=attrs.get("identifier"),
                 label=attrs.get("label"),
                 function=attrs.get("function"),
@@ -156,10 +146,9 @@ class SemantikonDiGraph(nx.DiGraph):
             )
             return node_meta.to_attrs()
 
-        if step == "inputs":
-            known = {"step", "arg", "position", "dtype", "value", "default"}
+        if isinstance(step, Input):
+            known = {"position", "dtype", "value", "default"}
             input_meta = TInputData(
-                arg=attrs["arg"],
                 position=attrs["position"],
                 dtype=attrs.get("dtype"),
                 value=attrs.get("value"),
@@ -170,10 +159,9 @@ class SemantikonDiGraph(nx.DiGraph):
             )
             return input_meta.to_attrs()
 
-        if step == "outputs":
-            known = {"step", "arg", "position", "dtype", "value"}
+        if isinstance(step, Output):
+            known = {"position", "dtype", "value"}
             output_meta = TOutputData(
-                arg=attrs["arg"],
                 position=attrs["position"],
                 dtype=attrs.get("dtype"),
                 value=attrs.get("value"),
@@ -182,37 +170,23 @@ class SemantikonDiGraph(nx.DiGraph):
             )
             return output_meta.to_attrs()
 
-        raise ValueError(
-            f"Unknown step {step!r}. Expected one of 'node', 'inputs', or 'outputs'."
-        )
-
     def add_node(self, node_for_adding, **attr):  # type: ignore[override]
-        normalized_attr = self._validate_semantikon_attrs(attr)
+        assert isinstance(node_for_adding, (Node, IO))
+        normalized_attr = self._validate_semantikon_attrs(node_for_adding, attr)
         super().add_node(node_for_adding, **normalized_attr)
 
     def add_nodes_from(self, nodes_for_adding, **attr):
-        normalized_attr = self._validate_semantikon_attrs(attr)
-
-        def normalized_nodes():
-            for n in nodes_for_adding:
-                try:
-                    hash(n)
-                except TypeError:
-                    n, ndict = n
-                    ndict = self._validate_semantikon_attrs(ndict)
-                    if normalized_attr:
-                        merged = normalized_attr.copy()
-                        merged.update(ndict)
-                        yield n, merged
-                    else:
-                        yield n, ndict
-                else:
-                    if normalized_attr:
-                        yield n, normalized_attr
-                    else:
-                        yield n
-
-        super().add_nodes_from(normalized_nodes())
+        assert all(
+            isinstance(n, (Node, IO)) or isinstance(n, tuple) for n in nodes_for_adding
+        )
+        for n in nodes_for_adding:
+            if isinstance(n, tuple):
+                node, node_attr = n
+                normalized_attr = self._validate_semantikon_attrs(node, attr | node_attr)
+                super().add_node(node, **normalized_attr)
+            else:
+                normalized_attr = self._validate_semantikon_attrs(n, attr)
+                super().add_node(n, **normalized_attr)
 
     @cached_property
     def t_ns(self) -> str:
@@ -232,9 +206,7 @@ class SemantikonDiGraph(nx.DiGraph):
 
     def _get_data_node(self, io: IO) -> str:
         while True:
-            candidate = [
-                c for c in self.predecessors(io) if self.nodes[c]["step"] != "node"
-            ]
+            candidate = [c for c in self.predecessors(io) if isinstance(c, IO)]
             assert len(candidate) <= 1
             if len(candidate) == 0:
                 return f"{io}_data"
@@ -261,7 +233,7 @@ class SemantikonDiGraph(nx.DiGraph):
                 descendants.
             label (str | None, optional): A label to use for hash computation.
                 If not provided, the label is derived from the node's data
-                (e.g., "label" or "arg"). Defaults to None.
+                (e.g., "label"). Defaults to None.
 
         Notes:
             - The function uses an iterative approach to avoid recursion,
@@ -275,14 +247,12 @@ class SemantikonDiGraph(nx.DiGraph):
             current_node, current_hash, current_label = stack.pop()
 
             for child in self.successors(current_node):
-                if self.nodes[child]["step"] == "node":
+                if isinstance(child, Node):
                     continue
 
                 child_label = current_label
                 if child_label is None:
-                    child_label = self.nodes[child].get(
-                        "label", self.nodes[child]["arg"]
-                    )
+                    child_label = self.nodes[child].get("label", child.arg)
 
                 self.nodes[child]["hash"] = current_hash + f"@{child_label}"
                 stack.append((child, current_hash, child_label))
@@ -330,7 +300,7 @@ def _workflow_to_networkx(
         parent_name: str | None = None,
         workflow_label: Node | None = None,
     ):
-        metadata: dict[str, Any] = {"step": "node"}
+        metadata: dict[str, Any] = {}
         function = None
         if isinstance(node_data, fr.schemas.AtomicData):
             metadata["type"] = "atomic"
@@ -366,11 +336,7 @@ def _workflow_to_networkx(
 
         for position, (label, port) in enumerate(node_data.input_ports.items()):
             io_name = Input(node=node_name, arg=label)
-            io_data: dict[str, Any] = {
-                "step": "inputs",
-                "arg": label,
-                "position": position,
-            }
+            io_data: dict[str, Any] = {"position": position}
             if not isinstance(port.value, fr.schemas.NotData):
                 io_data["value"] = port.value
             if type_hint := annotation_to_type_hint(port.annotation):
@@ -384,11 +350,7 @@ def _workflow_to_networkx(
         for position, (raw_label, port) in enumerate(node_data.output_ports.items()):
             label = output_labels[position] if raw_label == "output_0" else raw_label
             io_name = Output(node=node_name, arg=label)
-            io_data = {
-                "step": "outputs",
-                "arg": label,
-                "position": position,
-            }
+            io_data = {"position": position}
             if not isinstance(port.value, fr.schemas.NotData):
                 io_data["value"] = port.value
             if type_hint := annotation_to_type_hint(port.annotation):
@@ -449,7 +411,7 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
     hash_dict: dict[str, dict[str, Any]] = {}
     for node in nx.topological_sort(G):
         data = G.nodes[node]
-        if data.get("step") != "node":
+        if isinstance(node, IO):
             for term in ("hash", "value"):
                 if term in data:
                     continue
@@ -500,7 +462,7 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
 def _remove_constant(G: SemantikonDiGraph) -> None:
     to_delete = []
     for node, data in G.nodes.data():
-        if data["step"] == "node" and data["type"] == "constant":
+        if isinstance(node, Node) and data["type"] == "constant":
             output_node = next(iter(G.successors(node)))
             const_value = G.nodes[output_node]["value"]
             to_delete.extend([node, output_node])
@@ -606,8 +568,6 @@ class _HashGraph:
 
         for node in G.nodes:
             attrs = {}
-            if "arg" in G.nodes[node]:
-                attrs["arg"] = G.nodes[node]["arg"]
             if "function" in G.nodes[node]:
                 func = G.nodes[node]["function"]
                 attrs["function"] = func.get("hash") or func.get("identifier")

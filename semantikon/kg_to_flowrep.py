@@ -14,7 +14,14 @@ from rdflib.query import ResultRow
 from rdflib.term import IdentifiedNode, Node
 
 from semantikon.flowrep_dict import _flowrep_recipe_from_callable
-from semantikon.flowrep_to_networkx import IO, TNodeData, TOutputData, Node, Input, Output
+from semantikon.flowrep_to_networkx import (
+    IO,
+    TNodeData,
+    TOutputData,
+    Node,
+    Input,
+    Output,
+)
 from semantikon.ontology import SNS
 
 
