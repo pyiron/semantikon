@@ -67,7 +67,6 @@ class TNodeData:
     identifier: str | None = None
     label: str | None = None
     function: dict | None = None
-    parent: str | None = None
     extras: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -85,8 +84,6 @@ class TNodeData:
             attrs["label"] = self.label
         if self.function is not None:
             attrs["function"] = self.function
-        if self.parent is not None:
-            attrs["parent"] = self.parent
         attrs.update(self.extras)
         return attrs
 
@@ -148,14 +145,13 @@ class SemantikonDiGraph(nx.DiGraph):
 
         step = attrs["step"]
         if step == "node":
-            known = {"type", "step", "identifier", "label", "function", "parent"}
+            known = {"type", "step", "identifier", "label", "function"}
             node_meta = TNodeData(
                 type=attrs["type"],
                 step=step,
                 identifier=attrs.get("identifier"),
                 label=attrs.get("label"),
                 function=attrs.get("function"),
-                parent=attrs.get("parent"),
                 extras={k: v for k, v in attrs.items() if k not in known},
             )
             return node_meta.to_attrs()
@@ -362,8 +358,6 @@ def _workflow_to_networkx(
                 )
             )
             metadata["function"] = function_data
-        if parent_name is not None:
-            metadata["parent"] = parent_name
         G.add_node(node_name, **metadata)
 
         output_labels = list(node_data.output_ports)

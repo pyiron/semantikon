@@ -538,7 +538,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
 
 
 def _wf_node_to_graph(
-    node_name: str,
+    node_name: Node | IO,
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
@@ -573,9 +573,9 @@ def _wf_node_to_graph(
             )
         g.add((node, RDFS.label, Literal(str(node_name))))
         g.add((node, SNS.local_identifier, Literal(node_name.name)))
-        if data.get("parent"):
+        if node_name.parent:
             g += _to_owl_restriction(
-                BASE[G.t_ns + data["parent"]],
+                BASE[G.t_ns + node_name.parent],
                 SNS.has_part,
                 node,
             )
@@ -588,8 +588,8 @@ def _wf_node_to_graph(
             g.add((node, SNS.has_part, BASE[G.a_ns + out]))
         if "function" in data:
             g.add((node, SNS.concretizes, f_node))
-        if data.get("parent"):
-            g.add((BASE[G.a_ns + data["parent"]], SNS.has_part, node))
+        if node_name.parent:
+            g.add((BASE[G.a_ns + node_name.parent], SNS.has_part, node))
     return g
 
 
