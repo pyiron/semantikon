@@ -240,10 +240,7 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
             # First collect all direct children
             direct_children: dict[str, str] = {}
             for child_label, child_node in G.nodes.items():
-                if (
-                    child_node.get("step") == "node"
-                    and child_node.get("parent") == node_name
-                ):
+                if isinstance(child_label, Node) and child_label.parent == node_name:
                     # Extract child short label correctly by removing parent prefix
                     direct_children[child_label.name] = child_label
                     nodes[child_label.name] = _process_node(child_label)
@@ -271,55 +268,45 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
                 return False
 
             for u, v in G.edges:
-                u_data = G.nodes[u]
-                v_data = G.nodes[v]
-                u_step = u_data.get("step")
-                v_step = v_data.get("step")
-
                 u_is_direct_io = _is_direct_io(u)
                 v_is_direct_io = _is_direct_io(v)
                 u_is_child_io = _is_child_io(u)
                 v_is_child_io = _is_child_io(v)
 
-                if u_step == v_step == "inputs":
+                if isinstance(u, Input) and isinstance(v, Input):
                     if u_is_direct_io and v_is_child_io:
-                        u_port = u_data["arg"]
                         v_child = _find_child_for_io(v)
                         if v_child is not None:
-                            v_port = v_data["arg"]
                             edges_key = fr.schemas.TargetHandle(
-                                node=v_child, port=v_port
+                                node=v_child, port=v.arg
                             )
-                            input_edges[edges_key] = fr.schemas.InputSource(port=u_port)
-                elif u_step == "outputs" and v_step == "inputs":
+                            input_edges[edges_key] = fr.schemas.InputSource(port=u.arg)
+                elif isinstance(u, Output) and isinstance(v, Input):
                     if u_is_child_io and v_is_child_io:
                         u_child = _find_child_for_io(u)
                         v_child = _find_child_for_io(v)
                         if u_child is not None and v_child is not None:
-                            u_port = u_data["arg"]
-                            v_port = v_data["arg"]
                             u_port = _normalize_output_label(
-                                u_port, nodes[u_child].outputs
+                                u.arg, nodes[u_child].outputs
                             )
                             edges_key = fr.schemas.TargetHandle(
-                                node=v_child, port=v_port
+                                node=v_child, port=v.arg
                             )
                             edges[edges_key] = fr.schemas.SourceHandle(
                                 node=u_child, port=u_port
                             )
                 elif (
-                    u_step == v_step == "outputs"
+                    isinstance(u, Output)
+                    and isinstance(v, Output)
                     and u != v
                     and u_is_child_io
                     and v_is_direct_io
                 ):
                     u_child = _find_child_for_io(u)
                     if u_child is not None:
-                        u_port = u_data["arg"]
-                        v_port = v_data["arg"]
-                        u_port = _normalize_output_label(u_port, nodes[u_child].outputs)
+                        u_port = _normalize_output_label(u.arg, nodes[u_child].outputs)
                         v_port = _normalize_output_label(
-                            v_port, list(base_recipe.outputs)
+                            v.arg, list(base_recipe.outputs)
                         )
                         output_edges[fr.schemas.OutputTarget(port=v_port)] = (
                             fr.schemas.SourceHandle(node=u_child, port=u_port)
@@ -462,7 +449,7 @@ def _add_io_nodes(
         function_data = function_dict.get(func_node) if func_node is not None else None
         if function_data is None:
             continue
-        workflow_graph.add_node(node, step="node", function=function_data["data"])
+        workflow_graph.add_node(Node(node), function=function_data["data"])
 
         arg_values = list(graph.objects(io_node, SNS.local_identifier))
         if len(arg_values) != 1:
@@ -470,7 +457,10 @@ def _add_io_nodes(
         arg = cast(Literal, arg_values[0]).toPython()
         for data in function_data[f"{io_type}_args"]:
             if arg == data["arg"]:
-                workflow_graph.add_node(io_node, step=f"{io_type}s", **data)
+                if io_type == "input":
+                    workflow_graph.add_node(Input(io_node, arg=arg), **data)
+                else:
+                    workflow_graph.add_node(Output(io_node, arg=arg), **data)
                 break
         else:
             raise ValueError(f"Could not match argument {arg!r} for {node!r}.")
@@ -529,7 +519,7 @@ def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
     position = {
         node: i
         for i, node in enumerate(nx.topological_sort(workflow_graph))
-        if workflow_graph.nodes[node].get("step") == "node"
+        if isinstance(node, Node)
     }
     for node, data in tuple(workflow_graph.nodes.data()):
         if data.get("step") != "data":
@@ -555,7 +545,7 @@ def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
         [
             edge
             for edge in workflow_graph.edges
-            if all(workflow_graph.nodes[node].get("step") == "node" for node in edge)
+            if all(isinstance(node, Node) for node in edge)
         ]
     )
     return workflow_graph
@@ -616,7 +606,7 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
     """
 
     for node, data in tuple(G.nodes.data()):
-        if data.get("step") != "inputs" or "constant_value" not in data:
+        if not isinstance(node, Input) or "constant_value" not in data:
             continue
 
         # Extract the parent node and argument name

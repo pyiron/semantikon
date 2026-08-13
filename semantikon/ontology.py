@@ -550,8 +550,14 @@ def _wf_node_to_graph(
             g += _function_to_graph(
                 f_node,
                 data["function"],
-                input_args=[{"arg": item.arg} | G.nodes[item] for item in G.predecessors(node_name)],
-                output_args=[{"arg": item.arg} | G.nodes[item] for item in G.successors(node_name)],
+                input_args=[
+                    {"arg": item.arg} | G.nodes[item]
+                    for item in G.predecessors(node_name)
+                ],
+                output_args=[
+                    {"arg": item.arg} | G.nodes[item]
+                    for item in G.successors(node_name)
+                ],
                 uri=data.get("uri"),
             )
     if t_box:
