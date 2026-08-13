@@ -578,6 +578,8 @@ class _HashGraph:
                     attrs["value"] = G.nodes[node]["value"]
                 elif "default" in G.nodes[node]:
                     attrs["value"] = G.nodes[node]["default"]
+            if isinstance(node, IO):
+                attrs["arg"] = node.arg
             G_tmp.add_node(node, canon=self._canonical_json(attrs))
         for u, v in G.edges:
             G_tmp.add_edge(u, v)
