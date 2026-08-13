@@ -182,7 +182,9 @@ class SemantikonDiGraph(nx.DiGraph):
         for n in nodes_for_adding:
             if isinstance(n, tuple):
                 node, node_attr = n
-                normalized_attr = self._validate_semantikon_attrs(node, attr | node_attr)
+                normalized_attr = self._validate_semantikon_attrs(
+                    node, attr | node_attr
+                )
                 super().add_node(node, **normalized_attr)
             else:
                 normalized_attr = self._validate_semantikon_attrs(n, attr)

@@ -593,13 +593,13 @@ def _wf_node_to_graph(
     return g
 
 
-def _output_is_connected(io: str, G: SemantikonDiGraph) -> bool:
+def _output_is_connected(io: Node | IO, G: SemantikonDiGraph) -> bool:
     candidate = list(G.successors(io))
     n_candidates = len(candidate)
     if n_candidates == 0:
         return False
     elif n_candidates == 1:
-        if G.nodes[candidate[0]]["step"] == "node":
+        if isinstance(candidate[0], Node):
             return True
         return _output_is_connected(candidate[0], G)
     elif n_candidates == 2 and _is_macro_input(io, G, tuple(candidate)):
@@ -610,11 +610,15 @@ def _output_is_connected(io: str, G: SemantikonDiGraph) -> bool:
         return any(_output_is_connected(c, G) for c in candidate)
 
 
-def _is_macro_input(io: str, G: SemantikonDiGraph, candidates: tuple[str, str]):
-    successor_types = {G.nodes[c]["step"] for c in candidates}
-    step_type = G.nodes[io]["step"]
-    input_edge_predecessors = {"node", "inputs"}
-    return step_type == "inputs" and successor_types == input_edge_predecessors
+def _is_macro_input(
+    io: Node | IO, G: SemantikonDiGraph, candidates: tuple[Node | IO, Node | IO]
+):
+    return isinstance(io, Input) and (
+        isinstance(candidates[0], Node)
+        and isinstance(candidates[1], Input)
+        or isinstance(candidates[1], Node)
+        and isinstance(candidates[0], Input)
+    )
 
 
 def _input_is_connected(io: IO | Node, G: SemantikonDiGraph) -> bool:
@@ -623,28 +627,24 @@ def _input_is_connected(io: IO | Node, G: SemantikonDiGraph) -> bool:
     if n_predecessors == 0:
         return False
     elif n_predecessors == 1:
-        if G.nodes[candidate[0]]["step"] == "node":
+        if isinstance(candidate[0], Node):
             return True
         return _input_is_connected(candidate[0], G)
     elif n_predecessors == 2 and _is_macro_output(io, G, tuple(candidate)):
         return all(
-            _input_is_connected(cc, G)
-            for cc in candidate
-            if G.nodes[cc]["step"] != "node"
+            _input_is_connected(cc, G) for cc in candidate if not isinstance(cc, Node)
         )
     else:
-        predecessor_steps = {c: G.nodes[c]["step"] for c in candidate}
-        step_type = G.nodes[io]["step"]
-        raise ValueError(
-            f"Too many predecessors for {io} ({step_type}): {predecessor_steps}"
-        )
+        raise ValueError(f"Too many predecessors for {io}: {candidate}")
 
 
 def _is_macro_output(io: IO | Node, G: SemantikonDiGraph, candidates: tuple[str, str]):
-    predecessor_types = {G.nodes[c]["step"] for c in candidates}
-    step_type = G.nodes[io]["step"]
-    output_edge_predecessors = {"node", "outputs"}
-    return step_type == "outputs" and predecessor_types == output_edge_predecessors
+    return isinstance(io, Output) and (
+        isinstance(candidates[0], Node)
+        and isinstance(candidates[1], Output)
+        or isinstance(candidates[1], Node)
+        and isinstance(candidates[0], Output)
+    )
 
 
 def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: IO) -> str:
@@ -767,7 +767,7 @@ def _wf_input_to_graph(
     units = data.get("units", data.get("unit"))
     if "derived_from" in data:
         raise ValueError(
-            f"'derived_from' (defined for the argument '{data['arg']}') is not"
+            f"'derived_from' (defined for the argument '{node_name.arg}') is not"
             " supported for inputs."
         )
     if t_box:
@@ -776,8 +776,8 @@ def _wf_input_to_graph(
             out = list(G.predecessors(node_name))
             assert len(out) <= 1
             if len(out) == 1:
-                assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
-                if G.nodes[out[0]]["step"] == "outputs":
+                assert isinstance(out[0], IO)
+                if isinstance(out[0], Output):
                     g += _to_owl_restriction(
                         BASE[G.t_ns + out[0]], SNS.has_participant, data_node
                     )
@@ -921,13 +921,13 @@ def _parse_precedes(
     t_box: bool,
 ) -> Graph:
     g = _get_bound_graph()
-    for node in G.nodes.data():
-        if node[1]["step"] == "node":
-            successors = list(_get_successor_nodes(G, node[0]))
+    for node in G.nodes:
+        if isinstance(node, Node):
+            successors = list(_get_successor_nodes(G, node))
             if t_box:
                 for succ in successors:
                     g += _to_owl_restriction(
-                        BASE[G.t_ns + node[0]],
+                        BASE[G.t_ns + node],
                         SNS.precedes,
                         BASE[G.t_ns + succ],
                     )
@@ -935,7 +935,7 @@ def _parse_precedes(
                 for succ in successors:
                     g.add(
                         (
-                            BASE[G.a_ns + node[0]],
+                            BASE[G.a_ns + node],
                             SNS.precedes,
                             BASE[G.a_ns + succ],
                         )
@@ -949,13 +949,9 @@ def _parse_global_io(
     t_box: bool,
 ) -> Graph:
     g = _get_bound_graph()
-    global_inputs = [
-        n for n in G.nodes.data() if G.in_degree(n[0]) == 0 and n[1]["step"] == "inputs"
-    ]
+    global_inputs = [n for n in G.nodes if G.in_degree(n) == 0 and isinstance(n, Input)]
     global_outputs = [
-        n
-        for n in G.nodes.data()
-        if G.out_degree(n[0]) == 0 and n[1]["step"] == "outputs"
+        n for n in G.nodes if G.out_degree(n) == 0 and isinstance(n, Output)
     ]
     for global_io in [global_inputs, global_outputs]:
         for io in global_io:
@@ -974,20 +970,18 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
     g = _get_bound_graph()
     for node_name, data in G.nodes.data():
         data = data.copy()
-        step = data.pop("step")
         if t_box:
             g.add((BASE[G.t_ns + node_name], RDF.type, OWL.Class))
         else:
             g.add((BASE[G.a_ns + node_name], RDF.type, BASE[G.t_ns + node_name]))
-        assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
-        if step == "node":
+        if isinstance(node_name, Node):
             g += _wf_node_to_graph(
                 node_name=node_name,
                 data=data,
                 G=G,
                 t_box=t_box,
             )
-        elif step == "inputs":
+        elif isinstance(node_name, Input):
             g += _wf_input_to_graph(
                 node_name=node_name,
                 data=data,
