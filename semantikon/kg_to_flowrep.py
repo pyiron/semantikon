@@ -252,12 +252,14 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
                 """Check if this is a direct IO of the workflow."""
                 if isinstance(node_id, Node):
                     return False
-                return node_id.parent == node_name
+                return node_id.node == node_name
 
-            def _is_child_io(node_id: str) -> bool:
+            def _is_child_io(node_id: IO | Node) -> bool:
                 """Check if this is an IO of a direct child (and only direct child)."""
+                if not isinstance(node_id, IO):
+                    return False
                 for child_label in direct_children.values():
-                    if node_id.startswith(child_label + "-"):
+                    if node_id.parent == child_label:
                         # Make sure it's not a grandchild IO
                         rest = node_id[len(child_label) + 1 :]
                         parts = rest.split("-")
