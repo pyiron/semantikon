@@ -14,7 +14,7 @@ from rdflib.query import ResultRow
 from rdflib.term import IdentifiedNode, Node
 
 from semantikon.flowrep_dict import _flowrep_recipe_from_callable
-from semantikon.flowrep_to_networkx import TNodeData, TOutputData, Node, Input, Output
+from semantikon.flowrep_to_networkx import IO, TNodeData, TOutputData, Node, Input, Output
 from semantikon.ontology import SNS
 
 
@@ -259,15 +259,8 @@ def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
                 if not isinstance(node_id, IO):
                     return False
                 for child_label in direct_children.values():
-                    if node_id.parent == child_label:
-                        # Make sure it's not a grandchild IO
-                        rest = node_id[len(child_label) + 1 :]
-                        parts = rest.split("-")
-                        # Direct child IO is like "inputs-arg" or "outputs-arg" (2 parts)
-                        if len(parts) == 2:
-                            node = G.nodes.get(node_id)
-                            if node and node.get("step") in ["inputs", "outputs"]:
-                                return True
+                    if node_id.node == child_label:
+                        return True
                 return False
 
             for u, v in G.edges:
