@@ -388,7 +388,7 @@ def _reorganize_output_edges(
     io_dict: dict[URIRef, URIRef] = {}
     for n in graph.predecessors(node):
         pred = list(graph.predecessors(n))
-        assert len(pred) == 1 and pred[0] not in io_dict
+        assert len(pred) == 1 and pred[0] not in io_dict, f"{pred}, {n}"
         io_dict[pred[0]] = n
     keys = sorted(io_dict.keys(), key=lambda item: position[item])[::-1]
     nodes = [io_dict[k] for k in keys]
@@ -403,7 +403,7 @@ def _reorganize_input_edges(
     io_dict: dict[URIRef, URIRef] = {}
     for n in graph.successors(node):
         succ = list(graph.successors(n))
-        assert len(succ) == 1 and succ[0] not in io_dict
+        assert len(succ) == 1 and succ[0] not in io_dict, succ
         io_dict[succ[0]] = n
     node_keys = sorted(io_dict.keys(), key=lambda item: position[item])
     for i, key_one in enumerate(node_keys):
@@ -421,108 +421,118 @@ def _reconnect_io(graph: nx.DiGraph, node: URIRef):
         graph.add_edge(outputs[0], inp)
 
 
-def _add_io_nodes(
-    graph: Graph,
-    workflow_graph: nx.DiGraph,
-    function_dict: dict[URIRef, dict[str, Any]],
-    node_function_dict: dict[URIRef, URIRef],
-    io_type: str,
-):
-    if io_type == "input":
-        io_query = graph.query(
-            _get_connection_query(SNS.workflow_node, SNS.has_part, SNS.input_assignment)
-        )
-    else:
-        io_query = graph.query(
-            _get_connection_query(
-                SNS.workflow_node, SNS.has_part, SNS.output_assignment
-            )
-        )
-    for row in io_query:
-        node, io_node = cast(ResultRow, row)
-        if io_type == "input":
-            workflow_graph.add_edge(io_node, node)
-        else:
-            workflow_graph.add_edge(node, io_node)
+def _uri_to_node_names(graph: Graph):
+    node_graph = nx.DiGraph()
+    for parent, child in graph.query(
+        _get_connection_query(SNS.workflow_node, SNS.has_part, SNS.workflow_node)
+    ):
+        node_graph.add_edge(parent, child)
 
-        func_node = node_function_dict.get(cast(URIRef, node))
-        function_data = function_dict.get(func_node) if func_node is not None else None
-        if function_data is None:
-            continue
-        workflow_graph.add_node(Node(node), function=function_data["data"])
+    node_dict = {}
+    for parent in nx.topological_sort(node_graph):
+        parent_name = graph.value(parent, SNS.local_identifier).toPython()
+        node_dict[parent] = node_dict.get(parent, Node(parent_name))
+        for child in node_graph.successors(parent):
+            assert child not in node_dict
+            child_name = graph.value(child, SNS.local_identifier).toPython()
+            node_dict[child] = Node(child_name, parent=node_dict[parent])
+    return node_dict
 
-        arg_values = list(graph.objects(io_node, SNS.local_identifier))
-        if len(arg_values) != 1:
-            raise ValueError(f"Expected one local identifier for {io_node!r}.")
-        arg = cast(Literal, arg_values[0]).toPython()
-        for data in function_data[f"{io_type}_args"]:
-            if arg == data["arg"]:
-                if io_type == "input":
-                    workflow_graph.add_node(Input(io_node, arg=arg), **data)
-                else:
-                    workflow_graph.add_node(Output(io_node, arg=arg), **data)
-                break
-        else:
-            raise ValueError(f"Could not match argument {arg!r} for {node!r}.")
+
+def _uri_to_node_and_io_names(
+    graph: Graph, uri_to_node: dict[URIRef, Node], G: nx.DiGraph
+) -> dict[URIRef, Node | IO]:
+    io_dict = {}
+    for uri, node in uri_to_node.items():
+        for out in G.successors(uri):
+            if out in uri_to_node:  # node; not an IO
+                continue
+            arg = graph.value(out, SNS.local_identifier)
+            io_dict[out] = Output(arg=arg.toPython(), node=node)
+        for inp in G.predecessors(uri):
+            if inp in uri_to_node:  # node; not an IO
+                continue
+            arg = graph.value(inp, SNS.local_identifier)
+            io_dict[inp] = Input(arg=arg.toPython(), node=node)
+    return io_dict | uri_to_node
 
 
 def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
-    function_nodes = list(
-        cast(Iterable[URIRef], graph.subjects(RDF.type, SNS.workflow_function))
-    )
-    function_dict: dict[URIRef, dict[str, Any]] = {
-        f_node: _graph_to_function(graph, f_node) for f_node in function_nodes
-    }
-    node_function_dict = _node_functions(graph)
 
     workflow_graph = nx.DiGraph()
-    _add_io_nodes(
-        graph, workflow_graph, function_dict, node_function_dict, io_type="input"
-    )
-    _add_io_nodes(
-        graph, workflow_graph, function_dict, node_function_dict, io_type="output"
-    )
 
-    for row in graph.query(
+    for node, io_node in graph.query(
+        _get_connection_query(SNS.workflow_node, SNS.has_part, SNS.input_assignment)
+    ):
+        workflow_graph.add_edge(io_node, node)
+
+    for node, io_node in graph.query(
+        _get_connection_query(SNS.workflow_node, SNS.has_part, SNS.output_assignment)
+    ):
+        workflow_graph.add_edge(node, io_node)
+
+    for out_assignment, data_node in graph.query(
         _get_connection_query(
             SNS.output_assignment, SNS.has_participant, SNS.value_specification
         )
     ):
-        out_assignment, data_node = cast(ResultRow, row)
         workflow_graph.add_edge(out_assignment, data_node)
-        workflow_graph.add_node(data_node, step="data")
 
-    for row in graph.query(
+    for in_assignment, data_node in graph.query(
         _get_connection_query(
             SNS.input_assignment, SNS.has_participant, SNS.value_specification
         )
     ):
-        in_assignment, data_node = cast(ResultRow, row)
         workflow_graph.add_edge(data_node, in_assignment)
-        workflow_graph.add_node(data_node, step="data")
 
-    for row in graph.query(
+    # This is only needed to correctly identify input - input and
+    # output - output edges in the workflow graph.
+    for parent_node, child_node in graph.query(
         _get_connection_query(SNS.workflow_node, SNS.has_part, SNS.workflow_node)
     ):
-        parent, child = cast(ResultRow, row)
-        workflow_graph.add_edge(parent, child)
-        if parent not in workflow_graph:
-            workflow_graph.add_node(parent, step="node")
-        if child not in workflow_graph:
-            workflow_graph.add_node(child, step="node")
-        workflow_graph.nodes[child]["parent"] = _label(graph, cast(URIRef, parent))
-        workflow_graph.nodes[parent]["type"] = "workflow"
-        workflow_graph.nodes[child]["type"] = workflow_graph.nodes[child].get(
-            "type", "atomic"
-        )
+        workflow_graph.add_edge(parent_node, child_node)
+    return workflow_graph
 
+
+def _append_metadata_to_graph(graph: Graph, workflow_graph: nx.DiGraph) -> None:
+    node_to_f = _node_functions(graph)
+    for node in workflow_graph.nodes:
+        if not node in node_to_f:
+            continue
+        f_meta = _graph_to_function(graph, node_to_f[node])
+        workflow_graph.nodes[node]["function"] = f_meta["data"]
+        input_args = {ent.pop("arg"): ent for ent in f_meta["input_args"]}
+        output_args = {ent.pop("arg"): ent for ent in f_meta["output_args"]}
+        for inp_node in workflow_graph.predecessors(node):
+            if a := graph.value(inp_node, SNS.local_identifier):
+                if a.toPython() not in input_args:
+                    continue
+                for key, value in input_args[a.toPython()].items():
+                    workflow_graph.nodes[inp_node][key] = value
+        for out_node in workflow_graph.successors(node):
+            if a := graph.value(out_node, SNS.local_identifier):
+                if a.toPython() not in output_args:
+                    continue
+                for key, value in output_args[a.toPython()].items():
+                    workflow_graph.nodes[out_node][key] = value
+
+
+def _reorganize_workflow_graph(workflow_graph: nx.DiGraph) -> None:
+    """
+    Reorganize the workflow graph to ensure that data nodes are properly connected
+    to their input and output assignments, and that the graph is in a suitable
+    format for conversion to a flowrep WorkflowRecipe.
+
+    Args:
+        workflow_graph (nx.DiGraph): The workflow graph to reorganize.
+    """
     position = {
         node: i
         for i, node in enumerate(nx.topological_sort(workflow_graph))
         if isinstance(node, Node)
     }
-    for node, data in tuple(workflow_graph.nodes.data()):
-        if data.get("step") != "data":
+    for node in tuple(workflow_graph.nodes):
+        if not isinstance(node, URIRef):
             continue
         if len(list(workflow_graph.predecessors(node))) > 1:
             _reorganize_output_edges(workflow_graph, node, position)
@@ -536,9 +546,7 @@ def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
 
     workflow_graph.remove_nodes_from(
         [
-            node
-            for node, data in workflow_graph.nodes.data()
-            if data.get("step") == "data"
+            node for node in workflow_graph.nodes if isinstance(node, URIRef)
         ]
     )
     workflow_graph.remove_edges_from(
@@ -548,11 +556,10 @@ def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
             if all(isinstance(node, Node) for node in edge)
         ]
     )
-    return workflow_graph
 
 
 def _extract_constant_values_from_kg(
-    rdf_graph: Graph, workflow_graph: nx.DiGraph
+    rdf_graph: Graph, workflow_graph: nx.DiGraph, uri_to_node_and_io: dict[URIRef, Node | IO]
 ) -> None:
     """
     Extract constant values from the RDF knowledge graph and add them to
@@ -587,7 +594,8 @@ def _extract_constant_values_from_kg(
     }}"""
 
     for input_node, value_literal in rdf_graph.query(query):  # type: ignore[misc]
-        workflow_graph.nodes[input_node]["constant_value"] = (
+        inp = uri_to_node_and_io.get(input_node)
+        workflow_graph.nodes[inp]["constant_value"] = (
             _literal_to_constant(value_literal)
             if isinstance(value_literal, Literal)
             else value_literal
@@ -609,45 +617,22 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
         if not isinstance(node, Input) or "constant_value" not in data:
             continue
 
-        # Extract the parent node and argument name
-        # Node format: parent-inputs-arg
-        assert isinstance(node, Input), f"Expected 'inputs' in node name: {node}"
-
-        parent_node = node.node
-        parent_data = G.nodes[parent_node]
-        assert (
-            parent_data is not None
-        ), f"Parent node {parent_node} not found for {node} in {G.nodes}"
-        assert (
-            parent_data.get("step") == "node"
-        ), f"Parent node {parent_node} is not a workflow node for {node}"
-
-        # Create constant node name using a unique counter
-        assert (
-            "parent" in parent_data
-        ), f"Parent node {parent_node} is missing 'parent' attribute for {node}"
-        parent_prefix = parent_data["parent"] + "-"
-
         for constant_index in itertools.count():
-            const_node_name = (
-                f"{parent_prefix}{fr.schemas.ConstantRecipe.std_label}_{constant_index}"
+            const_node = Node(
+                name=f"{fr.schemas.ConstantRecipe.std_label}_{constant_index}",
+                parent=node.node.parent
             )
-            if const_node_name not in G:
+            if const_node not in G:
                 break
 
-        const_output_name = f"{const_node_name}-outputs-constant"
+        const_output_name = Output(arg="constant", node=const_node)
 
         # Create the constant node
-        const_node_attrs = TNodeData(
-            type="constant",
-            step="node",
-            parent=parent_data.get("parent"),
-        )
-        G.add_node(const_node_name, **const_node_attrs.to_attrs())
+        const_node_attrs = TNodeData(type="constant")
+        G.add_node(const_node, **const_node_attrs.to_attrs())
 
         # Create the constant output node
         const_output_attrs = TOutputData(
-            arg=fr.schemas.ConstantRecipe.std_label,
             position=0,
             value=data["constant_value"],
             has_value=True,
@@ -656,113 +641,85 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
         G.add_node(const_output_name, **const_output_attrs.to_attrs())
 
         # Record edges to add
-        G.add_edge(const_node_name, const_output_name)
+        G.add_edge(const_node, const_output_name)
         G.add_edge(const_output_name, node)
 
 
-def _workflow_roots(graph: Graph) -> dict[URIRef, str]:
-    node_graph = nx.DiGraph()
-    workflow_nodes = list(graph.subjects(RDFS.subClassOf, SNS.workflow_node))
-    node_graph.add_nodes_from(workflow_nodes)
-    node_graph.add_edges_from(
-        graph.query(
-            _get_connection_query(SNS.workflow_node, SNS.has_part, SNS.workflow_node)
-        )
-    )
-    roots = [node for node in node_graph.nodes if node_graph.in_degree(node) == 0]
-    return {root: _label(graph, root) for root in roots}
-
-
-def _split_by_roots(
-    graph: Graph, workflow_graph: nx.DiGraph, roots: dict[URIRef, str]
-) -> dict[str, nx.DiGraph]:
-    subgraphs: dict[str, nx.DiGraph] = {}
-    for component in nx.weakly_connected_components(workflow_graph):
-        component_nodes = set(component)
-        component_workflows = component_nodes & set(roots.keys())
-        if len(component_workflows) == 0:
-            raise ValueError("Could not assign graph component to a root workflow.")
-        if len(component_workflows) > 1:
-            raise ValueError(
-                "A graph component contains more than one root workflow: "
-                f"{sorted(roots[uri] for uri in component_workflows)}"
-            )
-        root_uri = next(iter(component_workflows))
-        name = roots[root_uri]
-        subgraph = workflow_graph.subgraph(component).copy()
-        # Relabel nodes to strings after splitting
-        mapping = {node: _label(graph, node) for node in subgraph.nodes}
-        subgraph = nx.relabel_nodes(subgraph, mapping)
-        subgraph.name = str(name)
-        subgraphs[name] = subgraph
-    return subgraphs
-
-
-def _select_workflow(
-    graph: Graph,
-    roots: dict[URIRef, str],
-    workflows: Iterable[str],
-    workflow_name: str | URIRef | None,
-) -> str:
-    names = sorted(set(workflows))
-    if workflow_name is not None:
-        if isinstance(workflow_name, URIRef):
-            if workflow_name in roots:
-                return roots[workflow_name]
-            raise ValueError(
-                f"Unknown workflow URIRef {workflow_name!r}. Available workflows: {sorted(roots.keys())}"
-            )
-        if workflow_name in names:
-            return workflow_name
-        by_identifier: dict[str, list[str]] = {}
-        for uri, label in roots.items():
-            by_identifier.setdefault(_identifier(graph, uri), []).append(label)
-        matches = by_identifier.get(workflow_name, [])
-        if len(matches) == 1:
-            return matches[0]
-        if len(matches) > 1:
-            raise ValueError(
-                f"Workflow identifier {workflow_name!r} is ambiguous. Matches: {matches}"
-            )
-        if workflow_name not in names:
-            raise ValueError(
-                f"Unknown workflow {workflow_name!r}. Available workflows: {names}"
-            )
-    if len(names) != 1:
-        raise ValueError(
-            "Graph contains multiple root workflows. Pass `workflow_name` explicitly. "
-            f"Available workflows: {names}"
-        )
-    return names[0]
-
-
-def _kg2digraph(graph: Graph, workflow_name: str | URIRef | None = None) -> nx.DiGraph:
-    roots = _workflow_roots(graph)
+def _ensure_workflow_name(
+    wf_name: str | URIRef | None, uri_to_node: dict[URIRef, Node]
+) -> URIRef:
+    roots = {k: v for k, v in uri_to_node.items() if v.parent is None}
     if len(roots) == 0:
         raise ValueError(
             "No workflow nodes found in graph. Ensure T-box information is present "
             "(e.g. include_t_box=True in get_knowledge_graph)."
         )
-    if len(roots) > 1 and workflow_name is None:
-        wfs = sorted(roots.values())
-        wfs = (
-            sorted(roots.keys()) + wfs
-            if len(wfs) == len(set(wfs))
-            else sorted(roots.keys())
-        )
+    elif len(roots) == 1:
+        if (
+            wf_name is None
+            or wf_name in roots
+            or str(wf_name) in [str(v) for v in roots.values()]
+        ):
+            return next(iter(roots.keys()))
         raise ValueError(
-            "Graph contains multiple root workflows. Pass `workflow_name` explicitly. "
-            f"Available workflows: {wfs}"
+            f"Unknown workflow {wf_name!r}. Available workflow: {list(roots.keys()) + list(roots.values())!r}"
         )
-    workflow_graph = _build_workflow_graph(graph)
-    _extract_constant_values_from_kg(graph, workflow_graph)
-    workflows = _split_by_roots(graph, workflow_graph, roots)
-    selected_name = _select_workflow(
-        graph, roots, workflows.keys(), workflow_name=workflow_name
-    )
-    selected_workflow = workflows[selected_name]
-    _reconstruct_constant_nodes(selected_workflow)
-    return selected_workflow
+    else:
+        if wf_name is None:
+            wfs = sorted([str(r) for r in roots.values()])
+            wfs = (
+                sorted(roots.keys()) + wfs
+                if len(wfs) == len(set(wfs))
+                else sorted(roots.keys())
+            )
+            raise ValueError(
+                "Graph contains multiple root workflows. Pass `workflow_name` explicitly. "
+                f"Available workflows: {wfs}"
+            )
+        if c := [str(v) for v in roots.values()].count(str(wf_name)):
+            if c > 1:
+                raise ValueError(
+                    f"Ambiguous workflow name {wf_name!r}. It matches {c} workflows. "
+                    f"Available workflows: {list(roots.keys()) + list(roots.values())!r}"
+                )
+            return next(k for k, v in roots.items() if str(v) == str(wf_name))
+        elif wf_name in roots:
+            return wf_name
+        else:
+            raise ValueError(
+                f"Unknown workflow {wf_name!r}. Available workflows: {list(roots.keys()) + list(roots.values())!r}"
+            )
+
+
+def _extract_workflow(
+    workflow_graph: nx.DiGraph, workflow_name: str | URIRef
+) -> nx.DiGraph:
+    for node in nx.weakly_connected_components(workflow_graph):
+        if workflow_name in node:
+            return workflow_graph.subgraph(node)
+    # In principle this error cannot be raised because it is already checked
+    # in _ensure_workflow_name, but we keep it for safety.
+    raise ValueError(f"Workflow {workflow_name!r} not found in the graph.")
+
+
+def _rename_workflow(
+    workflow_graph: nx.DiGraph, uri_to_node: dict[URIRef, Node], uri_to_node_and_io: dict[URIRef, Node | IO], graph: Graph
+) -> nx.DiGraph:
+    return nx.relabel_nodes(workflow_graph, uri_to_node_and_io)
+
+
+def _kg2digraph(graph: Graph, workflow_name: str | URIRef | None = None) -> nx.DiGraph:
+    uri_to_node = _uri_to_node_names(graph)
+    all_workflow_graph = _build_workflow_graph(graph)
+    workflow_name = _ensure_workflow_name(workflow_name, uri_to_node)
+    workflow_graph = _extract_workflow(all_workflow_graph, workflow_name)
+    _append_metadata_to_graph(graph, workflow_graph)
+    uri_to_node_and_io = _uri_to_node_and_io_names(graph, uri_to_node, workflow_graph)
+    renamed_workflow_graph = _rename_workflow(workflow_graph, uri_to_node, uri_to_node_and_io, graph)
+    _reorganize_workflow_graph(renamed_workflow_graph)
+    _extract_constant_values_from_kg(graph, renamed_workflow_graph, uri_to_node_and_io)
+    _reconstruct_constant_nodes(renamed_workflow_graph)
+    return renamed_workflow_graph
 
 
 def kg2recipe(
