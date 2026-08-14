@@ -182,7 +182,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     }
 
 
-def _networkx_to_dict(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
+def _networkx_to_flowrep(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
     """
     Convert a NetworkX DiGraph into flowrep WorkflowRecipe.
 
@@ -739,4 +739,4 @@ def kg2recipe(
         fr.schemas.WorkflowRecipe: Flowrep workflow recipe.
     """
     selected_workflow = _kg2digraph(graph, workflow_name=workflow_name)
-    return _networkx_to_dict(selected_workflow)
+    return _networkx_to_flowrep(selected_workflow)
