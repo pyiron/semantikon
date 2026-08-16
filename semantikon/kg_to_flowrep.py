@@ -517,6 +517,14 @@ def _append_metadata_to_graph(graph: Graph, workflow_graph: nx.DiGraph) -> None:
                     workflow_graph.nodes[out_node][key] = value
 
 
+def _get_node_positions(workflow_graph: nx.DiGraph) -> dict[Node, int]:
+    return {
+        node: i
+        for i, node in enumerate(nx.topological_sort(workflow_graph))
+        if isinstance(node, Node)
+    }
+
+
 def _reorganize_workflow_graph(workflow_graph: nx.DiGraph) -> None:
     """
     Reorganize the workflow graph to ensure that data nodes are properly connected
@@ -526,11 +534,7 @@ def _reorganize_workflow_graph(workflow_graph: nx.DiGraph) -> None:
     Args:
         workflow_graph (nx.DiGraph): The workflow graph to reorganize.
     """
-    position = {
-        node: i
-        for i, node in enumerate(nx.topological_sort(workflow_graph))
-        if isinstance(node, Node)
-    }
+    position = _get_node_positions(workflow_graph)
     for node in tuple(workflow_graph.nodes):
         if not isinstance(node, URIRef):
             continue
@@ -545,9 +549,7 @@ def _reorganize_workflow_graph(workflow_graph: nx.DiGraph) -> None:
             _reconnect_io(workflow_graph, node)
 
     workflow_graph.remove_nodes_from(
-        [
-            node for node in workflow_graph.nodes if isinstance(node, URIRef)
-        ]
+        [node for node in workflow_graph.nodes if isinstance(node, URIRef)]
     )
     workflow_graph.remove_edges_from(
         [
@@ -556,10 +558,13 @@ def _reorganize_workflow_graph(workflow_graph: nx.DiGraph) -> None:
             if all(isinstance(node, Node) for node in edge)
         ]
     )
+    workflow_graph.name = str(next(iter(position.keys())))
 
 
 def _extract_constant_values_from_kg(
-    rdf_graph: Graph, workflow_graph: nx.DiGraph, uri_to_node_and_io: dict[URIRef, Node | IO]
+    rdf_graph: Graph,
+    workflow_graph: nx.DiGraph,
+    uri_to_node_and_io: dict[URIRef, Node | IO],
 ) -> None:
     """
     Extract constant values from the RDF knowledge graph and add them to
@@ -620,7 +625,7 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
         for constant_index in itertools.count():
             const_node = Node(
                 name=f"{fr.schemas.ConstantRecipe.std_label}_{constant_index}",
-                parent=node.node.parent
+                parent=node.node.parent,
             )
             if const_node not in G:
                 break
@@ -703,7 +708,10 @@ def _extract_workflow(
 
 
 def _rename_workflow(
-    workflow_graph: nx.DiGraph, uri_to_node: dict[URIRef, Node], uri_to_node_and_io: dict[URIRef, Node | IO], graph: Graph
+    workflow_graph: nx.DiGraph,
+    uri_to_node: dict[URIRef, Node],
+    uri_to_node_and_io: dict[URIRef, Node | IO],
+    graph: Graph,
 ) -> nx.DiGraph:
     return nx.relabel_nodes(workflow_graph, uri_to_node_and_io)
 
@@ -715,7 +723,9 @@ def _kg2digraph(graph: Graph, workflow_name: str | URIRef | None = None) -> nx.D
     workflow_graph = _extract_workflow(all_workflow_graph, workflow_name)
     _append_metadata_to_graph(graph, workflow_graph)
     uri_to_node_and_io = _uri_to_node_and_io_names(graph, uri_to_node, workflow_graph)
-    renamed_workflow_graph = _rename_workflow(workflow_graph, uri_to_node, uri_to_node_and_io, graph)
+    renamed_workflow_graph = _rename_workflow(
+        workflow_graph, uri_to_node, uri_to_node_and_io, graph
+    )
     _reorganize_workflow_graph(renamed_workflow_graph)
     _extract_constant_values_from_kg(graph, renamed_workflow_graph, uri_to_node_and_io)
     _reconstruct_constant_nodes(renamed_workflow_graph)
