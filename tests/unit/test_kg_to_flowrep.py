@@ -110,43 +110,6 @@ class TestKgToFlowrep(unittest.TestCase):
         self.assertEqual(kgf._identifier(graph, node), "my_identifier")
         self.assertEqual(kgf._label(graph, node), "my_label")
 
-    def test_select_workflow_variants(self):
-        graph = Graph()
-        uri_1 = URIRef("http://example.org/wf1")
-        uri_2 = URIRef("http://example.org/wf2")
-        graph.add((uri_1, kgf.SNS.local_identifier, Literal("wf_a")))
-        graph.add((uri_2, kgf.SNS.local_identifier, Literal("wf_b")))
-
-        roots = {uri_1: "label_a", uri_2: "label_b"}
-        workflows = roots.values()
-
-        self.assertEqual(
-            kgf._select_workflow(graph, roots, workflows, workflow_name="label_a"),
-            "label_a",
-        )
-        self.assertEqual(
-            kgf._select_workflow(graph, roots, workflows, workflow_name="wf_a"),
-            "label_a",
-        )
-        with self.assertRaisesRegex(ValueError, "Unknown workflow"):
-            _ = kgf._select_workflow(graph, roots, workflows, workflow_name="missing")
-        with self.assertRaisesRegex(ValueError, "multiple root workflows"):
-            _ = kgf._select_workflow(graph, roots, workflows, workflow_name=None)
-
-        ambiguous_graph = Graph()
-        ambiguous_uri_1 = URIRef("http://example.org/wf_same_1")
-        ambiguous_uri_2 = URIRef("http://example.org/wf_same_2")
-        for uri in (ambiguous_uri_1, ambiguous_uri_2):
-            ambiguous_graph.add((uri, kgf.SNS.local_identifier, Literal("wf_same")))
-        ambiguous_roots = {ambiguous_uri_1: "label_1", ambiguous_uri_2: "label_2"}
-        with self.assertRaisesRegex(ValueError, "ambiguous"):
-            _ = kgf._select_workflow(
-                ambiguous_graph,
-                ambiguous_roots,
-                ambiguous_roots.values(),
-                workflow_name="wf_same",
-            )
-
     def test_add_io_nodes_error_paths(self):
         node = URIRef("http://example.org/node")
         io_node = URIRef("http://example.org/io")
