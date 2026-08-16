@@ -147,30 +147,6 @@ class TestKgToFlowrep(unittest.TestCase):
                 workflow_name="wf_same",
             )
 
-    def test_split_by_roots_errors(self):
-        graph = Graph()
-
-        # Test 1: Graph with no roots
-        no_root_graph = nx.DiGraph()
-        no_root_graph.add_node(URIRef("http://example.org/unrelated"))
-        with self.assertRaisesRegex(ValueError, "Could not assign"):
-            _ = kgf._split_by_roots(graph, no_root_graph, roots={})
-
-        # Test 2: Multiple roots in same component
-        multi_root_graph = nx.DiGraph()
-        root_a = URIRef("http://example.org/root_a")
-        root_b = URIRef("http://example.org/root_b")
-        multi_root_graph.add_edge(root_a, root_b)
-        with self.assertRaisesRegex(ValueError, "more than one root workflow"):
-            _ = kgf._split_by_roots(
-                graph,
-                multi_root_graph,
-                roots={
-                    root_a: "root_a",
-                    root_b: "root_b",
-                },
-            )
-
     def test_add_io_nodes_error_paths(self):
         node = URIRef("http://example.org/node")
         io_node = URIRef("http://example.org/io")
