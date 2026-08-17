@@ -382,7 +382,7 @@ def _node_functions(graph: Graph) -> dict[URIRef, URIRef]:
 
 
 def _reorganize_output_edges(
-    graph: nx.DiGraph, node: URIRef, position: dict[URIRef, int]
+    graph: nx.DiGraph, node: URIRef, position: dict[Any, int]
 ):
     io_dict: dict[URIRef, URIRef] = {}
     for n in graph.predecessors(node):
@@ -397,7 +397,7 @@ def _reorganize_output_edges(
 
 
 def _reorganize_input_edges(
-    graph: nx.DiGraph, node: URIRef, position: dict[URIRef, int]
+    graph: nx.DiGraph, node: URIRef, position: dict[Any, int]
 ):
     io_dict: dict[URIRef, URIRef] = {}
     for n in graph.successors(node):
@@ -422,18 +422,18 @@ def _reconnect_io(graph: nx.DiGraph, node: URIRef):
 
 def _uri_to_node_names(graph: Graph):
     node_graph = nx.DiGraph()
-    for parent, child in graph.query(
+    for parent, child in graph.query(  # type: ignore[misc]
         _get_connection_query(SNS.workflow_node, SNS.has_part, SNS.workflow_node)
     ):
         node_graph.add_edge(parent, child)
 
     node_dict: dict[URIRef, Node] = {}
     for parent in nx.topological_sort(node_graph):
-        parent_name = graph.value(parent, SNS.local_identifier).toPython()
+        parent_name = cast(Literal, graph.value(parent, SNS.local_identifier)).toPython()
         node_dict[parent] = node_dict.get(parent, Node(parent_name))
         for child in node_graph.successors(parent):
             assert child not in node_dict
-            child_name = graph.value(child, SNS.local_identifier).toPython()
+            child_name = cast(Literal, graph.value(child, SNS.local_identifier)).toPython()
             node_dict[child] = Node(child_name, parent=node_dict[parent])
     return node_dict
 
@@ -460,24 +460,24 @@ def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
 
     workflow_graph = nx.DiGraph()
 
-    for node, io_node in graph.query(
+    for node, io_node in graph.query(  # type: ignore[misc]
         _get_connection_query(SNS.workflow_node, SNS.has_part, SNS.input_assignment)
     ):
         workflow_graph.add_edge(io_node, node)
 
-    for node, io_node in graph.query(
+    for node, io_node in graph.query(  # type: ignore[misc]
         _get_connection_query(SNS.workflow_node, SNS.has_part, SNS.output_assignment)
     ):
         workflow_graph.add_edge(node, io_node)
 
-    for out_assignment, data_node in graph.query(
+    for out_assignment, data_node in graph.query(  # type: ignore[misc]
         _get_connection_query(
             SNS.output_assignment, SNS.has_participant, SNS.value_specification
         )
     ):
         workflow_graph.add_edge(out_assignment, data_node)
 
-    for in_assignment, data_node in graph.query(
+    for in_assignment, data_node in graph.query(  # type: ignore[misc]
         _get_connection_query(
             SNS.input_assignment, SNS.has_participant, SNS.value_specification
         )
@@ -486,7 +486,7 @@ def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
 
     # This is only needed to correctly identify input - input and
     # output - output edges in the workflow graph.
-    for parent_node, child_node in graph.query(
+    for parent_node, child_node in graph.query(  # type: ignore[misc]
         _get_connection_query(SNS.workflow_node, SNS.has_part, SNS.workflow_node)
     ):
         workflow_graph.add_edge(parent_node, child_node)
@@ -598,7 +598,7 @@ def _extract_constant_values_from_kg(
     }}"""
 
     for input_node, value_literal in rdf_graph.query(query):  # type: ignore[misc]
-        inp = uri_to_node_and_io.get(input_node)
+        inp = uri_to_node_and_io.get(input_node)  # type: ignore[arg-type]
         workflow_graph.nodes[inp]["constant_value"] = (
             _literal_to_constant(value_literal)
             if isinstance(value_literal, Literal)
@@ -688,7 +688,7 @@ def _ensure_workflow_name(
                 )
             return next(k for k, v in roots.items() if str(v) == str(wf_name))
         elif wf_name in roots:
-            return wf_name
+            return cast(URIRef, wf_name)
         else:
             raise ValueError(
                 f"Unknown workflow {wf_name!r}. Available workflows: {list(roots.keys()) + list(roots.values())!r}"
