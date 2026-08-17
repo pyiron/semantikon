@@ -277,19 +277,19 @@ def _networkx_to_flowrep(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
                         v_child = _find_child_for_io(v)
                         if v_child is not None:
                             edges_key = fr.schemas.TargetHandle(
-                                node=v_child, port=v.arg
+                                node=v_child, port=v.port
                             )
-                            input_edges[edges_key] = fr.schemas.InputSource(port=u.arg)
+                            input_edges[edges_key] = fr.schemas.InputSource(port=u.port)
                 elif isinstance(u, Output) and isinstance(v, Input):
                     if u_is_child_io and v_is_child_io:
                         u_child = _find_child_for_io(u)
                         v_child = _find_child_for_io(v)
                         if u_child is not None and v_child is not None:
                             u_port = _normalize_output_label(
-                                u.arg, nodes[u_child].outputs
+                                u.port, nodes[u_child].outputs
                             )
                             edges_key = fr.schemas.TargetHandle(
-                                node=v_child, port=v.arg
+                                node=v_child, port=v.port
                             )
                             edges[edges_key] = fr.schemas.SourceHandle(
                                 node=u_child, port=u_port
@@ -303,9 +303,9 @@ def _networkx_to_flowrep(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
                 ):
                     u_child = _find_child_for_io(u)
                     if u_child is not None:
-                        u_port = _normalize_output_label(u.arg, nodes[u_child].outputs)
+                        u_port = _normalize_output_label(u.port, nodes[u_child].outputs)
                         v_port = _normalize_output_label(
-                            v.arg, list(base_recipe.outputs)
+                            v.port, list(base_recipe.outputs)
                         )
                         output_edges[fr.schemas.OutputTarget(port=v_port)] = (
                             fr.schemas.SourceHandle(node=u_child, port=u_port)
@@ -447,12 +447,12 @@ def _uri_to_node_and_io_names(
             if out in uri_to_node:  # node; not an IO
                 continue
             arg = graph.value(out, SNS.local_identifier)
-            io_dict[out] = Output(arg=arg.toPython(), node=node)
+            io_dict[out] = Output(port=arg.toPython(), node=node)
         for inp in G.predecessors(uri):
             if inp in uri_to_node:  # node; not an IO
                 continue
             arg = graph.value(inp, SNS.local_identifier)
-            io_dict[inp] = Input(arg=arg.toPython(), node=node)
+            io_dict[inp] = Input(port=arg.toPython(), node=node)
     return io_dict | uri_to_node
 
 
@@ -629,7 +629,7 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
             if const_node not in G:
                 break
 
-        const_output_name = Output(arg="constant", node=const_node)
+        const_output_name = Output(port="constant", node=const_node)
 
         # Create the constant node
         const_node_attrs = TNodeData(type="constant")

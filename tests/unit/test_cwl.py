@@ -7,6 +7,7 @@ try:
 except ImportError:
     cwl = None
 
+from semantikon.flowrep_to_networkx import Input, Node, Output
 from semantikon.ontology import SemantikonDiGraph
 
 
@@ -36,9 +37,9 @@ class TestCWL(unittest.TestCase):
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         expected_inputs = {
-            "kinetic_energy_workflow-inputs-distance",
-            "kinetic_energy_workflow-inputs-time",
-            "kinetic_energy_workflow-inputs-mass",
+            Input(node="kinetic_energy_workflow", port="distance"),
+            Input(node="kinetic_energy_workflow", port="time"),
+            Input(node="kinetic_energy_workflow", port="mass"),
         }
         self.assertTrue(expected_inputs.issubset(set(g.nodes)))
 
@@ -46,36 +47,50 @@ class TestCWL(unittest.TestCase):
         g = cwl.serialize_and_convert_to_networkx(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
-        self.assertIn("kinetic_energy_workflow-outputs-kinetic_energy", g.nodes)
+        self.assertIn(
+            Output(node="kinetic_energy_workflow", port="kinetic_energy"), g.nodes
+        )
 
     def test_step_nodes(self):
         g = cwl.serialize_and_convert_to_networkx(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
-        self.assertIn("kinetic_energy_workflow-get_speed", g.nodes)
-        self.assertIn("kinetic_energy_workflow-get_kinetic_energy", g.nodes)
+        self.assertIn(Node(name="kinetic_energy_workflow-get_speed"), g.nodes)
+        self.assertIn(Node(name="kinetic_energy_workflow-get_kinetic_energy"), g.nodes)
 
     def test_node_step_attributes(self):
         g = cwl.serialize_and_convert_to_networkx(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         self.assertEqual(
-            g.nodes["kinetic_energy_workflow-inputs-distance"]["step"], "inputs"
+            g.nodes[Input(node="kinetic_energy_workflow", port="distance")]["step"],
+            "inputs",
         )
         self.assertEqual(
-            g.nodes["kinetic_energy_workflow-outputs-kinetic_energy"]["step"], "outputs"
+            g.nodes[
+                Output(node="kinetic_energy_workflow", port="kinetic_energy")
+            ]["step"],
+            "outputs",
         )
-        self.assertEqual(g.nodes["kinetic_energy_workflow-get_speed"]["step"], "node")
+        self.assertEqual(
+            g.nodes[Node(name="kinetic_energy_workflow-get_speed")]["step"], "node"
+        )
 
     def test_input_binding_position(self):
         g = cwl.serialize_and_convert_to_networkx(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         self.assertEqual(
-            g.nodes["kinetic_energy_workflow-get_speed-inputs-distance"]["position"], 1
+            g.nodes[
+                Input(node="kinetic_energy_workflow-get_speed", port="distance")
+            ]["position"],
+            1,
         )
         self.assertEqual(
-            g.nodes["kinetic_energy_workflow-get_speed-inputs-time"]["position"], 2
+            g.nodes[
+                Input(node="kinetic_energy_workflow-get_speed", port="time")
+            ]["position"],
+            2,
         )
 
     def test_data_flow_edges(self):
@@ -85,31 +100,34 @@ class TestCWL(unittest.TestCase):
         # distance flows from workflow input -> get_speed input -> get_speed step
         self.assertIn(
             (
-                "kinetic_energy_workflow-inputs-distance",
-                "kinetic_energy_workflow-get_speed-inputs-distance",
+                Input(node="kinetic_energy_workflow", port="distance"),
+                Input(node="kinetic_energy_workflow-get_speed", port="distance"),
             ),
             g.edges,
         )
         self.assertIn(
             (
-                "kinetic_energy_workflow-get_speed-inputs-distance",
-                "kinetic_energy_workflow-get_speed",
+                Input(node="kinetic_energy_workflow-get_speed", port="distance"),
+                Node(name="kinetic_energy_workflow-get_speed"),
             ),
             g.edges,
         )
         # speed flows from get_speed output -> get_kinetic_energy input
         self.assertIn(
             (
-                "kinetic_energy_workflow-get_speed-outputs-speed",
-                "kinetic_energy_workflow-get_kinetic_energy-inputs-velocity",
+                Output(node="kinetic_energy_workflow-get_speed", port="speed"),
+                Input(node="kinetic_energy_workflow-get_kinetic_energy", port="velocity"),
             ),
             g.edges,
         )
         # kinetic_energy flows from step output -> workflow output
         self.assertIn(
             (
-                "kinetic_energy_workflow-get_kinetic_energy-outputs-kinetic_energy",
-                "kinetic_energy_workflow-outputs-kinetic_energy",
+                Output(
+                    node="kinetic_energy_workflow-get_kinetic_energy",
+                    port="kinetic_energy",
+                ),
+                Output(node="kinetic_energy_workflow", port="kinetic_energy"),
             ),
             g.edges,
         )

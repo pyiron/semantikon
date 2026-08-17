@@ -270,7 +270,7 @@ def _check_consistency_of_digraph(G: SemantikonDiGraph):
         if "derived_from" not in data:
             continue
         expected_input = Input(
-            node=node.node, arg=data["derived_from"].replace("inputs.", "")
+            node=node.node, port=data["derived_from"].replace("inputs.", "")
         )
         if expected_input not in G.nodes:
             raise ValueError(
@@ -551,11 +551,11 @@ def _wf_node_to_graph(
                 f_node,
                 data["function"],
                 input_args=[
-                    {"arg": item.arg} | G.nodes[item]
+                    {"arg": item.port} | G.nodes[item]
                     for item in G.predecessors(node_name)
                 ],
                 output_args=[
-                    {"arg": item.arg} | G.nodes[item]
+                    {"arg": item.port} | G.nodes[item]
                     for item in G.successors(node_name)
                 ],
                 uri=data.get("uri"),
@@ -656,9 +656,9 @@ def _is_macro_output(io: IO | Node, G: SemantikonDiGraph, candidates: tuple[str,
 def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: IO) -> str:
     assert seeked_io.startswith(("inputs", "outputs"))
     if seeked_io.startswith("inputs"):
-        full_io = Input(node=ref_io.node, arg=seeked_io.replace("inputs.", ""))
+        full_io = Input(node=ref_io.node, port=seeked_io.replace("inputs.", ""))
     else:
-        full_io = Output(node=ref_io.node, arg=seeked_io.replace("outputs.", ""))
+        full_io = Output(node=ref_io.node, port=seeked_io.replace("outputs.", ""))
     if full_io not in G.nodes:
         raise ValueError(f"IO {seeked_io} not found in graph")
     return G._get_data_node(io=full_io)
@@ -773,7 +773,7 @@ def _wf_input_to_graph(
     units = data.get("units", data.get("unit"))
     if "derived_from" in data:
         raise ValueError(
-            f"'derived_from' (defined for the argument '{node_name.arg}') is not"
+            f"'derived_from' (defined for the argument '{node_name.port}') is not"
             " supported for inputs."
         )
     if t_box:
@@ -889,7 +889,7 @@ def _wf_io_to_graph(
     node = BASE[G.t_ns + node_name] if t_box else BASE[G.a_ns + node_name]
     g = _get_bound_graph()
     g.add((node, RDFS.label, Literal(str(node_name))))
-    g.add((node, SNS.local_identifier, Literal(node_name.arg)))
+    g.add((node, SNS.local_identifier, Literal(node_name.port)))
     if t_box:
         g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.subClassOf, io_assignment))

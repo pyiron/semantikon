@@ -42,7 +42,7 @@ class Node:
 @dataclass(frozen=True, slots=True)
 class IO(ABC):
     node: str
-    arg: str
+    port: str
 
     def __radd__(self, other: str) -> str:
         return other + str(self)
@@ -51,13 +51,13 @@ class IO(ABC):
 @dataclass(frozen=True, slots=True)
 class Input(IO):
     def __str__(self) -> str:
-        return f"{self.node}-inputs-{self.arg}"
+        return f"{self.node}-inputs-{self.port}"
 
 
 @dataclass(frozen=True, slots=True)
 class Output(IO):
     def __str__(self) -> str:
-        return f"{self.node}-outputs-{self.arg}"
+        return f"{self.node}-outputs-{self.port}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,7 +112,7 @@ class TInputData(TIOData):
     has_default: bool = False
 
     def to_attrs(self) -> dict[str, Any]:
-        attrs = super().to_attrs()
+        attrs = TIOData.to_attrs(self)
         if self.has_default:
             attrs["default"] = self.default
         return attrs
@@ -252,7 +252,7 @@ class SemantikonDiGraph(nx.DiGraph):
 
                 child_label = current_label
                 if child_label is None:
-                    child_label = self.nodes[child].get("label", child.arg)
+                    child_label = self.nodes[child].get("label", child.port)
 
                 self.nodes[child]["hash"] = current_hash + f"@{child_label}"
                 stack.append((child, current_hash, child_label))
@@ -335,7 +335,7 @@ def _workflow_to_networkx(
             output_labels = ["output"]
 
         for position, (label, port) in enumerate(node_data.input_ports.items()):
-            io_name = Input(node=node_name, arg=label)
+            io_name = Input(node=node_name, port=label)
             io_data: dict[str, Any] = {"position": position}
             if not isinstance(port.value, fr.schemas.NotData):
                 io_data["value"] = port.value
@@ -349,7 +349,7 @@ def _workflow_to_networkx(
             G.add_edge(io_name, node_name)
         for position, (raw_label, port) in enumerate(node_data.output_ports.items()):
             label = output_labels[position] if raw_label == "output_0" else raw_label
-            io_name = Output(node=node_name, arg=label)
+            io_name = Output(node=node_name, port=label)
             io_data = {"position": position}
             if not isinstance(port.value, fr.schemas.NotData):
                 io_data["value"] = port.value
@@ -378,29 +378,29 @@ def _workflow_to_networkx(
         child_recipes = recipe.nodes
         for target, source in recipe.input_edges.items():
             G.add_edge(
-                Input(node=node_name, arg=source.port),
-                Input(node=Node(parent=node_name, name=target.node), arg=target.port),
+                Input(node=node_name, port=source.port),
+                Input(node=Node(parent=node_name, name=target.node), port=target.port),
             )
         for target, source in recipe.edges.items():
             child_outputs = list(child_recipes[source.node].outputs)
             src_port = _output_port_label(source.port, child_outputs)
             G.add_edge(
-                Output(node=Node(parent=node_name, name=source.node), arg=src_port),
-                Input(node=Node(parent=node_name, name=target.node), arg=target.port),
+                Output(node=Node(parent=node_name, name=source.node), port=src_port),
+                Input(node=Node(parent=node_name, name=target.node), port=target.port),
             )
         for target, source in recipe.output_edges.items():
             target_port = _output_port_label(target.port, list(recipe.outputs))
             if isinstance(source, fr.schemas.InputSource):
                 G.add_edge(
-                    Input(node=node_name, arg=source.port),
-                    Output(node=node_name, arg=target_port),
+                    Input(node=node_name, port=source.port),
+                    Output(node=node_name, port=target_port),
                 )
             else:
                 child_outputs = list(child_recipes[source.node].outputs)
                 src_port = _output_port_label(source.port, child_outputs)
                 G.add_edge(
-                    Output(node=Node(parent=node_name, name=source.node), arg=src_port),
-                    Output(node=node_name, arg=target_port),
+                    Output(node=Node(parent=node_name, name=source.node), port=src_port),
+                    Output(node=node_name, port=target_port),
                 )
 
     _add_node(workflow, Node(root_label), workflow_label=Node(root_label))
@@ -425,7 +425,7 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
         hash_dict_tmp: dict[str, Any] = {
             "inputs": {},
             "outputs": [
-                G.nodes[out].get("label", out.arg) for out in G.successors(node)
+                G.nodes[out].get("label", out.port) for out in G.successors(node)
             ],
             "node": copy.deepcopy(data.get("function")),
         }
@@ -436,14 +436,14 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
         for inp in G.predecessors(node):
             inp_data = G.nodes[inp]
             if "hash" in inp_data:
-                hash_dict_tmp["inputs"][inp.arg] = inp_data["hash"]
-                hash_dict_tmp["node"]["connected_inputs"].append(inp.arg)
+                hash_dict_tmp["inputs"][inp.port] = inp_data["hash"]
+                hash_dict_tmp["node"]["connected_inputs"].append(inp.port)
             elif "value" in inp_data or "default" in inp_data:
                 value = inp_data.get("value", inp_data.get("default"))
                 if is_dataclass(value) and not isinstance(value, type):
-                    hash_dict_tmp["inputs"][inp.arg] = asdict(value)
+                    hash_dict_tmp["inputs"][inp.port] = asdict(value)
                 else:
-                    hash_dict_tmp["inputs"][inp.arg] = value
+                    hash_dict_tmp["inputs"][inp.port] = value
             else:
                 missing_input = True
                 break
@@ -453,7 +453,7 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
             json.dumps(hash_dict_tmp, sort_keys=True).encode("utf-8")
         ).hexdigest()
         for out in G.successors(node):
-            G.nodes[out]["hash"] = h + "@" + G.nodes[out].get("label", out.arg)
+            G.nodes[out]["hash"] = h + "@" + G.nodes[out].get("label", out.port)
         hash_dict_tmp["hash"] = h
         hash_dict[node] = hash_dict_tmp
     return hash_dict
@@ -577,7 +577,7 @@ class _HashGraph:
                 elif "default" in G.nodes[node]:
                     attrs["value"] = G.nodes[node]["default"]
             if isinstance(node, IO):
-                attrs["arg"] = node.arg
+                attrs["port"] = node.port
             G_tmp.add_node(node, canon=self._canonical_json(attrs))
         for u, v in G.edges:
             G_tmp.add_edge(u, v)

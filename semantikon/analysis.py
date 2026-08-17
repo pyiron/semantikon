@@ -114,10 +114,10 @@ def request_values(
                 # Build keys based on node hierarchy
                 if node_obj.parent is None:
                     # Top-level IO
-                    keys = [io_type, node.arg]
+                    keys = [io_type, node.port]
                 else:
                     # Nested IO - use the immediate child name
-                    keys = [node_obj.name, io_type, node.arg]
+                    keys = [node_obj.name, io_type, node.port]
 
                 hash_nodes.append(
                     {

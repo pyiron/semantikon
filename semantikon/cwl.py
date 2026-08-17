@@ -10,6 +10,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover
     ) from exc
 
 from semantikon import ontology
+from semantikon.flowrep_to_networkx import Input, Node, Output
 
 
 def serialize_and_convert_to_networkx(uri: str | Path) -> ontology.SemantikonDiGraph:
@@ -45,6 +46,25 @@ def _get_name(tag: str) -> str:
     return tag.split("#")[-1]
 
 
+def _to_node(node_str: str) -> Node | Input | Output:
+    """Convert a compound node name to the appropriate dataclass key.
+
+    Args:
+        node_str (str): A node name string, e.g. ``"prefix-inputs-port"`` or
+            ``"prefix-outputs-port"`` or ``"prefix-step"``.
+
+    Returns:
+        Node | Input | Output: The corresponding dataclass instance.
+    """
+    if "-inputs-" in node_str:
+        node_part, port_part = node_str.split("-inputs-", 1)
+        return Input(node=node_part, port=port_part)
+    elif "-outputs-" in node_str:
+        node_part, port_part = node_str.split("-outputs-", 1)
+        return Output(node=node_part, port=port_part)
+    return Node(name=node_str)
+
+
 def _add_node(
     wf: parser.CommandLineTool | parser.Workflow,
     G: ontology.SemantikonDiGraph | None = None,
@@ -75,21 +95,14 @@ def _add_node(
         G = ontology.SemantikonDiGraph(prefix=prefix)
 
     for position, inp in enumerate(wf.inputs):
-        metadata: dict[str, str | int] = {
-            "step": "inputs",
-            "arg": _get_name(inp.id),
-            "position": position,
-        }
+        inp_node = Input(node=prefix, port=_get_name(inp.id))
+        inp_position = position
         if inp.inputBinding is not None and inp.inputBinding.position is not None:
-            metadata["position"] = inp.inputBinding.position
-        G.add_node(f"{prefix}-inputs-{_get_name(inp.id)}", **metadata)
+            inp_position = inp.inputBinding.position
+        G.add_node(inp_node, step="inputs", position=inp_position)
     for position, out in enumerate(wf.outputs):
-        metadata = {
-            "step": "outputs",
-            "arg": _get_name(out.id),
-            "position": position,
-        }
-        G.add_node(f"{prefix}-outputs-{_get_name(out.id)}", **metadata)
+        out_node = Output(node=prefix, port=_get_name(out.id))
+        G.add_node(out_node, step="outputs", position=position)
 
     if isinstance(wf, parser.CommandLineTool):
         return G
@@ -98,7 +111,7 @@ def _add_node(
         node_name = f"{prefix}-{_get_name(step.id)}"
         run_doc = parser.load_document_by_uri(step.run)
         node_type = "workflow" if isinstance(run_doc, parser.Workflow) else "atomic"
-        G.add_node(node_name, step="node", type=node_type)
+        G.add_node(Node(name=node_name), type=node_type, step="node")
         for inp in step.in_:
             source = _get_name(inp.source)
             source = (
@@ -107,17 +120,19 @@ def _add_node(
                 else f"inputs-{source}"
             )
             dest = f"{prefix}-{_get_name(inp.id).replace('/', '-inputs-')}"
-            G.add_edge(f"{prefix}-{source}", dest)
-            G.add_edge(dest, node_name)
+            G.add_edge(_to_node(f"{prefix}-{source}"), _to_node(dest))
+            G.add_edge(_to_node(dest), Node(name=node_name))
         for out in step.out:
             out_name = _get_name(out)
             if "/" in out_name:
                 out_name = out_name.split("/")[-1]
-            G.add_edge(node_name, f"{node_name}-outputs-{out_name}")
+            G.add_edge(Node(name=node_name), Output(node=node_name, port=out_name))
         G = _add_node(run_doc, G, prefix=node_name)
     for out in wf.outputs:
         G.add_edge(
-            f"{prefix}-{_get_name(out.outputSource.replace('/', '-outputs-'))}",
-            f"{prefix}-outputs-{_get_name(out.id)}",
+            _to_node(
+                f"{prefix}-{_get_name(out.outputSource.replace('/', '-outputs-'))}"
+            ),
+            Output(node=prefix, port=_get_name(out.id)),
         )
     return G

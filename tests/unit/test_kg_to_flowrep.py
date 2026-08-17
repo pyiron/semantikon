@@ -127,7 +127,7 @@ class TestKgToFlowrep(unittest.TestCase):
         reconstructed_from_string = kg2recipe(graph, workflow_name="my_workflow")
         reconstructed_from_uri = kg2recipe(
             graph,
-            workflow_name=URIRef("http://pyiron.org/ontology/W0fba2efa_my_workflow"),
+            workflow_name=URIRef("http://pyiron.org/ontology/Wba44739c_my_workflow"),
         )
         self.assertEqual(
             fr.tools.run_recipe(reconstructed_from_string, x=3, y=5)

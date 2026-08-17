@@ -98,7 +98,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
                         parent=ftn.Node("my_kinetic_energy_workflow"),
                         name="get_speed_0",
                     ),
-                    arg="distance",
+                    port="distance",
                 )
             ],
             msg="dtype should not be deleted after hashing",
@@ -110,7 +110,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
                         parent=ftn.Node("my_kinetic_energy_workflow"),
                         name="get_kinetic_energy_0",
                     ),
-                    arg="velocity",
+                    port="velocity",
                 )
             ),
             G._get_data_node(
@@ -119,7 +119,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
                         parent=ftn.Node("my_kinetic_energy_workflow"),
                         name="get_speed_0",
                     ),
-                    arg="speed",
+                    port="speed",
                 )
             ),
         )
@@ -130,7 +130,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
                         parent=ftn.Node("my_kinetic_energy_workflow"),
                         name="get_kinetic_energy_0",
                     ),
-                    arg="velocity",
+                    port="velocity",
                 )
             ),
             G._get_data_node(
@@ -139,7 +139,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
                         parent=ftn.Node("my_kinetic_energy_workflow"),
                         name="get_kinetic_energy_0",
                     ),
-                    arg="kinetic_energy",
+                    port="kinetic_energy",
                 )
             ),
         )
@@ -219,8 +219,8 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         )
         self.assertIn(
             (
-                ftn.Input(node=ftn.Node("passthrough_input_workflow"), arg="x"),
-                ftn.Output(node=ftn.Node("passthrough_input_workflow"), arg="x"),
+                ftn.Input(node=ftn.Node("passthrough_input_workflow"), port="x"),
+                ftn.Output(node=ftn.Node("passthrough_input_workflow"), port="x"),
             ),
             G.edges,
         )
@@ -247,12 +247,12 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         G.add_node(ftn.Node("n"), type="atomic")
         self.assertEqual(G.nodes[ftn.Node("n")]["type"], "atomic")
 
-        node_in = ftn.Input(node=ftn.Node("in"), arg="x")
+        node_in = ftn.Input(node=ftn.Node("in"), port="x")
         G.add_node(node_in, position=0, value=None)
         self.assertIn("value", G.nodes[node_in])
         self.assertIsNone(G.nodes[node_in]["value"])
 
-        node_out = ftn.Output(node=ftn.Node("out"), arg="y")
+        node_out = ftn.Output(node=ftn.Node("out"), port="y")
         G.add_node(node_out, position=1, default=3.14)
         self.assertEqual(G.nodes[node_out]["default"], 3.14)
         self.assertNotIn("value", G.nodes[node_out])
@@ -265,13 +265,13 @@ class TestFlowrepToNetworkx(unittest.TestCase):
     def test_add_nodes_from_validates_semantikon_metadata(self):
         G = ftn.SemantikonDiGraph()
         G.add_nodes_from(
-            [ftn.Input(ftn.Node("n1"), arg="x"), ftn.Input(ftn.Node("n2"), arg="x")],
+            [ftn.Input(ftn.Node("n1"), port="x"), ftn.Input(ftn.Node("n2"), port="x")],
             position=0,
             value=None,
         )
 
         for n in ("n1", "n2"):
-            node = ftn.Input(ftn.Node(n), arg="x")
+            node = ftn.Input(ftn.Node(n), port="x")
             self.assertEqual(G.nodes[node]["position"], 0)
             self.assertIn("value", G.nodes[node])
             self.assertIsNone(G.nodes[node]["value"])
@@ -280,8 +280,8 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         self,
     ):
         G = ftn.SemantikonDiGraph()
-        n_1 = ftn.Input(ftn.Node("n1"), arg="x")
-        n_2 = ftn.Input(ftn.Node("n2"), arg="y")
+        n_1 = ftn.Input(ftn.Node("n1"), port="x")
+        n_2 = ftn.Input(ftn.Node("n2"), port="y")
         G.add_nodes_from(
             [
                 (n_1, {"position": 0, "value": 1}),
@@ -297,7 +297,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
 
     def test_add_nodes_from_preserves_default_on_inputs(self):
         G = ftn.SemantikonDiGraph()
-        n_1 = ftn.Input(ftn.Node("n1"), arg="x")
+        n_1 = ftn.Input(ftn.Node("n1"), port="x")
         G.add_nodes_from([(n_1, {"position": 0, "default": 7})])
 
         self.assertEqual(G.nodes[n_1]["position"], 0)
@@ -306,8 +306,8 @@ class TestFlowrepToNetworkx(unittest.TestCase):
 
     def test_add_nodes_from_merges_per_node_semantikon_metadata(self):
         G = ftn.SemantikonDiGraph()
-        n_1 = ftn.Input(ftn.Node("n1"), arg="x")
-        n_2 = ftn.Input(ftn.Node("n2"), arg="y")
+        n_1 = ftn.Input(ftn.Node("n1"), port="x")
+        n_2 = ftn.Input(ftn.Node("n2"), port="y")
         G.add_nodes_from(
             [
                 (n_1, {"position": 0, "value": 1}),
@@ -341,7 +341,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
             G.nodes[
                 ftn.Input(
                     node=ftn.Node(parent=ftn.Node("double_via_constant"), name="mul_0"),
-                    arg="a",
+                    port="a",
                 )
             ]["constant_value"],
             2,
