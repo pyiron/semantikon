@@ -252,6 +252,11 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         self.assertIn("value", G.nodes[node_in])
         self.assertIsNone(G.nodes[node_in]["value"])
 
+        node_out = ftn.Output(node=ftn.Node("out"), arg="y")
+        G.add_node(node_out, position=1, default=3.14)
+        self.assertEqual(G.nodes[node_out]["default"], 3.14)
+        self.assertNotIn("value", G.nodes[node_out])
+
     def test_add_node_rejects_invalid_semantikon_metadata(self):
         G = ftn.SemantikonDiGraph()
         with self.assertRaises(ValueError):
@@ -289,6 +294,15 @@ class TestFlowrepToNetworkx(unittest.TestCase):
 
         self.assertEqual(G.nodes[n_2]["position"], 1)
         self.assertNotIn("value", G.nodes[n_2])
+
+    def test_add_nodes_from_preserves_default_on_inputs(self):
+        G = ftn.SemantikonDiGraph()
+        n_1 = ftn.Input(ftn.Node("n1"), arg="x")
+        G.add_nodes_from([(n_1, {"position": 0, "default": 7})])
+
+        self.assertEqual(G.nodes[n_1]["position"], 0)
+        self.assertIn("default", G.nodes[n_1])
+        self.assertEqual(G.nodes[n_1]["default"], 7)
 
     def test_add_nodes_from_merges_per_node_semantikon_metadata(self):
         G = ftn.SemantikonDiGraph()

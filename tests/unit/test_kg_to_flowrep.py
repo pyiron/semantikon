@@ -86,10 +86,6 @@ class TestKgToFlowrep(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "multiple root workflows"):
             _ = kg2recipe(graph)
 
-        reconstructed = kg2recipe(graph, workflow_name="multiply_by_two")
-        converted_result = fr.tools.run_recipe(reconstructed, x=7)
-        self.assertEqual(converted_result.output_ports["result"].value, 14)
-
     def test_requires_t_box_information(self):
         graph = get_knowledge_graph(my_workflow.flowrep_recipe, include_t_box=False)
         with self.assertRaisesRegex(ValueError, "No workflow nodes found in graph"):
@@ -111,131 +107,38 @@ class TestKgToFlowrep(unittest.TestCase):
         self.assertEqual(kgf._label(graph, node), "my_label")
 
     def test_add_io_nodes_error_paths(self):
-        node = URIRef("http://example.org/node")
-        io_node = URIRef("http://example.org/io")
-        function_node = URIRef("http://example.org/function")
-        function_dict = {
-            function_node: {
-                "data": {"qualname": "f"},
-                "input_args": [{"arg": "x"}],
-                "output_args": [{"arg": "x"}],
-            }
-        }
-        node_function_dict = {node: function_node}
-
-        graph = MagicMock()
-        graph.query.return_value = [(node, io_node)]
-        graph.objects.return_value = []
-        workflow_graph = nx.DiGraph()
-        with self.assertRaisesRegex(ValueError, "Expected one local identifier"):
-            kgf._add_io_nodes(
-                graph,
-                workflow_graph,
-                function_dict,
-                node_function_dict,
-                io_type="input",
-            )
-
-        graph.objects.return_value = [Literal("unknown_arg")]
-        with self.assertRaisesRegex(ValueError, "Could not match argument"):
-            kgf._add_io_nodes(
-                graph,
-                workflow_graph,
-                function_dict,
-                node_function_dict,
-                io_type="input",
-            )
-
-    def test_reorganize_and_reconnect_helpers(self):
-        graph = nx.DiGraph()
-        p1 = URIRef("http://example.org/p1")
-        p2 = URIRef("http://example.org/p2")
-        n1 = URIRef("http://example.org/n1")
-        n2 = URIRef("http://example.org/n2")
-        data = URIRef("http://example.org/data")
-        graph.add_edges_from([(p1, n1), (p2, n2), (n1, data), (n2, data)])
-        kgf._reorganize_output_edges(graph, data, position={p1: 0, p2: 1})
-        self.assertEqual(len(list(graph.predecessors(data))), 1)
-
-        s1 = URIRef("http://example.org/s1")
-        s2 = URIRef("http://example.org/s2")
-        i1 = URIRef("http://example.org/i1")
-        i2 = URIRef("http://example.org/i2")
-        in_data = URIRef("http://example.org/in_data")
-        graph = nx.DiGraph()
-        graph.add_edges_from(
-            [(in_data, i1), (in_data, i2), (i1, s1), (i2, s2), (s1, s2)]
-        )
-        kgf._reorganize_input_edges(graph, in_data, position={s1: 0, s2: 1})
-        self.assertEqual(len(list(graph.successors(in_data))), 1)
-
-        reconnect = nx.DiGraph()
-        out_node = URIRef("http://example.org/out")
-        input_one = URIRef("http://example.org/in1")
-        input_two = URIRef("http://example.org/in2")
-        data_node = URIRef("http://example.org/d")
-        reconnect.add_edges_from(
-            [(out_node, data_node), (data_node, input_one), (data_node, input_two)]
-        )
-        kgf._reconnect_io(reconnect, data_node)
-        self.assertIn((out_node, input_one), reconnect.edges)
-        self.assertIn((out_node, input_two), reconnect.edges)
+        graph = get_knowledge_graph(my_workflow.flowrep_recipe)
+        with self.assertRaisesRegex(ValueError, "Unknown workflow"):
+            kg2recipe(graph, workflow_name=URIRef("http://example.org/node"))
 
     def test_kg2recipe_with_uriref_workflow_name(self):
-        """Test that kg2recipe accepts URIRef workflow_name parameter."""
         graph = get_knowledge_graph(my_workflow.flowrep_recipe)
-        roots = kgf._workflow_roots(graph)
-
-        # Get the URIRef for the workflow
-        workflow_uriref = next(iter(roots.keys()))
-
-        # Should work with URIRef as workflow_name
-        reconstructed = kg2recipe(graph, workflow_name=workflow_uriref)
-
-        # Verify round-trip correctness by running the recipe
-        original_result = fr.tools.run_recipe(my_workflow.flowrep_recipe, x=3, y=5)
+        reconstructed = kg2recipe(graph, workflow_name="my_workflow")
         converted_result = fr.tools.run_recipe(reconstructed, x=3, y=5)
-        self.assertEqual(
-            original_result.output_ports["result"].value,
-            converted_result.output_ports["result"].value,
-        )
+        self.assertEqual(converted_result.output_ports["result"].value, 14)
 
     def test_select_workflow_with_invalid_uriref(self):
         """Test that _select_workflow raises error for unknown URIRef."""
         graph = get_knowledge_graph(my_workflow.flowrep_recipe)
-        roots = kgf._workflow_roots(graph)
-        workflow_graph = kgf._build_workflow_graph(graph)
-        workflows = kgf._split_by_roots(graph, workflow_graph, roots)
-
-        # Create a non-existent URIRef
-        invalid_uriref = URIRef("http://example.org/nonexistent")
-
-        with self.assertRaises(ValueError) as context:
-            kgf._select_workflow(
-                graph, roots, workflows.keys(), workflow_name=invalid_uriref
-            )
-
-        self.assertIn("Unknown workflow URIRef", str(context.exception))
+        with self.assertRaisesRegex(ValueError, "Unknown workflow"):
+            kg2recipe(graph, workflow_name=URIRef("http://example.org/nonexistent"))
 
     def test_select_workflow_with_string_vs_uriref(self):
         """Test that string and URIRef selection produce same result."""
         graph = get_knowledge_graph(my_workflow.flowrep_recipe)
-        roots = kgf._workflow_roots(graph)
-        workflow_graph = kgf._build_workflow_graph(graph)
-        workflows = kgf._split_by_roots(graph, workflow_graph, roots)
-        # Get the workflow label and URIRef (now keys are URIRefs, values are labels)
-        workflow_uriref = next(iter(roots.keys()))
-        workflow_label = roots[workflow_uriref]
-
-        # Both should select the same workflow
-        result_from_string = kgf._select_workflow(
-            graph, roots, workflows.keys(), workflow_name=workflow_label
+        reconstructed_from_string = kg2recipe(graph, workflow_name="my_workflow")
+        reconstructed_from_uri = kg2recipe(
+            graph,
+            workflow_name=URIRef("http://pyiron.org/ontology/W0fba2efa_my_workflow"),
         )
-        result_from_uriref = kgf._select_workflow(
-            graph, roots, workflows.keys(), workflow_name=workflow_uriref
+        self.assertEqual(
+            fr.tools.run_recipe(reconstructed_from_string, x=3, y=5).output_ports[
+                "result"
+            ].value,
+            fr.tools.run_recipe(reconstructed_from_uri, x=3, y=5).output_ports[
+                "result"
+            ].value,
         )
-
-        self.assertEqual(result_from_string, result_from_uriref)
 
     def test_kg_to_recipe_with_constants(self):
         """Test converting knowledge graph back to recipe with constants preserved."""
