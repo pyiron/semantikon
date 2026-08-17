@@ -24,13 +24,13 @@ from semantikon.converter import (
     parse_output_args,
 )
 from semantikon.flowrep_to_networkx import (
-    SemantikonDiGraph,
-    _get_graph_hash,
-    serialize_and_convert_to_networkx,
     IO,
     Input,
     Node,
     Output,
+    SemantikonDiGraph,
+    _get_graph_hash,
+    serialize_and_convert_to_networkx,
 )
 from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict

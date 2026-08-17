@@ -1,8 +1,6 @@
 import unittest
-from unittest.mock import MagicMock
 
 import flowrep as fr
-import networkx as nx
 from rdflib import RDFS, Graph, Literal, URIRef
 
 from semantikon import get_knowledge_graph, kg2recipe
@@ -132,12 +130,12 @@ class TestKgToFlowrep(unittest.TestCase):
             workflow_name=URIRef("http://pyiron.org/ontology/W0fba2efa_my_workflow"),
         )
         self.assertEqual(
-            fr.tools.run_recipe(reconstructed_from_string, x=3, y=5).output_ports[
-                "result"
-            ].value,
-            fr.tools.run_recipe(reconstructed_from_uri, x=3, y=5).output_ports[
-                "result"
-            ].value,
+            fr.tools.run_recipe(reconstructed_from_string, x=3, y=5)
+            .output_ports["result"]
+            .value,
+            fr.tools.run_recipe(reconstructed_from_uri, x=3, y=5)
+            .output_ports["result"]
+            .value,
         )
 
     def test_kg_to_recipe_with_constants(self):

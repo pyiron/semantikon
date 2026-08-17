@@ -176,9 +176,7 @@ class SemantikonDiGraph(nx.DiGraph):
         super().add_node(node_for_adding, **normalized_attr)
 
     def add_nodes_from(self, nodes_for_adding, **attr):
-        assert all(
-            isinstance(n, (Node, IO)) or isinstance(n, tuple) for n in nodes_for_adding
-        )
+        assert all(isinstance(n, (Node, IO, tuple)) for n in nodes_for_adding)
         for n in nodes_for_adding:
             if isinstance(n, tuple):
                 node, node_attr = n

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import itertools
-from collections.abc import Iterable
 from typing import Any, cast
 
 import flowrep as fr
@@ -10,17 +9,16 @@ import networkx as nx
 from pyiron_snippets import retrieve
 from rdflib import OWL, RDF, RDFS, Graph, Literal, URIRef
 from rdflib.namespace import SH
-from rdflib.query import ResultRow
 from rdflib.term import IdentifiedNode, Node
 
 from semantikon.flowrep_dict import _flowrep_recipe_from_callable
 from semantikon.flowrep_to_networkx import (
     IO,
+    Input,
+    Node,
+    Output,
     TNodeData,
     TOutputData,
-    Node,
-    Input,
-    Output,
 )
 from semantikon.ontology import SNS
 
@@ -239,7 +237,7 @@ def _networkx_to_flowrep(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
 
             # First collect all direct children
             direct_children: dict[str, str] = {}
-            for child_label, child_node in G.nodes.items():
+            for child_label in G.nodes:
                 if isinstance(child_label, Node) and child_label.parent == node_name:
                     # Extract child short label correctly by removing parent prefix
                     direct_children[child_label.name] = child_label
