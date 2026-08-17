@@ -7,9 +7,8 @@ from typing import Any, cast
 import flowrep as fr
 import networkx as nx
 from pyiron_snippets import retrieve
-from rdflib import OWL, RDF, RDFS, Graph, Literal, URIRef
+from rdflib import OWL, RDF, RDFS, Graph, Literal, URIRef, term
 from rdflib.namespace import SH
-from rdflib import term
 
 from semantikon.flowrep_dict import _flowrep_recipe_from_callable
 from semantikon.flowrep_to_networkx import (

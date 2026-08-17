@@ -16,7 +16,7 @@ from rdflib.query import ResultRow
 
 from semantikon.converter import to_identifier
 from semantikon.flowrep_dict import dict_to_nodedata
-from semantikon.flowrep_to_networkx import IO, Input, Node, Output
+from semantikon.flowrep_to_networkx import Input, Node, Output
 from semantikon.ontology import SNS, serialize_and_convert_to_networkx
 
 
