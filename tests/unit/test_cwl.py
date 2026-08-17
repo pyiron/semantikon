@@ -67,9 +67,9 @@ class TestCWL(unittest.TestCase):
             "inputs",
         )
         self.assertEqual(
-            g.nodes[
-                Output(node="kinetic_energy_workflow", port="kinetic_energy")
-            ]["step"],
+            g.nodes[Output(node="kinetic_energy_workflow", port="kinetic_energy")][
+                "step"
+            ],
             "outputs",
         )
         self.assertEqual(
@@ -81,15 +81,15 @@ class TestCWL(unittest.TestCase):
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         self.assertEqual(
-            g.nodes[
-                Input(node="kinetic_energy_workflow-get_speed", port="distance")
-            ]["position"],
+            g.nodes[Input(node="kinetic_energy_workflow-get_speed", port="distance")][
+                "position"
+            ],
             1,
         )
         self.assertEqual(
-            g.nodes[
-                Input(node="kinetic_energy_workflow-get_speed", port="time")
-            ]["position"],
+            g.nodes[Input(node="kinetic_energy_workflow-get_speed", port="time")][
+                "position"
+            ],
             2,
         )
 
@@ -116,7 +116,9 @@ class TestCWL(unittest.TestCase):
         self.assertIn(
             (
                 Output(node="kinetic_energy_workflow-get_speed", port="speed"),
-                Input(node="kinetic_energy_workflow-get_kinetic_energy", port="velocity"),
+                Input(
+                    node="kinetic_energy_workflow-get_kinetic_energy", port="velocity"
+                ),
             ),
             g.edges,
         )

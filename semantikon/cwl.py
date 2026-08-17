@@ -126,7 +126,9 @@ def _add_node(
             out_name = _get_name(out)
             if "/" in out_name:
                 out_name = out_name.split("/")[-1]
-            G.add_edge(Node(name=node_name), Output(node=Node(name=node_name), port=out_name))
+            G.add_edge(
+                Node(name=node_name), Output(node=Node(name=node_name), port=out_name)
+            )
         G = _add_node(run_doc, G, prefix=node_name)
     for out in wf.outputs:
         G.add_edge(

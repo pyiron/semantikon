@@ -381,9 +381,7 @@ def _node_functions(graph: Graph) -> dict[URIRef, URIRef]:
     return dict(graph.query(query))
 
 
-def _reorganize_output_edges(
-    graph: nx.DiGraph, node: URIRef, position: dict[Any, int]
-):
+def _reorganize_output_edges(graph: nx.DiGraph, node: URIRef, position: dict[Any, int]):
     io_dict: dict[URIRef, URIRef] = {}
     for n in graph.predecessors(node):
         pred = list(graph.predecessors(n))
@@ -396,9 +394,7 @@ def _reorganize_output_edges(
     graph.add_edges_from(itertools.pairwise(nodes))
 
 
-def _reorganize_input_edges(
-    graph: nx.DiGraph, node: URIRef, position: dict[Any, int]
-):
+def _reorganize_input_edges(graph: nx.DiGraph, node: URIRef, position: dict[Any, int]):
     io_dict: dict[URIRef, URIRef] = {}
     for n in graph.successors(node):
         succ = list(graph.successors(n))
@@ -429,11 +425,15 @@ def _uri_to_node_names(graph: Graph):
 
     node_dict: dict[URIRef, Node] = {}
     for parent in nx.topological_sort(node_graph):
-        parent_name = cast(Literal, graph.value(parent, SNS.local_identifier)).toPython()
+        parent_name = cast(
+            Literal, graph.value(parent, SNS.local_identifier)
+        ).toPython()
         node_dict[parent] = node_dict.get(parent, Node(parent_name))
         for child in node_graph.successors(parent):
             assert child not in node_dict
-            child_name = cast(Literal, graph.value(child, SNS.local_identifier)).toPython()
+            child_name = cast(
+                Literal, graph.value(child, SNS.local_identifier)
+            ).toPython()
             node_dict[child] = Node(child_name, parent=node_dict[parent])
     return node_dict
 
