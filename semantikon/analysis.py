@@ -16,6 +16,7 @@ from rdflib.query import ResultRow
 
 from semantikon.converter import to_identifier
 from semantikon.flowrep_dict import dict_to_nodedata
+from semantikon.flowrep_to_networkx import IO, Input, Node, Output
 from semantikon.ontology import SNS, serialize_and_convert_to_networkx
 
 
@@ -100,18 +101,30 @@ def request_values(
     hashes: set[str] = set()
 
     for node, data in G.nodes.data():
-        if data.get("step") == "node":
+        if isinstance(node, Node):
             continue
         if "hash" in data and "value" not in data:
             node_hash = data["hash"]
             hashes.add(node_hash)
-            keys = node.split("-")[1:]
-            hash_nodes.append(
-                {
-                    "hash": node_hash,
-                    "keys": keys,
-                }
-            )
+            # Extract keys based on node type
+            if isinstance(node, (Input, Output)):
+                io_type = "inputs" if isinstance(node, Input) else "outputs"
+                node_obj = node.node  # This is a Node object
+
+                # Build keys based on node hierarchy
+                if node_obj.parent is None:
+                    # Top-level IO
+                    keys = [io_type, node.arg]
+                else:
+                    # Nested IO - use the immediate child name
+                    keys = [node_obj.name, io_type, node.arg]
+
+                hash_nodes.append(
+                    {
+                        "hash": node_hash,
+                        "keys": keys,
+                    }
+                )
 
     # If there are no hashes to resolve, return early.
     if not hashes:

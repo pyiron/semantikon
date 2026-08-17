@@ -158,7 +158,9 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
                     continue
                 pairs = tuple(
                     pair
-                    for pair in _restriction_pairs(cast(term.IdentifiedNode, property_shape))
+                    for pair in _restriction_pairs(
+                        cast(term.IdentifiedNode, property_shape)
+                    )
                     if pair[0] != RDF.type
                 )
             else:
