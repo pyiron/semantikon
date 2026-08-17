@@ -9,7 +9,7 @@ import networkx as nx
 from pyiron_snippets import retrieve
 from rdflib import OWL, RDF, RDFS, Graph, Literal, URIRef
 from rdflib.namespace import SH
-from rdflib.term import IdentifiedNode, Node
+from rdflib import term
 
 from semantikon.flowrep_dict import _flowrep_recipe_from_callable
 from semantikon.flowrep_to_networkx import (
@@ -35,10 +35,10 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
         dict[str, Any]: Data payload compatible with ``_function_to_graph``.
     """
 
-    def _to_python(value: Node | None) -> Any:
+    def _to_python(value: term.Node | None) -> Any:
         return value.toPython() if isinstance(value, Literal) else value
 
-    def _restriction_pairs(node: IdentifiedNode) -> tuple[tuple[URIRef, Any], ...]:
+    def _restriction_pairs(node: term.IdentifiedNode) -> tuple[tuple[URIRef, Any], ...]:
         return tuple(
             (cast(URIRef, p), _to_python(o)) for p, o in graph.predicate_objects(node)
         )
@@ -148,7 +148,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
                 pairs = tuple(
                     pair
                     for pair in _restriction_pairs(
-                        cast(IdentifiedNode, restriction_node)
+                        cast(term.IdentifiedNode, restriction_node)
                     )
                     if pair[0] != RDF.type
                 )
@@ -158,7 +158,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
                     continue
                 pairs = tuple(
                     pair
-                    for pair in _restriction_pairs(cast(IdentifiedNode, property_shape))
+                    for pair in _restriction_pairs(cast(term.IdentifiedNode, property_shape))
                     if pair[0] != RDF.type
                 )
             else:
