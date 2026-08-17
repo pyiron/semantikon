@@ -237,14 +237,14 @@ def _networkx_to_flowrep(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
             output_edges: fr.schemas.OutputEdges = {}
 
             # First collect all direct children
-            direct_children: dict[str, str] = {}
+            direct_children: dict[str, Node] = {}
             for child_label in G.nodes:
                 if isinstance(child_label, Node) and child_label.parent == node_name:
                     # Extract child short label correctly by removing parent prefix
                     direct_children[child_label.name] = child_label
                     nodes[child_label.name] = _process_node(child_label)
 
-            def _find_child_for_io(io_node_name: IO) -> Node | None:
+            def _find_child_for_io(io_node_name: IO) -> str | None:
                 """Find the child node (short label) that owns this IO node."""
                 for child_label in direct_children.values():
                     if io_node_name.node == child_label:
@@ -427,7 +427,7 @@ def _uri_to_node_names(graph: Graph):
     ):
         node_graph.add_edge(parent, child)
 
-    node_dict = {}
+    node_dict: dict[URIRef, Node] = {}
     for parent in nx.topological_sort(node_graph):
         parent_name = graph.value(parent, SNS.local_identifier).toPython()
         node_dict[parent] = node_dict.get(parent, Node(parent_name))
@@ -441,7 +441,7 @@ def _uri_to_node_names(graph: Graph):
 def _uri_to_node_and_io_names(
     graph: Graph, uri_to_node: dict[URIRef, Node], G: nx.DiGraph
 ) -> dict[URIRef, Node | IO]:
-    io_dict = {}
+    io_dict: dict[URIRef, IO] = {}
     for uri, node in uri_to_node.items():
         for out in G.successors(uri):
             if out in uri_to_node:  # node; not an IO

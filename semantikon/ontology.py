@@ -538,7 +538,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
 
 
 def _wf_node_to_graph(
-    node_name: Node | IO,
+    node_name: Node,
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
@@ -655,6 +655,7 @@ def _is_macro_output(io: IO | Node, G: SemantikonDiGraph, candidates: tuple[str,
 
 def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: IO) -> str:
     assert seeked_io.startswith(("inputs", "outputs"))
+    full_io: IO
     if seeked_io.startswith("inputs"):
         full_io = Input(node=ref_io.node, port=seeked_io.replace("inputs.", ""))
     else:
@@ -955,20 +956,22 @@ def _parse_global_io(
     t_box: bool,
 ) -> Graph:
     g = _get_bound_graph()
-    global_inputs = [n for n in G.nodes if G.in_degree(n) == 0 and isinstance(n, Input)]
-    global_outputs = [
+    global_inputs: list[Input] = [
+        n for n in G.nodes if G.in_degree(n) == 0 and isinstance(n, Input)
+    ]
+    global_outputs: list[Output] = [
         n for n in G.nodes if G.out_degree(n) == 0 and isinstance(n, Output)
     ]
-    for global_io in [global_inputs, global_outputs]:
-        for io in global_io:
+    for io_list in (global_inputs, global_outputs):
+        for io in io_list:
             if t_box:
                 g += _to_owl_restriction(
                     workflow_node,
                     SNS.has_part,
-                    BASE[G.t_ns + io[0]],
+                    BASE[G.t_ns + io],
                 )
             else:
-                g.add((workflow_node, SNS.has_part, BASE[G.a_ns + io[0]]))
+                g.add((workflow_node, SNS.has_part, BASE[G.a_ns + io]))
     return g
 
 

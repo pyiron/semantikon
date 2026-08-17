@@ -41,7 +41,7 @@ class Node:
 
 @dataclass(frozen=True, slots=True)
 class IO(ABC):
-    node: str
+    node: Node
     port: str
 
     def __radd__(self, other: str) -> str:
@@ -170,6 +170,8 @@ class SemantikonDiGraph(nx.DiGraph):
             )
             return output_meta.to_attrs()
 
+        raise TypeError(f"Unknown step type: {type(step)}")
+
     def add_node(self, node_for_adding, **attr):  # type: ignore[override]
         assert isinstance(node_for_adding, (Node, IO))
         normalized_attr = self._validate_semantikon_attrs(node_for_adding, attr)
@@ -297,7 +299,7 @@ def _workflow_to_networkx(
         node_data: fr.schemas.NodeData,
         node_name: Node,
         *,
-        parent_name: str | None = None,
+        parent_name: Node | None = None,
         workflow_label: Node | None = None,
     ):
         metadata: dict[str, Any] = {}
@@ -335,7 +337,7 @@ def _workflow_to_networkx(
             output_labels = ["output"]
 
         for position, (label, port) in enumerate(node_data.input_ports.items()):
-            io_name = Input(node=node_name, port=label)
+            inp_name = Input(node=node_name, port=label)
             io_data: dict[str, Any] = {"position": position}
             if not isinstance(port.value, fr.schemas.NotData):
                 io_data["value"] = port.value
@@ -345,11 +347,11 @@ def _workflow_to_networkx(
                 io_data.update(type_metadata.to_dictionary())
             if not isinstance(port.default, fr.schemas.NotData):
                 io_data["default"] = port.default
-            G.add_node(io_name, **io_data)
-            G.add_edge(io_name, node_name)
+            G.add_node(inp_name, **io_data)
+            G.add_edge(inp_name, node_name)
         for position, (raw_label, port) in enumerate(node_data.output_ports.items()):
             label = output_labels[position] if raw_label == "output_0" else raw_label
-            io_name = Output(node=node_name, port=label)
+            out_name = Output(node=node_name, port=label)
             io_data = {"position": position}
             if not isinstance(port.value, fr.schemas.NotData):
                 io_data["value"] = port.value
@@ -357,8 +359,8 @@ def _workflow_to_networkx(
                 io_data["dtype"] = type_hint
             if type_metadata := annotation_to_type_metadata(port.annotation):
                 io_data.update(type_metadata.to_dictionary())
-            G.add_node(io_name, **io_data)
-            G.add_edge(node_name, io_name)
+            G.add_node(out_name, **io_data)
+            G.add_edge(node_name, out_name)
 
         if not isinstance(node_data, fr.schemas.DagData):
             return

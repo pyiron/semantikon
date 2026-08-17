@@ -58,10 +58,10 @@ def _to_node(node_str: str) -> Node | Input | Output:
     """
     if "-inputs-" in node_str:
         node_part, port_part = node_str.split("-inputs-", 1)
-        return Input(node=node_part, port=port_part)
+        return Input(node=Node(name=node_part), port=port_part)
     elif "-outputs-" in node_str:
         node_part, port_part = node_str.split("-outputs-", 1)
-        return Output(node=node_part, port=port_part)
+        return Output(node=Node(name=node_part), port=port_part)
     return Node(name=node_str)
 
 
@@ -95,13 +95,13 @@ def _add_node(
         G = ontology.SemantikonDiGraph(prefix=prefix)
 
     for position, inp in enumerate(wf.inputs):
-        inp_node = Input(node=prefix, port=_get_name(inp.id))
+        inp_node = Input(node=Node(name=prefix), port=_get_name(inp.id))
         inp_position = position
         if inp.inputBinding is not None and inp.inputBinding.position is not None:
             inp_position = inp.inputBinding.position
         G.add_node(inp_node, step="inputs", position=inp_position)
     for position, out in enumerate(wf.outputs):
-        out_node = Output(node=prefix, port=_get_name(out.id))
+        out_node = Output(node=Node(name=prefix), port=_get_name(out.id))
         G.add_node(out_node, step="outputs", position=position)
 
     if isinstance(wf, parser.CommandLineTool):
@@ -126,13 +126,13 @@ def _add_node(
             out_name = _get_name(out)
             if "/" in out_name:
                 out_name = out_name.split("/")[-1]
-            G.add_edge(Node(name=node_name), Output(node=node_name, port=out_name))
+            G.add_edge(Node(name=node_name), Output(node=Node(name=node_name), port=out_name))
         G = _add_node(run_doc, G, prefix=node_name)
     for out in wf.outputs:
         G.add_edge(
             _to_node(
                 f"{prefix}-{_get_name(out.outputSource.replace('/', '-outputs-'))}"
             ),
-            Output(node=prefix, port=_get_name(out.id)),
+            Output(node=Node(name=prefix), port=_get_name(out.id)),
         )
     return G
