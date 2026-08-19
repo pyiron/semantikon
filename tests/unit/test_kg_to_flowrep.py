@@ -6,7 +6,6 @@ from rdflib import RDFS, Graph, Literal, URIRef
 from semantikon import get_knowledge_graph, kg2recipe
 from semantikon import kg_to_flowrep as kgf
 from semantikon import ontology as onto
-from semantikon.workflow import workflow
 
 
 def add_one(a):
@@ -17,14 +16,14 @@ def add(x, y):
     return x + y
 
 
-@workflow
+@fr.workflow
 def add_more(x):
     y = add_one(x)
     z = add(x, y)
     return z
 
 
-@workflow
+@fr.workflow
 def my_workflow(x=1, y=2):
     z = add_one(x)
     q = add_more(z)
@@ -36,7 +35,7 @@ def times_two(x):
     return x * 2
 
 
-@workflow
+@fr.workflow
 def multiply_by_two(x=2):
     result = times_two(x)
     return result
@@ -128,7 +127,7 @@ class TestKgToFlowrep(unittest.TestCase):
         reconstructed_from_string = kg2recipe(graph, workflow_name="my_workflow")
         reconstructed_from_uri = kg2recipe(
             graph,
-            workflow_name=URIRef("http://pyiron.org/ontology/Wba44739c_my_workflow"),
+            workflow_name=URIRef("http://pyiron.org/ontology/Wcfff5bb1_my_workflow"),
         )
         self.assertEqual(
             fr.tools.run_recipe(reconstructed_from_string, x=3, y=5)
