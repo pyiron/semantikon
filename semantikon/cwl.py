@@ -103,6 +103,7 @@ def _add_node(
             else:
                 source = Input(node=parent, port=s)
             dest = Input(node=node, port=_get_name(inp.id).split("/")[-1])
+            assert source in G.nodes
             G.add_edge(source, dest)
             G.add_edge(dest, node)
         for out in step.out:
