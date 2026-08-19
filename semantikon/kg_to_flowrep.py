@@ -209,7 +209,8 @@ def _networkx_to_flowrep(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
             return retrieve.import_from_string(fqn)
         except Exception as exc:
             raise ImportError(
-                f"Failed to import {fqn!r} while reconstructing a workflow from a knowledge graph."
+                f"Failed to import {fqn!r} while reconstructing a workflow from"
+                + " a knowledge graph."
             ) from exc
 
     def _normalize_output_label(label: str, recipe_outputs: list[str]) -> str:
@@ -666,7 +667,8 @@ def _ensure_workflow_name(
         ):
             return next(iter(roots.keys()))
         raise ValueError(
-            f"Unknown workflow {wf_name!r}. Available workflow: {list(roots.keys()) + list(roots.values())!r}"
+            f"Unknown workflow {wf_name!r}. Available workflow:"
+            + f" {list(roots.keys()) + list(roots.values())!r}"
         )
     else:
         if wf_name is None:
@@ -677,21 +679,22 @@ def _ensure_workflow_name(
                 else sorted(roots.keys())
             )
             raise ValueError(
-                "Graph contains multiple root workflows. Pass `workflow_name` explicitly. "
-                f"Available workflows: {wfs}"
+                "Graph contains multiple root workflows. Pass `workflow_name`"
+                f" explicitly. Available workflows: {wfs}"
             )
         if c := [str(v) for v in roots.values()].count(str(wf_name)):
             if c > 1:
                 raise ValueError(
-                    f"Ambiguous workflow name {wf_name!r}. It matches {c} workflows. "
-                    f"Available workflows: {list(roots.keys()) + list(roots.values())!r}"
+                    f"Ambiguous workflow name {wf_name!r}. It matches {c} workflows."
+                    f" Available workflows: {list(roots.keys()) + list(roots.values())!r}"
                 )
             return next(k for k, v in roots.items() if str(v) == str(wf_name))
         elif wf_name in roots:
             return cast(URIRef, wf_name)
         else:
             raise ValueError(
-                f"Unknown workflow {wf_name!r}. Available workflows: {list(roots.keys()) + list(roots.values())!r}"
+                f"Unknown workflow {wf_name!r}. Available workflows:"
+                + f" {list(roots.keys()) + list(roots.values())!r}"
             )
 
 
