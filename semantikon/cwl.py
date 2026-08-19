@@ -10,7 +10,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover
     ) from exc
 
 from semantikon import ontology
-from semantikon.flowrep_to_networkx import Input, Node, Output
+from semantikon.flowrep_to_networkx import IO, Input, Node, Output
 
 
 def serialize_and_convert_to_networkx(uri: str | Path) -> ontology.SemantikonDiGraph:
@@ -49,7 +49,7 @@ def _get_name(tag: str) -> str:
 def _add_node(
     wf: parser.CommandLineTool | parser.Workflow,
     G: ontology.SemantikonDiGraph | None = None,
-    prefix: str | None = None,
+    prefix: Node | None = None,
 ) -> ontology.SemantikonDiGraph:
     """
     Recursively add nodes and edges for a CWL process to the knowledge graph.
@@ -71,57 +71,52 @@ def _add_node(
         ontology.SemantikonDiGraph: The populated knowledge graph.
     """
     if prefix is None:
-        prefix = wf.id.split("/")[-1].replace(".cwl", "")
-        parent = Node(name=prefix)
-    else:
-        parent = prefix
+        prefix = Node(name=wf.id.split("/")[-1].replace(".cwl", ""))
     if G is None:
-        G = ontology.SemantikonDiGraph(prefix=prefix)
+        G = ontology.SemantikonDiGraph(prefix=str(prefix))
 
     for position, inp in enumerate(wf.inputs):
-        inp_node = Input(node=parent, port=_get_name(inp.id))
+        inp_node = Input(node=prefix, port=_get_name(inp.id))
         inp_position = position
         if inp.inputBinding is not None and inp.inputBinding.position is not None:
             inp_position = inp.inputBinding.position
         G.add_node(inp_node, position=inp_position)
 
     for position, out in enumerate(wf.outputs):
-        out_node = Output(node=parent, port=_get_name(out.id))
+        out_node = Output(node=prefix, port=_get_name(out.id))
         G.add_node(out_node, position=position)
 
     if isinstance(wf, parser.CommandLineTool):
         return G
 
     for step in wf.steps:
-        node = Node(parent=parent, name=_get_name(step.id))
+        node = Node(parent=prefix, name=_get_name(step.id))
         run_doc = parser.load_document_by_uri(step.run)
         node_type = "workflow" if isinstance(run_doc, parser.Workflow) else "atomic"
         G.add_node(node, type=node_type)
         for inp in step.in_:
+            n, p = _get_name(inp.id).split("/")
+            dest = Input(node=Node(parent=prefix, name=n), port=p)
             s = _get_name(inp.source)
             if "/" in s:
                 n, p = s.split("/")
-                source = Output(node=Node(parent=parent, name=n), port=p)
+                G.add_edge(Output(node=Node(parent=prefix, name=n), port=p), dest)
             else:
-                source = Input(node=parent, port=s)
-            n, p = _get_name(inp.id).split("/")
-            dest = Input(node=Node(parent=parent, name=n), port=p)
-            G.add_edge(source, dest)
+                G.add_edge(Input(node=prefix, port=s), dest)
             G.add_edge(dest, node)
         for out in step.out:
             out_name = _get_name(out)
             if "/" in out_name:
                 n, p = out_name.split("/")
-                dest = Output(node=Node(parent=parent, name=n), port=p)
+                G.add_edge(node, Output(node=Node(parent=prefix, name=n), port=p))
             else:
-                dest = Output(node=Node(name=node), port=out_name)
-            G.add_edge(node, dest)
+                G.add_edge(node, Output(node=node, port=out_name))
         G = _add_node(run_doc, G, prefix=node)
     for out in wf.outputs:
-        node = Node(parent=parent, name=_get_name(out.id))
+        node = Node(parent=prefix, name=_get_name(out.id))
         n, p = _get_name(out.outputSource).split("/")
         G.add_edge(
-            Output(node=Node(parent=parent, name=n), port=p),
-            Output(node=parent, port=_get_name(out.id)),
+            Output(node=Node(parent=prefix, name=n), port=p),
+            Output(node=prefix, port=_get_name(out.id)),
         )
     return G
