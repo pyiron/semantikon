@@ -46,25 +46,6 @@ def _get_name(tag: str) -> str:
     return tag.split("#")[-1]
 
 
-def _to_node(node_str: str) -> Node | Input | Output:
-    """Convert a compound node name to the appropriate dataclass key.
-
-    Args:
-        node_str (str): A node name string, e.g. ``"prefix-inputs-port"`` or
-            ``"prefix-outputs-port"`` or ``"prefix-step"``.
-
-    Returns:
-        Node | Input | Output: The corresponding dataclass instance.
-    """
-    if "-inputs-" in node_str:
-        node_part, port_part = node_str.split("-inputs-", 1)
-        return Input(node=Node(name=node_part), port=port_part)
-    elif "-outputs-" in node_str:
-        node_part, port_part = node_str.split("-outputs-", 1)
-        return Output(node=Node(name=node_part), port=port_part)
-    return Node(name=node_str)
-
-
 def _add_node(
     wf: parser.CommandLineTool | parser.Workflow,
     G: ontology.SemantikonDiGraph | None = None,
@@ -93,48 +74,51 @@ def _add_node(
         prefix = wf.id.split("/")[-1].replace(".cwl", "")
     if G is None:
         G = ontology.SemantikonDiGraph(prefix=prefix)
+    parent = Node(name=prefix)
 
     for position, inp in enumerate(wf.inputs):
-        inp_node = Input(node=Node(name=prefix), port=_get_name(inp.id))
+        inp_node = Input(node=parent, port=_get_name(inp.id))
         inp_position = position
         if inp.inputBinding is not None and inp.inputBinding.position is not None:
             inp_position = inp.inputBinding.position
-        G.add_node(inp_node, step="inputs", position=inp_position)
+        G.add_node(inp_node, position=inp_position)
+
     for position, out in enumerate(wf.outputs):
-        out_node = Output(node=Node(name=prefix), port=_get_name(out.id))
-        G.add_node(out_node, step="outputs", position=position)
+        out_node = Output(node=parent, port=_get_name(out.id))
+        G.add_node(out_node, position=position)
 
     if isinstance(wf, parser.CommandLineTool):
         return G
 
     for step in wf.steps:
-        node_name = f"{prefix}-{_get_name(step.id)}"
+        node = Node(parent=parent, name=_get_name(step.id))
         run_doc = parser.load_document_by_uri(step.run)
         node_type = "workflow" if isinstance(run_doc, parser.Workflow) else "atomic"
-        G.add_node(Node(name=node_name), type=node_type, step="node")
+        G.add_node(node, type=node_type)
         for inp in step.in_:
-            source = _get_name(inp.source)
-            source = (
-                source.replace("/", "-outputs-")
-                if "/" in source
-                else f"inputs-{source}"
-            )
-            dest = f"{prefix}-{_get_name(inp.id).replace('/', '-inputs-')}"
-            G.add_edge(_to_node(f"{prefix}-{source}"), _to_node(dest))
-            G.add_edge(_to_node(dest), Node(name=node_name))
+            s = _get_name(inp.source)
+            if "/" in s:
+                n, p = s.split("/")
+                source = Output(node=Node(parent=parent, name=n), port=p)
+            else:
+                source = Input(node=parent, port=s)
+            dest = Input(node=node, port=_get_name(inp.id).split("/")[-1])
+            G.add_edge(source, dest)
+            G.add_edge(dest, node)
         for out in step.out:
             out_name = _get_name(out)
             if "/" in out_name:
-                out_name = out_name.split("/")[-1]
-            G.add_edge(
-                Node(name=node_name), Output(node=Node(name=node_name), port=out_name)
-            )
-        G = _add_node(run_doc, G, prefix=node_name)
+                n, p = out_name.split("/") 
+                dest = Output(node=Node(parent=parent, name=n), port=p)
+            else:
+                dest = Output(node=Node(name=node), port=out_name)
+            G.add_edge(node, dest)
+        G = _add_node(run_doc, G, prefix=node)
     for out in wf.outputs:
+        node = Node(parent=parent, name=_get_name(out.id))
+        n, p = _get_name(out.outputSource).split("/")
         G.add_edge(
-            _to_node(
-                f"{prefix}-{_get_name(out.outputSource.replace('/', '-outputs-'))}"
-            ),
-            Output(node=Node(name=prefix), port=_get_name(out.id)),
+            Output(node=Node(parent=parent, name=n), port=p),
+            Output(node=parent, port=_get_name(out.id)),
         )
     return G

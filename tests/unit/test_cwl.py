@@ -63,29 +63,6 @@ class TestCWL(unittest.TestCase):
             g.nodes,
         )
 
-    def test_node_step_attributes(self):
-        g = cwl.serialize_and_convert_to_networkx(
-            self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
-        )
-        self.assertEqual(
-            g.nodes[Input(node=Node("kinetic_energy_workflow"), port="distance")][
-                "step"
-            ],
-            "inputs",
-        )
-        self.assertEqual(
-            g.nodes[
-                Output(node=Node("kinetic_energy_workflow"), port="kinetic_energy")
-            ]["step"],
-            "outputs",
-        )
-        self.assertEqual(
-            g.nodes[Node(name="get_speed", parent=Node("kinetic_energy_workflow"))][
-                "step"
-            ],
-            "node",
-        )
-
     def test_input_binding_position(self):
         g = cwl.serialize_and_convert_to_networkx(
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
@@ -161,7 +138,7 @@ class TestCWL(unittest.TestCase):
                     ),
                     port="kinetic_energy",
                 ),
-                Output(node="kinetic_energy_workflow", port="kinetic_energy"),
+                Output(node=Node("kinetic_energy_workflow"), port="kinetic_energy"),
             ),
             g.edges,
         )
