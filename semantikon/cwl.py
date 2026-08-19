@@ -72,9 +72,11 @@ def _add_node(
     """
     if prefix is None:
         prefix = wf.id.split("/")[-1].replace(".cwl", "")
+        parent = Node(name=prefix)
+    else:
+        parent = prefix
     if G is None:
         G = ontology.SemantikonDiGraph(prefix=prefix)
-    parent = Node(name=prefix)
 
     for position, inp in enumerate(wf.inputs):
         inp_node = Input(node=parent, port=_get_name(inp.id))
@@ -102,8 +104,8 @@ def _add_node(
                 source = Output(node=Node(parent=parent, name=n), port=p)
             else:
                 source = Input(node=parent, port=s)
-            dest = Input(node=node, port=_get_name(inp.id).split("/")[-1])
-            assert source in G.nodes
+            n, p = _get_name(inp.id).split("/")
+            dest = Input(node=Node(parent=parent, name=n), port=p)
             G.add_edge(source, dest)
             G.add_edge(dest, node)
         for out in step.out:
