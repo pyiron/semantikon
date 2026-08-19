@@ -111,7 +111,7 @@ def _add_node(
         for out in step.out:
             out_name = _get_name(out)
             if "/" in out_name:
-                n, p = out_name.split("/") 
+                n, p = out_name.split("/")
                 dest = Output(node=Node(parent=parent, name=n), port=p)
             else:
                 dest = Output(node=Node(name=node), port=out_name)
