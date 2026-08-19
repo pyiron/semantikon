@@ -651,7 +651,8 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
 
 
 def _ensure_workflow_name(
-    wf_name: str | URIRef | None, uri_to_node: dict[URIRef, Node]
+    uri_to_node: dict[URIRef, Node],
+    wf_name: str | URIRef | None = None,
 ) -> URIRef:
     roots = {k: v for k, v in uri_to_node.items() if v.parent is None}
     if len(roots) == 0:
@@ -721,7 +722,7 @@ def _rename_workflow(
 def _kg2digraph(graph: Graph, workflow_name: str | URIRef | None = None) -> nx.DiGraph:
     uri_to_node = _uri_to_node_names(graph)
     all_workflow_graph = _build_workflow_graph(graph)
-    workflow_name = _ensure_workflow_name(workflow_name, uri_to_node)
+    workflow_name = _ensure_workflow_name(uri_to_node, workflow_name)
     workflow_graph = _extract_workflow(all_workflow_graph, workflow_name)
     _append_metadata_to_graph(graph, workflow_graph)
     uri_to_node_and_io = _uri_to_node_and_io_names(graph, uri_to_node, workflow_graph)

@@ -5,6 +5,7 @@ from rdflib import RDFS, Graph, Literal, URIRef
 
 from semantikon import get_knowledge_graph, kg2recipe
 from semantikon import kg_to_flowrep as kgf
+from semantikon import ontology as onto
 from semantikon.workflow import workflow
 
 
@@ -270,6 +271,42 @@ class TestKgToFlowrep(unittest.TestCase):
         reconstructed2_value = reconstructed2_result.output_ports["result"].value
 
         self.assertEqual(reconstructed2_value, expected)
+
+    def test_ensure_workflow_name(self):
+        graph = Graph()
+        uri_to_node = kgf._uri_to_node_names(graph)
+        self.assertRaises(ValueError, kgf._ensure_workflow_name, uri_to_node)
+        result_1 = fr.tools.run_recipe(multiply_then_add.flowrep_recipe, x=0, y=1)
+        graph = get_knowledge_graph(result_1)
+        self.assertRaises(
+            ValueError, kgf._ensure_workflow_name, uri_to_node, "unknown_workflow"
+        )
+        uri_to_node = kgf._uri_to_node_names(graph)
+        self.assertEqual(
+            kgf._ensure_workflow_name(uri_to_node),
+            onto.BASE["Wbcedc6be_multiply_then_add"],
+        )
+        self.assertEqual(
+            kgf._ensure_workflow_name(uri_to_node, "multiply_then_add"),
+            onto.BASE["Wbcedc6be_multiply_then_add"],
+        )
+        uri_to_node = kgf._uri_to_node_names(graph)
+        result_2 = fr.tools.run_recipe(multiply_then_add.flowrep_recipe, x=1, y=2)
+        graph += get_knowledge_graph(result_2, prefix="something")
+        uri_to_node = kgf._uri_to_node_names(graph)
+        self.assertRaises(ValueError, kgf._ensure_workflow_name, uri_to_node)
+        self.assertRaises(
+            ValueError, kgf._ensure_workflow_name, uri_to_node, "multiply_then_add"
+        )
+        self.assertEqual(
+            kgf._ensure_workflow_name(
+                uri_to_node, onto.BASE["Wbcedc6be_multiply_then_add"]
+            ),
+            onto.BASE["Wbcedc6be_multiply_then_add"],
+        )
+        self.assertRaises(
+            ValueError, kgf._ensure_workflow_name, uri_to_node, "unknown_workflow"
+        )
 
 
 if __name__ == "__main__":
