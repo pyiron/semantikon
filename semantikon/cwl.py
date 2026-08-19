@@ -10,7 +10,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover
     ) from exc
 
 from semantikon import ontology
-from semantikon.flowrep_to_networkx import IO, Input, Node, Output
+from semantikon.flowrep_to_networkx import Input, Node, Output
 
 
 def serialize_and_convert_to_networkx(uri: str | Path) -> ontology.SemantikonDiGraph:

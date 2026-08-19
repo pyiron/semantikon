@@ -496,7 +496,7 @@ def _build_workflow_graph(graph: Graph) -> nx.DiGraph:
 def _append_metadata_to_graph(graph: Graph, workflow_graph: nx.DiGraph) -> None:
     node_to_f = _node_functions(graph)
     for node in workflow_graph.nodes:
-        if not node in node_to_f:
+        if node not in node_to_f:
             continue
         f_meta = _graph_to_function(graph, node_to_f[node])
         workflow_graph.nodes[node]["function"] = f_meta["data"]
