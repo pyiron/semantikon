@@ -221,7 +221,7 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
 
     def _process_node(node_name: Node) -> fr.schemas.RecipeDiscrimination:
         node_data = G.nodes[node_name]
-        node_type = node_data.get("type", "atomic")
+        node_type = G.get_type(node_name)
         if node_type == "constant":
             output_node = list(G.successors(node_name))
             assert (
