@@ -221,7 +221,7 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
 
     def _process_node(node_name: Node) -> fr.schemas.RecipeDiscrimination:
         node_data = G.nodes[node_name]
-        node_type = G.get_type(node_name)
+        node_type = node_data.get("type", "atomic")
         if node_type == "constant":
             output_node = list(G.successors(node_name))
             assert (
@@ -753,7 +753,7 @@ def _kg2digraph(graph: Graph, workflow_name: str | URIRef | None = None) -> Sema
     _extract_constant_values_from_kg(graph, renamed_workflow_graph, uri_to_node_and_io)
     _reconstruct_constant_nodes(renamed_workflow_graph)
     semantikon_digraph = _translate_to_semantikon_digraph(renamed_workflow_graph)
-    return renamed_workflow_graph
+    return semantikon_digraph
 
 
 def kg2recipe(
