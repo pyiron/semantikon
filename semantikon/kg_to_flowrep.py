@@ -16,6 +16,7 @@ from semantikon.flowrep_to_networkx import (
     Input,
     Node,
     Output,
+    SemantikonDiGraph,
     TNodeData,
     TOutputData,
 )
@@ -181,12 +182,12 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     }
 
 
-def _networkx_to_flowrep(G: nx.DiGraph) -> fr.schemas.WorkflowRecipe:
+def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
     """
-    Convert a NetworkX DiGraph into flowrep WorkflowRecipe.
+    Convert a SemantikonDiGraph into flowrep WorkflowRecipe.
 
     Args:
-        G (nx.DiGraph): Graph to convert, using Semantikon node/edge attributes.
+        G (SemantikonDiGraph): Graph to convert, using Semantikon node/edge attributes.
 
     Returns:
         fr.schemas.WorkflowRecipe: Reconstructed workflow recipe.
@@ -719,7 +720,26 @@ def _rename_workflow(
     return nx.relabel_nodes(workflow_graph, uri_to_node_and_io)
 
 
-def _kg2digraph(graph: Graph, workflow_name: str | URIRef | None = None) -> nx.DiGraph:
+def _translate_to_semantikon_digraph(workflow_graph: nx.DiGraph) -> SemantikonDiGraph:
+    """
+    Translate a workflow graph to a SemantikonDiGraph.
+
+    Args:
+        workflow_graph (nx.DiGraph): Workflow graph to translate.
+
+    Returns:
+        SemantikonDiGraph: Translated SemantikonDiGraph.
+    """
+    semantikon_digraph = SemantikonDiGraph()
+    for node, data in workflow_graph.nodes(data=True):
+        semantikon_digraph.add_node(node, **data)
+    for u, v in workflow_graph.edges():
+        semantikon_digraph.add_edge(u, v)
+    semantikon_digraph.name = workflow_graph.name
+    return semantikon_digraph
+
+
+def _kg2digraph(graph: Graph, workflow_name: str | URIRef | None = None) -> SemantikonDiGraph:
     uri_to_node = _uri_to_node_names(graph)
     all_workflow_graph = _build_workflow_graph(graph)
     workflow_name = _ensure_workflow_name(uri_to_node, workflow_name)
@@ -732,6 +752,7 @@ def _kg2digraph(graph: Graph, workflow_name: str | URIRef | None = None) -> nx.D
     _reorganize_workflow_graph(renamed_workflow_graph)
     _extract_constant_values_from_kg(graph, renamed_workflow_graph, uri_to_node_and_io)
     _reconstruct_constant_nodes(renamed_workflow_graph)
+    semantikon_digraph = _translate_to_semantikon_digraph(renamed_workflow_graph)
     return renamed_workflow_graph
 
 
