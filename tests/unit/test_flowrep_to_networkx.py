@@ -244,9 +244,6 @@ class TestFlowrepToNetworkx(unittest.TestCase):
 
     def test_add_node_validates_semantikon_metadata(self):
         G = ftn.SemantikonDiGraph()
-        G.add_node(ftn.Node("n"), type="atomic")
-        self.assertEqual(G.nodes[ftn.Node("n")]["type"], "atomic")
-
         node_in = ftn.Input(node=ftn.Node("in"), port="x")
         G.add_node(node_in, position=0, value=None)
         self.assertIn("value", G.nodes[node_in])
@@ -256,11 +253,6 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         G.add_node(node_out, position=1, default=3.14)
         self.assertEqual(G.nodes[node_out]["default"], 3.14)
         self.assertNotIn("value", G.nodes[node_out])
-
-    def test_add_node_rejects_invalid_semantikon_metadata(self):
-        G = ftn.SemantikonDiGraph()
-        with self.assertRaises(ValueError):
-            G.add_node(ftn.Node("n"), type="invalid")
 
     def test_add_nodes_from_validates_semantikon_metadata(self):
         G = ftn.SemantikonDiGraph()
@@ -325,27 +317,14 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         self.assertEqual(G.nodes[n_2]["dtype"], "float")
         self.assertIsNone(G.nodes[n_2]["value"])
 
-    def test_add_nodes_from_rejects_invalid_semantikon_metadata(self):
-        G = ftn.SemantikonDiGraph()
-        with self.assertRaises(ValueError):
-            G.add_nodes_from([ftn.Node("n")], type="invalid")
-
-    def test_add_nodes_from_rejects_invalid_per_node_semantikon_metadata(self):
-        G = ftn.SemantikonDiGraph()
-        with self.assertRaises(ValueError):
-            G.add_nodes_from([(ftn.Node("n"), {"type": "invalid"})])
-
     def test_constant(self):
         G = ftn.serialize_and_convert_to_networkx(double_via_constant.flowrep_recipe)
-        self.assertEqual(
-            G.nodes[
-                ftn.Input(
-                    node=ftn.Node(parent=ftn.Node("double_via_constant"), name="mul_0"),
-                    port="a",
-                )
-            ]["constant_value"],
-            2,
+        inp = ftn.Input(
+            node=ftn.Node(parent=ftn.Node("double_via_constant"), name="mul_0"),
+            port="a",
         )
+        self.assertIn(inp, G.nodes)
+        self.assertEqual(G.nodes[inp]["constant_value"], 2)
 
 
 if __name__ == "__main__":

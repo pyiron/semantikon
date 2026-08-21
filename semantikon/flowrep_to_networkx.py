@@ -62,20 +62,16 @@ class Output(IO):
 
 @dataclass(frozen=True, slots=True)
 class TNodeData:
-    type: str
+    type: str | None = None
     identifier: str | None = None
     label: str | None = None
     function: dict | None = None
     extras: dict[str, Any] = field(default_factory=dict)
 
-    def __post_init__(self):
-        if self.type not in {"atomic", "constant", "workflow"}:
-            raise ValueError("type must be either 'atomic', 'constant', or 'workflow'")
-
     def to_attrs(self) -> dict[str, Any]:
-        attrs: dict[str, Any] = {
-            "type": self.type,
-        }
+        attrs: dict[str, Any] = {}
+        if self.type is not None:
+            attrs["type"] = self.type
         if self.identifier is not None:
             attrs["identifier"] = self.identifier
         if self.label is not None:
@@ -138,7 +134,7 @@ class SemantikonDiGraph(nx.DiGraph):
         if isinstance(step, Node):
             known = {"type", "identifier", "label", "function"}
             node_meta = TNodeData(
-                type=attrs["type"],
+                type=attrs.get("type"),
                 identifier=attrs.get("identifier"),
                 label=attrs.get("label"),
                 function=attrs.get("function"),
@@ -273,6 +269,32 @@ class SemantikonDiGraph(nx.DiGraph):
                 hash_dict[data["hash"]] = data["value"]
         return hash_dict
 
+    def _initialize_type(self):
+        for node, data in self.nodes.data():
+            if isinstance(node, Node):
+                data["type"] = data.get("type", "atomic")
+                if node.parent:
+                    self.nodes[node.parent]["type"] = "workflow"
+
+    def get_type(self, node_name: Node) -> str:
+        """
+        Get the type of a node in the graph.
+
+        Parameters:
+            node_name (Node): The name of the node for which to retrieve the
+                type.
+
+        Returns:
+            str: The type of the node. Possible values are "atomic",
+                "constant", or "workflow".
+
+        Raises:
+            ValueError: If the node is not found in the graph.
+        """
+        if "type" not in self.nodes[node_name]:
+            self._initialize_type()
+        return self.nodes[node_name]["type"]
+
 
 def _infer_workflow_label(recipe: fr.schemas.WorkflowRecipe) -> str:
     if recipe.reference is None:
@@ -305,12 +327,10 @@ def _workflow_to_networkx(
         metadata: dict[str, Any] = {}
         function = None
         if isinstance(node_data, fr.schemas.AtomicData):
-            metadata["type"] = "atomic"
             function = node_data.function
         elif isinstance(node_data, fr.schemas.ConstantData):
             metadata["type"] = "constant"
         else:
-            metadata["type"] = "workflow"
             if workflow_label is not None:
                 metadata["label"] = str(workflow_label)
             if node_data.recipe.reference is not None:
@@ -465,8 +485,8 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
 
 def _remove_constant(G: SemantikonDiGraph) -> None:
     to_delete = []
-    for node, data in G.nodes.data():
-        if isinstance(node, Node) and data["type"] == "constant":
+    for node in G.nodes:
+        if isinstance(node, Node) and G.get_type(node) == "constant":
             output_node = next(iter(G.successors(node)))
             const_value = G.nodes[output_node]["value"]
             to_delete.extend([node, output_node])
