@@ -644,7 +644,9 @@ def _input_is_connected(io: IO | Node, G: SemantikonDiGraph) -> bool:
         raise ValueError(f"Too many predecessors for {io}: {candidate}")
 
 
-def _is_macro_output(io: IO | Node, G: SemantikonDiGraph, candidates: tuple[Node | IO, Node | IO]):
+def _is_macro_output(
+    io: IO | Node, G: SemantikonDiGraph, candidates: tuple[Node | IO, Node | IO]
+):
     return isinstance(io, Output) and (
         isinstance(candidates[0], Node)
         and isinstance(candidates[1], Output)
