@@ -739,7 +739,9 @@ def _translate_to_semantikon_digraph(workflow_graph: nx.DiGraph) -> SemantikonDi
     return semantikon_digraph
 
 
-def _kg2digraph(graph: Graph, workflow_name: str | URIRef | None = None) -> SemantikonDiGraph:
+def _kg2digraph(
+    graph: Graph, workflow_name: str | URIRef | None = None
+) -> SemantikonDiGraph:
     uri_to_node = _uri_to_node_names(graph)
     all_workflow_graph = _build_workflow_graph(graph)
     workflow_name = _ensure_workflow_name(uri_to_node, workflow_name)
