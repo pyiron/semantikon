@@ -24,6 +24,10 @@ from semantikon.converter import (
     parse_output_args,
 )
 from semantikon.flowrep_to_networkx import (
+    IO,
+    Input,
+    Node,
+    Output,
     SemantikonDiGraph,
     _get_graph_hash,
     serialize_and_convert_to_networkx,
@@ -265,9 +269,9 @@ def _check_consistency_of_digraph(G: SemantikonDiGraph):
     for node, data in G.nodes.data():
         if "derived_from" not in data:
             continue
-        expected_input = node.rsplit("-outputs-", 1)[
-            0
-        ] + f"-{data['derived_from']}".replace(".", "-")
+        expected_input = Input(
+            node=node.node, port=data["derived_from"].replace("inputs.", "")
+        )
         if expected_input not in G.nodes:
             raise ValueError(
                 f"Node '{node}' is derived from '{data['derived_from']}' but"
@@ -534,7 +538,7 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
 
 
 def _wf_node_to_graph(
-    node_name: str,
+    node_name: Node,
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
@@ -546,8 +550,14 @@ def _wf_node_to_graph(
             g += _function_to_graph(
                 f_node,
                 data["function"],
-                input_args=[G.nodes[item] for item in G.predecessors(node_name)],
-                output_args=[G.nodes[item] for item in G.successors(node_name)],
+                input_args=[
+                    {"arg": item.port} | G.nodes[item]
+                    for item in G.predecessors(node_name)
+                ],
+                output_args=[
+                    {"arg": item.port} | G.nodes[item]
+                    for item in G.successors(node_name)
+                ],
                 uri=data.get("uri"),
             )
     if t_box:
@@ -567,11 +577,11 @@ def _wf_node_to_graph(
                 f_node,
                 restriction_type=OWL.hasValue,
             )
-        g.add((node, RDFS.label, Literal(node_name)))
-        g.add((node, SNS.local_identifier, Literal(node_name.split("-")[-1])))
-        if data.get("parent"):
+        g.add((node, RDFS.label, Literal(str(node_name))))
+        g.add((node, SNS.local_identifier, Literal(node_name.name)))
+        if node_name.parent:
             g += _to_owl_restriction(
-                BASE[G.t_ns + data["parent"]],
+                BASE[G.t_ns + node_name.parent],
                 SNS.has_part,
                 node,
             )
@@ -584,18 +594,18 @@ def _wf_node_to_graph(
             g.add((node, SNS.has_part, BASE[G.a_ns + out]))
         if "function" in data:
             g.add((node, SNS.concretizes, f_node))
-        if data.get("parent"):
-            g.add((BASE[G.a_ns + data["parent"]], SNS.has_part, node))
+        if node_name.parent:
+            g.add((BASE[G.a_ns + node_name.parent], SNS.has_part, node))
     return g
 
 
-def _output_is_connected(io: str, G: SemantikonDiGraph) -> bool:
+def _output_is_connected(io: Node | IO, G: SemantikonDiGraph) -> bool:
     candidate = list(G.successors(io))
     n_candidates = len(candidate)
     if n_candidates == 0:
         return False
     elif n_candidates == 1:
-        if G.nodes[candidate[0]]["step"] == "node":
+        if isinstance(candidate[0], Node):
             return True
         return _output_is_connected(candidate[0], G)
     elif n_candidates == 2 and _is_macro_input(io, G, tuple(candidate)):
@@ -606,58 +616,60 @@ def _output_is_connected(io: str, G: SemantikonDiGraph) -> bool:
         return any(_output_is_connected(c, G) for c in candidate)
 
 
-def _is_macro_input(io: str, G: SemantikonDiGraph, candidates: tuple[str, str]):
-    successor_types = {G.nodes[c]["step"] for c in candidates}
-    step_type = G.nodes[io]["step"]
-    input_edge_predecessors = {"node", "inputs"}
-    return step_type == "inputs" and successor_types == input_edge_predecessors
+def _is_macro_input(
+    io: Node | IO, G: SemantikonDiGraph, candidates: tuple[Node | IO, Node | IO]
+):
+    return isinstance(io, Input) and (
+        isinstance(candidates[0], Node)
+        and isinstance(candidates[1], Input)
+        or isinstance(candidates[1], Node)
+        and isinstance(candidates[0], Input)
+    )
 
 
-def _input_is_connected(io: str, G: SemantikonDiGraph) -> bool:
+def _input_is_connected(io: IO | Node, G: SemantikonDiGraph) -> bool:
     candidate = list(G.predecessors(io))
     n_predecessors = len(candidate)
     if n_predecessors == 0:
         return False
     elif n_predecessors == 1:
-        if G.nodes[candidate[0]]["step"] == "node":
+        if isinstance(candidate[0], Node):
             return True
         return _input_is_connected(candidate[0], G)
     elif n_predecessors == 2 and _is_macro_output(io, G, tuple(candidate)):
         return all(
-            _input_is_connected(cc, G)
-            for cc in candidate
-            if G.nodes[cc]["step"] != "node"
+            _input_is_connected(cc, G) for cc in candidate if not isinstance(cc, Node)
         )
     else:
-        predecessor_steps = {c: G.nodes[c]["step"] for c in candidate}
-        step_type = G.nodes[io]["step"]
-        raise ValueError(
-            f"Too many predecessors for {io} ({step_type}): {predecessor_steps}"
-        )
+        raise ValueError(f"Too many predecessors for {io}: {candidate}")
 
 
-def _is_macro_output(io: str, G: SemantikonDiGraph, candidates: tuple[str, str]):
-    predecessor_types = {G.nodes[c]["step"] for c in candidates}
-    step_type = G.nodes[io]["step"]
-    output_edge_predecessors = {"node", "outputs"}
-    return step_type == "outputs" and predecessor_types == output_edge_predecessors
-
-
-def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: str) -> str:
-    assert seeked_io.startswith(("inputs", "outputs"))
-    main_node = ref_io.replace(".", "-").split("-outputs-")[0].split("-inputs-")[0]
-    candidate = (
-        G.predecessors(main_node) if "inputs" in seeked_io else G.successors(main_node)
+def _is_macro_output(
+    io: IO | Node, G: SemantikonDiGraph, candidates: tuple[Node | IO, Node | IO]
+):
+    return isinstance(io, Output) and (
+        isinstance(candidates[0], Node)
+        and isinstance(candidates[1], Output)
+        or isinstance(candidates[1], Node)
+        and isinstance(candidates[0], Output)
     )
-    for io in candidate:
-        if io.endswith(seeked_io.replace(".", "-")):
-            return G._get_data_node(io=io)
-    raise ValueError(f"IO {seeked_io} not found in graph")
+
+
+def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: IO) -> str:
+    assert seeked_io.startswith(("inputs", "outputs"))
+    full_io: IO
+    if seeked_io.startswith("inputs"):
+        full_io = Input(node=ref_io.node, port=seeked_io.replace("inputs.", ""))
+    else:
+        full_io = Output(node=ref_io.node, port=seeked_io.replace("outputs.", ""))
+    if full_io not in G.nodes:
+        raise ValueError(f"IO {seeked_io} not found in graph")
+    return G._get_data_node(io=full_io)
 
 
 def _translate_triples(
     triples: TripleList,
-    node_name: str,
+    node_name: IO,
     data_node: URIRef,
     G: SemantikonDiGraph,
     t_box: bool,
@@ -755,7 +767,7 @@ def _restrictions_to_triples(
 
 
 def _wf_input_to_graph(
-    node_name: str,
+    node_name: Input,
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
@@ -764,7 +776,7 @@ def _wf_input_to_graph(
     units = data.get("units", data.get("unit"))
     if "derived_from" in data:
         raise ValueError(
-            f"'derived_from' (defined for the argument '{data['arg']}') is not"
+            f"'derived_from' (defined for the argument '{node_name.port}') is not"
             " supported for inputs."
         )
     if t_box:
@@ -773,8 +785,8 @@ def _wf_input_to_graph(
             out = list(G.predecessors(node_name))
             assert len(out) <= 1
             if len(out) == 1:
-                assert G.nodes[out[0]]["step"] in ["outputs", "inputs"]
-                if G.nodes[out[0]]["step"] == "outputs":
+                assert isinstance(out[0], IO)
+                if isinstance(out[0], Output):
                     g += _to_owl_restriction(
                         BASE[G.t_ns + out[0]], SNS.has_participant, data_node
                     )
@@ -823,7 +835,7 @@ def _wf_input_to_graph(
 
 
 def _wf_output_to_graph(
-    node_name: str,
+    node_name: Output,
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
@@ -869,7 +881,7 @@ def _wf_output_to_graph(
 
 
 def _wf_io_to_graph(
-    node_name: str,
+    node_name: IO,
     data: dict,
     data_node: URIRef,
     G: SemantikonDiGraph,
@@ -879,8 +891,8 @@ def _wf_io_to_graph(
 ) -> Graph:
     node = BASE[G.t_ns + node_name] if t_box else BASE[G.a_ns + node_name]
     g = _get_bound_graph()
-    g.add((node, RDFS.label, Literal(node_name)))
-    g.add((node, SNS.local_identifier, Literal(node_name.split("-")[-1])))
+    g.add((node, RDFS.label, Literal(str(node_name))))
+    g.add((node, SNS.local_identifier, Literal(node_name.port)))
     if t_box:
         g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.subClassOf, io_assignment))
@@ -918,13 +930,13 @@ def _parse_precedes(
     t_box: bool,
 ) -> Graph:
     g = _get_bound_graph()
-    for node in G.nodes.data():
-        if node[1]["step"] == "node":
-            successors = list(_get_successor_nodes(G, node[0]))
+    for node in G.nodes:
+        if isinstance(node, Node):
+            successors = list(_get_successor_nodes(G, node))
             if t_box:
                 for succ in successors:
                     g += _to_owl_restriction(
-                        BASE[G.t_ns + node[0]],
+                        BASE[G.t_ns + node],
                         SNS.precedes,
                         BASE[G.t_ns + succ],
                     )
@@ -932,7 +944,7 @@ def _parse_precedes(
                 for succ in successors:
                     g.add(
                         (
-                            BASE[G.a_ns + node[0]],
+                            BASE[G.a_ns + node],
                             SNS.precedes,
                             BASE[G.a_ns + succ],
                         )
@@ -946,24 +958,22 @@ def _parse_global_io(
     t_box: bool,
 ) -> Graph:
     g = _get_bound_graph()
-    global_inputs = [
-        n for n in G.nodes.data() if G.in_degree(n[0]) == 0 and n[1]["step"] == "inputs"
+    global_inputs: list[Input] = [
+        n for n in G.nodes if G.in_degree(n) == 0 and isinstance(n, Input)
     ]
-    global_outputs = [
-        n
-        for n in G.nodes.data()
-        if G.out_degree(n[0]) == 0 and n[1]["step"] == "outputs"
+    global_outputs: list[Output] = [
+        n for n in G.nodes if G.out_degree(n) == 0 and isinstance(n, Output)
     ]
-    for global_io in [global_inputs, global_outputs]:
-        for io in global_io:
+    for io_list in (global_inputs, global_outputs):
+        for io in io_list:
             if t_box:
                 g += _to_owl_restriction(
                     workflow_node,
                     SNS.has_part,
-                    BASE[G.t_ns + io[0]],
+                    BASE[G.t_ns + io],
                 )
             else:
-                g.add((workflow_node, SNS.has_part, BASE[G.a_ns + io[0]]))
+                g.add((workflow_node, SNS.has_part, BASE[G.a_ns + io]))
     return g
 
 
@@ -971,20 +981,18 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
     g = _get_bound_graph()
     for node_name, data in G.nodes.data():
         data = data.copy()
-        step = data.pop("step")
         if t_box:
             g.add((BASE[G.t_ns + node_name], RDF.type, OWL.Class))
         else:
             g.add((BASE[G.a_ns + node_name], RDF.type, BASE[G.t_ns + node_name]))
-        assert step in ["node", "inputs", "outputs"], f"Unknown step: {step}"
-        if step == "node":
+        if isinstance(node_name, Node):
             g += _wf_node_to_graph(
                 node_name=node_name,
                 data=data,
                 G=G,
                 t_box=t_box,
             )
-        elif step == "inputs":
+        elif isinstance(node_name, Input):
             g += _wf_input_to_graph(
                 node_name=node_name,
                 data=data,
