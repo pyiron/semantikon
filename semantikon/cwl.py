@@ -112,10 +112,9 @@ def _add_node(
             else:
                 G.add_edge(node, Output(node=node, port=out_name))
         G = _add_node(run_doc, G, prefix=node)
-    for out in wf.outputs:
-        node = Node(parent=prefix, name=_get_name(out.id))
-        n, p = _get_name(out.outputSource).split("/")
-        G.add_edge(
+for out in wf.outputs:
+    n, p = _get_name(out.outputSource).split("/")
+    G.add_edge(
             Output(node=Node(parent=prefix, name=n), port=p),
             Output(node=prefix, port=_get_name(out.id)),
         )
