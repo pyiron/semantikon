@@ -49,7 +49,7 @@ Documentation = "https://semantikon.readthedocs.io"
 Repository = "https://github.com/pyiron/semantikon"
 
 [project.optional-dependencies]
-cwl = ["cwltool==3.2.20260413085819"]
+cwl = ["cwltool==3.2.20260720092025"]
 
 [tool.hatch.build]
 include = [
