@@ -601,6 +601,8 @@ def _extract_constant_values_from_kg(
 
     for input_node, value_literal in rdf_graph.query(query):  # type: ignore[misc]
         inp = uri_to_node_and_io.get(input_node)  # type: ignore[arg-type]
+        if inp not in workflow_graph:
+            continue
         workflow_graph.nodes[inp]["constant_value"] = (
             _literal_to_constant(value_literal)
             if isinstance(value_literal, Literal)
