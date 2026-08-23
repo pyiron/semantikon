@@ -421,9 +421,7 @@ def _workflow_to_networkx(
                 child_outputs = list(child_recipes[source.node].outputs)
                 src_port = _output_port_label(source.port, child_outputs)
                 G.add_edge(
-                    Output(
-                        node=Node(owner=node_name, name=source.node), port=src_port
-                    ),
+                    Output(node=Node(owner=node_name, name=source.node), port=src_port),
                     Output(node=node_name, port=target_port),
                 )
 
