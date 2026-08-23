@@ -246,19 +246,6 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
                     direct_children[child_label.name] = child_label
                     nodes[child_label.name] = _process_node(child_label)
 
-            def _find_child_for_io(io_node_name: IO) -> str | None:
-                """Find the child node (short label) that owns this IO node."""
-                for child_label in direct_children.values():
-                    if io_node_name.node == child_label:
-                        return child_label.name
-                return None
-
-            def _is_direct_io(node_id: Node | IO) -> bool:
-                """Check if this is a direct IO of the workflow."""
-                if isinstance(node_id, Node):
-                    return False
-                return node_id.node == node_name
-
             def _is_child_io(node_id: IO | Node) -> bool:
                 """Check if this is an IO of a direct child (and only direct child)."""
                 if not isinstance(node_id, IO):
@@ -269,49 +256,38 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
                 return False
 
             for u, v in G.edges:
-                u_is_direct_io = _is_direct_io(u)
-                v_is_direct_io = _is_direct_io(v)
                 u_is_child_io = _is_child_io(u)
                 v_is_child_io = _is_child_io(v)
 
                 if isinstance(u, Input) and isinstance(v, Input):
-                    if u_is_direct_io and v_is_child_io:
-                        v_child = _find_child_for_io(v)
-                        if v_child is not None:
-                            edges_key = fr.schemas.TargetHandle(
-                                node=v_child, port=v.port
-                            )
-                            input_edges[edges_key] = fr.schemas.InputSource(port=u.port)
+                    if u.node == node_name and v_is_child_io:
+                        edges_key = fr.schemas.TargetHandle(
+                            node=v.node.name, port=v.port
+                        )
+                        input_edges[edges_key] = fr.schemas.InputSource(port=u.port)
                 elif isinstance(u, Output) and isinstance(v, Input):
                     if u_is_child_io and v_is_child_io:
-                        u_child = _find_child_for_io(u)
-                        v_child = _find_child_for_io(v)
-                        if u_child is not None and v_child is not None:
-                            u_port = _normalize_output_label(
-                                u.port, nodes[u_child].outputs
-                            )
-                            edges_key = fr.schemas.TargetHandle(
-                                node=v_child, port=v.port
-                            )
-                            edges[edges_key] = fr.schemas.SourceHandle(
-                                node=u_child, port=u_port
-                            )
+                        u_port = _normalize_output_label(
+                            u.port, nodes[u.node.name].outputs
+                        )
+                        edges_key = fr.schemas.TargetHandle(
+                            node=v.node.name, port=v.port
+                        )
+                        edges[edges_key] = fr.schemas.SourceHandle(
+                            node=u.node.name, port=u_port
+                        )
                 elif (
                     isinstance(u, Output)
                     and isinstance(v, Output)
                     and u != v
                     and u_is_child_io
-                    and v_is_direct_io
+                    and v.node == node_name
                 ):
-                    u_child = _find_child_for_io(u)
-                    if u_child is not None:
-                        u_port = _normalize_output_label(u.port, nodes[u_child].outputs)
-                        v_port = _normalize_output_label(
-                            v.port, list(base_recipe.outputs)
-                        )
-                        output_edges[fr.schemas.OutputTarget(port=v_port)] = (
-                            fr.schemas.SourceHandle(node=u_child, port=u_port)
-                        )
+                    u_port = _normalize_output_label(u.port, nodes[u.node.name].outputs)
+                    v_port = _normalize_output_label(v.port, list(base_recipe.outputs))
+                    output_edges[fr.schemas.OutputTarget(port=v_port)] = (
+                        fr.schemas.SourceHandle(node=u.node.name, port=u_port)
+                    )
             return fr.schemas.WorkflowRecipe(
                 inputs=list(base_recipe.inputs),
                 outputs=list(base_recipe.outputs),
