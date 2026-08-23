@@ -579,9 +579,9 @@ def _wf_node_to_graph(
             )
         g.add((node, RDFS.label, Literal(str(node_name))))
         g.add((node, SNS.local_identifier, Literal(node_name.name)))
-        if node_name.parent:
+        if node_name.owner:
             g += _to_owl_restriction(
-                BASE[G.t_ns + node_name.parent],
+                BASE[G.t_ns + node_name.owner],
                 SNS.has_part,
                 node,
             )
@@ -594,8 +594,8 @@ def _wf_node_to_graph(
             g.add((node, SNS.has_part, BASE[G.a_ns + out]))
         if "function" in data:
             g.add((node, SNS.concretizes, f_node))
-        if node_name.parent:
-            g.add((BASE[G.a_ns + node_name.parent], SNS.has_part, node))
+        if node_name.owner:
+            g.add((BASE[G.a_ns + node_name.owner], SNS.has_part, node))
     return g
 
 
