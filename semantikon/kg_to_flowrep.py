@@ -276,12 +276,10 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
 
                 if isinstance(u, Input) and isinstance(v, Input):
                     if u_is_direct_io and v_is_child_io:
-                        v_child = _find_child_for_io(v)
-                        if v_child is not None:
-                            edges_key = fr.schemas.TargetHandle(
-                                node=v_child, port=v.port
-                            )
-                            input_edges[edges_key] = fr.schemas.InputSource(port=u.port)
+                        edges_key = fr.schemas.TargetHandle(
+                            node=v.node.name, port=v.port
+                        )
+                        input_edges[edges_key] = fr.schemas.InputSource(port=u.port)
                 elif isinstance(u, Output) and isinstance(v, Input):
                     if u_is_child_io and v_is_child_io:
                         u_child = _find_child_for_io(u)
