@@ -241,8 +241,8 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
             # First collect all direct children
             direct_children: dict[str, Node] = {}
             for child_label in G.nodes:
-                if isinstance(child_label, Node) and child_label.parent == node_name:
-                    # Extract child short label correctly by removing parent prefix
+                if isinstance(child_label, Node) and child_label.owner == node_name:
+                    # Extract child short label correctly by removing owner prefix
                     direct_children[child_label.name] = child_label
                     nodes[child_label.name] = _process_node(child_label)
 
@@ -412,7 +412,7 @@ def _uri_to_node_names(graph: Graph):
             child_name = cast(
                 Literal, graph.value(child, SNS.local_identifier)
             ).toPython()
-            node_dict[child] = Node(child_name, parent=node_dict[parent])
+            node_dict[child] = Node(child_name, owner=node_dict[parent])
     return node_dict
 
 
@@ -604,7 +604,7 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
         for constant_index in itertools.count():
             const_node = Node(
                 name=f"{fr.schemas.ConstantRecipe.std_label}_{constant_index}",
-                parent=node.node.parent,
+                owner=node.node.owner,
             )
             if const_node not in G:
                 break
@@ -633,7 +633,7 @@ def _ensure_workflow_name(
     uri_to_node: dict[URIRef, Node],
     wf_name: str | URIRef | None = None,
 ) -> URIRef:
-    roots = {k: v for k, v in uri_to_node.items() if v.parent is None}
+    roots = {k: v for k, v in uri_to_node.items() if v.owner is None}
     if len(roots) == 0:
         raise ValueError(
             "No workflow nodes found in graph. Ensure T-box information is present "

@@ -27,11 +27,11 @@ from semantikon.flowrep_dict import (
 @dataclass(frozen=True, slots=True)
 class Node:
     name: str
-    parent: Node | None = None
+    owner: Node | None = None
 
     def __str__(self) -> str:
-        if self.parent:
-            return f"{self.parent}-{self.name}"
+        if self.owner:
+            return f"{self.owner}-{self.name}"
         else:
             return self.name
 
@@ -273,8 +273,8 @@ class SemantikonDiGraph(nx.DiGraph):
         for node, data in self.nodes.data():
             if isinstance(node, Node):
                 data["type"] = data.get("type", "atomic")
-                if node.parent:
-                    self.nodes[node.parent]["type"] = "workflow"
+                if node.owner:
+                    self.nodes[node.owner]["type"] = "workflow"
 
     def get_type(self, node_name: Node) -> str:
         """
@@ -387,7 +387,7 @@ def _workflow_to_networkx(
 
         recipe = node_data.recipe
         for child_label, child in node_data.nodes.items():
-            child_name = Node(name=child_label, parent=node_name)
+            child_name = Node(name=child_label, owner=node_name)
             _add_node(
                 child,
                 child_name,
@@ -401,14 +401,14 @@ def _workflow_to_networkx(
         for target, source in recipe.input_edges.items():
             G.add_edge(
                 Input(node=node_name, port=source.port),
-                Input(node=Node(parent=node_name, name=target.node), port=target.port),
+                Input(node=Node(owner=node_name, name=target.node), port=target.port),
             )
         for target, source in recipe.edges.items():
             child_outputs = list(child_recipes[source.node].outputs)
             src_port = _output_port_label(source.port, child_outputs)
             G.add_edge(
-                Output(node=Node(parent=node_name, name=source.node), port=src_port),
-                Input(node=Node(parent=node_name, name=target.node), port=target.port),
+                Output(node=Node(owner=node_name, name=source.node), port=src_port),
+                Input(node=Node(owner=node_name, name=target.node), port=target.port),
             )
         for target, source in recipe.output_edges.items():
             target_port = _output_port_label(target.port, list(recipe.outputs))
@@ -422,7 +422,7 @@ def _workflow_to_networkx(
                 src_port = _output_port_label(source.port, child_outputs)
                 G.add_edge(
                     Output(
-                        node=Node(parent=node_name, name=source.node), port=src_port
+                        node=Node(owner=node_name, name=source.node), port=src_port
                     ),
                     Output(node=node_name, port=target_port),
                 )
