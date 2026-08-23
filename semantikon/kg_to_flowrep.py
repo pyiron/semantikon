@@ -284,9 +284,7 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
                     and v.node == node_name
                 ):
                     u_port = _normalize_output_label(u.port, nodes[u.node.name].outputs)
-                    v_port = _normalize_output_label(
-                        v.port, list(base_recipe.outputs)
-                    )
+                    v_port = _normalize_output_label(v.port, list(base_recipe.outputs))
                     output_edges[fr.schemas.OutputTarget(port=v_port)] = (
                         fr.schemas.SourceHandle(node=u.node.name, port=u_port)
                     )
