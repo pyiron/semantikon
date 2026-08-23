@@ -112,7 +112,7 @@ def request_values(
                 node_obj = node.node  # This is a Node object
 
                 # Build keys based on node hierarchy
-                if node_obj.parent is None:
+                if node_obj.owner is None:
                     # Top-level IO
                     keys = [io_type, node.port]
                 else:
