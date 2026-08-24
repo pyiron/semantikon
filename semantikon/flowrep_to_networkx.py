@@ -296,7 +296,9 @@ class SemantikonDiGraph(nx.DiGraph):
         return self.nodes[node_name]["type"]
 
 
-def _infer_workflow_label(recipe: fr.schemas.WorkflowRecipe, label: str | None = None) -> str:
+def _infer_workflow_label(
+    recipe: fr.schemas.WorkflowRecipe, label: str | None = None
+) -> str:
     if label is not None:
         return label
     if recipe.reference is None:
