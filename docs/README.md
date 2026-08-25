@@ -63,7 +63,7 @@ In the realm of the workflow management systems, there are well defined inputs a
 >>> 
 >>> 
 >>> @workflow
->>> def my_kinetic_energy_workflow(
+... def my_kinetic_energy_workflow(
 ...     distance, time, mass
 ... ):
 ...     speed = get_speed(distance, time)
