@@ -144,7 +144,7 @@ def request_values(
             hash_to_value[h_val] = v_val
 
     def _get_child_node(wf_dict: fr.schemas.DagData, node: Node) -> Node:
-        if node.owner.owner:
+        if node.owner and node.owner.owner:
             return _get_child_node(wf_dict, node.owner).nodes[node.name]
         else:
             return wf_dict.nodes[node.name]
