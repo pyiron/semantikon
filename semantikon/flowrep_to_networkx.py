@@ -317,9 +317,11 @@ def _workflow_to_networkx(
     *,
     prefix: str | None = None,
 ) -> SemantikonDiGraph:
-    root_label = _infer_workflow_label(workflow.recipe, label=prefix)
+    root_label = _infer_workflow_label(workflow.recipe)
+    if root_label == "" and prefix is not None:
+        root_label = prefix
     G = SemantikonDiGraph(prefix=prefix)
-    G.name = root_label
+    G.name = prefix if prefix is not None else root_label
 
     def _add_node(
         node_data: fr.schemas.NodeData,

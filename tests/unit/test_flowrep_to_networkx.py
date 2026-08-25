@@ -228,6 +228,13 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         )
         self.assertEqual(G.name, "my_prefix")
 
+    def test_prefix_does_not_override_named_workflow_node(self):
+        wf_dict = my_kinetic_energy_workflow.flowrep_recipe
+        G = ftn.serialize_and_convert_to_networkx(
+            wf_dict, hash_data=False, prefix="my_prefix"
+        )
+        self.assertIn(ftn.Node("my_kinetic_energy_workflow"), G.nodes)
+
     def test_serialize_workflow_recipe_with_input_passthrough(self):
         self.assertTrue(
             any(
