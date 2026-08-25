@@ -160,15 +160,17 @@ def request_values(
         if h not in hash_to_value:
             continue
         value = hash_to_value[h]
-        port = "input_ports" if isinstance(item["node"], Input) else "output_ports"
+        ports_attr = (
+            "input_ports" if isinstance(item["node"], Input) else "output_ports"
+        )
         if item["node"].node.owner:
             _get_port_with_fallback(
-                _get_child_node(wf_dict, item["node"].node).__getattribute__(port),
+                _get_child_node(wf_dict, item["node"].node).__getattribute__(ports_attr),
                 item["node"].port,
             ).value = value
         else:
             _get_port_with_fallback(
-                wf_dict.__getattribute__(port),
+                wf_dict.__getattribute__(ports_attr),
                 item["node"].port,
             ).value = value
     return wf_dict
