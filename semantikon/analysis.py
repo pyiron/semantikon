@@ -70,7 +70,7 @@ def identifier_to_uri(graph: Graph, identifier: str) -> list[URIRef]:
 
 
 def request_values(
-    wf_dict: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe, graph: Graph
+    wf_dict: fr.schemas.DagData | fr.schemas.WorkflowRecipe, graph: Graph
 ) -> fr.schemas.DagData:
     """
     Given a workflow dictionary and an RDF graph, this function
@@ -78,20 +78,12 @@ def request_values(
     based on hash identifiers.
 
     Args:
-        wf_dict (dict): The workflow dictionary to populate.
+        wf_dict (fr.schemas.DagData | fr.schemas.WorkflowRecipe): The workflow dictionary
         graph (Graph): The RDF graph containing data nodes.
 
     Returns:
         dict: The updated workflow dictionary with populated values.
     """
-    if isinstance(wf_dict, dict):
-        warnings.warn(
-            "Passing a dict to 'request_values' is deprecated and will be removed"
-            " in a future version. Pass a 'flowrep' object instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        wf_dict = dict_to_nodedata(wf_dict)
     if isinstance(wf_dict, fr.schemas.WorkflowRecipe):
         wf_dict = fr.schemas.DagData.from_recipe(wf_dict)
     G = serialize_and_convert_to_networkx(wf_dict)
