@@ -16,7 +16,7 @@ from rdflib.query import ResultRow
 
 from semantikon.converter import to_identifier
 from semantikon.flowrep_dict import dict_to_nodedata
-from semantikon.flowrep_to_networkx import IO, Input, Node, Output
+from semantikon.flowrep_to_networkx import IO, Input, Node
 from semantikon.ontology import SNS, serialize_and_convert_to_networkx
 
 
@@ -143,9 +143,7 @@ def request_values(
         if h_val not in hash_to_value:
             hash_to_value[h_val] = v_val
 
-    def _get_child_node(
-        wf_dict: fr.schemas.DagData, node: Node
-    ) -> fr.schemas.NodeData:
+    def _get_child_node(wf_dict: fr.schemas.DagData, node: Node) -> fr.schemas.NodeData:
         if node.owner and node.owner.owner:
             parent_node = _get_child_node(wf_dict, node.owner)
             if not isinstance(parent_node, fr.schemas.DagData):
@@ -165,7 +163,9 @@ def request_values(
         )
         if item["node"].node.owner:
             _get_port_with_fallback(
-                _get_child_node(wf_dict, item["node"].node).__getattribute__(ports_attr),
+                _get_child_node(wf_dict, item["node"].node).__getattribute__(
+                    ports_attr
+                ),
                 item["node"].port,
             ).value = value
         else:
