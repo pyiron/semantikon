@@ -146,8 +146,7 @@ def request_values(
     def _get_child_node(wf_dict: fr.schemas.DagData, node: Node) -> fr.schemas.NodeData:
         if node.owner and node.owner.owner:
             parent_node = _get_child_node(wf_dict, node.owner)
-            if not isinstance(parent_node, fr.schemas.DagData):
-                raise TypeError(f"Expected workflow node for owner {node.owner!s}")
+            assert isinstance(parent_node, fr.schemas.DagData)
             return parent_node.nodes[node.name]
         else:
             return wf_dict.nodes[node.name]
