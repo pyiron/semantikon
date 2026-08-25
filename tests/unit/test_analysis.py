@@ -8,7 +8,6 @@ from rdflib import RDF, Namespace
 from semantikon import analysis as asis
 from semantikon import ontology as onto
 from semantikon.metadata import meta
-from semantikon.workflow import workflow
 
 EX: Namespace = Namespace("http://example.org/")
 PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
@@ -59,7 +58,7 @@ def get_kinetic_energy_unlabeled(
     return get_kinetic_energy(mass, velocity)
 
 
-@workflow
+@fr.workflow
 def my_kinetic_energy_workflow(
     distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
 ):
@@ -68,20 +67,20 @@ def my_kinetic_energy_workflow(
     return kinetic_energy
 
 
-@workflow
+@fr.workflow
 def workflow_with_dataclass(data: SpeedData, mass):
     speed = get_speed_with_dataclass(data)
     kinetic_energy = get_kinetic_energy(mass, speed)
     return kinetic_energy
 
 
-@workflow
+@fr.workflow
 def only_get_speed_workflow(distance, time):
     speed = get_speed(distance=distance, time=time)
     return speed
 
 
-@workflow
+@fr.workflow
 def unlabeled_kinetic_energy_workflow(distance, time, mass):
     speed = get_speed(distance, time)
     kinetic_energy = get_kinetic_energy_unlabeled(mass, speed)
