@@ -69,9 +69,7 @@ def my_kinetic_energy_workflow(
 
 
 @workflow
-def outer_workflow(
-    distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
-):
+def outer_workflow(distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass):
     kinetic_energy = my_kinetic_energy_workflow(distance, time, mass)
     return kinetic_energy
 
@@ -216,9 +214,7 @@ class TestAnalysis(unittest.TestCase):
         )
 
     def test_request_values_with_outer_workflow(self):
-        wf_dict = fr.schemas.DagData.from_recipe(
-            outer_workflow.flowrep_recipe
-        )
+        wf_dict = fr.schemas.DagData.from_recipe(outer_workflow.flowrep_recipe)
         wf_dict.input_ports["distance"].value = 1.0
         wf_dict.input_ports["time"].value = 2.0
         wf_dict.input_ports["mass"].value = 3.0
