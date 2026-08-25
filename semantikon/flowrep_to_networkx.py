@@ -343,8 +343,6 @@ def _workflow_to_networkx(
                 )
 
         if function is not None:
-            if hasattr(function, "_semantikon_metadata"):
-                metadata.update(function._semantikon_metadata)
             function_data = get_function_dict(function)
             function_data["identifier"] = ".".join(
                 (

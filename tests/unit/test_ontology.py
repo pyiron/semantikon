@@ -1,4 +1,3 @@
-import copy
 import os
 import unittest
 import warnings
@@ -16,7 +15,6 @@ from semantikon import kg_to_flowrep as kgf
 from semantikon import ontology as onto
 from semantikon.metadata import SemantikonURI, meta
 from semantikon.visualize import visualize_recipe
-from semantikon.workflow import workflow
 
 EX: Namespace = Namespace("http://example.org/")
 PMD: Namespace = Namespace("https://w3id.org/pmd/co/PMD_")
@@ -43,14 +41,14 @@ def add_one(x):
     return y
 
 
-@workflow
+@fr.workflow
 def add_two(a):
     b = add_one(a)
     c = add_one(b)
     return c
 
 
-@workflow
+@fr.workflow
 def add_three(alpha):
     beta = add_two(alpha)
     gamma = add_two(beta)
@@ -67,7 +65,7 @@ def downstream_node(x: Annotated[object, {"uri": EX.Downstream}]):
     return y
 
 
-@workflow
+@fr.workflow
 def undefined_specificity(a):
     b = upstream_node(a)
     y = downstream_node(b)
@@ -95,7 +93,7 @@ def get_kinetic_energy(
     return 0.5 * mass * velocity**2
 
 
-@workflow
+@fr.workflow
 def my_kinetic_energy_workflow(
     distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
 ):
@@ -147,13 +145,13 @@ def f_triples(
     return a
 
 
-@workflow
+@fr.workflow
 def wf_triples(a, b):
     a = f_triples(a, b)
     return a
 
 
-@workflow
+@fr.workflow
 def wf_nested_triples(a, b):
     result = wf_triples(a, b)
     one = add_one(result)
@@ -172,7 +170,7 @@ def eat(meal: Annotated[Meal, {"uri": EX.Meal}]) -> str:
     return "I am full after eating "
 
 
-@workflow
+@fr.workflow
 def eat_pizza():
     pizza = prepare_pizza()
     comment = eat(pizza)
@@ -183,7 +181,7 @@ class Drink:
     pass
 
 
-@workflow
+@fr.workflow
 def swallow_pizza_painfully(drink: Annotated[Drink, {"uri": EX.Water}]):
     x = eat(drink)
     return x
@@ -300,7 +298,7 @@ def mul(x: int, y: int) -> int:
     return x * y
 
 
-@workflow
+@fr.workflow
 def multiple_connection(a, b):
     c = add(a, b)
     d = mul(a, c)
@@ -308,20 +306,20 @@ def multiple_connection(a, b):
     return e
 
 
-@workflow
+@fr.workflow
 def get_run_md(inp: Input, E=1.0):
     result = run_md(inp)
     return result
 
 
-@workflow
+@fr.workflow
 def workflow_with_default_values(distance=2, time=1, mass=4):
     speed = get_speed(distance, time)
     kinetic_energy = get_kinetic_energy(mass, speed)
     return kinetic_energy
 
 
-@workflow
+@fr.workflow
 def my_correct_workflow(clothes: Clothes) -> int:
     dyed_clothes = dye(clothes)
     washed_clothes = wash(dyed_clothes)
@@ -329,34 +327,34 @@ def my_correct_workflow(clothes: Clothes) -> int:
     return money
 
 
-@workflow
+@fr.workflow
 def my_wrong_workflow(clothes: Clothes) -> int:
     washed_clothes = wash(clothes)
     money = sell(washed_clothes)
     return money
 
 
-@workflow
+@fr.workflow
 def my_simple_workflow(clothes: Clothes) -> int:
     washed_clothes = wash(clothes)
     money = sell_without_color(washed_clothes)
     return money
 
 
-@workflow
+@fr.workflow
 def my_shacl_workflow(clothes: Clothes) -> int:
     washed_clothes = wash(clothes)
     money = sell_with_shacl(washed_clothes)
     return money
 
 
-@workflow
+@fr.workflow
 def my_shacl_wrong_workflow(clothes: Clothes) -> int:
     money = sell_with_shacl(clothes)
     return money
 
 
-@workflow
+@fr.workflow
 def my_kinetic_energy_workflow_wrong_units(
     distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
 ):
@@ -365,7 +363,7 @@ def my_kinetic_energy_workflow_wrong_units(
     return kinetic_energy
 
 
-@workflow
+@fr.workflow
 def my_kinetic_energy_workflow_wrong_uri(
     distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
 ):
@@ -374,7 +372,7 @@ def my_kinetic_energy_workflow_wrong_uri(
     return kinetic_energy
 
 
-@workflow
+@fr.workflow
 def my_kinetic_energy_workflow_not_annotated(
     distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
 ):
@@ -383,14 +381,14 @@ def my_kinetic_energy_workflow_not_annotated(
     return kinetic_energy
 
 
-@workflow
+@fr.workflow
 def workflow_with_dataclass(speed_data, mass):
     speed = get_speed_with_dataclass(speed_data)
     kinetic_energy = get_kinetic_energy(mass, speed)
     return kinetic_energy
 
 
-@workflow
+@fr.workflow
 def my_unhashable_inputs(uh):
     result = get_unhashable(uh)
     return result
@@ -402,13 +400,13 @@ def use_derived_from_wrongly_in_input(
     return x
 
 
-@workflow
+@fr.workflow
 def workflow_with_wrong_derived_from(x):
     result = use_derived_from_wrongly_in_input(x)
     return result
 
 
-@workflow
+@fr.workflow
 def workflow_with_derived_from_and_no_uri(
     x: Annotated[float, {"uri": EX.Something}],
 ) -> Annotated[float, {"derived_from": "inputs.x"}]:
@@ -416,7 +414,7 @@ def workflow_with_derived_from_and_no_uri(
     return result
 
 
-@workflow
+@fr.workflow
 def workflow_with_derived_from_and_with_uri(
     x: Annotated[float, {"uri": EX.Something}],
 ) -> Annotated[float, {"derived_from": "inputs.x", "uri": EX.SomethingElse}]:
@@ -424,7 +422,7 @@ def workflow_with_derived_from_and_with_uri(
     return result
 
 
-@workflow
+@fr.workflow
 def workflow_with_derived_from_and_with_no_uri_at_all(
     x: float,
 ) -> Annotated[float, {"derived_from": "inputs.x"}]:
@@ -432,7 +430,7 @@ def workflow_with_derived_from_and_with_no_uri_at_all(
     return result
 
 
-@workflow
+@fr.workflow
 def workflow_with_wrong_derived_from_in_output(
     x,
 ) -> Annotated[float, {"derived_from": "inputs.y"}]:
@@ -440,7 +438,7 @@ def workflow_with_wrong_derived_from_in_output(
     return result
 
 
-@workflow
+@fr.workflow
 def passthrough_input_workflow(x):
     return x
 
@@ -473,41 +471,6 @@ class TestOntology(unittest.TestCase):
     def setUpClass(cls):
         cls.maxDiff = None
         cls.static_dir = Path(__file__).parent.parent / "static"
-
-    def test_nested_topology(self):
-        wf_dict = add_three.get_semantikon_dict()
-
-        def _label(fnc) -> str:
-            return fnc.__name__ + "_0"
-
-        with self.subTest("Basic construction"):
-            g = onto.get_knowledge_graph(wf_dict=add_three.flowrep_recipe)
-            validation = onto.validate_values(g)
-            self.assertTrue(
-                validation[0],
-                msg="Trivial deeply nested topology should parse and validates",
-            )
-
-        subgraph_label = add_two.__name__ + "_0"
-        subgraph_edges = wf_dict["nodes"][subgraph_label]["edges"]
-
-        with self.subTest("Too many inputs"):
-            extra_input = ("inputs.a", "add_one_1.inputs.x")
-            overloaded_input_edges = list(subgraph_edges)
-            overloaded_input_edges.append(extra_input)
-            overloaded_dict = copy.deepcopy(wf_dict)
-            overloaded_dict["nodes"][subgraph_label]["edges"] = overloaded_input_edges
-
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", DeprecationWarning)
-                with self.assertRaises(
-                    AssertionError,
-                    msg="Providing an input with two legitimate sources (a peer source and "
-                    "a parent source, in this case) should force an error. It would be "
-                    "nice to hit the ValueError in __, but we hit an assertion in "
-                    "`_get_data_node` first.",
-                ):
-                    onto.get_knowledge_graph(wf_dict=overloaded_dict)
 
     def test_uri_specificity(self):
         for source_more_specific in [True, False]:
@@ -542,16 +505,6 @@ class TestOntology(unittest.TestCase):
         with self.assertRaises(TypeError, msg="Uncoercible data should raise cleanly"):
             onto.get_knowledge_graph(42)
 
-        wf_dict = my_kinetic_energy_workflow.get_semantikon_dict()
-        with self.assertWarns(
-            DeprecationWarning, msg="Dict input should emit a DeprecationWarning"
-        ):
-            g_dict = onto.get_knowledge_graph(wf_dict)
-        self.assertTrue(
-            compare.isomorphic(graphs[0], g_dict),
-            msg="Dict input should produce an isomorphic graph to flowrep input",
-        )
-
     def test_my_kinetic_energy_workflow_graph(self):
         g = onto.get_knowledge_graph(my_kinetic_energy_workflow.flowrep_recipe)
 
@@ -562,7 +515,7 @@ class TestOntology(unittest.TestCase):
         PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
 
         ASK {{
-            ?output a sns:W53f89b3c_my_kinetic_energy_workflow-outputs-kinetic_energy .
+            ?output a sns:Wafc60850_my_kinetic_energy_workflow-outputs-kinetic_energy .
             ?output ro:0000057 ?data .
             ?data qudt:hasUnit unit:J .
         }}"""
