@@ -143,9 +143,14 @@ def request_values(
         if h_val not in hash_to_value:
             hash_to_value[h_val] = v_val
 
-    def _get_child_node(wf_dict: fr.schemas.DagData, node: Node) -> Node:
+    def _get_child_node(
+        wf_dict: fr.schemas.DagData, node: Node
+    ) -> fr.schemas.NodeData:
         if node.owner and node.owner.owner:
-            return _get_child_node(wf_dict, node.owner).nodes[node.name]
+            parent_node = _get_child_node(wf_dict, node.owner)
+            if not isinstance(parent_node, fr.schemas.DagData):
+                raise TypeError(f"Expected workflow node for owner {node.owner!s}")
+            return parent_node.nodes[node.name]
         else:
             return wf_dict.nodes[node.name]
 
