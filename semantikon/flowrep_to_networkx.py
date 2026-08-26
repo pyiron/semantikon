@@ -294,8 +294,12 @@ class SemantikonDiGraph(nx.DiGraph):
         return self.nodes[node_name]["type"]
 
 
-def _infer_workflow_label(recipe: fr.schemas.WorkflowRecipe) -> str:
+def _infer_workflow_label(
+    recipe: fr.schemas.WorkflowRecipe, label: str | None = None
+) -> str:
     if recipe.reference is None:
+        if label is not None:
+            return label
         return ""
     return recipe.reference.info.fully_qualified_name.rsplit(".", 1)[-1]
 
@@ -313,7 +317,7 @@ def _workflow_to_networkx(
 ) -> SemantikonDiGraph:
     root_label = _infer_workflow_label(workflow.recipe)
     G = SemantikonDiGraph(prefix=prefix)
-    G.name = root_label
+    G.name = prefix if prefix is not None else root_label
 
     def _add_node(
         node_data: fr.schemas.NodeData,
