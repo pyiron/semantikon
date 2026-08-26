@@ -70,7 +70,10 @@ def identifier_to_uri(graph: Graph, identifier: str) -> list[URIRef]:
 
 
 def request_values(
-    wf_dict: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe, graph: Graph
+    wf_dict: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
+    graph: Graph,
+    apply_default: bool = False,
+    **input_kwargs,
 ) -> fr.schemas.DagData:
     """
     Given a workflow dictionary and an RDF graph, this function
@@ -80,6 +83,9 @@ def request_values(
     Args:
         wf_dict (dict): The workflow dictionary to populate.
         graph (Graph): The RDF graph containing data nodes.
+        apply_default (bool): If True, apply default values to input ports
+            that have no value set.
+        **input_kwargs: Additional keyword arguments representing input port
 
     Returns:
         dict: The updated workflow dictionary with populated values.
@@ -94,6 +100,18 @@ def request_values(
         wf_dict = dict_to_nodedata(wf_dict)
     if isinstance(wf_dict, fr.schemas.WorkflowRecipe):
         wf_dict = fr.schemas.DagData.from_recipe(wf_dict)
+
+    for key, value in input_kwargs.items():
+        wf_dict.input_ports[key].value = value
+
+    if apply_default:
+        for key, data in wf_dict.input_ports.items():
+            if (
+                wf_dict.input_ports[key].value == fr.schemas.NOT_DATA
+                and data.default != fr.schemas.NOT_DATA
+            ):
+                wf_dict.input_ports[key].value = data.default
+
     G = serialize_and_convert_to_networkx(wf_dict)
 
     # Collect all hashes that need values, along with their target locations.
