@@ -202,6 +202,12 @@ class SemantikonDiGraph(nx.DiGraph):
         h = _get_graph_hash(self, with_global_inputs=True)
         return h + "_"
 
+    @cached_property
+    def a_ns_short(self) -> str:
+        """Short assertion-level namespace fragment for this graph for RDFS.label."""
+        h = _get_graph_hash(self, with_global_inputs=True)
+        return h[:6] + "_"
+
     def _get_data_node(self, io: IO) -> str:
         while True:
             candidate = [c for c in self.predecessors(io) if isinstance(c, IO)]

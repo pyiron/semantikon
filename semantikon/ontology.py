@@ -477,6 +477,7 @@ def _function_to_graph(
         g.add((f_node, SNS.denoted_by, hash_bnode))
         g.add((hash_bnode, RDF.type, SNS.identifier))
         g.add((hash_bnode, SNS.has_value, Literal(data["hash"])))
+        g.add((hash_bnode, RDFS.label, Literal(f"{data['qualname']}_hash")))
     if data.get("module", "") != "":
         module = BASE[data["module"].replace(".", "_")]
         g.add((f_node, SNS.denoted_by, module))
@@ -588,6 +589,7 @@ def _wf_node_to_graph(
     else:
         node = BASE[G.a_ns + node_name]
         g.add((node, RDF.type, BASE[G.t_ns + node_name]))
+        g.add((node, RDFS.label, Literal(G.a_ns_short + str(node_name))))
         for inp in G.predecessors(node_name):
             g.add((node, SNS.has_part, BASE[G.a_ns + inp]))
         for out in G.successors(node_name):
@@ -891,16 +893,18 @@ def _wf_io_to_graph(
 ) -> Graph:
     node = BASE[G.t_ns + node_name] if t_box else BASE[G.a_ns + node_name]
     g = _get_bound_graph()
-    g.add((node, RDFS.label, Literal(str(node_name))))
     g.add((node, SNS.local_identifier, Literal(node_name.port)))
     if t_box:
         g += _to_owl_restriction(node, has_specified_io, data_node)
+        g.add((node, RDFS.label, Literal(str(node_name))))
         g.add((node, RDFS.subClassOf, io_assignment))
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
         if "hash" in data:
             g += _to_owl_restriction(data_node, SNS.denoted_by, SNS.identifier)
     else:
         g.add((data_node, RDF.type, BASE[G.t_ns + G._get_data_node(io=node_name)]))
+        g.add((data_node, RDFS.label, Literal(G.a_ns_short + G._get_data_node(io=node_name))))
+        g.add((node, RDFS.label, Literal(G.a_ns_short + str(node_name))))
         g.add((node, has_specified_io, data_node))
         if "value" in data and g.value(data_node, SNS.has_value) is None:
             g.add((data_node, SNS.has_value, Literal(data["value"])))
@@ -909,6 +913,7 @@ def _wf_io_to_graph(
             g.add((data_node, SNS.denoted_by, hash_bnode))
             g.add((hash_bnode, RDF.type, SNS.identifier))
             g.add((hash_bnode, SNS.has_value, Literal(data["hash"])))
+            g.add((hash_bnode, RDFS.label, Literal(f"{G.a_ns_short}{node_name}_hash")))
     triples = data.get("triples", [])
     if triples != [] and not isinstance(triples[0], list | tuple):
         triples = [triples]
