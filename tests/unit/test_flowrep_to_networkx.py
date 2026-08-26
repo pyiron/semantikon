@@ -206,6 +206,35 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         )
         self.assertEqual(ftn._infer_workflow_label(recipe), "")
 
+    def test_infer_workflow_label_with_explicit_label(self):
+        recipe = fr.schemas.WorkflowRecipe(
+            inputs=["x"],
+            outputs=["y"],
+            nodes={},
+            input_edges={},
+            edges={},
+            output_edges={
+                fr.schemas.OutputTarget(port="y"): fr.schemas.InputSource(port="x")
+            },
+        )
+        self.assertEqual(
+            ftn._infer_workflow_label(recipe, label="my_label"), "my_label"
+        )
+
+    def test_graph_name_uses_prefix(self):
+        wf_dict = my_kinetic_energy_workflow.flowrep_recipe
+        G = ftn.serialize_and_convert_to_networkx(
+            wf_dict, hash_data=False, prefix="my_prefix"
+        )
+        self.assertEqual(G.name, "my_prefix")
+
+    def test_prefix_does_not_override_named_workflow_node(self):
+        wf_dict = my_kinetic_energy_workflow.flowrep_recipe
+        G = ftn.serialize_and_convert_to_networkx(
+            wf_dict, hash_data=False, prefix="my_prefix"
+        )
+        self.assertIn(ftn.Node("my_kinetic_energy_workflow"), G.nodes)
+
     def test_serialize_workflow_recipe_with_input_passthrough(self):
         self.assertTrue(
             any(
