@@ -61,7 +61,7 @@ def get_kinetic_energy_unlabeled(
 
 @workflow
 def my_kinetic_energy_workflow(
-    distance: Annotated[float, {"uri": PMD["0040001"]}], time, mass
+    distance: Annotated[float, {"uri": PMD["0040001"]}] = 1.0, time=2.0, mass=3.0
 ):
     speed = get_speed(distance, time)
     kinetic_energy = get_kinetic_energy(mass, speed)
@@ -146,10 +146,6 @@ class TestAnalysis(unittest.TestCase):
         wf_dict = fr.schemas.DagData.from_recipe(
             my_kinetic_energy_workflow.flowrep_recipe
         )
-        wf_dict.input_ports["distance"].value = 1.0
-        wf_dict.input_ports["time"].value = 2.0
-        wf_dict.input_ports["mass"].value = 3.0
-        self.assertFalse(wf_dict.output_ports["kinetic_energy"].value)
         graph = onto.get_knowledge_graph(
             fr.tools.run_recipe(
                 my_kinetic_energy_workflow.flowrep_recipe,
@@ -158,9 +154,29 @@ class TestAnalysis(unittest.TestCase):
                 mass=3.0,
             )
         )
-        wf_dict = asis.request_values(wf_dict, graph)
         self.assertFalse(
-            wf_dict.output_ports["kinetic_energy"].value, msg="no known inputs"
+            asis.request_values(wf_dict, graph, apply_default=True)
+            .output_ports["kinetic_energy"]
+            .value,
+            msg="no known inputs",
+        )
+        wf_dict = fr.schemas.DagData.from_recipe(
+            my_kinetic_energy_workflow.flowrep_recipe
+        )
+        self.assertTrue(
+            asis.request_values(wf_dict, graph, apply_default=True, distance=2.0)
+            .output_ports["kinetic_energy"]
+            .value,
+            msg="distance known",
+        )
+        wf_dict = fr.schemas.DagData.from_recipe(
+            my_kinetic_energy_workflow.flowrep_recipe
+        )
+        self.assertFalse(
+            asis.request_values(wf_dict, graph, apply_default=False, distance=2.0)
+            .output_ports["kinetic_energy"]
+            .value,
+            msg="distance known but no default values applied",
         )
         graph += onto.get_knowledge_graph(
             fr.tools.run_recipe(
@@ -170,7 +186,10 @@ class TestAnalysis(unittest.TestCase):
                 mass=3.0,
             )
         )
-        wf_dict = asis.request_values(wf_dict, graph)
+        wf_dict = fr.schemas.DagData.from_recipe(
+            my_kinetic_energy_workflow.flowrep_recipe
+        )
+        wf_dict = asis.request_values(wf_dict, graph, apply_default=True)
         self.assertEqual(
             wf_dict.output_ports["kinetic_energy"].value,
             0.375,
@@ -179,10 +198,7 @@ class TestAnalysis(unittest.TestCase):
         wf_dict = fr.schemas.DagData.from_recipe(
             my_kinetic_energy_workflow.flowrep_recipe
         )
-        wf_dict.input_ports["distance"].value = 1.0
-        wf_dict.input_ports["time"].value = 2.0
-        wf_dict.input_ports["mass"].value = 4.0
-        wf_dict = asis.request_values(wf_dict, graph)
+        wf_dict = asis.request_values(wf_dict, graph, apply_default=True, mass=4.0)
         self.assertFalse(
             wf_dict.output_ports["kinetic_energy"].value,
             msg="kinetic energy must be unknown because of unknown mass",
@@ -195,9 +211,6 @@ class TestAnalysis(unittest.TestCase):
         wf_dict = fr.schemas.DagData.from_recipe(
             my_kinetic_energy_workflow.flowrep_recipe
         )
-        wf_dict.input_ports["distance"].value = 1.0
-        wf_dict.input_ports["time"].value = 2.0
-        wf_dict.input_ports["mass"].value = 4.0
         graph = onto.get_knowledge_graph(
             fr.tools.run_recipe(
                 my_kinetic_energy_workflow.flowrep_recipe,
@@ -207,7 +220,7 @@ class TestAnalysis(unittest.TestCase):
             ),
             remove_data=True,
         )
-        wf_dict = asis.request_values(wf_dict, graph)
+        wf_dict = asis.request_values(wf_dict, graph, apply_default=True, mass=4.0)
         self.assertFalse(
             wf_dict.nodes["get_speed_0"].output_ports["speed"].value,
             msg="data not stored",
