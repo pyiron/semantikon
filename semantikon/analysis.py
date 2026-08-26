@@ -16,7 +16,7 @@ from rdflib.query import ResultRow
 
 from semantikon.converter import to_identifier
 from semantikon.flowrep_dict import dict_to_nodedata
-from semantikon.flowrep_to_networkx import Input, Node, Output
+from semantikon.flowrep_to_networkx import IO, Input, Node
 from semantikon.ontology import SNS, serialize_and_convert_to_networkx
 
 
@@ -70,7 +70,10 @@ def identifier_to_uri(graph: Graph, identifier: str) -> list[URIRef]:
 
 
 def request_values(
-    wf_dict: fr.schemas.DagData | fr.schemas.WorkflowRecipe, graph: Graph
+    wf_dict: fr.schemas.DagData | fr.schemas.WorkflowRecipe,
+    graph: Graph,
+    apply_default: bool = False,
+    **input_kwargs,
 ) -> fr.schemas.DagData:
     """
     Given a workflow dictionary and an RDF graph, this function
@@ -80,50 +83,52 @@ def request_values(
     Args:
         wf_dict (fr.schemas.DagData | fr.schemas.WorkflowRecipe): The workflow dictionary
         graph (Graph): The RDF graph containing data nodes.
+        apply_default (bool): If True, apply default values to input ports
+            that have no value set.
+        **input_kwargs: Additional keyword arguments representing input port
 
     Returns:
         dict: The updated workflow dictionary with populated values.
     """
     if isinstance(wf_dict, fr.schemas.WorkflowRecipe):
         wf_dict = fr.schemas.DagData.from_recipe(wf_dict)
+
+    for key, value in input_kwargs.items():
+        wf_dict.input_ports[key].value = value
+
+    if apply_default:
+        for key, data in wf_dict.input_ports.items():
+            if (
+                wf_dict.input_ports[key].value == fr.schemas.NOT_DATA
+                and data.default != fr.schemas.NOT_DATA
+            ):
+                wf_dict.input_ports[key].value = data.default
+
     G = serialize_and_convert_to_networkx(wf_dict)
 
     # Collect all hashes that need values, along with their target locations.
     hash_nodes: list[dict[str, Any]] = []
-    hashes: set[str] = set()
 
     for node, data in G.nodes.data():
         if isinstance(node, Node):
             continue
         if "hash" in data and "value" not in data:
             node_hash = data["hash"]
-            hashes.add(node_hash)
             # Extract keys based on node type
-            if isinstance(node, (Input, Output)):
-                io_type = "inputs" if isinstance(node, Input) else "outputs"
-                node_obj = node.node  # This is a Node object
-
-                # Build keys based on node hierarchy
-                if node_obj.owner is None:
-                    # Top-level IO
-                    keys = [io_type, node.port]
-                else:
-                    # Nested IO - use the immediate child name
-                    keys = [node_obj.name, io_type, node.port]
-
+            if isinstance(node, IO):
                 hash_nodes.append(
                     {
                         "hash": node_hash,
-                        "keys": keys,
+                        "node": node,
                     }
                 )
 
     # If there are no hashes to resolve, return early.
-    if not hashes:
+    if not hash_nodes:
         return wf_dict
 
     # Build a single SPARQL query that retrieves values for all hashes at once.
-    values_str = " ".join(f'"{h}"' for h in hashes)
+    values_str = " ".join({f'"{h["hash"]}"' for h in hash_nodes})
     query = f"""
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX iao: <http://purl.obolibrary.org/obo/IAO_>
@@ -146,22 +151,34 @@ def request_values(
         if h_val not in hash_to_value:
             hash_to_value[h_val] = v_val
 
+    def _get_child_node(wf_dict: fr.schemas.DagData, node: Node) -> fr.schemas.NodeData:
+        if node.owner and node.owner.owner:
+            parent_node = _get_child_node(wf_dict, node.owner)
+            assert isinstance(parent_node, fr.schemas.DagData)
+            return parent_node.nodes[node.name]
+        else:
+            return wf_dict.nodes[node.name]
+
     # Populate wf_dict with the retrieved values.
     for item in hash_nodes:
         h = item["hash"]
-        keys = item["keys"]
         if h not in hash_to_value:
             continue
         value = hash_to_value[h]
-        if len(keys) == 3:
+        ports_attr = (
+            "input_ports" if isinstance(item["node"], Input) else "output_ports"
+        )
+        if item["node"].node.owner:
             _get_port_with_fallback(
-                wf_dict.nodes[keys[0]].__getattribute__(f"{keys[1][:-1]}_ports"),
-                keys[2],
+                _get_child_node(wf_dict, item["node"].node).__getattribute__(
+                    ports_attr
+                ),
+                item["node"].port,
             ).value = value
-        elif len(keys) == 2:
+        else:
             _get_port_with_fallback(
-                wf_dict.__getattribute__(f"{keys[0][:-1]}_ports"),
-                keys[1],
+                wf_dict.__getattribute__(ports_attr),
+                item["node"].port,
             ).value = value
     return wf_dict
 
