@@ -106,15 +106,15 @@ def _dict_to_annotation(port: dict[str, Any]) -> Any | None:
 
 def _dict_to_input_port(port: dict[str, Any]) -> fr.schemas.InputDataPort:
     return fr.schemas.InputDataPort(
-        value=port["value"] if "value" in port else fr.schemas.NOT_DATA,
+        value=port.get("value", fr.schemas.NOT_DATA),
         annotation=_dict_to_annotation(port),
-        default=port["default"] if "default" in port else fr.schemas.NOT_DATA,
+        default=port.get("default", fr.schemas.NOT_DATA),
     )
 
 
 def _dict_to_output_port(port: dict[str, Any]) -> fr.schemas.OutputDataPort:
     return fr.schemas.OutputDataPort(
-        value=port["value"] if "value" in port else fr.schemas.NOT_DATA,
+        value=port.get("value", fr.schemas.NOT_DATA),
         annotation=_dict_to_annotation(port),
     )
 
@@ -156,7 +156,7 @@ def _dict_to_atomic_data(node: dict[str, Any]) -> fr.schemas.AtomicData:
 
 
 def _split_endpoint(endpoint: str) -> tuple[str | None, str, str]:
-    if endpoint.startswith("inputs.") or endpoint.startswith("outputs."):
+    if endpoint.startswith(("inputs.", "outputs.")):
         io, port = endpoint.split(".", 1)
         return None, io, port
     parts = endpoint.rsplit(".", 2)
@@ -580,7 +580,7 @@ def _get_workflow_graph(workflow_dict: dict[str, Any]) -> nx.DiGraph:
                 child_G.graph[new_key] = child_G.graph[child_key]
             mapping = {}
             for n in child_G.nodes():
-                if n.startswith("inputs@") or n.startswith("outputs@"):
+                if n.startswith(("inputs@", "outputs@")):
                     mapping[n] = key + ":" + n
                 else:
                     mapping[n] = key + "/" + n

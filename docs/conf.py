@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # pyCMW documentation build configuration file, created by
 # sphinx-quickstart on Mon Sep 01 21:59:30 2014.

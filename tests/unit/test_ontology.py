@@ -9,7 +9,7 @@ from typing import Annotated
 
 import flowrep as fr
 from pyshacl import validate
-from rdflib import OWL, RDF, RDFS, SH, Graph, Literal, Namespace, compare
+from rdflib import OWL, RDF, RDFS, SH, XSD, Graph, Literal, Namespace, compare
 from rdflib.compare import graph_diff
 
 from semantikon import kg_to_flowrep as kgf
@@ -203,7 +203,6 @@ def wash(
     Clothes,
     {"triples": (EX.hasProperty, uri_cleaned), "derived_from": "inputs.clothes"},
 ]:
-    ...
     return clothes
 
 
@@ -212,7 +211,6 @@ def dye(
 ) -> Annotated[
     Clothes, {"triples": (EX.hasProperty, uri_color), "derived_from": "inputs.clothes"}
 ]:
-    ...
     return clothes
 
 
@@ -227,7 +225,6 @@ def sell(
         },
     ],
 ) -> int:
-    ...
     return 10
 
 
@@ -245,7 +242,6 @@ def sell_with_shacl(
         },
     ],
 ) -> int:
-    ...
     return 10
 
 
@@ -261,7 +257,6 @@ def sell_without_color(
         },
     ],
 ) -> int:
-    ...
     return 10
 
 
@@ -450,6 +445,29 @@ def passthrough_input_workflow(x):
     return x
 
 
+@fr.workflow
+def workflow_with_constant(x):
+    doubled = fr.std.mul(2, x)
+    return doubled
+
+
+@fr.workflow
+def workflow_with_two_identical_constants(x):
+    doubled = fr.std.mul(2, x)
+    shifted = fr.std.add(2, doubled)
+    return shifted
+
+
+def tag(text: str, body: str) -> str:
+    return text + body
+
+
+@fr.workflow
+def workflow_with_markup_constant(body):
+    tagged = tag("<b> & </b>", body)
+    return tagged
+
+
 class TestOntology(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -544,7 +562,7 @@ class TestOntology(unittest.TestCase):
         PREFIX obi: <http://purl.obolibrary.org/obo/OBI_>
 
         ASK {{
-            ?output a sns:W368081ad_my_kinetic_energy_workflow-outputs-kinetic_energy .
+            ?output a sns:W53f89b3c_my_kinetic_energy_workflow-outputs-kinetic_energy .
             ?output ro:0000057 ?data .
             ?data qudt:hasUnit unit:J .
         }}"""
@@ -652,7 +670,7 @@ class TestOntology(unittest.TestCase):
         """)
         self.assertEqual(len(g.query(query)), 1)
         self.assertEqual(
-            list(g.query(query))[0]["main_class"],
+            next(iter(g.query(query)))["main_class"],
             onto.BASE["T_wf_triples-f_triples_0-outputs-a_data"],
         )
         g = onto.get_knowledge_graph(wf_recipe, include_t_box=False, prefix="T")
@@ -754,6 +772,52 @@ class TestOntology(unittest.TestCase):
         from graphviz.graphs import Digraph
 
         self.assertIsInstance(visualize_recipe(g), Digraph)
+
+    def test_visualize_with_constant(self):
+        g = onto.get_knowledge_graph(workflow_with_constant.flowrep_recipe)
+        dot = visualize_recipe(g)
+
+        self.assertNotIn(
+            "workflow_with_constant-constant_0",
+            dot.source,
+            msg="The constant node itself should not be drawn",
+        )
+        self.assertIn(
+            "<U>2</U>",
+            dot.source,
+            msg="The constant's value should be drawn in its own box, the way a "
+            "function node draws the function it concretizes",
+        )
+        self.assertIn(
+            "pmdco:has_value",
+            dot.source,
+            msg="The edge to the value box should be labelled like the other "
+            "renamed predicates, not by its bare PMD number",
+        )
+
+    def test_visualize_draws_one_value_box_per_constant_node(self):
+        g = onto.get_knowledge_graph(
+            workflow_with_two_identical_constants.flowrep_recipe
+        )
+        dot = visualize_recipe(g)
+
+        self.assertEqual(
+            dot.source.count("<U>2</U>"),
+            2,
+            msg="Two constant nodes that happen to hold the same value are one "
+            "RDF literal but two workflow nodes, so they need two boxes",
+        )
+
+    def test_visualize_escapes_constant_values(self):
+        g = onto.get_knowledge_graph(workflow_with_markup_constant.flowrep_recipe)
+        dot = visualize_recipe(g)
+
+        self.assertIn(
+            "&lt;b&gt; &amp; &lt;/b&gt;",
+            dot.source,
+            msg="Constant values are drawn inside an HTML-like label, so markup "
+            "in them must be escaped or the label is malformed",
+        )
 
     def test_docstring(self):
         g = onto.get_knowledge_graph(my_kinetic_energy_workflow.flowrep_recipe)
@@ -873,7 +937,7 @@ class TestOntology(unittest.TestCase):
           ?e_datanode pmdco:0000006 ?e_value .
         }
         """
-        data = [d.toPython() for d in list(graph.query(query))[0]]
+        data = [d.toPython() for d in next(iter(graph.query(query)))]
         self.assertListEqual(data, [1.0, 0.375])
 
     def test_extract_dataclass(self):
@@ -937,7 +1001,7 @@ class TestOntology(unittest.TestCase):
         g = onto.get_knowledge_graph(wf_data, extract_dataclasses=True)
         self.assertGreater(len(list(g.subjects(onto.QUDT.hasUnit, sec))), 0)
         self.assertListEqual(
-            [d.toPython() for d in list(g.query(query))[0]], [1, 0.375]
+            [d.toPython() for d in next(iter(g.query(query)))], [1, 0.375]
         )
 
     def test_function_to_knowledge_graph(self):
@@ -955,16 +1019,16 @@ class TestOntology(unittest.TestCase):
               ?f_module pmdco:0000006 ?import_path .
             }"""
         self.assertEqual(
-            "get_kinetic_energy", [row[0].toPython() for row in g.query(query)][0]
+            "get_kinetic_energy", next(row[0].toPython() for row in g.query(query))
         )
-        self.assertEqual(__name__, [row[1].toPython() for row in g.query(query)][0])
+        self.assertEqual(__name__, next(row[1].toPython() for row in g.query(query)))
         query = sparql_prefixes + """
             SELECT ?label WHERE {
               ?function bfo:0000051 ?bnode .
               ?bnode pmdco:0000128 ?label .
             }"""
         g = onto.function_to_knowledge_graph(prepare_pizza)
-        self.assertEqual(list(g.query(query))[0][0].toPython(), "output_0")
+        self.assertEqual(next(iter(g.query(query)))[0].toPython(), "output_0")
 
     def test_graph_to_function(self):
         graph = onto.function_to_knowledge_graph(get_kinetic_energy)
@@ -1000,6 +1064,36 @@ class TestOntology(unittest.TestCase):
         graph = onto.function_to_knowledge_graph(get_speed)
         with self.assertRaisesRegex(ValueError, "is not present in the graph"):
             _ = kgf._graph_to_function(graph, EX.missing_function)
+
+    def test_constant_literals_survive_serialization(self):
+        for value in (2, 1.5, "two", True, False, None, [10, 20, 30], {"a": [1, None]}):
+            with self.subTest(value=value):
+                literal = onto._constant_to_literal(value)
+                graph = Graph()
+                graph.add((EX.subject, EX.predicate, literal))
+                reparsed = Graph().parse(
+                    data=graph.serialize(format="turtle"), format="turtle"
+                )
+                (reloaded,) = reparsed.objects()
+                self.assertEqual(
+                    onto._literal_to_constant(reloaded),
+                    value,
+                    msg=f"{value!r} should round trip through serialized RDF",
+                )
+
+    def test_constant_scalars_keep_their_xsd_types(self):
+        for value, datatype in (
+            (2, XSD.integer),
+            (1.5, XSD.double),
+            (True, XSD.boolean),
+        ):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    onto._constant_to_literal(value).datatype,
+                    datatype,
+                    msg="Scalar constants should stay queryable as typed literals "
+                    "rather than being flattened into JSON strings",
+                )
 
     def test_unhashable(self):
         uh = Unhashable()
@@ -1108,7 +1202,7 @@ class TestOntology(unittest.TestCase):
     def test_inheritance_of_derives_from(self):
         g = onto.get_knowledge_graph(wf_triples.flowrep_recipe)
         onto._inherit_properties(g)
-        uri_node = list(g.subjects(RDF.type, EX.Something))[0]
+        uri_node = next(iter(g.subjects(RDF.type, EX.Something)))
         data_node = list(g.subjects(onto.SNS.specifies_value_of, uri_node))
         self.assertIn(
             "wf_triples-inputs-a_data",

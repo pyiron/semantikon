@@ -1,8 +1,8 @@
 import abc
 import dataclasses
 import functools
-from collections.abc import Iterable
-from typing import Any, Iterator, TypeAlias, Union
+from collections.abc import Iterable, Iterator
+from typing import Any, TypeAlias
 
 import typeguard
 from rdflib import URIRef
@@ -52,7 +52,7 @@ class _VariadicDataclass(_HasToDictionary):
         return cls(**kwargs)
 
 
-URIType: TypeAlias = Union[URIRef, str, None]
+URIType: TypeAlias = URIRef | str | None
 TripleType: TypeAlias = tuple[URIType, str, URIType] | tuple[str, str]
 TriplesLike: TypeAlias = tuple[TripleType, ...] | TripleType
 RestrictionClause: TypeAlias = tuple[str, str]
@@ -67,20 +67,20 @@ ShapeType: TypeAlias = tuple[int, ...]
 
 @dataclasses.dataclass(slots=True)
 class CoreMetadata(_VariadicDataclass):
-    uri: str | Missing = missing()
-    triples: TriplesLike | Missing = missing()
+    uri: str | Missing = MISSING
+    triples: TriplesLike | Missing = MISSING
 
 
 @dataclasses.dataclass(slots=True)
 class TypeMetadata(CoreMetadata):
-    label: str | Missing = missing()
-    units: str | Missing = missing()
-    shape: ShapeType | Missing = missing()
-    derived_from: str | Missing = missing()
-    extra: dict[str, Any] | Missing = missing()
-    restrictions: RestrictionLike | Missing = missing()
+    label: str | Missing = MISSING
+    units: str | Missing = MISSING
+    shape: ShapeType | Missing = MISSING
+    derived_from: str | Missing = MISSING
+    extra: dict[str, Any] | Missing = MISSING
+    restrictions: RestrictionLike | Missing = MISSING
 
 
 @dataclasses.dataclass(slots=True)
 class FunctionMetadata(CoreMetadata):
-    used: str | Missing = missing()
+    used: str | Missing = MISSING

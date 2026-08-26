@@ -10,6 +10,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover
     ) from exc
 
 from semantikon import ontology
+from semantikon.flowrep_to_networkx import Input, Node, Output
 
 
 def serialize_and_convert_to_networkx(uri: str | Path) -> ontology.SemantikonDiGraph:
@@ -48,7 +49,7 @@ def _get_name(tag: str) -> str:
 def _add_node(
     wf: parser.CommandLineTool | parser.Workflow,
     G: ontology.SemantikonDiGraph | None = None,
-    prefix: str | None = None,
+    prefix: Node | None = None,
 ) -> ontology.SemantikonDiGraph:
     """
     Recursively add nodes and edges for a CWL process to the knowledge graph.
@@ -70,54 +71,52 @@ def _add_node(
         ontology.SemantikonDiGraph: The populated knowledge graph.
     """
     if prefix is None:
-        prefix = wf.id.split("/")[-1].replace(".cwl", "")
+        prefix = Node(name=wf.id.split("/")[-1].replace(".cwl", ""))
     if G is None:
-        G = ontology.SemantikonDiGraph(prefix=prefix)
+        G = ontology.SemantikonDiGraph(prefix=str(prefix))
 
     for position, inp in enumerate(wf.inputs):
-        metadata: dict[str, str | int] = {
-            "step": "inputs",
-            "arg": _get_name(inp.id),
-            "position": position,
-        }
+        inp_node = Input(node=prefix, port=_get_name(inp.id))
+        inp_position = position
         if inp.inputBinding is not None and inp.inputBinding.position is not None:
-            metadata["position"] = inp.inputBinding.position
-        G.add_node(f"{prefix}-inputs-{_get_name(inp.id)}", **metadata)
+            inp_position = inp.inputBinding.position
+        G.add_node(inp_node, position=inp_position)
+
     for position, out in enumerate(wf.outputs):
-        metadata = {
-            "step": "outputs",
-            "arg": _get_name(out.id),
-            "position": position,
-        }
-        G.add_node(f"{prefix}-outputs-{_get_name(out.id)}", **metadata)
+        out_node = Output(node=prefix, port=_get_name(out.id))
+        G.add_node(out_node, position=position)
 
     if isinstance(wf, parser.CommandLineTool):
         return G
 
     for step in wf.steps:
-        node_name = f"{prefix}-{_get_name(step.id)}"
+        node = Node(owner=prefix, name=_get_name(step.id))
         run_doc = parser.load_document_by_uri(step.run)
         node_type = "workflow" if isinstance(run_doc, parser.Workflow) else "atomic"
-        G.add_node(node_name, step="node", type=node_type)
+        G.add_node(node, type=node_type)
         for inp in step.in_:
-            source = _get_name(inp.source)
-            source = (
-                source.replace("/", "-outputs-")
-                if "/" in source
-                else f"inputs-{source}"
-            )
-            dest = f"{prefix}-{_get_name(inp.id).replace('/', '-inputs-')}"
-            G.add_edge(f"{prefix}-{source}", dest)
-            G.add_edge(dest, node_name)
+            n, p = _get_name(inp.id).split("/")
+            dest = Input(node=Node(owner=prefix, name=n), port=p)
+            s = _get_name(inp.source)
+            if "/" in s:
+                n, p = s.split("/")
+                G.add_edge(Output(node=Node(owner=prefix, name=n), port=p), dest)
+            else:
+                G.add_edge(Input(node=prefix, port=s), dest)
+            G.add_edge(dest, node)
         for out in step.out:
             out_name = _get_name(out)
             if "/" in out_name:
-                out_name = out_name.split("/")[-1]
-            G.add_edge(node_name, f"{node_name}-outputs-{out_name}")
-        G = _add_node(run_doc, G, prefix=node_name)
+                n, p = out_name.split("/")
+                G.add_edge(node, Output(node=Node(owner=prefix, name=n), port=p))
+            else:
+                G.add_edge(node, Output(node=node, port=out_name))
+        G = _add_node(run_doc, G, prefix=node)
+
     for out in wf.outputs:
+        n, p = _get_name(out.outputSource).split("/")
         G.add_edge(
-            f"{prefix}-{_get_name(out.outputSource.replace('/', '-outputs-'))}",
-            f"{prefix}-outputs-{_get_name(out.id)}",
+            Output(node=Node(owner=prefix, name=n), port=p),
+            Output(node=prefix, port=_get_name(out.id)),
         )
     return G

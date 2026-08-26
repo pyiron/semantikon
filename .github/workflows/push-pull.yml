@@ -22,7 +22,7 @@ jobs:
       mypy-env-files: .ci_support/environment.yml .ci_support/environment-cwl.yml
       tests-env-files: .ci_support/environment.yml .ci_support/environment-cwl.yml
       docs-env-files: .ci_support/environment.yml .ci_support/environment-cwl.yml
-      notebooks-env-files: .ci_support/environment.yml .ci_support/environment-cwl.yml
+      notebooks-env-files: .ci_support/environment.yml .ci_support/environment-cwl.yml .ci_support/environment-binder.yml
       alternate-tests-env-files: .ci_support/lower_bound.yml
       alternate-tests-python-version: '3.11'
       alternate-tests-dir: tests/unit
