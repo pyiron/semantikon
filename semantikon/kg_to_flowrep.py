@@ -241,23 +241,10 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
             # First collect all direct children
             direct_children: dict[str, Node] = {}
             for child_label in G.nodes:
-                if isinstance(child_label, Node) and child_label.parent == node_name:
-                    # Extract child short label correctly by removing parent prefix
+                if isinstance(child_label, Node) and child_label.owner == node_name:
+                    # Extract child short label correctly by removing owner prefix
                     direct_children[child_label.name] = child_label
                     nodes[child_label.name] = _process_node(child_label)
-
-            def _find_child_for_io(io_node_name: IO) -> str | None:
-                """Find the child node (short label) that owns this IO node."""
-                for child_label in direct_children.values():
-                    if io_node_name.node == child_label:
-                        return child_label.name
-                return None
-
-            def _is_direct_io(node_id: Node | IO) -> bool:
-                """Check if this is a direct IO of the workflow."""
-                if isinstance(node_id, Node):
-                    return False
-                return node_id.node == node_name
 
             def _is_child_io(node_id: IO | Node) -> bool:
                 """Check if this is an IO of a direct child (and only direct child)."""
@@ -269,49 +256,38 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
                 return False
 
             for u, v in G.edges:
-                u_is_direct_io = _is_direct_io(u)
-                v_is_direct_io = _is_direct_io(v)
                 u_is_child_io = _is_child_io(u)
                 v_is_child_io = _is_child_io(v)
 
                 if isinstance(u, Input) and isinstance(v, Input):
-                    if u_is_direct_io and v_is_child_io:
-                        v_child = _find_child_for_io(v)
-                        if v_child is not None:
-                            edges_key = fr.schemas.TargetHandle(
-                                node=v_child, port=v.port
-                            )
-                            input_edges[edges_key] = fr.schemas.InputSource(port=u.port)
+                    if u.node == node_name and v_is_child_io:
+                        edges_key = fr.schemas.TargetHandle(
+                            node=v.node.name, port=v.port
+                        )
+                        input_edges[edges_key] = fr.schemas.InputSource(port=u.port)
                 elif isinstance(u, Output) and isinstance(v, Input):
                     if u_is_child_io and v_is_child_io:
-                        u_child = _find_child_for_io(u)
-                        v_child = _find_child_for_io(v)
-                        if u_child is not None and v_child is not None:
-                            u_port = _normalize_output_label(
-                                u.port, nodes[u_child].outputs
-                            )
-                            edges_key = fr.schemas.TargetHandle(
-                                node=v_child, port=v.port
-                            )
-                            edges[edges_key] = fr.schemas.SourceHandle(
-                                node=u_child, port=u_port
-                            )
+                        u_port = _normalize_output_label(
+                            u.port, nodes[u.node.name].outputs
+                        )
+                        edges_key = fr.schemas.TargetHandle(
+                            node=v.node.name, port=v.port
+                        )
+                        edges[edges_key] = fr.schemas.SourceHandle(
+                            node=u.node.name, port=u_port
+                        )
                 elif (
                     isinstance(u, Output)
                     and isinstance(v, Output)
                     and u != v
                     and u_is_child_io
-                    and v_is_direct_io
+                    and v.node == node_name
                 ):
-                    u_child = _find_child_for_io(u)
-                    if u_child is not None:
-                        u_port = _normalize_output_label(u.port, nodes[u_child].outputs)
-                        v_port = _normalize_output_label(
-                            v.port, list(base_recipe.outputs)
-                        )
-                        output_edges[fr.schemas.OutputTarget(port=v_port)] = (
-                            fr.schemas.SourceHandle(node=u_child, port=u_port)
-                        )
+                    u_port = _normalize_output_label(u.port, nodes[u.node.name].outputs)
+                    v_port = _normalize_output_label(v.port, list(base_recipe.outputs))
+                    output_edges[fr.schemas.OutputTarget(port=v_port)] = (
+                        fr.schemas.SourceHandle(node=u.node.name, port=u_port)
+                    )
             return fr.schemas.WorkflowRecipe(
                 inputs=list(base_recipe.inputs),
                 outputs=list(base_recipe.outputs),
@@ -436,7 +412,7 @@ def _uri_to_node_names(graph: Graph):
             child_name = cast(
                 Literal, graph.value(child, SNS.local_identifier)
             ).toPython()
-            node_dict[child] = Node(child_name, parent=node_dict[parent])
+            node_dict[child] = Node(child_name, owner=node_dict[parent])
     return node_dict
 
 
@@ -628,7 +604,7 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
         for constant_index in itertools.count():
             const_node = Node(
                 name=f"{fr.schemas.ConstantRecipe.std_label}_{constant_index}",
-                parent=node.node.parent,
+                owner=node.node.owner,
             )
             if const_node not in G:
                 break
@@ -657,7 +633,7 @@ def _ensure_workflow_name(
     uri_to_node: dict[URIRef, Node],
     wf_name: str | URIRef | None = None,
 ) -> URIRef:
-    roots = {k: v for k, v in uri_to_node.items() if v.parent is None}
+    roots = {k: v for k, v in uri_to_node.items() if v.owner is None}
     if len(roots) == 0:
         raise ValueError(
             "No workflow nodes found in graph. Ensure T-box information is present "

@@ -90,17 +90,17 @@ def _add_node(
         return G
 
     for step in wf.steps:
-        node = Node(parent=prefix, name=_get_name(step.id))
+        node = Node(owner=prefix, name=_get_name(step.id))
         run_doc = parser.load_document_by_uri(step.run)
         node_type = "workflow" if isinstance(run_doc, parser.Workflow) else "atomic"
         G.add_node(node, type=node_type)
         for inp in step.in_:
             n, p = _get_name(inp.id).split("/")
-            dest = Input(node=Node(parent=prefix, name=n), port=p)
+            dest = Input(node=Node(owner=prefix, name=n), port=p)
             s = _get_name(inp.source)
             if "/" in s:
                 n, p = s.split("/")
-                G.add_edge(Output(node=Node(parent=prefix, name=n), port=p), dest)
+                G.add_edge(Output(node=Node(owner=prefix, name=n), port=p), dest)
             else:
                 G.add_edge(Input(node=prefix, port=s), dest)
             G.add_edge(dest, node)
@@ -108,7 +108,7 @@ def _add_node(
             out_name = _get_name(out)
             if "/" in out_name:
                 n, p = out_name.split("/")
-                G.add_edge(node, Output(node=Node(parent=prefix, name=n), port=p))
+                G.add_edge(node, Output(node=Node(owner=prefix, name=n), port=p))
             else:
                 G.add_edge(node, Output(node=node, port=out_name))
         G = _add_node(run_doc, G, prefix=node)
@@ -116,7 +116,7 @@ def _add_node(
     for out in wf.outputs:
         n, p = _get_name(out.outputSource).split("/")
         G.add_edge(
-            Output(node=Node(parent=prefix, name=n), port=p),
+            Output(node=Node(owner=prefix, name=n), port=p),
             Output(node=prefix, port=_get_name(out.id)),
         )
     return G

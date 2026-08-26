@@ -56,10 +56,10 @@ class TestCWL(unittest.TestCase):
             self.static_dir / "cwl" / "kinetic_energy_workflow.cwl"
         )
         self.assertIn(
-            Node(name="get_speed", parent=Node("kinetic_energy_workflow")), g.nodes
+            Node(name="get_speed", owner=Node("kinetic_energy_workflow")), g.nodes
         )
         self.assertIn(
-            Node(name="get_kinetic_energy", parent=Node("kinetic_energy_workflow")),
+            Node(name="get_kinetic_energy", owner=Node("kinetic_energy_workflow")),
             g.nodes,
         )
 
@@ -70,7 +70,7 @@ class TestCWL(unittest.TestCase):
         self.assertEqual(
             g.nodes[
                 Input(
-                    node=Node(parent=Node("kinetic_energy_workflow"), name="get_speed"),
+                    node=Node(owner=Node("kinetic_energy_workflow"), name="get_speed"),
                     port="distance",
                 )
             ]["position"],
@@ -79,7 +79,7 @@ class TestCWL(unittest.TestCase):
         self.assertEqual(
             g.nodes[
                 Input(
-                    node=Node(parent=Node("kinetic_energy_workflow"), name="get_speed"),
+                    node=Node(owner=Node("kinetic_energy_workflow"), name="get_speed"),
                     port="time",
                 )
             ]["position"],
@@ -95,7 +95,7 @@ class TestCWL(unittest.TestCase):
             (
                 Input(node=Node("kinetic_energy_workflow"), port="distance"),
                 Input(
-                    node=Node(parent=Node("kinetic_energy_workflow"), name="get_speed"),
+                    node=Node(owner=Node("kinetic_energy_workflow"), name="get_speed"),
                     port="distance",
                 ),
             ),
@@ -104,10 +104,10 @@ class TestCWL(unittest.TestCase):
         self.assertIn(
             (
                 Input(
-                    node=Node(parent=Node("kinetic_energy_workflow"), name="get_speed"),
+                    node=Node(owner=Node("kinetic_energy_workflow"), name="get_speed"),
                     port="distance",
                 ),
-                Node(name="get_speed", parent=Node("kinetic_energy_workflow")),
+                Node(name="get_speed", owner=Node("kinetic_energy_workflow")),
             ),
             g.edges,
         )
@@ -115,12 +115,12 @@ class TestCWL(unittest.TestCase):
         self.assertIn(
             (
                 Output(
-                    node=Node(parent=Node("kinetic_energy_workflow"), name="get_speed"),
+                    node=Node(owner=Node("kinetic_energy_workflow"), name="get_speed"),
                     port="speed",
                 ),
                 Input(
                     node=Node(
-                        parent=Node("kinetic_energy_workflow"),
+                        owner=Node("kinetic_energy_workflow"),
                         name="get_kinetic_energy",
                     ),
                     port="velocity",
@@ -133,7 +133,7 @@ class TestCWL(unittest.TestCase):
             (
                 Output(
                     node=Node(
-                        parent=Node("kinetic_energy_workflow"),
+                        owner=Node("kinetic_energy_workflow"),
                         name="get_kinetic_energy",
                     ),
                     port="kinetic_energy",

@@ -95,7 +95,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
             G.nodes[
                 ftn.Input(
                     node=ftn.Node(
-                        parent=ftn.Node("my_kinetic_energy_workflow"),
+                        owner=ftn.Node("my_kinetic_energy_workflow"),
                         name="get_speed_0",
                     ),
                     port="distance",
@@ -107,7 +107,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
             G._get_data_node(
                 ftn.Input(
                     node=ftn.Node(
-                        parent=ftn.Node("my_kinetic_energy_workflow"),
+                        owner=ftn.Node("my_kinetic_energy_workflow"),
                         name="get_kinetic_energy_0",
                     ),
                     port="velocity",
@@ -116,7 +116,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
             G._get_data_node(
                 ftn.Output(
                     node=ftn.Node(
-                        parent=ftn.Node("my_kinetic_energy_workflow"),
+                        owner=ftn.Node("my_kinetic_energy_workflow"),
                         name="get_speed_0",
                     ),
                     port="speed",
@@ -127,7 +127,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
             G._get_data_node(
                 ftn.Input(
                     node=ftn.Node(
-                        parent=ftn.Node("my_kinetic_energy_workflow"),
+                        owner=ftn.Node("my_kinetic_energy_workflow"),
                         name="get_kinetic_energy_0",
                     ),
                     port="velocity",
@@ -136,7 +136,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
             G._get_data_node(
                 ftn.Output(
                     node=ftn.Node(
-                        parent=ftn.Node("my_kinetic_energy_workflow"),
+                        owner=ftn.Node("my_kinetic_energy_workflow"),
                         name="get_kinetic_energy_0",
                     ),
                     port="kinetic_energy",
@@ -320,7 +320,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
     def test_constant(self):
         G = ftn.serialize_and_convert_to_networkx(double_via_constant.flowrep_recipe)
         inp = ftn.Input(
-            node=ftn.Node(parent=ftn.Node("double_via_constant"), name="mul_0"),
+            node=ftn.Node(owner=ftn.Node("double_via_constant"), name="mul_0"),
             port="a",
         )
         self.assertIn(inp, G.nodes)
