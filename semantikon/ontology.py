@@ -902,12 +902,13 @@ def _wf_io_to_graph(
         if "hash" in data:
             g += _to_owl_restriction(data_node, SNS.denoted_by, SNS.identifier)
     else:
-        g.add((data_node, RDF.type, BASE[G.t_ns + G._get_data_node(io=node_name)]))
+        data_node_name = G._get_data_node(io=node_name)
+        g.add((data_node, RDF.type, BASE[G.t_ns + data_node_name]))
         g.add(
             (
                 data_node,
                 RDFS.label,
-                Literal(G.a_ns_short + G._get_data_node(io=node_name)),
+                Literal(G.a_ns_short + data_node_name),
             )
         )
         g.add((node, RDFS.label, Literal(G.a_ns_short + str(node_name))))
@@ -915,7 +916,7 @@ def _wf_io_to_graph(
         if "value" in data and g.value(data_node, SNS.has_value) is None:
             g.add((data_node, SNS.has_value, Literal(data["value"])))
         if "hash" in data:
-            hash_bnode = BASE[G.a_ns + G._get_data_node(io=node_name) + "_hash"]
+            hash_bnode = BASE[G.a_ns + data_node_name + "_hash"]
             g.add((data_node, SNS.denoted_by, hash_bnode))
             g.add((hash_bnode, RDF.type, SNS.identifier))
             g.add((hash_bnode, SNS.has_value, Literal(data["hash"])))
