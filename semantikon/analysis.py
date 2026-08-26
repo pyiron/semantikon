@@ -98,14 +98,12 @@ def request_values(
 
     # Collect all hashes that need values, along with their target locations.
     hash_nodes: list[dict[str, Any]] = []
-    hashes: set[str] = set()
 
     for node, data in G.nodes.data():
         if isinstance(node, Node):
             continue
         if "hash" in data and "value" not in data:
             node_hash = data["hash"]
-            hashes.add(node_hash)
             # Extract keys based on node type
             if isinstance(node, IO):
                 hash_nodes.append(
@@ -116,11 +114,11 @@ def request_values(
                 )
 
     # If there are no hashes to resolve, return early.
-    if not hashes:
+    if not hash_nodes:
         return wf_dict
 
     # Build a single SPARQL query that retrieves values for all hashes at once.
-    values_str = " ".join(f'"{h}"' for h in hashes)
+    values_str = " ".join(set(f'"{h["hash"]}"' for h in hash_nodes))
     query = f"""
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX iao: <http://purl.obolibrary.org/obo/IAO_>
