@@ -3,7 +3,6 @@ from __future__ import annotations
 import copy
 import json
 import unicodedata
-import warnings
 from abc import ABC
 from dataclasses import asdict, dataclass, field, is_dataclass
 from functools import cached_property
@@ -20,7 +19,6 @@ from semantikon.converter import get_function_dict
 from semantikon.flowrep_dict import (
     annotation_to_type_hint,
     annotation_to_type_metadata,
-    dict_to_nodedata,
 )
 
 

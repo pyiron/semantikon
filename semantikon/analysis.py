@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import itertools
 import string
-import warnings
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -15,7 +14,6 @@ from rdflib import RDFS, Graph, Literal, URIRef
 from rdflib.query import ResultRow
 
 from semantikon.converter import to_identifier
-from semantikon.flowrep_dict import dict_to_nodedata
 from semantikon.flowrep_to_networkx import IO, Input, Node
 from semantikon.ontology import SNS, serialize_and_convert_to_networkx
 
