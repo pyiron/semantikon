@@ -3,7 +3,6 @@ from __future__ import annotations
 import copy
 import json
 import unicodedata
-import warnings
 from abc import ABC
 from dataclasses import asdict, dataclass, field, is_dataclass
 from functools import cached_property
@@ -20,7 +19,6 @@ from semantikon.converter import get_function_dict
 from semantikon.flowrep_dict import (
     annotation_to_type_hint,
     annotation_to_type_metadata,
-    dict_to_nodedata,
 )
 
 
@@ -496,7 +494,7 @@ def _remove_constant(G: SemantikonDiGraph) -> None:
 
 
 def serialize_and_convert_to_networkx(
-    workflow: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
+    workflow: fr.schemas.DagData | fr.schemas.WorkflowRecipe,
     hash_data: bool = True,
     prefix: str | None = None,
 ) -> SemantikonDiGraph:
@@ -505,7 +503,7 @@ def serialize_and_convert_to_networkx(
     hashing node data.
 
     Args:
-        workflow (dict | DagData | WorkflowRecipe): Workflow representation.
+        workflow (DagData | WorkflowRecipe): Workflow representation.
         hash_data (bool): Whether to hash node data.
         prefix (str | None): Optional fixed prefix for type-level namespace
             fragments.
@@ -513,15 +511,6 @@ def serialize_and_convert_to_networkx(
     Returns:
         SemantikonDiGraph: The serialized workflow graph.
     """
-    if isinstance(workflow, dict):
-        warnings.warn(
-            "Passing a dict to 'serialize_and_convert_to_networkx' is deprecated"
-            " and will be removed in a future version. Please pass a 'flowrep'"
-            " object instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        workflow = dict_to_nodedata(workflow)
     if isinstance(workflow, fr.schemas.WorkflowRecipe):
         workflow = fr.schemas.DagData.from_recipe(workflow)
     if not isinstance(workflow, fr.schemas.DagData):
