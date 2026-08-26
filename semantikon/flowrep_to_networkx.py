@@ -4,6 +4,7 @@ import copy
 import json
 import unicodedata
 import warnings
+from abc import ABC
 from dataclasses import asdict, dataclass, field, is_dataclass
 from functools import cached_property
 from hashlib import sha256
@@ -24,41 +25,66 @@ from semantikon.flowrep_dict import (
 
 
 @dataclass(frozen=True, slots=True)
-class TNode:
-    type: str
-    step: str = "node"
+class Node:
+    name: str
+    owner: Node | None = None
+
+    def __str__(self) -> str:
+        if self.owner:
+            return f"{self.owner}-{self.name}"
+        else:
+            return self.name
+
+    def __radd__(self, other: str) -> str:
+        return other + str(self)
+
+
+@dataclass(frozen=True, slots=True)
+class IO(ABC):
+    node: Node
+    port: str
+
+    def __radd__(self, other: str) -> str:
+        return other + str(self)
+
+
+@dataclass(frozen=True, slots=True)
+class Input(IO):
+    def __str__(self) -> str:
+        return f"{self.node}-inputs-{self.port}"
+
+
+@dataclass(frozen=True, slots=True)
+class Output(IO):
+    def __str__(self) -> str:
+        return f"{self.node}-outputs-{self.port}"
+
+
+@dataclass(frozen=True, slots=True)
+class TNodeData:
+    type: str | None = None
     identifier: str | None = None
     label: str | None = None
     function: dict | None = None
-    parent: str | None = None
     extras: dict[str, Any] = field(default_factory=dict)
 
-    def __post_init__(self):
-        if self.type not in {"atomic", "constant", "workflow"}:
-            raise ValueError("type must be either 'atomic', 'constant', or 'workflow'")
-
     def to_attrs(self) -> dict[str, Any]:
-        attrs: dict[str, Any] = {
-            "type": self.type,
-            "step": self.step,
-        }
+        attrs: dict[str, Any] = {}
+        if self.type is not None:
+            attrs["type"] = self.type
         if self.identifier is not None:
             attrs["identifier"] = self.identifier
         if self.label is not None:
             attrs["label"] = self.label
         if self.function is not None:
             attrs["function"] = self.function
-        if self.parent is not None:
-            attrs["parent"] = self.parent
         attrs.update(self.extras)
         return attrs
 
 
 @dataclass(frozen=True, slots=True)
-class TIO:
-    arg: str
+class TIOData:
     position: int
-    step: str = field(default="", init=False)
     dtype: Any | None = None
     value: Any | None = None
     has_value: bool = False
@@ -66,8 +92,6 @@ class TIO:
 
     def to_attrs(self) -> dict[str, Any]:
         attrs: dict[str, Any] = {
-            "step": self.step,
-            "arg": self.arg,
             "position": self.position,
         }
         if self.dtype is not None:
@@ -79,21 +103,20 @@ class TIO:
 
 
 @dataclass(frozen=True, slots=True)
-class TInput(TIO):
-    step: str = field(default="inputs", init=False)
+class TInputData(TIOData):
     default: Any | None = None
     has_default: bool = False
 
     def to_attrs(self) -> dict[str, Any]:
-        attrs = super(TInput, self).to_attrs()
+        attrs = TIOData.to_attrs(self)
         if self.has_default:
             attrs["default"] = self.default
         return attrs
 
 
 @dataclass(frozen=True, slots=True)
-class TOutput(TIO):
-    step: str = field(default="outputs", init=False)
+class TOutputData(TIOData):
+    pass
 
 
 class SemantikonDiGraph(nx.DiGraph):
@@ -104,28 +127,24 @@ class SemantikonDiGraph(nx.DiGraph):
     later by the ontology serialization layer.
     """
 
-    def _validate_semantikon_attrs(self, attrs: dict[str, Any]) -> dict[str, Any]:
-        if "step" not in attrs:
-            return attrs
+    def _validate_semantikon_attrs(
+        self, step: IO | Node, attrs: dict[str, Any]
+    ) -> dict[str, Any]:
 
-        step = attrs["step"]
-        if step == "node":
-            known = {"type", "step", "identifier", "label", "function", "parent"}
-            node_meta = TNode(
-                type=attrs["type"],
-                step=step,
+        if isinstance(step, Node):
+            known = {"type", "identifier", "label", "function"}
+            node_meta = TNodeData(
+                type=attrs.get("type"),
                 identifier=attrs.get("identifier"),
                 label=attrs.get("label"),
                 function=attrs.get("function"),
-                parent=attrs.get("parent"),
                 extras={k: v for k, v in attrs.items() if k not in known},
             )
             return node_meta.to_attrs()
 
-        if step == "inputs":
-            known = {"step", "arg", "position", "dtype", "value", "default"}
-            input_meta = TInput(
-                arg=attrs["arg"],
+        if isinstance(step, Input):
+            known = {"position", "dtype", "value", "default"}
+            input_meta = TInputData(
                 position=attrs["position"],
                 dtype=attrs.get("dtype"),
                 value=attrs.get("value"),
@@ -136,10 +155,9 @@ class SemantikonDiGraph(nx.DiGraph):
             )
             return input_meta.to_attrs()
 
-        if step == "outputs":
-            known = {"step", "arg", "position", "dtype", "value"}
-            output_meta = TOutput(
-                arg=attrs["arg"],
+        if isinstance(step, Output):
+            known = {"position", "dtype", "value"}
+            output_meta = TOutputData(
                 position=attrs["position"],
                 dtype=attrs.get("dtype"),
                 value=attrs.get("value"),
@@ -148,37 +166,25 @@ class SemantikonDiGraph(nx.DiGraph):
             )
             return output_meta.to_attrs()
 
-        raise ValueError(
-            f"Unknown step {step!r}. Expected one of 'node', 'inputs', or 'outputs'."
-        )
+        raise TypeError(f"Unknown step type: {type(step)}")
 
     def add_node(self, node_for_adding, **attr):  # type: ignore[override]
-        normalized_attr = self._validate_semantikon_attrs(attr)
+        assert isinstance(node_for_adding, (Node, IO))
+        normalized_attr = self._validate_semantikon_attrs(node_for_adding, attr)
         super().add_node(node_for_adding, **normalized_attr)
 
     def add_nodes_from(self, nodes_for_adding, **attr):
-        normalized_attr = self._validate_semantikon_attrs(attr)
-
-        def normalized_nodes():
-            for n in nodes_for_adding:
-                try:
-                    hash(n)
-                except TypeError:
-                    n, ndict = n
-                    ndict = self._validate_semantikon_attrs(ndict)
-                    if normalized_attr:
-                        merged = normalized_attr.copy()
-                        merged.update(ndict)
-                        yield n, merged
-                    else:
-                        yield n, ndict
-                else:
-                    if normalized_attr:
-                        yield n, normalized_attr
-                    else:
-                        yield n
-
-        super().add_nodes_from(normalized_nodes())
+        assert all(isinstance(n, (Node, IO, tuple)) for n in nodes_for_adding)
+        for n in nodes_for_adding:
+            if isinstance(n, tuple):
+                node, node_attr = n
+                normalized_attr = self._validate_semantikon_attrs(
+                    node, attr | node_attr
+                )
+                super().add_node(node, **normalized_attr)
+            else:
+                normalized_attr = self._validate_semantikon_attrs(n, attr)
+                super().add_node(n, **normalized_attr)
 
     @cached_property
     def t_ns(self) -> str:
@@ -196,11 +202,9 @@ class SemantikonDiGraph(nx.DiGraph):
         h = _get_graph_hash(self, with_global_inputs=True)
         return h + "_"
 
-    def _get_data_node(self, io: str) -> str:
+    def _get_data_node(self, io: IO) -> str:
         while True:
-            candidate = [
-                c for c in self.predecessors(io) if self.nodes[c]["step"] != "node"
-            ]
+            candidate = [c for c in self.predecessors(io) if isinstance(c, IO)]
             assert len(candidate) <= 1
             if len(candidate) == 0:
                 return f"{io}_data"
@@ -227,7 +231,7 @@ class SemantikonDiGraph(nx.DiGraph):
                 descendants.
             label (str | None, optional): A label to use for hash computation.
                 If not provided, the label is derived from the node's data
-                (e.g., "label" or "arg"). Defaults to None.
+                (e.g., "label"). Defaults to None.
 
         Notes:
             - The function uses an iterative approach to avoid recursion,
@@ -241,14 +245,12 @@ class SemantikonDiGraph(nx.DiGraph):
             current_node, current_hash, current_label = stack.pop()
 
             for child in self.successors(current_node):
-                if self.nodes[child]["step"] == "node":
+                if isinstance(child, Node):
                     continue
 
                 child_label = current_label
                 if child_label is None:
-                    child_label = self.nodes[child].get(
-                        "label", self.nodes[child]["arg"]
-                    )
+                    child_label = self.nodes[child].get("label", child.port)
 
                 self.nodes[child]["hash"] = current_hash + f"@{child_label}"
                 stack.append((child, current_hash, child_label))
@@ -266,6 +268,32 @@ class SemantikonDiGraph(nx.DiGraph):
             if "hash" in data and "value" in data:
                 hash_dict[data["hash"]] = data["value"]
         return hash_dict
+
+    def _initialize_type(self):
+        for node, data in self.nodes.data():
+            if isinstance(node, Node):
+                data["type"] = data.get("type", "atomic")
+                if node.owner:
+                    self.nodes[node.owner]["type"] = "workflow"
+
+    def get_type(self, node_name: Node) -> str:
+        """
+        Get the type of a node in the graph.
+
+        Parameters:
+            node_name (Node): The name of the node for which to retrieve the
+                type.
+
+        Returns:
+            str: The type of the node. Possible values are "atomic",
+                "constant", or "workflow".
+
+        Raises:
+            ValueError: If the node is not found in the graph.
+        """
+        if "type" not in self.nodes[node_name]:
+            self._initialize_type()
+        return self.nodes[node_name]["type"]
 
 
 def _infer_workflow_label(recipe: fr.schemas.WorkflowRecipe) -> str:
@@ -291,22 +319,20 @@ def _workflow_to_networkx(
 
     def _add_node(
         node_data: fr.schemas.NodeData,
-        node_name: str,
+        node_name: Node,
         *,
-        parent_name: str | None = None,
-        workflow_label: str | None = None,
+        parent_name: Node | None = None,
+        workflow_label: Node | None = None,
     ):
-        metadata: dict[str, Any] = {"step": "node"}
+        metadata: dict[str, Any] = {}
         function = None
         if isinstance(node_data, fr.schemas.AtomicData):
-            metadata["type"] = "atomic"
             function = node_data.function
         elif isinstance(node_data, fr.schemas.ConstantData):
             metadata["type"] = "constant"
         else:
-            metadata["type"] = "workflow"
             if workflow_label is not None:
-                metadata["label"] = workflow_label
+                metadata["label"] = str(workflow_label)
             if node_data.recipe.reference is not None:
                 function = retrieve.import_from_string(
                     node_data.recipe.reference.info.fully_qualified_name
@@ -324,8 +350,6 @@ def _workflow_to_networkx(
                 )
             )
             metadata["function"] = function_data
-        if parent_name is not None:
-            metadata["parent"] = parent_name
         G.add_node(node_name, **metadata)
 
         output_labels = list(node_data.output_ports)
@@ -333,12 +357,8 @@ def _workflow_to_networkx(
             output_labels = ["output"]
 
         for position, (label, port) in enumerate(node_data.input_ports.items()):
-            io_name = f"{node_name}-inputs-{label}"
-            io_data: dict[str, Any] = {
-                "step": "inputs",
-                "arg": label,
-                "position": position,
-            }
+            inp_name = Input(node=node_name, port=label)
+            io_data: dict[str, Any] = {"position": position}
             if not isinstance(port.value, fr.schemas.NotData):
                 io_data["value"] = port.value
             if type_hint := annotation_to_type_hint(port.annotation):
@@ -347,69 +367,65 @@ def _workflow_to_networkx(
                 io_data.update(type_metadata.to_dictionary())
             if not isinstance(port.default, fr.schemas.NotData):
                 io_data["default"] = port.default
-            G.add_node(io_name, **io_data)
-            G.add_edge(io_name, node_name)
+            G.add_node(inp_name, **io_data)
+            G.add_edge(inp_name, node_name)
         for position, (raw_label, port) in enumerate(node_data.output_ports.items()):
             label = output_labels[position] if raw_label == "output_0" else raw_label
-            io_name = f"{node_name}-outputs-{label}"
-            io_data = {
-                "step": "outputs",
-                "arg": label,
-                "position": position,
-            }
+            out_name = Output(node=node_name, port=label)
+            io_data = {"position": position}
             if not isinstance(port.value, fr.schemas.NotData):
                 io_data["value"] = port.value
             if type_hint := annotation_to_type_hint(port.annotation):
                 io_data["dtype"] = type_hint
             if type_metadata := annotation_to_type_metadata(port.annotation):
                 io_data.update(type_metadata.to_dictionary())
-            G.add_node(io_name, **io_data)
-            G.add_edge(node_name, io_name)
+            G.add_node(out_name, **io_data)
+            G.add_edge(node_name, out_name)
 
         if not isinstance(node_data, fr.schemas.DagData):
             return
 
         recipe = node_data.recipe
         for child_label, child in node_data.nodes.items():
-            child_name = f"{node_name}-{child_label}"
+            child_name = Node(name=child_label, owner=node_name)
             _add_node(
                 child,
                 child_name,
                 parent_name=node_name,
                 workflow_label=(
-                    child_label if isinstance(child, fr.schemas.DagData) else None
+                    Node(child_label) if isinstance(child, fr.schemas.DagData) else None
                 ),
             )
 
         child_recipes = recipe.nodes
         for target, source in recipe.input_edges.items():
             G.add_edge(
-                f"{node_name}-inputs-{source.port}",
-                f"{node_name}-{target.node}-inputs-{target.port}",
+                Input(node=node_name, port=source.port),
+                Input(node=Node(owner=node_name, name=target.node), port=target.port),
             )
         for target, source in recipe.edges.items():
             child_outputs = list(child_recipes[source.node].outputs)
             src_port = _output_port_label(source.port, child_outputs)
             G.add_edge(
-                f"{node_name}-{source.node}-outputs-{src_port}",
-                f"{node_name}-{target.node}-inputs-{target.port}",
+                Output(node=Node(owner=node_name, name=source.node), port=src_port),
+                Input(node=Node(owner=node_name, name=target.node), port=target.port),
             )
         for target, source in recipe.output_edges.items():
             target_port = _output_port_label(target.port, list(recipe.outputs))
             if isinstance(source, fr.schemas.InputSource):
                 G.add_edge(
-                    f"{node_name}-inputs-{source.port}",
-                    f"{node_name}-outputs-{target_port}",
+                    Input(node=node_name, port=source.port),
+                    Output(node=node_name, port=target_port),
                 )
             else:
                 child_outputs = list(child_recipes[source.node].outputs)
                 src_port = _output_port_label(source.port, child_outputs)
                 G.add_edge(
-                    f"{node_name}-{source.node}-outputs-{src_port}",
-                    f"{node_name}-outputs-{target_port}",
+                    Output(node=Node(owner=node_name, name=source.node), port=src_port),
+                    Output(node=node_name, port=target_port),
                 )
 
-    _add_node(workflow, root_label, workflow_label=root_label)
+    _add_node(workflow, Node(root_label), workflow_label=Node(root_label))
     return G
 
 
@@ -417,7 +433,7 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
     hash_dict: dict[str, dict[str, Any]] = {}
     for node in nx.topological_sort(G):
         data = G.nodes[node]
-        if data.get("step") != "node":
+        if isinstance(node, IO):
             for term in ("hash", "value"):
                 if term in data:
                     continue
@@ -431,8 +447,7 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
         hash_dict_tmp: dict[str, Any] = {
             "inputs": {},
             "outputs": [
-                G.nodes[out].get("label", out.split("-")[-1])
-                for out in G.successors(node)
+                G.nodes[out].get("label", out.port) for out in G.successors(node)
             ],
             "node": copy.deepcopy(data.get("function")),
         }
@@ -442,16 +457,15 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
         missing_input = False
         for inp in G.predecessors(node):
             inp_data = G.nodes[inp]
-            inp_name = inp.split("-")[-1]
             if "hash" in inp_data:
-                hash_dict_tmp["inputs"][inp_name] = inp_data["hash"]
-                hash_dict_tmp["node"]["connected_inputs"].append(inp_name)
+                hash_dict_tmp["inputs"][inp.port] = inp_data["hash"]
+                hash_dict_tmp["node"]["connected_inputs"].append(inp.port)
             elif "value" in inp_data or "default" in inp_data:
                 value = inp_data.get("value", inp_data.get("default"))
                 if is_dataclass(value) and not isinstance(value, type):
-                    hash_dict_tmp["inputs"][inp_name] = asdict(value)
+                    hash_dict_tmp["inputs"][inp.port] = asdict(value)
                 else:
-                    hash_dict_tmp["inputs"][inp_name] = value
+                    hash_dict_tmp["inputs"][inp.port] = value
             else:
                 missing_input = True
                 break
@@ -461,9 +475,7 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
             json.dumps(hash_dict_tmp, sort_keys=True).encode("utf-8")
         ).hexdigest()
         for out in G.successors(node):
-            G.nodes[out]["hash"] = (
-                h + "@" + G.nodes[out].get("label", out.split("-")[-1])
-            )
+            G.nodes[out]["hash"] = h + "@" + G.nodes[out].get("label", out.port)
         hash_dict_tmp["hash"] = h
         hash_dict[node] = hash_dict_tmp
     return hash_dict
@@ -471,8 +483,8 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
 
 def _remove_constant(G: SemantikonDiGraph) -> None:
     to_delete = []
-    for node, data in G.nodes.data():
-        if data["step"] == "node" and data["type"] == "constant":
+    for node in G.nodes:
+        if isinstance(node, Node) and G.get_type(node) == "constant":
             output_node = next(iter(G.successors(node)))
             const_value = G.nodes[output_node]["value"]
             to_delete.extend([node, output_node])
@@ -578,8 +590,6 @@ class _HashGraph:
 
         for node in G.nodes:
             attrs = {}
-            if "arg" in G.nodes[node]:
-                attrs["arg"] = G.nodes[node]["arg"]
             if "function" in G.nodes[node]:
                 func = G.nodes[node]["function"]
                 attrs["function"] = func.get("hash") or func.get("identifier")
@@ -588,6 +598,8 @@ class _HashGraph:
                     attrs["value"] = G.nodes[node]["value"]
                 elif "default" in G.nodes[node]:
                     attrs["value"] = G.nodes[node]["default"]
+            if isinstance(node, IO):
+                attrs["port"] = node.port
             G_tmp.add_node(node, canon=self._canonical_json(attrs))
         for u, v in G.edges:
             G_tmp.add_edge(u, v)

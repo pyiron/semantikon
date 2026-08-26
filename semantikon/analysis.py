@@ -16,6 +16,7 @@ from rdflib.query import ResultRow
 
 from semantikon.converter import to_identifier
 from semantikon.flowrep_dict import dict_to_nodedata
+from semantikon.flowrep_to_networkx import IO, Input, Node
 from semantikon.ontology import SNS, serialize_and_convert_to_networkx
 
 
@@ -100,18 +101,19 @@ def request_values(
     hashes: set[str] = set()
 
     for node, data in G.nodes.data():
-        if data.get("step") == "node":
+        if isinstance(node, Node):
             continue
         if "hash" in data and "value" not in data:
             node_hash = data["hash"]
             hashes.add(node_hash)
-            keys = node.split("-")[1:]
-            hash_nodes.append(
-                {
-                    "hash": node_hash,
-                    "keys": keys,
-                }
-            )
+            # Extract keys based on node type
+            if isinstance(node, IO):
+                hash_nodes.append(
+                    {
+                        "hash": node_hash,
+                        "node": node,
+                    }
+                )
 
     # If there are no hashes to resolve, return early.
     if not hashes:
@@ -141,22 +143,34 @@ def request_values(
         if h_val not in hash_to_value:
             hash_to_value[h_val] = v_val
 
+    def _get_child_node(wf_dict: fr.schemas.DagData, node: Node) -> fr.schemas.NodeData:
+        if node.owner and node.owner.owner:
+            parent_node = _get_child_node(wf_dict, node.owner)
+            assert isinstance(parent_node, fr.schemas.DagData)
+            return parent_node.nodes[node.name]
+        else:
+            return wf_dict.nodes[node.name]
+
     # Populate wf_dict with the retrieved values.
     for item in hash_nodes:
         h = item["hash"]
-        keys = item["keys"]
         if h not in hash_to_value:
             continue
         value = hash_to_value[h]
-        if len(keys) == 3:
+        ports_attr = (
+            "input_ports" if isinstance(item["node"], Input) else "output_ports"
+        )
+        if item["node"].node.owner:
             _get_port_with_fallback(
-                wf_dict.nodes[keys[0]].__getattribute__(f"{keys[1][:-1]}_ports"),
-                keys[2],
+                _get_child_node(wf_dict, item["node"].node).__getattribute__(
+                    ports_attr
+                ),
+                item["node"].port,
             ).value = value
-        elif len(keys) == 2:
+        else:
             _get_port_with_fallback(
-                wf_dict.__getattribute__(f"{keys[0][:-1]}_ports"),
-                keys[1],
+                wf_dict.__getattribute__(ports_attr),
+                item["node"].port,
             ).value = value
     return wf_dict
 
