@@ -43,7 +43,6 @@ In the realm of the workflow management systems, there are well defined inputs a
 >>> from rdflib import Namespace
 >>> from flowrep import workflow
 >>> from semantikon import u
->>> __name__ = "__main__"
 >>>
 >>> EX = Namespace("http://example.org/")
 >>>
@@ -61,11 +60,6 @@ In the realm of the workflow management systems, there are well defined inputs a
 ...     velocity: u(float, units="meter/second", uri=EX.Velocity),
 ... ) -> u(float, units="joule", uri=EX.KineticEnergy):
 ...     return 0.5 * mass * velocity**2
->>> 
->>> 
->>> import __main__
->>> __main__.get_speed = get_speed
->>> __main__.get_kinetic_energy = get_kinetic_energy
 >>> 
 >>> 
 >>> @workflow
