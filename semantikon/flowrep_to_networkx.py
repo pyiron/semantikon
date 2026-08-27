@@ -61,6 +61,34 @@ class Output(IO):
 
 
 @dataclass(frozen=True, slots=True)
+class ANode(Node):
+    owner: ANode | None = None
+    counter: int = 0
+
+    def __str__(self) -> str:
+        return f"{super().__str__()}_{self.counter}"
+
+
+@dataclass(frozen=True, slots=True)
+class AIO(IO):
+    node: ANode
+    counter: int = 0
+
+    def __str__(self) -> str:
+        return f"{super().__str__()}_{self.counter}"
+
+
+@dataclass(frozen=True, slots=True)
+class AInput(AIO):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class AOutput(AIO):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
 class TNodeData:
     type: str | None = None
     identifier: str | None = None
