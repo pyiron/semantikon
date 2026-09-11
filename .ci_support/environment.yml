@@ -5,7 +5,7 @@ dependencies:
 - graphviz =12.2.1
 - hatchling =1.31.0
 - hatch-vcs =0.5.0
-- numpy =2.4.6
+- numpy =2.5.3
 - owlrl =7.6.2
 - pint =0.25.3
 - rdflib =7.6.0
