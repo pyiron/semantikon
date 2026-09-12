@@ -5,7 +5,7 @@ dependencies:
 - graphviz =12.2.1
 - hatchling =1.31.0
 - hatch-vcs =0.5.0
-- numpy =2.4.6
+- numpy =2.5.3
 - owlrl =7.6.2
 - pint =0.25.3
 - rdflib =7.6.0
@@ -15,6 +15,6 @@ dependencies:
 - typeguard =4.6.0
 - flowrep =0.6.4
 - networkx =3.6.1
-- bagofholding =0.1.12
+- bagofholding =0.1.13
 - cwltool =3.2.20260413085819
 - python =3.13
