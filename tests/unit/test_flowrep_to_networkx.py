@@ -204,7 +204,7 @@ class TestFlowrepToNetworkx(unittest.TestCase):
                 fr.schemas.OutputTarget(port="y"): fr.schemas.InputSource(port="x")
             },
         )
-        self.assertEqual(ftn._infer_workflow_label(recipe), "")
+        self.assertEqual(ftn._infer_workflow_label(recipe), "workflow")
 
     def test_infer_workflow_label_with_explicit_label(self):
         recipe = fr.schemas.WorkflowRecipe(
