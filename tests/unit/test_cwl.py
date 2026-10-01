@@ -1,6 +1,8 @@
 import os
+import tempfile
 import unittest
 from pathlib import Path
+from typing import Annotated
 
 try:
     from semantikon import cwl
@@ -8,7 +10,15 @@ except ImportError:
     cwl = None
 
 from semantikon.flowrep_to_networkx import Input, Node, Output
-from semantikon.ontology import SemantikonDiGraph
+from semantikon.ontology import SemantikonDiGraph, function_to_knowledge_graph
+
+
+def get_speed(
+    distance: Annotated[float, {"units": "meter"}],
+    time: float = 2.0,
+) -> Annotated[float, {"units": "meter/second"}]:
+    """compute speed"""
+    return distance / time
 
 
 @unittest.skipIf(
@@ -149,6 +159,40 @@ class TestCWL(unittest.TestCase):
         )
         self.assertEqual(cwl._get_name("no_fragment"), "no_fragment")
         self.assertEqual(cwl._get_name("a#b#c"), "c")
+
+    def test_knowledge_graph_to_cwl(self):
+        g = function_to_knowledge_graph(get_speed)
+        tool = cwl.knowledge_graph_to_cwl(g)
+        self.assertEqual(tool.id, "get_speed")
+        self.assertEqual(tool.doc, "compute speed")
+        self.assertEqual([i.id for i in tool.inputs], ["distance", "time"])
+        self.assertEqual([i.position for i in [t.inputBinding for t in tool.inputs]], [0, 1])
+        self.assertEqual(tool.inputs[1].default, 2.0)
+        self.assertEqual(tool.inputs[1].type_, "double")
+        self.assertEqual(tool.inputs[0].type_, "Any")
+        self.assertEqual([o.id for o in tool.outputs], ["output_0"])
+
+    def test_knowledge_graph_to_cwl_requires_unambiguous_f_node(self):
+        from rdflib import Graph
+
+        with self.assertRaises(ValueError):
+            cwl.knowledge_graph_to_cwl(Graph())
+
+    def test_knowledge_graph_to_cwl_roundtrip(self):
+        g = function_to_knowledge_graph(get_speed)
+        tool = cwl.knowledge_graph_to_cwl(g)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = cwl.save_cwl_file(tool, Path(tmp_dir) / "get_speed.cwl")
+            reloaded = cwl.serialize_and_convert_to_networkx(path)
+        expected_inputs = {
+            Input(node=Node("get_speed#get_speed"), port="get_speed/distance"),
+            Input(node=Node("get_speed#get_speed"), port="get_speed/time"),
+        }
+        self.assertTrue(expected_inputs.issubset(set(reloaded.nodes)))
+        self.assertIn(
+            Output(node=Node("get_speed#get_speed"), port="get_speed/output_0"),
+            reloaded.nodes,
+        )
 
 
 if __name__ == "__main__":
