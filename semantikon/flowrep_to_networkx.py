@@ -307,7 +307,7 @@ def _infer_workflow_label(
     if recipe.reference is None:
         if label is not None:
             return label
-        return ""
+        return "workflow"
     return recipe.reference.info.fully_qualified_name.rsplit(".", 1)[-1]
 
 
