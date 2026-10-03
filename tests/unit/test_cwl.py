@@ -163,10 +163,15 @@ class TestCWL(unittest.TestCase):
     def test_knowledge_graph_to_cwl(self):
         g = function_to_knowledge_graph(get_speed)
         tool = cwl.knowledge_graph_to_cwl(g)
-        self.assertEqual(tool.id, "get_speed")
+        self.assertEqual(
+            tool.id,
+            "get_speed_b23355f2e639d541b86c1c53ab0559e2cc7f87d699788238c12a2276719ad0a3",
+        )
         self.assertEqual(tool.doc, "compute speed")
         self.assertEqual([i.id for i in tool.inputs], ["distance", "time"])
-        self.assertEqual([i.position for i in [t.inputBinding for t in tool.inputs]], [0, 1])
+        self.assertEqual(
+            [i.position for i in [t.inputBinding for t in tool.inputs]], [0, 1]
+        )
         self.assertEqual(tool.inputs[1].default, 2.0)
         self.assertEqual(tool.inputs[1].type_, "double")
         self.assertEqual(tool.inputs[0].type_, "Any")
@@ -184,13 +189,29 @@ class TestCWL(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             path = cwl.save_cwl_file(tool, Path(tmp_dir) / "get_speed.cwl")
             reloaded = cwl.serialize_and_convert_to_networkx(path)
+        print(reloaded.nodes)
         expected_inputs = {
-            Input(node=Node("get_speed#get_speed"), port="get_speed/distance"),
-            Input(node=Node("get_speed#get_speed"), port="get_speed/time"),
+            Input(
+                node=Node(
+                    "get_speed#get_speed_b23355f2e639d541b86c1c53ab0559e2cc7f87d699788238c12a2276719ad0a3"
+                ),
+                port="get_speed_b23355f2e639d541b86c1c53ab0559e2cc7f87d699788238c12a2276719ad0a3/distance",
+            ),
+            Input(
+                node=Node(
+                    "get_speed#get_speed_b23355f2e639d541b86c1c53ab0559e2cc7f87d699788238c12a2276719ad0a3"
+                ),
+                port="get_speed_b23355f2e639d541b86c1c53ab0559e2cc7f87d699788238c12a2276719ad0a3/time",
+            ),
         }
         self.assertTrue(expected_inputs.issubset(set(reloaded.nodes)))
         self.assertIn(
-            Output(node=Node("get_speed#get_speed"), port="get_speed/output_0"),
+            Output(
+                node=Node(
+                    "get_speed#get_speed_b23355f2e639d541b86c1c53ab0559e2cc7f87d699788238c12a2276719ad0a3"
+                ),
+                port="get_speed_b23355f2e639d541b86c1c53ab0559e2cc7f87d699788238c12a2276719ad0a3/output_0",
+            ),
             reloaded.nodes,
         )
 

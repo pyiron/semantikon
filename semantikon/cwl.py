@@ -206,6 +206,13 @@ def _arg_to_cwl_output(
     )
 
 
+def _get_function_id(g: Graph, f_node: URIRef) -> str:
+    for denoted_by in g.objects(f_node, ontology.SNS.denoted_by):
+        if (denoted_by, RDF.type, ontology.SNS.identifier) in g:
+            return g.value(denoted_by, ontology.SNS.has_value).toPython()
+    raise ValueError(f"Function node {f_node} has no identifier in the graph.")
+
+
 def knowledge_graph_to_cwl(
     graph: Graph, f_node: URIRef | None = None, cwl_version: str = "v1.2"
 ) -> parser.CommandLineTool:
@@ -252,7 +259,7 @@ def knowledge_graph_to_cwl(
     ]
 
     return cwl_module.CommandLineTool(
-        id=data["data"].get("qualname", _get_name(str(f_node))),
+        id=_get_function_id(graph, f_node).replace(":", "_"),
         inputs=inputs,
         outputs=outputs,
         doc=data["data"].get("docstring") or None,
