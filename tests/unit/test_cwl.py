@@ -184,7 +184,7 @@ class TestCWL(unittest.TestCase):
             cwl.knowledge_graph_to_cwl(Graph())
 
     def test_function_id_requires_literal_value(self):
-        from rdflib import Graph, RDF, URIRef
+        from rdflib import RDF, Graph, URIRef
 
         from semantikon import ontology
 
