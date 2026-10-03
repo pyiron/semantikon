@@ -183,6 +183,20 @@ class TestCWL(unittest.TestCase):
         with self.assertRaises(ValueError):
             cwl.knowledge_graph_to_cwl(Graph())
 
+    def test_function_id_requires_literal_value(self):
+        from rdflib import Graph, RDF, URIRef
+
+        from semantikon import ontology
+
+        graph = Graph()
+        function = URIRef("urn:function")
+        identifier = URIRef("urn:identifier")
+        graph.add((function, ontology.SNS.denoted_by, identifier))
+        graph.add((identifier, RDF.type, ontology.SNS.identifier))
+
+        with self.assertRaises(ValueError):
+            cwl._get_function_id(graph, function)
+
     def test_knowledge_graph_to_cwl_roundtrip(self):
         g = function_to_knowledge_graph(get_speed)
         tool = cwl.knowledge_graph_to_cwl(g)

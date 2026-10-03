@@ -10,7 +10,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover
         "semantikon.cwl requires optional CWL dependencies. Install with `pip install semantikon[cwl]`."
     ) from exc
 
-from rdflib import RDF, Graph, URIRef
+from rdflib import RDF, Graph, Literal, URIRef
 from schema_salad.utils import yaml_no_ts
 
 from semantikon import ontology
@@ -209,7 +209,9 @@ def _arg_to_cwl_output(
 def _get_function_id(g: Graph, f_node: URIRef) -> str:
     for denoted_by in g.objects(f_node, ontology.SNS.denoted_by):
         if (denoted_by, RDF.type, ontology.SNS.identifier) in g:
-            return g.value(denoted_by, ontology.SNS.has_value).toPython()
+            value = g.value(denoted_by, ontology.SNS.has_value)
+            if isinstance(value, Literal):
+                return value.toPython()
     raise ValueError(f"Function node {f_node} has no identifier in the graph.")
 
 
