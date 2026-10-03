@@ -157,7 +157,7 @@ def _infer_cwl_type(arg: dict[str, Any]) -> str:
 
 
 def _arg_to_cwl_input(
-    cwl_module: Any, arg: dict[str, Any], position: int
+        cwl_module: Any, arg: dict[str, Any], position: int, use_arg: bool = True
 ) -> parser.CommandInputParameter:
     """
     Convert function input argument metadata into a CWL input parameter.
@@ -168,12 +168,15 @@ def _arg_to_cwl_input(
         arg (dict[str, Any]): Argument metadata as produced by
             ``ontology._graph_to_function``.
         position (int): Fallback input/argument position if none is recorded.
+        use_arg (bool): If ``True``, use the argument name from the metadata
+            as the CWL input parameter ID; otherwise, use a generic name
+            ``input_{position}``.
 
     Returns:
         parser.CommandInputParameter: The resulting CWL input parameter.
     """
     kwargs: dict[str, Any] = {
-        "id": arg.get("arg", f"input_{position}"),
+        "id": arg.get("arg", f"input_{position}") if use_arg else f"input_{position}",
         "type_": _infer_cwl_type(arg),
         "inputBinding": cwl_module.CommandLineBinding(
             position=arg.get("position", position)
@@ -185,7 +188,7 @@ def _arg_to_cwl_input(
 
 
 def _arg_to_cwl_output(
-    cwl_module: Any, arg: dict[str, Any], position: int
+    cwl_module: Any, arg: dict[str, Any], position: int, use_arg: bool = True
 ) -> parser.CommandOutputParameter:
     """
     Convert function output argument metadata into a CWL output parameter.
@@ -196,12 +199,15 @@ def _arg_to_cwl_output(
         arg (dict[str, Any]): Argument metadata as produced by
             ``ontology._graph_to_function``.
         position (int): Fallback output position if none is recorded.
+        use_arg (bool): If ``True``, use the argument name from the metadata
+            as the CWL output parameter ID; otherwise, use a generic name
+            ``output_{position}``.
 
     Returns:
         parser.CommandOutputParameter: The resulting CWL output parameter.
     """
     return cwl_module.CommandOutputParameter(
-        id=arg.get("arg", f"output_{position}"),
+        id=arg.get("arg", f"output_{position}") if use_arg else f"output_{position}",
         type_=_infer_cwl_type(arg),
     )
 
@@ -214,7 +220,7 @@ def _get_function_id(g: Graph, f_node: URIRef) -> str:
 
 
 def knowledge_graph_to_cwl(
-    graph: Graph, f_node: URIRef | None = None, cwl_version: str = "v1.2"
+    graph: Graph, f_node: URIRef | None = None, cwl_version: str = "v1.2", use_arg: bool = True
 ) -> parser.CommandLineTool:
     """
     Convert a function stored in a knowledge graph into an in-memory CWL
@@ -233,6 +239,9 @@ def knowledge_graph_to_cwl(
             ``SNS.workflow_function``.
         cwl_version (str): CWL schema version to target, e.g. ``"v1.0"``,
             ``"v1.1"`` or ``"v1.2"``.
+        use_arg (bool): If ``True``, use the argument names from the metadata
+            as the CWL input/output parameter IDs; otherwise, use generic names
+            ``input_{position}`` and ``output_{position}``.
 
     Returns:
         parser.CommandLineTool: The resulting CWL tool description.
@@ -250,11 +259,11 @@ def knowledge_graph_to_cwl(
     cwl_module = getattr(parser, f"cwl_{cwl_version.replace('.', '_')}")
 
     inputs = [
-        _arg_to_cwl_input(cwl_module, arg, position)
+        _arg_to_cwl_input(cwl_module, arg, position, use_arg=use_arg)
         for position, arg in enumerate(data["input_args"])
     ]
     outputs = [
-        _arg_to_cwl_output(cwl_module, arg, position)
+        _arg_to_cwl_output(cwl_module, arg, position, use_arg=use_arg)
         for position, arg in enumerate(data["output_args"])
     ]
 
