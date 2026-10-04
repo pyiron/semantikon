@@ -247,7 +247,9 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
             if func_obj is None:
                 base_recipe = None
             else:
-                base_recipe = _flowrep_recipe_from_callable(func_obj, node_type="workflow")
+                base_recipe = _flowrep_recipe_from_callable(
+                    func_obj, node_type="workflow"
+                )
             nodes: dict[str, fr.schemas.RecipeDiscrimination] = {}
             input_edges: fr.schemas.InputEdges = {}
             edges: fr.schemas.Edges = {}
