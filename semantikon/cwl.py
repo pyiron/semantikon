@@ -85,10 +85,12 @@ def _add_node(
         if inp.inputBinding is not None and inp.inputBinding.position is not None:
             inp_position = inp.inputBinding.position
         G.add_node(inp_node, position=inp_position)
+        G.add_edge(inp_node, prefix)
 
     for position, out in enumerate(wf.outputs):
         out_node = Output(node=prefix, port=_get_name(out.id))
         G.add_node(out_node, position=position)
+        G.add_edge(prefix, out_node)
 
     if isinstance(wf, parser.CommandLineTool):
         return G
