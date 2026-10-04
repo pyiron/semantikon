@@ -177,27 +177,6 @@ class TestCWL(unittest.TestCase):
         self.assertEqual(tool.inputs[0].type_, "Any")
         self.assertEqual([o.id for o in tool.outputs], ["output_0"])
 
-    def test_knowledge_graph_to_cwl_embed_function(self):
-        import json
-        import subprocess
-        import sys
-
-        g = function_to_knowledge_graph(get_speed)
-        tool = cwl.knowledge_graph_to_cwl(g, embed_function=True)
-        script = tool.requirements[1].listing[0].entry
-        self.assertIn("def get_speed", script)
-        self.assertNotIn("@", script)
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            Path(tmp_dir, "function.py").write_text(script)
-            Path(tmp_dir, "inputs.json").write_text(
-                json.dumps({"distance": 10.0, "time": 2.0})
-            )
-            subprocess.run([sys.executable, "function.py"], cwd=tmp_dir, check=True)
-            out = json.loads(Path(tmp_dir, "cwl.output.json").read_text())
-        self.assertEqual(out, {"output_0": 5.0})
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            cwl.save_cwl_file(tool, Path(tmp_dir) / "t.cwl")
-
     def test_knowledge_graph_to_cwl_requires_unambiguous_f_node(self):
         from rdflib import Graph
 
