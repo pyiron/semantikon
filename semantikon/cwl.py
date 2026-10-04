@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import ast
+import inspect
+import textwrap
 from pathlib import Path
 from typing import Any, cast
 
@@ -10,6 +13,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover
         "semantikon.cwl requires optional CWL dependencies. Install with `pip install semantikon[cwl]`."
     ) from exc
 
+from pyiron_snippets import retrieve
 from rdflib import RDF, Graph, Literal, URIRef
 from schema_salad.utils import yaml_no_ts
 
@@ -94,6 +98,8 @@ def _add_node(
 
     if isinstance(wf, parser.CommandLineTool):
         return G
+
+    G.nodes[prefix]["type"] = "workflow"
 
     for step in wf.steps:
         node = Node(owner=prefix, name=_get_name(step.id))
@@ -217,8 +223,72 @@ def _get_function_id(g: Graph, f_node: URIRef) -> str:
     raise ValueError(f"Function node {f_node} has no identifier in the graph.")
 
 
+_SCRIPT_NAME = "function.py"
+_INPUTS_NAME = "inputs.json"
+
+
+def _build_script(func: Any, arg_names: list[str], output_names: list[str]) -> str:
+    """
+    Build a standalone Python script that defines ``func`` (source only, with
+    decorators removed) and runs it on the JSON inputs, writing the results to
+    ``cwl.output.json``. Module-level globals/imports of the original module are
+    not carried over.
+    """
+    source = textwrap.dedent(inspect.getsource(inspect.unwrap(func)))
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            node.decorator_list = []
+    body = ast.unparse(tree)
+    return (
+        "from __future__ import annotations\n\n"
+        "import json\n\n"
+        f"{body}\n\n\n"
+        'if __name__ == "__main__":\n'
+        f'    with open("{_INPUTS_NAME}") as f:\n'
+        "        inputs = json.load(f)\n"
+        f"    result = {func.__name__}(**{{k: inputs[k] for k in {arg_names!r} "
+        "if inputs.get(k) is not None or k in inputs})\n"
+        f"    names = {output_names!r}\n"
+        "    if len(names) == 1:\n"
+        "        result = (result,)\n"
+        '    with open("cwl.output.json", "w") as f:\n'
+        "        json.dump(dict(zip(names, result)), f)\n"
+    )
+
+
+def _embed_function(
+    cwl_module: Any, data: dict[str, Any], inputs: list, outputs: list
+) -> dict[str, Any]:
+    """Build the CommandLineTool kwargs that make the tool actually runnable."""
+    module, qualname = data.get("module"), data.get("qualname")
+    if not module or not qualname:
+        raise ValueError("Cannot embed function: missing 'module'/'qualname'.")
+    func = retrieve.import_from_string(f"{module}.{qualname}")
+    script = _build_script(
+        func, [i.id for i in inputs], [o.id for o in outputs]
+    )
+    return {
+        "baseCommand": ["python", _SCRIPT_NAME],
+        "requirements": [
+            cwl_module.InlineJavascriptRequirement(),
+            cwl_module.InitialWorkDirRequirement(
+                listing=[
+                    cwl_module.Dirent(entryname=_SCRIPT_NAME, entry=script),
+                    cwl_module.Dirent(
+                        entryname=_INPUTS_NAME, entry="$(JSON.stringify(inputs))"
+                    ),
+                ]
+            ),
+        ],
+    }
+
+
 def knowledge_graph_to_cwl(
-    graph: Graph, f_node: URIRef | None = None, cwl_version: str = "v1.2"
+    graph: Graph,
+    f_node: URIRef | None = None,
+    cwl_version: str = "v1.2",
+    embed_function: bool = False,
 ) -> parser.CommandLineTool:
     """
     Convert a function stored in a knowledge graph into an in-memory CWL
@@ -237,6 +307,12 @@ def knowledge_graph_to_cwl(
             ``SNS.workflow_function``.
         cwl_version (str): CWL schema version to target, e.g. ``"v1.0"``,
             ``"v1.1"`` or ``"v1.2"``.
+        embed_function (bool): If ``True``, the function is imported from its
+            recorded module/qualname (via ``pyiron_snippets.retrieve``) and its
+            source is embedded in the tool as a script, so the CWL can be
+            executed (``python function.py``; inputs are passed as JSON and
+            outputs returned via ``cwl.output.json``). Only the function
+            source is embedded; module-level imports/globals are not.
 
     Returns:
         parser.CommandLineTool: The resulting CWL tool description.
@@ -262,7 +338,14 @@ def knowledge_graph_to_cwl(
         for position, arg in enumerate(data["output_args"])
     ]
 
+    extra: dict[str, Any] = {}
+    if embed_function:
+        for i in inputs:
+            i.inputBinding = None
+        extra = _embed_function(cwl_module, data["data"], inputs, outputs)
+
     return cwl_module.CommandLineTool(
+        **extra,
         id=_get_function_id(graph, f_node).replace(":", "_"),
         inputs=inputs,
         outputs=outputs,
