@@ -71,6 +71,8 @@ def _add_node(
             the prefix.
         prefix (str | None): The node name prefix. If ``None``, derived from
             the CWL filename (without the ``.cwl`` extension).
+        is_workflow (bool): Whether the CWL process is a workflow. If ``False``,
+            only input and output nodes are added.
 
     Returns:
         ontology.SemantikonDiGraph: The populated knowledge graph.
