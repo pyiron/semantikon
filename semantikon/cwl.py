@@ -54,6 +54,7 @@ def _add_node(
     wf: parser.CommandLineTool | parser.Workflow,
     G: ontology.SemantikonDiGraph | None = None,
     prefix: Node | None = None,
+    is_workflow: bool = True,
 ) -> ontology.SemantikonDiGraph:
     """
     Recursively add nodes and edges for a CWL process to the knowledge graph.
@@ -70,6 +71,8 @@ def _add_node(
             the prefix.
         prefix (str | None): The node name prefix. If ``None``, derived from
             the CWL filename (without the ``.cwl`` extension).
+        is_workflow (bool): Whether the CWL process is a workflow. If ``False``,
+            only input and output nodes are added.
 
     Returns:
         ontology.SemantikonDiGraph: The populated knowledge graph.
@@ -85,12 +88,14 @@ def _add_node(
         if inp.inputBinding is not None and inp.inputBinding.position is not None:
             inp_position = inp.inputBinding.position
         G.add_node(inp_node, position=inp_position)
-        G.add_edge(inp_node, prefix)
+        if is_workflow:
+            G.add_edge(inp_node, prefix)
 
     for position, out in enumerate(wf.outputs):
         out_node = Output(node=prefix, port=_get_name(out.id))
         G.add_node(out_node, position=position)
-        G.add_edge(prefix, out_node)
+        if is_workflow:
+            G.add_edge(prefix, out_node)
 
     if isinstance(wf, parser.CommandLineTool):
         return G
@@ -117,7 +122,7 @@ def _add_node(
                 G.add_edge(node, Output(node=Node(owner=prefix, name=n), port=p))
             else:
                 G.add_edge(node, Output(node=node, port=out_name))
-        G = _add_node(run_doc, G, prefix=node)
+        G = _add_node(run_doc, G, prefix=node, is_workflow=node_type == "workflow")
 
     for out in wf.outputs:
         n, p = _get_name(out.outputSource).split("/")
