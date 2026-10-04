@@ -203,7 +203,6 @@ class TestCWL(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             path = cwl.save_cwl_file(tool, Path(tmp_dir) / "get_speed.cwl")
             reloaded = cwl.serialize_and_convert_to_networkx(path)
-        print(reloaded.nodes)
         expected_inputs = {
             Input(
                 node=Node(
