@@ -228,8 +228,6 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
                 len(output_node) == 1
             ), f"Constant node {node_name} should have one output."
             return fr.schemas.ConstantRecipe(constant=G.nodes[output_node[0]]["value"])
-        if "function" not in node_data:
-            raise ValueError(f"Node {node_name!r} is missing function metadata.")
         func_obj = _get_function_from_dict(node_data.get("function"))
         if node_type == "workflow":
             sorted_input = [
