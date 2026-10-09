@@ -1158,11 +1158,11 @@ class TestOntology(unittest.TestCase):
         uri_node = next(iter(g.subjects(RDF.type, EX.Something)))
         data_node = list(g.subjects(onto.SNS.specifies_value_of, uri_node))
         self.assertIn(
-            "wf_triples-inputs-a_data",
+            "wf_triples_0-inputs-a_0_data",
             str(data_node[0]),
             msg=dedent(f"""
                 Expected only the input data node specifying value of {uri_node}
-                (which should end with 'wf_triples-inputs-a_data'), found
+                (which should end with 'wf_triples_0-inputs-a_0_data'), found
                 {data_node}
                 """),
         )

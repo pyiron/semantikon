@@ -25,12 +25,17 @@ from semantikon.converter import (
 )
 from semantikon.flowrep_to_networkx import (
     IO,
+    AIO,
+    AInput,
+    AOutput,
     Input,
     Node,
     Output,
     SemantikonDiGraph,
+    SemantikonInstanceGraph,
+    SemantikonRecipeGraph,
     _get_graph_hash,
-    serialize_and_convert_to_networkx,
+    serialize_instance_to_networkx,
 )
 from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
@@ -316,7 +321,7 @@ def get_knowledge_graph(
     Returns:
         (rdflib.Graph): graph containing workflow information
     """
-    G = serialize_and_convert_to_networkx(wf_dict, hash_data=hash_data, prefix=prefix)
+    G = serialize_instance_to_networkx(wf_dict, hash_data=hash_data, prefix=prefix)
     return _get_knowledge_graph_from_digraph(
         G,
         include_t_box=include_t_box,
@@ -330,7 +335,7 @@ def get_knowledge_graph(
 
 
 def _get_knowledge_graph_from_digraph(
-    G: SemantikonDiGraph,
+    G: SemantikonInstanceGraph,
     include_t_box: bool = True,
     include_a_box: bool = True,
     remove_data: bool = False,
@@ -339,11 +344,11 @@ def _get_knowledge_graph_from_digraph(
     file_name: str | None = None,
     pmdco_uri: str = "https://w3id.org/pmd/co/3.0.0",
 ) -> Graph:
-    _check_consistency_of_digraph(G)
+    _check_consistency_of_digraph(G.recipe_graph)
     graph = _get_bound_graph()
     graph += _import_pmdco(pmdco_uri=pmdco_uri)
     if include_t_box:
-        graph += _nx_to_kg(G, t_box=True)
+        graph += _nx_to_kg(G.recipe_graph, t_box=True)
     if include_a_box:
         graph += _nx_to_kg(G, t_box=False)
     if extract_dataclasses:
@@ -588,7 +593,7 @@ def _wf_node_to_graph(
             )
     else:
         node = BASE[G.a_ns + node_name]
-        g.add((node, RDF.type, BASE[G.t_ns + node_name]))
+        g.add((node, RDF.type, BASE[G.t_ns + G.recipe_of(node_name)]))
         g.add((node, RDFS.label, Literal(G.a_ns_short + str(node_name))))
         for inp in G.predecessors(node_name):
             g.add((node, SNS.has_part, BASE[G.a_ns + inp]))
@@ -621,11 +626,11 @@ def _output_is_connected(io: Node | IO, G: SemantikonDiGraph) -> bool:
 def _is_macro_input(
     io: Node | IO, G: SemantikonDiGraph, candidates: tuple[Node | IO, Node | IO]
 ):
-    return isinstance(io, Input) and (
+    return isinstance(io, (Input, AInput)) and (
         isinstance(candidates[0], Node)
-        and isinstance(candidates[1], Input)
+        and isinstance(candidates[1], (Input, AInput))
         or isinstance(candidates[1], Node)
-        and isinstance(candidates[0], Input)
+        and isinstance(candidates[0], (Input, AInput))
     )
 
 
@@ -649,18 +654,33 @@ def _input_is_connected(io: IO | Node, G: SemantikonDiGraph) -> bool:
 def _is_macro_output(
     io: IO | Node, G: SemantikonDiGraph, candidates: tuple[Node | IO, Node | IO]
 ):
-    return isinstance(io, Output) and (
+    return isinstance(io, (Output, AOutput)) and (
         isinstance(candidates[0], Node)
-        and isinstance(candidates[1], Output)
+        and isinstance(candidates[1], (Output, AOutput))
         or isinstance(candidates[1], Node)
-        and isinstance(candidates[0], Output)
+        and isinstance(candidates[0], (Output, AOutput))
     )
 
 
-def _detect_io_from_str(G: SemantikonDiGraph, seeked_io: str, ref_io: IO) -> str:
+def _detect_io_from_str(
+    G: SemantikonRecipeGraph | SemantikonInstanceGraph, seeked_io: str, ref_io: IO
+) -> str:
     assert seeked_io.startswith(("inputs", "outputs"))
     full_io: IO
-    if seeked_io.startswith("inputs"):
+    if isinstance(ref_io, AIO):
+        if seeked_io.startswith("inputs"):
+            full_io = AInput(
+                node=ref_io.node,
+                port=seeked_io.replace("inputs.", ""),
+                counter=ref_io.counter,
+            )
+        else:
+            full_io = AOutput(
+                node=ref_io.node,
+                port=seeked_io.replace("outputs.", ""),
+                counter=ref_io.counter,
+            )
+    elif seeked_io.startswith("inputs"):
         full_io = Input(node=ref_io.node, port=seeked_io.replace("inputs.", ""))
     else:
         full_io = Output(node=ref_io.node, port=seeked_io.replace("outputs.", ""))
@@ -769,7 +789,7 @@ def _restrictions_to_triples(
 
 
 def _wf_input_to_graph(
-    node_name: Input,
+    node_name: Input | AInput,
     data: dict,
     G: SemantikonDiGraph,
     t_box: bool,
@@ -903,7 +923,10 @@ def _wf_io_to_graph(
             g += _to_owl_restriction(data_node, SNS.denoted_by, SNS.identifier)
     else:
         data_node_name = G._get_data_node(io=node_name)
-        g.add((data_node, RDF.type, BASE[G.t_ns + data_node_name]))
+        t_data_node_name = G.recipe_graph._get_data_node(
+            io=cast(IO, G.recipe_of(node_name))
+        )
+        g.add((data_node, RDF.type, BASE[G.t_ns + t_data_node_name]))
         g.add(
             (
                 data_node,
@@ -989,14 +1012,20 @@ def _parse_global_io(
     return g
 
 
-def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
+def _nx_to_kg(G: SemantikonRecipeGraph | SemantikonInstanceGraph, t_box: bool) -> Graph:
     g = _get_bound_graph()
     for node_name, data in G.nodes.data():
-        data = data.copy()
+        data = G.get_data(node_name)
         if t_box:
             g.add((BASE[G.t_ns + node_name], RDF.type, OWL.Class))
         else:
-            g.add((BASE[G.a_ns + node_name], RDF.type, BASE[G.t_ns + node_name]))
+            g.add(
+                (
+                    BASE[G.a_ns + node_name],
+                    RDF.type,
+                    BASE[G.t_ns + G.recipe_of(node_name)],
+                )
+            )
         if isinstance(node_name, Node):
             g += _wf_node_to_graph(
                 node_name=node_name,
@@ -1004,7 +1033,7 @@ def _nx_to_kg(G: SemantikonDiGraph, t_box: bool) -> Graph:
                 G=G,
                 t_box=t_box,
             )
-        elif isinstance(node_name, Input):
+        elif isinstance(node_name, (Input, AInput)):
             g += _wf_input_to_graph(
                 node_name=node_name,
                 data=data,
