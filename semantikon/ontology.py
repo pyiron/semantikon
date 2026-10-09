@@ -24,8 +24,8 @@ from semantikon.converter import (
     parse_output_args,
 )
 from semantikon.flowrep_to_networkx import (
-    IO,
     AIO,
+    IO,
     AInput,
     AOutput,
     Input,
