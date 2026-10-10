@@ -8,7 +8,7 @@ from abc import ABC
 from dataclasses import asdict, dataclass, field, is_dataclass
 from functools import cached_property
 from hashlib import sha256
-from typing import Any
+from typing import Any, cast
 
 import flowrep as fr
 import networkx as nx
@@ -61,6 +61,34 @@ class Output(IO):
 
 
 @dataclass(frozen=True, slots=True)
+class ANode(Node):
+    owner: ANode | None = None
+    counter: int = 0
+
+    def __str__(self) -> str:
+        base = f"{self.owner}-{self.name}" if self.owner else self.name
+        return f"{base}_{self.counter}"
+
+
+@dataclass(frozen=True, slots=True)
+class AIO(IO):
+    node: ANode
+    counter: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class AInput(AIO):
+    def __str__(self) -> str:
+        return f"{self.node}-inputs-{self.port}_{self.counter}"
+
+
+@dataclass(frozen=True, slots=True)
+class AOutput(AIO):
+    def __str__(self) -> str:
+        return f"{self.node}-outputs-{self.port}_{self.counter}"
+
+
+@dataclass(frozen=True, slots=True)
 class TNodeData:
     type: str | None = None
     identifier: str | None = None
@@ -86,8 +114,6 @@ class TNodeData:
 class TIOData:
     position: int
     dtype: Any | None = None
-    value: Any | None = None
-    has_value: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_attrs(self) -> dict[str, Any]:
@@ -96,8 +122,6 @@ class TIOData:
         }
         if self.dtype is not None:
             attrs["dtype"] = self.dtype
-        if self.has_value:
-            attrs["value"] = self.value
         attrs.update(self.metadata)
         return attrs
 
@@ -119,17 +143,62 @@ class TOutputData(TIOData):
     pass
 
 
-class SemantikonDiGraph(nx.DiGraph):
-    """Workflow graph with deterministic namespace fragments.
+@dataclass(frozen=True, slots=True)
+class ANodeData:
+    """A-Box node attributes: a reference to the recipe node plus the status."""
 
-    The graph only stores suffix fragments (e.g. ``abc123_``) for type- and
-    assertion-level identifiers. Ontology-specific base namespaces are applied
-    later by the ontology serialization layer.
+    recipe: Node
+    status: str = "pending"
+    extras: dict[str, Any] = field(default_factory=dict)
+
+    def to_attrs(self) -> dict[str, Any]:
+        return {"recipe": self.recipe, "status": self.status, **self.extras}
+
+
+@dataclass(frozen=True, slots=True)
+class AIOData:
+    """A-Box port attributes: a reference to the recipe port plus the value."""
+
+    recipe: IO
+    value: Any | None = None
+    has_value: bool = False
+    status: str = "missing"
+    extras: dict[str, Any] = field(default_factory=dict)
+
+    def to_attrs(self) -> dict[str, Any]:
+        attrs: dict[str, Any] = {"recipe": self.recipe, "status": self.status}
+        if self.has_value:
+            attrs["value"] = self.value
+        attrs.update(self.extras)
+        return attrs
+
+
+class SemantikonRecipeGraph(nx.DiGraph):
+    """Workflow recipe (T-Box) graph with deterministic namespace fragments.
+
+    The graph only stores suffix fragments (e.g. ``abc123_``) for type-level
+    identifiers. Ontology-specific base namespaces are applied later by the
+    ontology serialization layer. It holds no values; see
+    :class:`SemantikonInstanceGraph` for the instance (A-Box) counterpart.
     """
+
+    @property
+    def recipe_graph(self) -> SemantikonRecipeGraph:
+        return self
+
+    def recipe_of(self, node: Node | IO) -> Node | IO:
+        return node
+
+    def get_data(self, node: Node | IO) -> dict[str, Any]:
+        return dict(self.nodes[node])
 
     def _validate_semantikon_attrs(
         self, step: IO | Node, attrs: dict[str, Any]
     ) -> dict[str, Any]:
+        if "value" in attrs:
+            raise ValueError(
+                "Recipe graphs do not hold values; use SemantikonInstanceGraph."
+            )
 
         if isinstance(step, Node):
             known = {"type", "identifier", "label", "function"}
@@ -143,12 +212,10 @@ class SemantikonDiGraph(nx.DiGraph):
             return node_meta.to_attrs()
 
         if isinstance(step, Input):
-            known = {"position", "dtype", "value", "default"}
+            known = {"position", "dtype", "default"}
             input_meta = TInputData(
                 position=attrs["position"],
                 dtype=attrs.get("dtype"),
-                value=attrs.get("value"),
-                has_value="value" in attrs,
                 default=attrs.get("default"),
                 has_default="default" in attrs,
                 metadata={k: v for k, v in attrs.items() if k not in known},
@@ -156,12 +223,10 @@ class SemantikonDiGraph(nx.DiGraph):
             return input_meta.to_attrs()
 
         if isinstance(step, Output):
-            known = {"position", "dtype", "value"}
+            known = {"position", "dtype"}
             output_meta = TOutputData(
                 position=attrs["position"],
                 dtype=attrs.get("dtype"),
-                value=attrs.get("value"),
-                has_value="value" in attrs,
                 metadata={k: v for k, v in attrs.items() if k not in known},
             )
             return output_meta.to_attrs()
@@ -195,6 +260,132 @@ class SemantikonDiGraph(nx.DiGraph):
             else self.graph["prefix"]
         )
         return h + "_"
+
+    def _get_data_node(self, io: IO) -> str:
+        while True:
+            candidate = [c for c in self.predecessors(io) if isinstance(c, IO)]
+            assert len(candidate) <= 1
+            if len(candidate) == 0:
+                return f"{io}_data"
+            io = candidate[0]
+
+    def _initialize_type(self):
+        for node, data in self.nodes.data():
+            if isinstance(node, Node):
+                data["type"] = data.get("type", "atomic")
+                if node.owner:
+                    self.nodes[node.owner]["type"] = "workflow"
+
+    def get_type(self, node_name: Node) -> str:
+        """
+        Get the type of a node in the graph.
+
+        Parameters:
+            node_name (Node): The name of the node for which to retrieve the
+                type.
+
+        Returns:
+            str: The type of the node. Possible values are "atomic",
+                "constant", or "workflow".
+
+        Raises:
+            ValueError: If the node is not found in the graph.
+        """
+        if "type" not in self.nodes[node_name]:
+            self._initialize_type()
+        return self.nodes[node_name]["type"]
+
+
+SemantikonDiGraph = SemantikonRecipeGraph
+
+
+class SemantikonInstanceGraph(nx.DiGraph):
+    """Workflow instance (A-Box) graph.
+
+    Nodes are :class:`ANode`, :class:`AInput` and :class:`AOutput`. Each node
+    stores a ``recipe`` attribute referencing the corresponding node of the
+    :class:`SemantikonRecipeGraph` (``recipe_graph``), together with the
+    instance-specific data (``value``, ``status``, ``hash``).
+    """
+
+    def __init__(
+        self, *args, recipe_graph: SemantikonRecipeGraph | None = None, **attr
+    ):
+        super().__init__(*args, **attr)
+        if recipe_graph is not None:
+            self.graph["recipe_graph"] = recipe_graph
+
+    @property
+    def recipe_graph(self) -> SemantikonRecipeGraph:
+        return self.graph["recipe_graph"]
+
+    def recipe_of(self, node: ANode | AIO) -> Node | IO:
+        return self.nodes[node]["recipe"]
+
+    def get_data(self, node: ANode | AIO) -> dict[str, Any]:
+        """Recipe attributes of the node updated with its instance attributes."""
+        return self.recipe_graph.get_data(self.recipe_of(node)) | dict(self.nodes[node])
+
+    def _validate_instance_attrs(
+        self, step: ANode | AIO, attrs: dict[str, Any]
+    ) -> dict[str, Any]:
+        if "recipe" not in attrs:
+            raise ValueError(f"{step} requires a reference to its recipe node.")
+        recipe = attrs["recipe"]
+        recipe_type: type[Node | Input | Output]
+        if isinstance(step, ANode):
+            recipe_type = Node
+        elif isinstance(step, AInput):
+            recipe_type = Input
+        elif isinstance(step, AOutput):
+            recipe_type = Output
+        else:
+            raise TypeError(f"Unknown step type: {type(step)}")
+        if type(recipe) is not recipe_type:
+            raise ValueError(f"{step} requires a {recipe_type.__name__} recipe node.")
+        if "recipe_graph" not in self.graph or recipe not in self.recipe_graph:
+            raise ValueError(
+                f"{step} references a recipe node not in its recipe graph."
+            )
+        known = {"recipe", "status", "value"}
+        extras = {k: v for k, v in attrs.items() if k not in known}
+        if isinstance(step, ANode):
+            return ANodeData(
+                recipe=cast(Node, recipe),
+                status=attrs.get("status", "pending"),
+                extras=extras,
+            ).to_attrs()
+        if isinstance(step, AIO):
+            has_value = "value" in attrs
+            return AIOData(
+                recipe=cast(IO, recipe),
+                value=attrs.get("value"),
+                has_value=has_value,
+                status=attrs.get("status", "ready" if has_value else "missing"),
+                extras=extras,
+            ).to_attrs()
+        raise TypeError(f"Unknown step type: {type(step)}")
+
+    def add_node(self, node_for_adding, **attr):  # type: ignore[override]
+        assert isinstance(node_for_adding, (ANode, AIO))
+        super().add_node(
+            node_for_adding, **self._validate_instance_attrs(node_for_adding, attr)
+        )
+
+    def add_nodes_from(self, nodes_for_adding, **attr):
+        for n in nodes_for_adding:
+            if isinstance(n, tuple):
+                self.add_node(n[0], **(attr | n[1]))
+            else:
+                self.add_node(n, **attr)
+
+    @property
+    def t_ns(self) -> str:
+        """Type-level namespace fragment of the underlying recipe."""
+        return self.recipe_graph.t_ns
+
+    def get_type(self, node: ANode) -> str:
+        return self.recipe_graph.get_type(self.recipe_of(node))  # type: ignore[arg-type]
 
     @cached_property
     def a_ns(self) -> str:
@@ -255,7 +446,7 @@ class SemantikonDiGraph(nx.DiGraph):
 
                 child_label = current_label
                 if child_label is None:
-                    child_label = self.nodes[child].get("label", child.port)
+                    child_label = self.get_data(child).get("label", child.port)
 
                 self.nodes[child]["hash"] = current_hash + f"@{child_label}"
                 stack.append((child, current_hash, child_label))
@@ -274,31 +465,12 @@ class SemantikonDiGraph(nx.DiGraph):
                 hash_dict[data["hash"]] = data["value"]
         return hash_dict
 
-    def _initialize_type(self):
-        for node, data in self.nodes.data():
-            if isinstance(node, Node):
-                data["type"] = data.get("type", "atomic")
-                if node.owner:
-                    self.nodes[node.owner]["type"] = "workflow"
-
-    def get_type(self, node_name: Node) -> str:
-        """
-        Get the type of a node in the graph.
-
-        Parameters:
-            node_name (Node): The name of the node for which to retrieve the
-                type.
-
-        Returns:
-            str: The type of the node. Possible values are "atomic",
-                "constant", or "workflow".
-
-        Raises:
-            ValueError: If the node is not found in the graph.
-        """
-        if "type" not in self.nodes[node_name]:
-            self._initialize_type()
-        return self.nodes[node_name]["type"]
+    def _remove_constant(self) -> None:
+        to_delete = []
+        for node in self.nodes:
+            if isinstance(node, ANode) and self.get_type(node) == "constant":
+                to_delete.extend([node, *self.successors(node)])
+        self.remove_nodes_from(to_delete)
 
 
 def _infer_workflow_label(
@@ -321,9 +493,14 @@ def _workflow_to_networkx(
     workflow: fr.schemas.DagData,
     *,
     prefix: str | None = None,
-) -> SemantikonDiGraph:
+) -> tuple[SemantikonRecipeGraph, dict[IO, Any]]:
+    """
+    Build the recipe graph and collect the port values separately (they belong
+    to the instance graph).
+    """
     root_label = _infer_workflow_label(workflow.recipe)
-    G = SemantikonDiGraph(prefix=prefix)
+    G = SemantikonRecipeGraph(prefix=prefix)
+    values: dict[IO, Any] = {}
     G.name = prefix if prefix is not None else root_label
 
     def _add_node(
@@ -367,7 +544,7 @@ def _workflow_to_networkx(
             inp_name = Input(node=node_name, port=label)
             io_data: dict[str, Any] = {"position": position}
             if not isinstance(port.value, fr.schemas.NotData):
-                io_data["value"] = port.value
+                values[inp_name] = port.value
             if type_hint := annotation_to_type_hint(port.annotation):
                 io_data["dtype"] = type_hint
             if type_metadata := annotation_to_type_metadata(port.annotation):
@@ -381,7 +558,7 @@ def _workflow_to_networkx(
             out_name = Output(node=node_name, port=label)
             io_data = {"position": position}
             if not isinstance(port.value, fr.schemas.NotData):
-                io_data["value"] = port.value
+                values[out_name] = port.value
             if type_hint := annotation_to_type_hint(port.annotation):
                 io_data["dtype"] = type_hint
             if type_metadata := annotation_to_type_metadata(port.annotation):
@@ -433,13 +610,40 @@ def _workflow_to_networkx(
                 )
 
     _add_node(workflow, Node(root_label), workflow_label=Node(root_label))
-    return G
+    return G, values
 
 
-def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str, Any]]:
+def _workflow_to_instance_graph(
+    recipe_graph: SemantikonRecipeGraph, values: dict[IO, Any]
+) -> SemantikonInstanceGraph:
+    def _a_node(node: Node) -> ANode:
+        return ANode(name=node.name, owner=_a_node(node.owner) if node.owner else None)
+
+    def _a_io(io: IO) -> AIO:
+        cls = AInput if isinstance(io, Input) else AOutput
+        return cls(node=_a_node(io.node), port=io.port)
+
+    def _a(node: Node | IO) -> ANode | AIO:
+        return _a_node(node) if isinstance(node, Node) else _a_io(node)
+
+    A = SemantikonInstanceGraph(recipe_graph=recipe_graph)
+    for node in recipe_graph.nodes:
+        attrs: dict[str, Any] = {"recipe": node}
+        if isinstance(node, IO) and node in values:
+            attrs["value"] = values[node]
+        A.add_node(_a(node), **attrs)
+    for u, v in recipe_graph.edges:
+        A.add_edge(_a(u), _a(v))
+    return A
+
+
+def _get_hashed_node_dict_from_graph(
+    G: SemantikonInstanceGraph,
+) -> dict[str, dict[str, Any]]:
     hash_dict: dict[str, dict[str, Any]] = {}
     for node in nx.topological_sort(G):
         data = G.nodes[node]
+        merged = G.get_data(node)
         if isinstance(node, IO):
             for term in ("hash", "value"):
                 if term in data:
@@ -454,16 +658,16 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
         hash_dict_tmp: dict[str, Any] = {
             "inputs": {},
             "outputs": [
-                G.nodes[out].get("label", out.port) for out in G.successors(node)
+                G.get_data(out).get("label", out.port) for out in G.successors(node)
             ],
-            "node": copy.deepcopy(data.get("function")),
+            "node": copy.deepcopy(merged.get("function")),
         }
         if hash_dict_tmp["node"] is None:
             continue
         hash_dict_tmp["node"]["connected_inputs"] = []
         missing_input = False
         for inp in G.predecessors(node):
-            inp_data = G.nodes[inp]
+            inp_data = G.get_data(inp)
             if "hash" in inp_data:
                 hash_dict_tmp["inputs"][inp.port] = inp_data["hash"]
                 hash_dict_tmp["node"]["connected_inputs"].append(inp.port)
@@ -482,49 +686,34 @@ def _get_hashed_node_dict_from_graph(G: SemantikonDiGraph) -> dict[str, dict[str
             json.dumps(hash_dict_tmp, sort_keys=True).encode("utf-8")
         ).hexdigest()
         for out in G.successors(node):
-            G.nodes[out]["hash"] = h + "@" + G.nodes[out].get("label", out.port)
+            G.nodes[out]["hash"] = h + "@" + G.get_data(out).get("label", out.port)
         hash_dict_tmp["hash"] = h
         hash_dict[node] = hash_dict_tmp
     return hash_dict
 
 
-def _remove_constant(G: SemantikonDiGraph) -> None:
+def _remove_constant(G: SemantikonRecipeGraph, values: dict[IO, Any]) -> None:
     to_delete = []
     for node in G.nodes:
         if isinstance(node, Node) and G.get_type(node) == "constant":
             output_node = next(iter(G.successors(node)))
-            const_value = G.nodes[output_node]["value"]
+            const_value = values[output_node]
             to_delete.extend([node, output_node])
             for inp in G.successors(output_node):
                 G.nodes[inp]["constant_value"] = const_value
     G.remove_nodes_from(to_delete)
 
 
-def serialize_and_convert_to_networkx(
+def _to_dagdata(
     workflow: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
-    hash_data: bool = True,
-    prefix: str | None = None,
-) -> SemantikonDiGraph:
-    """
-    Serialize a flowrep workflow into a SemantikonDiGraph, optionally
-    hashing node data.
-
-    Args:
-        workflow (dict | DagData | WorkflowRecipe): Workflow representation.
-        hash_data (bool): Whether to hash node data.
-        prefix (str | None): Optional fixed prefix for type-level namespace
-            fragments.
-
-    Returns:
-        SemantikonDiGraph: The serialized workflow graph.
-    """
+) -> fr.schemas.DagData:
     if isinstance(workflow, dict):
         warnings.warn(
             "Passing a dict to 'serialize_and_convert_to_networkx' is deprecated"
             " and will be removed in a future version. Please pass a 'flowrep'"
             " object instead.",
             DeprecationWarning,
-            stacklevel=2,
+            stacklevel=3,
         )
         workflow = dict_to_nodedata(workflow)
     if isinstance(workflow, fr.schemas.WorkflowRecipe):
@@ -535,20 +724,69 @@ def serialize_and_convert_to_networkx(
             f" {fr.schemas.DagData.__name__!r}, or flowrep"
             f" {fr.schemas.WorkflowRecipe.__name__!r}, but got {type(workflow)}."
         )
+    return workflow
 
-    G = _workflow_to_networkx(workflow, prefix=prefix)
+
+def serialize_instance_to_networkx(
+    workflow: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
+    hash_data: bool = True,
+    prefix: str | None = None,
+) -> SemantikonInstanceGraph:
+    """
+    Serialize a flowrep workflow into a SemantikonInstanceGraph (A-Box),
+    optionally hashing node data. The corresponding recipe is available as
+    ``G.recipe_graph``.
+
+    Args:
+        workflow (dict | DagData | WorkflowRecipe): Workflow representation.
+        hash_data (bool): Whether to hash node data.
+        prefix (str | None): Optional fixed prefix for type-level namespace
+            fragments.
+
+    Returns:
+        SemantikonInstanceGraph: The serialized workflow instance graph.
+    """
+    dag = _to_dagdata(workflow)
+    R, values = _workflow_to_networkx(dag, prefix=prefix)
+    A = _workflow_to_instance_graph(R, values)
     if hash_data:
         try:
-            hashed_dict = _get_hashed_node_dict_from_graph(G)
+            hashed_dict = _get_hashed_node_dict_from_graph(A)
         except Exception as e:
             raise RuntimeError(
                 "Failed to hash workflow data - use only hashable inputs or set"
                 " hash_data=False"
             ) from e
         for node, data in hashed_dict.items():
-            G.append_hash(node, data["hash"])
-    _remove_constant(G)
-    return G
+            A.append_hash(node, data["hash"])
+    A._remove_constant()
+    _remove_constant(R, values)
+    return A
+
+
+def serialize_and_convert_to_networkx(
+    workflow: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
+    hash_data: bool = True,
+    prefix: str | None = None,
+) -> SemantikonRecipeGraph:
+    """
+    Serialize a flowrep workflow into a SemantikonRecipeGraph (T-Box). It does
+    not contain any values; use :func:`serialize_instance_to_networkx` for the
+    instance graph.
+
+    Args:
+        workflow (dict | DagData | WorkflowRecipe): Workflow representation.
+        hash_data (bool): Kept for backward compatibility; hashes belong to
+            the instance graph and are not computed here.
+        prefix (str | None): Optional fixed prefix for type-level namespace
+            fragments.
+
+    Returns:
+        SemantikonRecipeGraph: The serialized workflow recipe graph.
+    """
+    return serialize_instance_to_networkx(
+        workflow, hash_data=False, prefix=prefix
+    ).recipe_graph
 
 
 class _HashGraph:
@@ -587,7 +825,9 @@ class _HashGraph:
         )
 
     def _get_graph_hash(
-        self, G: SemantikonDiGraph, with_global_inputs: bool = True
+        self,
+        G: SemantikonRecipeGraph | SemantikonInstanceGraph,
+        with_global_inputs: bool = True,
     ) -> str:
         """
         Generate a deterministic hash for a graph, independent of OS,
@@ -597,14 +837,15 @@ class _HashGraph:
 
         for node in G.nodes:
             attrs = {}
-            if "function" in G.nodes[node]:
-                func = G.nodes[node]["function"]
+            data = G.get_data(node)
+            if "function" in data:
+                func = data["function"]
                 attrs["function"] = func.get("hash") or func.get("identifier")
             if G.in_degree(node) == 0 and with_global_inputs:
-                if "value" in G.nodes[node]:
-                    attrs["value"] = G.nodes[node]["value"]
-                elif "default" in G.nodes[node]:
-                    attrs["value"] = G.nodes[node]["default"]
+                if "value" in data:
+                    attrs["value"] = data["value"]
+                elif "default" in data:
+                    attrs["value"] = data["default"]
             if isinstance(node, IO):
                 attrs["port"] = node.port
             G_tmp.add_node(node, canon=self._canonical_json(attrs))
@@ -617,14 +858,17 @@ class _HashGraph:
         )
 
 
-def _get_graph_hash(G: SemantikonDiGraph, with_global_inputs: bool = True) -> str:
+def _get_graph_hash(
+    G: SemantikonRecipeGraph | SemantikonInstanceGraph,
+    with_global_inputs: bool = True,
+) -> str:
     """
     Generate a hash for a NetworkX graph, making sure that data types and
     values (except for the global ones) because they can often not be
     serialized.
 
     Args:
-        G (SemantikonDiGraph): input graph
+        G (SemantikonRecipeGraph | SemantikonInstanceGraph): input graph
         with_global_inputs (bool): if True, keep values for global inputs
 
     Returns:

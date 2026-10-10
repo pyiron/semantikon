@@ -69,7 +69,7 @@ def double_via_constant(x):
 class TestFlowrepToNetworkx(unittest.TestCase):
     def test_namespace_fragments_are_base_agnostic(self):
         wf_dict = my_kinetic_energy_workflow.flowrep_recipe
-        G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
+        G = ftn.serialize_instance_to_networkx(wf_dict, hash_data=False)
 
         self.assertIsInstance(G.t_ns, str)
         self.assertIsInstance(G.a_ns, str)
@@ -80,14 +80,13 @@ class TestFlowrepToNetworkx(unittest.TestCase):
 
         G_prefixed = ftn.serialize_and_convert_to_networkx(
             wf_dict,
-            hash_data=False,
             prefix="custom",
         )
         self.assertEqual(G_prefixed.t_ns, "custom_")
 
     def test_hash(self):
         wf_dict = my_kinetic_energy_workflow.flowrep_recipe
-        G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
+        G = ftn.serialize_and_convert_to_networkx(wf_dict)
         self.assertIsInstance(ftn._get_graph_hash(G), str)
         self.assertEqual(len(ftn._get_graph_hash(G)), 32)
         self.assertIn(
@@ -149,8 +148,8 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         wf_dict_two = fr.wfms.run_recipe(
             my_kinetic_energy_workflow.flowrep_recipe, distance=4.0, time=5.0, mass=6.0
         )
-        G_one = ftn.serialize_and_convert_to_networkx(wf_dict_one, hash_data=True)
-        G_two = ftn.serialize_and_convert_to_networkx(wf_dict_two, hash_data=True)
+        G_one = ftn.serialize_instance_to_networkx(wf_dict_one, hash_data=True)
+        G_two = ftn.serialize_instance_to_networkx(wf_dict_two, hash_data=True)
         self.assertEqual(
             ftn._get_graph_hash(G_one, with_global_inputs=False),
             ftn._get_graph_hash(G_two, with_global_inputs=False),
@@ -160,30 +159,30 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         wf_dict_run = fr.wfms.run_recipe(
             workflow_with_default_values.flowrep_recipe, distance=2, time=1, mass=4
         )
-        G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
-        G_run = ftn.serialize_and_convert_to_networkx(wf_dict_run, hash_data=False)
+        G = ftn.serialize_instance_to_networkx(wf_dict, hash_data=False)
+        G_run = ftn.serialize_instance_to_networkx(wf_dict_run, hash_data=False)
         self.assertEqual(ftn._get_graph_hash(G), ftn._get_graph_hash(G_run))
-        G_hash = ftn.serialize_and_convert_to_networkx(wf_dict_run, hash_data=True)
+        G_hash = ftn.serialize_instance_to_networkx(wf_dict_run, hash_data=True)
         self.assertDictEqual(
             {key.split("@")[1]: value for key, value in G_hash.get_hash_dict().items()},
             {"kinetic_energy": 8.0, "speed": 2.0},
         )
         with self.assertRaises(TypeError):
             wf_dict["inputs"]["distance"]["default"] = NewSpeedData
-            G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=True)
+            G = ftn.serialize_instance_to_networkx(wf_dict, hash_data=True)
             ftn._get_graph_hash(G, with_global_inputs=True)
         with self.assertRaises(TypeError):
             wf_dict["inputs"]["distance"]["default"] = BNode()
-            G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=True)
+            G = ftn.serialize_instance_to_networkx(wf_dict, hash_data=True)
             ftn._get_graph_hash(G, with_global_inputs=True)
 
     def test_hash_with_value(self):
         wf_dict = my_kinetic_energy_workflow.flowrep_recipe
-        G = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
+        G = ftn.serialize_instance_to_networkx(wf_dict, hash_data=False)
         wf_dict = fr.wfms.run_recipe(
             my_kinetic_energy_workflow.flowrep_recipe, distance=1, time=2, mass=3
         )
-        G_run = ftn.serialize_and_convert_to_networkx(wf_dict, hash_data=False)
+        G_run = ftn.serialize_instance_to_networkx(wf_dict, hash_data=False)
         self.assertEqual(
             ftn._get_graph_hash(G, with_global_inputs=False),
             ftn._get_graph_hash(G_run, with_global_inputs=False),
@@ -267,54 +266,71 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         )
         data = fr.schemas.DagData.from_recipe(recipe)
         data.input_ports["x"].value = 1.0
-        G = ftn._workflow_to_networkx(data)
+        recipe_graph, values = ftn._workflow_to_networkx(data)
+        G = ftn._workflow_to_instance_graph(recipe_graph, values)
         hashed = ftn._get_hashed_node_dict_from_graph(G)
         self.assertEqual(hashed, {})
 
-    def test_add_node_validates_semantikon_metadata(self):
-        G = ftn.SemantikonDiGraph()
+    def test_recipe_graph_has_no_values(self):
+        G = ftn.SemantikonRecipeGraph()
         node_in = ftn.Input(node=ftn.Node("in"), port="x")
-        G.add_node(node_in, position=0, value=None)
-        self.assertIn("value", G.nodes[node_in])
-        self.assertIsNone(G.nodes[node_in]["value"])
-
+        with self.assertRaises(ValueError):
+            G.add_node(node_in, position=0, value=3)
         node_out = ftn.Output(node=ftn.Node("out"), port="y")
         G.add_node(node_out, position=1, default=3.14)
         self.assertEqual(G.nodes[node_out]["default"], 3.14)
-        self.assertNotIn("value", G.nodes[node_out])
 
-    def test_add_nodes_from_validates_semantikon_metadata(self):
-        G = ftn.SemantikonDiGraph()
-        G.add_nodes_from(
-            [ftn.Input(ftn.Node("n1"), port="x"), ftn.Input(ftn.Node("n2"), port="x")],
-            position=0,
-            value=None,
-        )
+    def test_instance_graph_references_recipe(self):
+        wf = my_kinetic_energy_workflow.flowrep_recipe
+        data = fr.wfms.run_recipe(wf, distance=1.0, time=2.0, mass=3.0)
+        A = ftn.serialize_instance_to_networkx(data, hash_data=True)
+        R = A.recipe_graph
+        self.assertIsInstance(R, ftn.SemantikonRecipeGraph)
+        self.assertFalse(any("value" in d for _, d in R.nodes.data()))
+        for node, d in A.nodes.data():
+            self.assertIn(d["recipe"], R.nodes)
+            if isinstance(node, ftn.ANode):
+                self.assertIsInstance(node, ftn.ANode)
+                self.assertEqual(d["status"], "pending")
+            else:
+                self.assertIsInstance(node, (ftn.AInput, ftn.AOutput))
+        inputs = {
+            n.port: d["value"]
+            for n, d in A.nodes.data()
+            if isinstance(n, ftn.AInput) and n.node.owner is None
+        }
+        self.assertEqual(inputs, {"distance": 1.0, "time": 2.0, "mass": 3.0})
 
-        for n in ("n1", "n2"):
-            node = ftn.Input(ftn.Node(n), port="x")
-            self.assertEqual(G.nodes[node]["position"], 0)
-            self.assertIn("value", G.nodes[node])
-            self.assertIsNone(G.nodes[node]["value"])
+    def test_instance_graph_rejects_recipe_outside_graph(self):
+        recipe_graph = ftn.SemantikonRecipeGraph()
+        recipe_graph.add_node(ftn.Node("recipe"))
+        graph = ftn.SemantikonInstanceGraph(recipe_graph=recipe_graph)
 
-    def test_add_nodes_from_validates_per_node_semantikon_metadata_without_shared_attrs(
-        self,
-    ):
-        G = ftn.SemantikonDiGraph()
-        n_1 = ftn.Input(ftn.Node("n1"), port="x")
-        n_2 = ftn.Input(ftn.Node("n2"), port="y")
-        G.add_nodes_from(
-            [
-                (n_1, {"position": 0, "value": 1}),
-                (n_2, {"position": 1}),
-            ]
-        )
+        with self.assertRaises(ValueError):
+            graph.add_node(ftn.ANode("instance"), recipe=ftn.Node("other"))
 
-        self.assertEqual(G.nodes[n_1]["position"], 0)
-        self.assertEqual(G.nodes[n_1]["value"], 1)
+    def test_instance_graph_rejects_mismatched_recipe_types(self):
+        recipe_graph = ftn.SemantikonRecipeGraph()
+        recipe_node = ftn.Node("recipe")
+        recipe_input = ftn.Input(recipe_node, "x")
+        recipe_output = ftn.Output(recipe_node, "y")
+        recipe_graph.add_node(recipe_node)
+        recipe_graph.add_node(recipe_input, position=0)
+        recipe_graph.add_node(recipe_output, position=0)
+        graph = ftn.SemantikonInstanceGraph(recipe_graph=recipe_graph)
 
-        self.assertEqual(G.nodes[n_2]["position"], 1)
-        self.assertNotIn("value", G.nodes[n_2])
+        invalid_references = [
+            (ftn.ANode("node_instance"), recipe_input),
+            (ftn.AInput(ftn.ANode("input_instance"), "x"), recipe_output),
+            (ftn.AOutput(ftn.ANode("output_instance"), "y"), recipe_input),
+            (ftn.ANode("object_instance"), []),
+        ]
+        for instance, recipe in invalid_references:
+            with (
+                self.subTest(instance=instance, recipe=recipe),
+                self.assertRaises(ValueError),
+            ):
+                graph.add_node(instance, recipe=recipe)
 
     def test_add_nodes_from_preserves_default_on_inputs(self):
         G = ftn.SemantikonDiGraph()
@@ -331,20 +347,19 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         n_2 = ftn.Input(ftn.Node("n2"), port="y")
         G.add_nodes_from(
             [
-                (n_1, {"position": 0, "value": 1}),
+                (n_1, {"position": 0, "default": 1}),
                 (n_2, {"position": 1}),
             ],
-            value=None,
             dtype="float",
         )
 
         self.assertEqual(G.nodes[n_1]["position"], 0)
         self.assertEqual(G.nodes[n_1]["dtype"], "float")
-        self.assertEqual(G.nodes[n_1]["value"], 1)
+        self.assertEqual(G.nodes[n_1]["default"], 1)
 
         self.assertEqual(G.nodes[n_2]["position"], 1)
         self.assertEqual(G.nodes[n_2]["dtype"], "float")
-        self.assertIsNone(G.nodes[n_2]["value"])
+        self.assertNotIn("default", G.nodes[n_2])
 
     def test_constant(self):
         G = ftn.serialize_and_convert_to_networkx(double_via_constant.flowrep_recipe)
