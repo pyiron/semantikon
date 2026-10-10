@@ -301,6 +301,35 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         }
         self.assertEqual(inputs, {"distance": 1.0, "time": 2.0, "mass": 3.0})
 
+    def test_instance_graph_rejects_recipe_outside_graph(self):
+        recipe_graph = ftn.SemantikonRecipeGraph()
+        recipe_graph.add_node(ftn.Node("recipe"))
+        graph = ftn.SemantikonInstanceGraph(recipe_graph=recipe_graph)
+
+        with self.assertRaises(ValueError):
+            graph.add_node(ftn.ANode("instance"), recipe=ftn.Node("other"))
+
+    def test_instance_graph_rejects_mismatched_recipe_types(self):
+        recipe_graph = ftn.SemantikonRecipeGraph()
+        recipe_node = ftn.Node("recipe")
+        recipe_input = ftn.Input(recipe_node, "x")
+        recipe_output = ftn.Output(recipe_node, "y")
+        recipe_graph.add_node(recipe_node)
+        recipe_graph.add_node(recipe_input, position=0)
+        recipe_graph.add_node(recipe_output, position=0)
+        graph = ftn.SemantikonInstanceGraph(recipe_graph=recipe_graph)
+
+        invalid_references = [
+            (ftn.ANode("node_instance"), recipe_input),
+            (ftn.AInput(ftn.ANode("input_instance"), "x"), recipe_output),
+            (ftn.AOutput(ftn.ANode("output_instance"), "y"), recipe_input),
+            (ftn.ANode("object_instance"), []),
+        ]
+        for instance, recipe in invalid_references:
+            with self.subTest(instance=instance, recipe=recipe):
+                with self.assertRaises(ValueError):
+                    graph.add_node(instance, recipe=recipe)
+
     def test_add_nodes_from_preserves_default_on_inputs(self):
         G = ftn.SemantikonDiGraph()
         n_1 = ftn.Input(ftn.Node("n1"), port="x")
