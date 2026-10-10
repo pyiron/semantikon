@@ -8,7 +8,7 @@ from abc import ABC
 from dataclasses import asdict, dataclass, field, is_dataclass
 from functools import cached_property
 from hashlib import sha256
-from typing import Any
+from typing import Any, cast
 
 import flowrep as fr
 import networkx as nx
@@ -332,6 +332,7 @@ class SemantikonInstanceGraph(nx.DiGraph):
         if "recipe" not in attrs:
             raise ValueError(f"{step} requires a reference to its recipe node.")
         recipe = attrs["recipe"]
+        recipe_type: type[Node | Input | Output]
         if isinstance(step, ANode):
             recipe_type = Node
         elif isinstance(step, AInput):
@@ -341,9 +342,7 @@ class SemantikonInstanceGraph(nx.DiGraph):
         else:
             raise TypeError(f"Unknown step type: {type(step)}")
         if type(recipe) is not recipe_type:
-            raise ValueError(
-                f"{step} requires a {recipe_type.__name__} recipe node."
-            )
+            raise ValueError(f"{step} requires a {recipe_type.__name__} recipe node.")
         if "recipe_graph" not in self.graph or recipe not in self.recipe_graph:
             raise ValueError(
                 f"{step} references a recipe node not in its recipe graph."
@@ -352,14 +351,14 @@ class SemantikonInstanceGraph(nx.DiGraph):
         extras = {k: v for k, v in attrs.items() if k not in known}
         if isinstance(step, ANode):
             return ANodeData(
-                recipe=recipe,
+                recipe=cast(Node, recipe),
                 status=attrs.get("status", "pending"),
                 extras=extras,
             ).to_attrs()
         if isinstance(step, AIO):
             has_value = "value" in attrs
             return AIOData(
-                recipe=recipe,
+                recipe=cast(IO, recipe),
                 value=attrs.get("value"),
                 has_value=has_value,
                 status=attrs.get("status", "ready" if has_value else "missing"),

@@ -326,9 +326,11 @@ class TestFlowrepToNetworkx(unittest.TestCase):
             (ftn.ANode("object_instance"), []),
         ]
         for instance, recipe in invalid_references:
-            with self.subTest(instance=instance, recipe=recipe):
-                with self.assertRaises(ValueError):
-                    graph.add_node(instance, recipe=recipe)
+            with (
+                self.subTest(instance=instance, recipe=recipe),
+                self.assertRaises(ValueError),
+            ):
+                graph.add_node(instance, recipe=recipe)
 
     def test_add_nodes_from_preserves_default_on_inputs(self):
         G = ftn.SemantikonDiGraph()
