@@ -16,8 +16,8 @@ from rdflib.query import ResultRow
 
 from semantikon.converter import to_identifier
 from semantikon.flowrep_dict import dict_to_nodedata
-from semantikon.flowrep_to_networkx import IO, Input, Node
-from semantikon.ontology import SNS, serialize_and_convert_to_networkx
+from semantikon.flowrep_to_networkx import IO, AInput, Node
+from semantikon.ontology import SNS, serialize_instance_to_networkx
 
 
 def _get_port_with_fallback(
@@ -112,7 +112,7 @@ def request_values(
             ):
                 wf_dict.input_ports[key].value = data.default
 
-    G = serialize_and_convert_to_networkx(wf_dict)
+    G = serialize_instance_to_networkx(wf_dict)
 
     # Collect all hashes that need values, along with their target locations.
     hash_nodes: list[dict[str, Any]] = []
@@ -174,7 +174,7 @@ def request_values(
             continue
         value = hash_to_value[h]
         ports_attr = (
-            "input_ports" if isinstance(item["node"], Input) else "output_ports"
+            "input_ports" if isinstance(item["node"], AInput) else "output_ports"
         )
         if item["node"].node.owner:
             _get_port_with_fallback(

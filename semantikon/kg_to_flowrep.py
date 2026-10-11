@@ -227,7 +227,9 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
             assert (
                 len(output_node) == 1
             ), f"Constant node {node_name} should have one output."
-            return fr.schemas.ConstantRecipe(constant=G.nodes[output_node[0]]["value"])
+            return fr.schemas.ConstantRecipe(
+                constant=G.nodes[output_node[0]]["constant_value"]
+            )
         func_obj = _get_function_from_dict(node_data.get("function"))
         if node_type == "workflow":
             sorted_input = [
@@ -633,9 +635,8 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
         # Create the constant output node
         const_output_attrs = TOutputData(
             position=0,
-            value=data["constant_value"],
-            has_value=True,
             dtype=data.get("dtype", None),
+            metadata={"constant_value": data["constant_value"]},
         )
         G.add_node(const_output_name, **const_output_attrs.to_attrs())
 
