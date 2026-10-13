@@ -9,7 +9,7 @@ try:
 except ImportError:
     cwl = None
 
-from semantikon.flowrep_to_networkx import Input, Node, Output
+from semantikon.graph_nodes import Input, Node, Output
 from semantikon.ontology import SemantikonDiGraph, function_to_knowledge_graph
 
 
