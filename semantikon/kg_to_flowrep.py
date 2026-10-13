@@ -12,14 +12,11 @@ from rdflib.namespace import SH
 
 from semantikon.flowrep_dict import _flowrep_recipe_from_callable
 from semantikon.flowrep_to_networkx import (
-    IO,
-    Input,
-    Node,
-    Output,
     SemantikonDiGraph,
     TNodeData,
     TOutputData,
 )
+from semantikon.graph_nodes import IO, Input, Node, Output
 from semantikon.ontology import SNS
 
 

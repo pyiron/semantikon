@@ -25,18 +25,15 @@ from semantikon.converter import (
 )
 from semantikon.flowrep_to_networkx import (
     AIO,
-    IO,
     AInput,
     AOutput,
-    Input,
-    Node,
-    Output,
     SemantikonDiGraph,
     SemantikonInstanceGraph,
     SemantikonRecipeGraph,
     _get_graph_hash,
     serialize_instance_to_networkx,
 )
+from semantikon.graph_nodes import IO, Input, Node, Output
 from semantikon.metadata import SemantikonURI
 from semantikon.qudt import UnitsDict
 
