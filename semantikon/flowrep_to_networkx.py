@@ -667,13 +667,13 @@ def _remove_constant(G: SemantikonRecipeGraph, values: dict[IO, Any]) -> None:
 
 
 def _to_dagdata(
-    workflow: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
+    workflow: fr.schemas.DagData | fr.schemas.WorkflowRecipe,
 ) -> fr.schemas.DagData:
     if isinstance(workflow, fr.schemas.WorkflowRecipe):
         workflow = fr.schemas.DagData.from_recipe(workflow)
     if not isinstance(workflow, fr.schemas.DagData):
         raise TypeError(
-            f"Invalid workflow type. Expected dict, flowrep"
+            f"Invalid workflow type. Expected flowrep"
             f" {fr.schemas.DagData.__name__!r}, or flowrep"
             f" {fr.schemas.WorkflowRecipe.__name__!r}, but got {type(workflow)}."
         )
@@ -681,7 +681,7 @@ def _to_dagdata(
 
 
 def serialize_instance_to_networkx(
-    workflow: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
+    workflow: fr.schemas.DagData | fr.schemas.WorkflowRecipe,
     hash_data: bool = True,
     prefix: str | None = None,
 ) -> SemantikonInstanceGraph:
@@ -691,7 +691,7 @@ def serialize_instance_to_networkx(
     ``G.recipe_graph``.
 
     Args:
-        workflow (dict | DagData | WorkflowRecipe): Workflow representation.
+        workflow (DagData | WorkflowRecipe): Workflow representation.
         hash_data (bool): Whether to hash node data.
         prefix (str | None): Optional fixed prefix for type-level namespace
             fragments.
@@ -718,7 +718,7 @@ def serialize_instance_to_networkx(
 
 
 def serialize_and_convert_to_networkx(
-    workflow: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
+    workflow: fr.schemas.DagData | fr.schemas.WorkflowRecipe,
     hash_data: bool = True,
     prefix: str | None = None,
 ) -> SemantikonRecipeGraph:
@@ -728,7 +728,7 @@ def serialize_and_convert_to_networkx(
     instance graph.
 
     Args:
-        workflow (dict | DagData | WorkflowRecipe): Workflow representation.
+        workflow (DagData | WorkflowRecipe): Workflow representation.
         hash_data (bool): Kept for backward compatibility; hashes belong to
             the instance graph and are not computed here.
         prefix (str | None): Optional fixed prefix for type-level namespace
