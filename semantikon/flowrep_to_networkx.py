@@ -3,7 +3,6 @@ from __future__ import annotations
 import copy
 import json
 import unicodedata
-import warnings
 from dataclasses import asdict, dataclass, field, is_dataclass
 from functools import cached_property
 from hashlib import sha256
@@ -670,15 +669,6 @@ def _remove_constant(G: SemantikonRecipeGraph, values: dict[IO, Any]) -> None:
 def _to_dagdata(
     workflow: dict | fr.schemas.DagData | fr.schemas.WorkflowRecipe,
 ) -> fr.schemas.DagData:
-    if isinstance(workflow, dict):
-        warnings.warn(
-            "Passing a dict to 'serialize_and_convert_to_networkx' is deprecated"
-            " and will be removed in a future version. Please pass a 'flowrep'"
-            " object instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        workflow = dict_to_nodedata(workflow)
     if isinstance(workflow, fr.schemas.WorkflowRecipe):
         workflow = fr.schemas.DagData.from_recipe(workflow)
     if not isinstance(workflow, fr.schemas.DagData):

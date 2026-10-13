@@ -14,7 +14,6 @@ from rdflib import RDFS, Graph, Literal, URIRef
 from rdflib.query import ResultRow
 
 from semantikon.converter import to_identifier
-from semantikon.flowrep_dict import dict_to_nodedata
 from semantikon.flowrep_to_networkx import AInput
 from semantikon.graph_nodes import IO, Node
 from semantikon.ontology import SNS, serialize_instance_to_networkx
