@@ -12,14 +12,11 @@ from rdflib.namespace import SH
 
 from semantikon.flowrep_dict import _flowrep_recipe_from_callable
 from semantikon.flowrep_to_networkx import (
-    IO,
-    Input,
-    Node,
-    Output,
     SemantikonDiGraph,
     TNodeData,
     TOutputData,
 )
+from semantikon.graph_nodes import IO, Input, Node, Output
 from semantikon.ontology import SNS
 
 
@@ -227,12 +224,29 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
             assert (
                 len(output_node) == 1
             ), f"Constant node {node_name} should have one output."
-            return fr.schemas.ConstantRecipe(constant=G.nodes[output_node[0]]["value"])
-        if "function" not in node_data:
-            raise ValueError(f"Node {node_name!r} is missing function metadata.")
-        func_obj = _get_function_from_dict(node_data["function"])
+            return fr.schemas.ConstantRecipe(
+                constant=G.nodes[output_node[0]]["constant_value"]
+            )
+        func_obj = _get_function_from_dict(node_data.get("function"))
         if node_type == "workflow":
-            base_recipe = _flowrep_recipe_from_callable(func_obj, node_type="workflow")
+            sorted_input = [
+                n.port
+                for n in sorted(
+                    G.predecessors(node_name), key=lambda x: G.nodes[x]["position"]
+                )
+            ]
+            sorted_output = [
+                n.port
+                for n in sorted(
+                    G.successors(node_name), key=lambda x: G.nodes[x]["position"]
+                )
+            ]
+            if func_obj is None:
+                base_recipe = None
+            else:
+                base_recipe = _flowrep_recipe_from_callable(
+                    func_obj, node_type="workflow"
+                )
             nodes: dict[str, fr.schemas.RecipeDiscrimination] = {}
             input_edges: fr.schemas.InputEdges = {}
             edges: fr.schemas.Edges = {}
@@ -284,19 +298,19 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
                     and v.node == node_name
                 ):
                     u_port = _normalize_output_label(u.port, nodes[u.node.name].outputs)
-                    v_port = _normalize_output_label(v.port, list(base_recipe.outputs))
+                    v_port = _normalize_output_label(v.port, sorted_output)
                     output_edges[fr.schemas.OutputTarget(port=v_port)] = (
                         fr.schemas.SourceHandle(node=u.node.name, port=u_port)
                     )
             return fr.schemas.WorkflowRecipe(
-                inputs=list(base_recipe.inputs),
-                outputs=list(base_recipe.outputs),
+                inputs=sorted_input,
+                outputs=sorted_output,
                 nodes=nodes,
                 input_edges=input_edges,
                 edges=edges,
                 output_edges=output_edges,
-                reference=base_recipe.reference,
-                description=base_recipe.description,
+                reference=base_recipe.reference if base_recipe else None,
+                description=base_recipe.description if base_recipe else None,
             )
         if node_type == "atomic":
             return _flowrep_recipe_from_callable(func_obj, node_type="atomic")
@@ -618,9 +632,8 @@ def _reconstruct_constant_nodes(G: nx.DiGraph) -> None:
         # Create the constant output node
         const_output_attrs = TOutputData(
             position=0,
-            value=data["constant_value"],
-            has_value=True,
             dtype=data.get("dtype", None),
+            metadata={"constant_value": data["constant_value"]},
         )
         G.add_node(const_output_name, **const_output_attrs.to_attrs())
 
