@@ -10,7 +10,6 @@ from pyiron_snippets import retrieve
 from rdflib import OWL, RDF, RDFS, Graph, Literal, URIRef, term
 from rdflib.namespace import SH
 
-from semantikon.flowrep_dict import _flowrep_recipe_from_callable
 from semantikon.flowrep_to_networkx import (
     SemantikonDiGraph,
     TNodeData,
@@ -18,6 +17,13 @@ from semantikon.flowrep_to_networkx import (
 )
 from semantikon.graph_nodes import IO, Input, Node, Output
 from semantikon.ontology import SNS
+
+
+def _flowrep_recipe_from_callable(function: Any, *, node_type: str):
+    if hasattr(function, "flowrep_recipe"):
+        return function.flowrep_recipe
+    decorator = fr.tools.atomic if node_type == "atomic" else fr.tools.workflow
+    return decorator(function).flowrep_recipe
 
 
 def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:

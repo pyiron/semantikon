@@ -15,7 +15,7 @@ class TestSemantikonURI(unittest.TestCase):
     ``rdflib.URIRef.__reduce__`` hard-codes ``URIRef`` as the reconstruction
     class, so without an override a (deep)copy or unpickle of a
     ``SemantikonURI`` silently degrades to a plain ``URIRef`` and loses its
-    blank-node instance. ``flowrep_dict`` now puts these into dicts that
+    blank-node instance. These values are included in dicts that
     ``semantikon.workflow.to_semantikon_workflow_dict`` deep-copies, so the
     coercion would corrupt the ontology triples.
     """

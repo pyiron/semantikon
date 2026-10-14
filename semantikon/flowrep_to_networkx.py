@@ -6,7 +6,7 @@ import unicodedata
 from dataclasses import asdict, dataclass, field, is_dataclass
 from functools import cached_property
 from hashlib import sha256
-from typing import Any, cast
+from typing import Annotated, Any, cast, get_args, get_origin
 
 import flowrep as fr
 import networkx as nx
@@ -14,12 +14,48 @@ from pyiron_snippets import retrieve
 from rdflib import BNode
 from rdflib.term import IdentifiedNode
 
-from semantikon.converter import get_function_dict
-from semantikon.flowrep_dict import (
-    annotation_to_type_hint,
-    annotation_to_type_metadata,
-)
+from semantikon.converter import get_function_dict, parse_metadata
+from semantikon.datastructure import TypeMetadata
 from semantikon.graph_nodes import IO, Input, Node, Output
+
+
+def annotation_to_type_hint(annotation: Any) -> Any | None:
+    """
+    Extract the underlying type hint from a parameter annotation.
+
+    Plain annotations (``int`` in ``def foo(x: int)``) are returned as-is;
+    ``Annotated[T, ...]`` is unwrapped to ``T``.
+
+    Args:
+        annotation: A parameter annotation, plain or ``Annotated``.
+
+    Returns:
+        The underlying type, or ``None`` if ``annotation`` is ``None``.
+    """
+    if annotation is None:
+        return None
+    elif get_origin(annotation) is Annotated:
+        return get_args(annotation)[0]
+    else:
+        return annotation
+
+
+def annotation_to_type_metadata(annotation: Any) -> TypeMetadata | None:
+    """
+    Extract ``TypeMetadata`` from an ``Annotated`` parameter annotation.
+
+    Plain annotations (``int`` in ``def foo(x: int)``) carry no metadata and
+    yield ``None``; only ``Annotated[T, ...]`` is parsed.
+
+    Args:
+        annotation: A parameter annotation, plain or ``Annotated``.
+
+    Returns:
+        The parsed metadata, or ``None`` if ``annotation`` is not ``Annotated``.
+    """
+    if annotation is None or get_origin(annotation) is not Annotated:
+        return None
+    return parse_metadata(annotation)
 
 
 @dataclass(frozen=True, slots=True)
