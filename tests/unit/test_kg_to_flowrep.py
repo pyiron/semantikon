@@ -24,6 +24,37 @@ def add_more(x):
 
 
 @fr.workflow
+def zipped_loop(xs, ys, k):
+    out = []
+    for x, y in zip(xs, ys):
+        p = add(x, y)
+        q = add(p, k)
+        out.append(q)
+    return out
+
+
+@fr.workflow
+def nested_loop(xs, ys):
+    out = []
+    for x in xs:
+        for y in ys:
+            p = add(x, y)
+            out.append(p)
+    return out
+
+
+@fr.workflow
+def forwarding_loop(xs, k):
+    out = []
+    kept = []
+    for x in xs:
+        p = add(x, k)
+        out.append(p)
+        kept.append(x)
+    return out, kept
+
+
+@fr.workflow
 def my_workflow(x=1, y=2):
     z = add_one(x)
     q = add_more(z)
@@ -306,6 +337,22 @@ class TestKgToFlowrep(unittest.TestCase):
         self.assertRaises(
             ValueError, kgf._ensure_workflow_name, uri_to_node, "unknown_workflow"
         )
+
+    def test_for_each_round_trip(self):
+        cases = [
+            (zipped_loop, dict(xs=[1, 2], ys=[3, 4], k=2)),
+            (nested_loop, dict(xs=[1, 2], ys=[3, 4, 5])),
+            (forwarding_loop, dict(xs=[1, 2], k=3)),
+        ]
+        for workflow, inputs in cases:
+            recipe = workflow.flowrep_recipe
+            executed = fr.wfms.run_recipe(recipe, **inputs)
+            for source in (recipe, executed):
+                with self.subTest(
+                    workflow=workflow.__name__, executed=source is executed
+                ):
+                    graph = get_knowledge_graph(source, prefix="W")
+                    self.assertEqual(kg2recipe(graph), recipe)
 
 
 if __name__ == "__main__":

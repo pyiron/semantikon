@@ -16,7 +16,7 @@ from semantikon.flowrep_to_networkx import (
     TOutputData,
 )
 from semantikon.graph_nodes import IO, Input, Node, Output
-from semantikon.ontology import SNS
+from semantikon.ontology import _NODE_TYPE_CLASSES, SNS
 
 
 def _flowrep_recipe_from_callable(function: Any, *, node_type: str):
@@ -222,6 +222,111 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
             return "output_0"
         return label
 
+    def _sorted_ports(node_name: Node, ports) -> list[str]:
+        return [
+            n.port
+            for n in sorted(
+                (p for p in ports if isinstance(p, IO) and p.node == node_name),
+                key=lambda x: G.nodes[x]["position"],
+            )
+        ]
+
+    def _process_for_each(node_name: Node) -> fr.schemas.ForEachRecipe:
+        """
+        Collapse the distributor / body / collector structure of a for-each node
+        back into the edges of a ``ForEachRecipe``.
+        """
+        children = {
+            c.name: c for c in G.nodes if isinstance(c, Node) and c.owner == node_name
+        }
+        distributors = {
+            n.name: n for n in children.values() if G.get_type(n) == "distributor"
+        }
+        collectors = {
+            n.name: n for n in children.values() if G.get_type(n) == "collector"
+        }
+        bodies = [
+            n
+            for n in children.values()
+            if n.name not in distributors and n.name not in collectors
+        ]
+        if len(bodies) != 1:
+            raise ValueError(
+                f"A for-each node needs exactly one body, but {node_name} has"
+                f" {[b.name for b in bodies]}."
+            )
+        body = bodies[0]
+        body_recipe = _process_node(body)
+
+        # Parent port feeding each distributor
+        parent_port: dict[str, str] = {}
+        input_edges: fr.schemas.InputEdges = {}
+        for u in G.nodes:
+            if not (isinstance(u, Input) and u.node == node_name):
+                continue
+            for v in G.successors(u):
+                if not isinstance(v, Input):
+                    continue
+                if v.node.name in distributors and v.node.owner == node_name:
+                    parent_port[v.node.name] = u.port
+                elif v.node == body:
+                    input_edges[
+                        fr.schemas.TargetHandle(node=body.name, port=v.port)
+                    ] = fr.schemas.InputSource(port=u.port)
+
+        nested: list[tuple[int, str]] = []
+        zipped: list[tuple[int, str]] = []
+        for name, dist in distributors.items():
+            out = Output(node=dist, port="item")
+            for v in G.successors(out):
+                if isinstance(v, Input) and v.node == body:
+                    input_edges[
+                        fr.schemas.TargetHandle(node=body.name, port=v.port)
+                    ] = fr.schemas.InputSource(port=parent_port[name])
+                    mode = G.nodes[dist].get("iteration", "nested")
+                    (zipped if mode == "zipped" else nested).append(
+                        (G.nodes[dist].get("iteration_index", 0), v.port)
+                    )
+
+        sorted_output = _sorted_ports(node_name, G.successors(node_name))
+        output_edges: fr.schemas.OutputEdges = {}
+        for coll in collectors.values():
+            (source,) = [
+                p
+                for p in G.predecessors(Input(node=coll, port="item"))
+                if isinstance(p, Output)
+            ]
+            target_ports = [
+                v.port
+                for v in G.successors(Output(node=coll, port="items"))
+                if isinstance(v, Output) and v.node == node_name
+            ]
+            if source.node == body:
+                handle: fr.schemas.SourceHandle | fr.schemas.InputSource = (
+                    fr.schemas.SourceHandle(
+                        node=body.name,
+                        port=_normalize_output_label(source.port, body_recipe.outputs),
+                    )
+                )
+            else:
+                handle = fr.schemas.InputSource(port=parent_port[source.node.name])
+            for port in target_ports:
+                output_edges[
+                    fr.schemas.OutputTarget(
+                        port=_normalize_output_label(port, sorted_output)
+                    )
+                ] = handle
+
+        return fr.schemas.ForEachRecipe(
+            inputs=_sorted_ports(node_name, G.predecessors(node_name)),
+            outputs=sorted_output,
+            body_node=fr.schemas.LabeledRecipe(label=body.name, recipe=body_recipe),
+            input_edges=input_edges,
+            output_edges=output_edges,
+            nested_ports=[p for _, p in sorted(nested)],
+            zipped_ports=[p for _, p in sorted(zipped)],
+        )
+
     def _process_node(node_name: Node) -> fr.schemas.RecipeDiscrimination:
         node_data = G.nodes[node_name]
         node_type = G.get_type(node_name)
@@ -233,6 +338,8 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
             return fr.schemas.ConstantRecipe(
                 constant=G.nodes[output_node[0]]["constant_value"]
             )
+        if node_type == "for_each":
+            return _process_for_each(node_name)
         func_obj = _get_function_from_dict(node_data.get("function"))
         if node_type == "workflow":
             sorted_input = [
@@ -514,6 +621,28 @@ def _append_metadata_to_graph(graph: Graph, workflow_graph: nx.DiGraph) -> None:
                     workflow_graph.nodes[out_node][key] = value
 
 
+def _append_loop_metadata_to_graph(graph: Graph, workflow_graph: nx.DiGraph) -> None:
+    """
+    Restore the node type of for-each, distributor and collector nodes, the
+    iteration mode of the distributors, and the port positions of nodes which have
+    no function metadata.
+    """
+    for node in workflow_graph.nodes:
+        for node_type, cls in _NODE_TYPE_CLASSES.items():
+            if (node, RDFS.subClassOf, cls) in graph:
+                workflow_graph.nodes[node]["type"] = node_type
+        mode = graph.value(node, SNS.iteration_mode)
+        if mode is not None:
+            workflow_graph.nodes[node]["iteration"] = mode.toPython()
+            workflow_graph.nodes[node]["iteration_index"] = cast(
+                Literal, graph.value(node, SNS.iteration_index)
+            ).toPython()
+        if "position" not in workflow_graph.nodes[node]:
+            position = graph.value(node, SNS.has_parameter_position)
+            if position is not None:
+                workflow_graph.nodes[node]["position"] = position.toPython()
+
+
 def _get_node_positions(workflow_graph: nx.DiGraph) -> dict[Node, int]:
     return {
         node: i
@@ -744,6 +873,7 @@ def _kg2digraph(
     workflow_name = _ensure_workflow_name(uri_to_node, workflow_name)
     workflow_graph = _extract_workflow(all_workflow_graph, workflow_name)
     _append_metadata_to_graph(graph, workflow_graph)
+    _append_loop_metadata_to_graph(graph, workflow_graph)
     uri_to_node_and_io = _uri_to_node_and_io_names(graph, uri_to_node, workflow_graph)
     renamed_workflow_graph = _rename_workflow(
         workflow_graph, uri_to_node, uri_to_node_and_io, graph

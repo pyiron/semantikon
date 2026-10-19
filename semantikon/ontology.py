@@ -83,7 +83,19 @@ class SNS:
     function_name: URIRef = PMD["0000100"]
     file_data_item: URIRef = NFDI["0000027"]
     local_identifier: URIRef = PMD["0000128"]
+    # Placeholder URIs until the corresponding ontology terms exist
+    for_each_node: URIRef = BASE["for_each_node"]
+    distributor_node: URIRef = BASE["distributor_node"]
+    collector_node: URIRef = BASE["collector_node"]
+    iteration_mode: URIRef = BASE["iteration_mode"]
+    iteration_index: URIRef = BASE["iteration_index"]
 
+
+_NODE_TYPE_CLASSES: dict[str, URIRef] = {
+    "for_each": SNS.for_each_node,
+    "distributor": SNS.distributor_node,
+    "collector": SNS.collector_node,
+}
 
 ud = UnitsDict()
 
@@ -573,6 +585,11 @@ def _wf_node_to_graph(
                     BASE[G.t_ns + item],
                 )
         g.add((BASE[G.t_ns + node_name], RDFS.subClassOf, SNS.workflow_node))
+        if data.get("type") in _NODE_TYPE_CLASSES:
+            g.add((node, RDFS.subClassOf, _NODE_TYPE_CLASSES[data["type"]]))
+        if "iteration" in data:
+            g.add((node, SNS.iteration_mode, Literal(data["iteration"])))
+            g.add((node, SNS.iteration_index, Literal(data["iteration_index"])))
         if "function" in data:
             g += _to_owl_restriction(
                 node,
@@ -915,6 +932,9 @@ def _wf_io_to_graph(
         g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.label, Literal(str(node_name))))
         g.add((node, RDFS.subClassOf, io_assignment))
+        if "function" not in G.get_data(node_name.node):
+            # Without function metadata this is the only record of the port order
+            g.add((node, SNS.has_parameter_position, Literal(data["position"])))
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
         if "hash" in data:
             g += _to_owl_restriction(data_node, SNS.denoted_by, SNS.identifier)
