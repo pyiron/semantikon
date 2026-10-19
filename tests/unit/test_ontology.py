@@ -163,7 +163,7 @@ def loop_workflow(values=(1, 2, 3), x=2):
     result = []
     for v in values:
         a = add_one(v)
-        b = add_one(x)
+        add_one(x)
         result.append(a)
     return result
 

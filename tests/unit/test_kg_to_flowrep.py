@@ -340,9 +340,9 @@ class TestKgToFlowrep(unittest.TestCase):
 
     def test_for_each_round_trip(self):
         cases = [
-            (zipped_loop, dict(xs=[1, 2], ys=[3, 4], k=2)),
-            (nested_loop, dict(xs=[1, 2], ys=[3, 4, 5])),
-            (forwarding_loop, dict(xs=[1, 2], k=3)),
+            (zipped_loop, {"xs": [1, 2], "ys": [3, 4], "k": 2}),
+            (nested_loop, {"xs": [1, 2], "ys": [3, 4, 5]}),
+            (forwarding_loop, {"xs": [1, 2], "k": 3}),
         ]
         for workflow, inputs in cases:
             recipe = workflow.flowrep_recipe
