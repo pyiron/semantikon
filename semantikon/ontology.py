@@ -552,6 +552,11 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     return _graph_to_function_impl(graph, f_node)
 
 
+def _declare_node_type_classes(g: Graph) -> None:
+    for cls in _NODE_TYPE_CLASSES.values():
+        g.add((cls, RDFS.subClassOf, SNS.workflow_node))
+
+
 def _wf_node_to_graph(
     node_name: Node,
     data: dict,
@@ -584,9 +589,10 @@ def _wf_node_to_graph(
                     SNS.has_part,
                     BASE[G.t_ns + item],
                 )
-        g.add((BASE[G.t_ns + node_name], RDFS.subClassOf, SNS.workflow_node))
         if data.get("type") in _NODE_TYPE_CLASSES:
             g.add((node, RDFS.subClassOf, _NODE_TYPE_CLASSES[data["type"]]))
+        else:
+            g.add((node, RDFS.subClassOf, SNS.workflow_node))
         if "iteration" in data:
             g.add((node, SNS.iteration_mode, Literal(data["iteration"])))
             g.add((node, SNS.iteration_index, Literal(data["iteration_index"])))
@@ -1031,6 +1037,8 @@ def _parse_global_io(
 
 def _nx_to_kg(G: SemantikonRecipeGraph | SemantikonInstanceGraph, t_box: bool) -> Graph:
     g = _get_bound_graph()
+    if t_box:
+        _declare_node_type_classes(g)
     for node_name, data in G.nodes.data():
         data = G.get_data(node_name)
         if t_box:
@@ -1345,7 +1353,9 @@ def extract_dataclass(
 def _get_successor_nodes(G, node_name):
     for out in G.successors(node_name):
         for inp in G.successors(out):
-            yield from G.successors(inp)
+            for succ in G.successors(inp):
+                if isinstance(succ, Node):
+                    yield succ
 
 
 def _to_owl_restriction(

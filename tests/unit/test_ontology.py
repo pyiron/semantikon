@@ -1219,15 +1219,20 @@ class TestOntology(unittest.TestCase):
             for name, cls in typed.items():
                 subclasses = list(g.subjects(RDFS.subClassOf, cls))
                 self.assertEqual(len(subclasses), 1, name)
-                self.assertIn(
+                self.assertNotIn(
                     (subclasses[0], RDFS.subClassOf, onto.SNS.workflow_node), g
                 )
+                self.assertIn((cls, RDFS.subClassOf, onto.SNS.workflow_node), g)
         # one distributor, one collector and three bodies in the A-Box
         g = onto.get_knowledge_graph(
             fr.wfms.run_recipe(recipe), include_t_box=False, prefix="W"
         )
         body_class = onto.BASE["W_loop_workflow-for_each_0-body"]
         self.assertEqual(len(list(g.subjects(RDF.type, body_class))), 3)
+        # precedes only ever links nodes to nodes
+        for obj in g.objects(None, onto.SNS.precedes):
+            self.assertNotIn("-inputs-", str(obj))
+            self.assertNotIn("-outputs-", str(obj))
 
 
 if __name__ == "__main__":

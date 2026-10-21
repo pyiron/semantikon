@@ -7,10 +7,13 @@ from graphviz import Digraph
 from rdflib import OWL, RDF, RDFS, Graph, Literal, URIRef
 from rdflib.query import ResultRow
 
-from semantikon.ontology import _literal_to_constant
+from semantikon.ontology import SNS, _NODE_TYPE_CLASSES, _literal_to_constant
 
 subclass_color_dict = {
     "pmdco:0000011": "lightpink",
+    "sns:collector_node": "lightpink",
+    "sns:distributor_node": "lightpink",
+    "sns:for_each_node": "lightpink",
     "obi:0001933": "lightyellow",
     "pmdco:0000066": "lightgreen",
     "pmdco:0000067": "lightblue",
@@ -90,6 +93,8 @@ def _get_parent_class(comp: URIRef, graph: Graph) -> str:
             item for item in graph.objects(comp, pred) if isinstance(item, URIRef)
         ]
         for cl in parent_classes:
+            if cl in _NODE_TYPE_CLASSES.values():
+                return graph.qname(cl)
             if (
                 graph.qname(cl) in subclass_color_dict
                 or graph.qname(cl) in type_color_dict
@@ -147,6 +152,9 @@ def _rdflib_to_nx(graph: Graph) -> nx.DiGraph:
 def _to_node(text: str, parent_class: str) -> str:
     translation = {
         "pmdco:0000011": "workflow_node",
+        "sns:for_each_node": "for_each",
+        "sns:collector_node": "collector",
+        "sns:distributor_node": "distributor",
         "obi:0001933": "value_specification",
         "pmdco:0000066": "input_assignment",
         "pmdco:0000067": "output_assignment",

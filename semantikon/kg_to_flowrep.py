@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import itertools
 from typing import Any, cast
@@ -621,6 +622,15 @@ def _append_metadata_to_graph(graph: Graph, workflow_graph: nx.DiGraph) -> None:
                     workflow_graph.nodes[out_node][key] = value
 
 
+def _materialize_node_types(graph: Graph) -> Graph:
+    """Make nodes of the placeholder types explicit subclasses of workflow_node."""
+    graph = copy.copy(graph)
+    for cls in _NODE_TYPE_CLASSES.values():
+        for node in list(graph.subjects(RDFS.subClassOf, cls)):
+            graph.add((node, RDFS.subClassOf, SNS.workflow_node))
+    return graph
+
+
 def _append_loop_metadata_to_graph(graph: Graph, workflow_graph: nx.DiGraph) -> None:
     """
     Restore the node type of for-each, distributor and collector nodes, the
@@ -868,6 +878,7 @@ def _translate_to_semantikon_digraph(workflow_graph: nx.DiGraph) -> SemantikonDi
 def _kg2digraph(
     graph: Graph, workflow_name: str | URIRef | None = None
 ) -> SemantikonDiGraph:
+    graph = _materialize_node_types(graph)
     uri_to_node = _uri_to_node_names(graph)
     all_workflow_graph = _build_workflow_graph(graph)
     workflow_name = _ensure_workflow_name(uri_to_node, workflow_name)
