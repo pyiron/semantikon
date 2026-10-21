@@ -7,7 +7,7 @@ from graphviz import Digraph
 from rdflib import OWL, RDF, RDFS, Graph, Literal, URIRef
 from rdflib.query import ResultRow
 
-from semantikon.ontology import SNS, _NODE_TYPE_CLASSES, _literal_to_constant
+from semantikon.ontology import _NODE_TYPE_CLASSES, _literal_to_constant
 
 subclass_color_dict = {
     "pmdco:0000011": "lightpink",
