@@ -552,6 +552,8 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     return _graph_to_function_impl(graph, f_node)
 
 
+# This function should be erased as soon as the special node classes are
+# defined in PMDco
 def _declare_node_type_classes(g: Graph) -> None:
     for cls in _NODE_TYPE_CLASSES.values():
         g.add((cls, RDFS.subClassOf, SNS.workflow_node))
@@ -1037,6 +1039,8 @@ def _parse_global_io(
 
 def _nx_to_kg(G: SemantikonRecipeGraph | SemantikonInstanceGraph, t_box: bool) -> Graph:
     g = _get_bound_graph()
+    # The following two lines should be removed as soon as the special node
+    # classes are defined in PMDco
     if t_box:
         _declare_node_type_classes(g)
     for node_name, data in G.nodes.data():
