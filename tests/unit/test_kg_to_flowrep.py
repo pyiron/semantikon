@@ -354,6 +354,49 @@ class TestKgToFlowrep(unittest.TestCase):
                     graph = get_knowledge_graph(source, prefix="W")
                     self.assertEqual(kg2recipe(graph), recipe)
 
+    def test_for_each_shared_input_round_trip(self):
+        body_label = "body"
+        for_each = fr.schemas.ForEachRecipe(
+            inputs=["xs"],
+            outputs=["result"],
+            body_node=fr.schemas.LabeledRecipe(
+                label=body_label, recipe=my_workflow.flowrep_recipe
+            ),
+            input_edges={
+                fr.schemas.TargetHandle(
+                    node=body_label, port="x"
+                ): fr.schemas.InputSource(port="xs"),
+                fr.schemas.TargetHandle(
+                    node=body_label, port="y"
+                ): fr.schemas.InputSource(port="xs"),
+            },
+            output_edges={
+                fr.schemas.OutputTarget(port="result"): fr.schemas.SourceHandle(
+                    node=body_label, port="result"
+                )
+            },
+            nested_ports=["y", "x"],
+        )
+        recipe = fr.schemas.WorkflowRecipe(
+            inputs=["xs"],
+            outputs=["result"],
+            nodes={"loop": for_each},
+            input_edges={
+                fr.schemas.TargetHandle(node="loop", port="xs"): fr.schemas.InputSource(
+                    port="xs"
+                )
+            },
+            edges={},
+            output_edges={
+                fr.schemas.OutputTarget(port="result"): fr.schemas.SourceHandle(
+                    node="loop", port="result"
+                )
+            },
+        )
+
+        graph = get_knowledge_graph(recipe, prefix="W")
+        self.assertEqual(kg2recipe(graph), recipe)
+
 
 if __name__ == "__main__":
     unittest.main()

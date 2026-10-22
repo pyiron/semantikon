@@ -699,15 +699,24 @@ class _GraphBuilder:
         recipe = node_data.recipe
         body_label = recipe.body_node.label
         iterated = set(recipe.iterated_ports)
-        parents = list(
-            dict.fromkeys(
-                source.port
-                for target, source in recipe.input_edges.items()
-                if target.port in iterated
-            )
-        )
+        distributor_sources = {
+            target.port: source.port
+            for target, source in recipe.input_edges.items()
+            if target.port in iterated
+        }
+        source_counts: dict[str, int] = {}
+        for parent_port in distributor_sources.values():
+            source_counts[parent_port] = source_counts.get(parent_port, 0) + 1
         distributors = {
-            port: Node(name=f"{DISTRIBUTOR}_{port}", owner=r_name) for port in parents
+            body_port: Node(
+                name=(
+                    f"{DISTRIBUTOR}_{parent_port}"
+                    if source_counts[parent_port] == 1
+                    else f"{DISTRIBUTOR}_{parent_port}_{body_port}"
+                ),
+                owner=r_name,
+            )
+            for body_port, parent_port in distributor_sources.items()
         }
         collectors = {
             port: Node(name=f"{COLLECTOR}_{port}", owner=r_name)
@@ -753,23 +762,32 @@ class _GraphBuilder:
                 )
         body_outputs = list(body_data.output_ports)
 
-        def dist_out(port: str) -> Output:
-            return Output(node=distributors[port], port=DISTRIBUTOR_OUTPUT)
+        def dist_out(body_port: str) -> Output:
+            return Output(node=distributors[body_port], port=DISTRIBUTOR_OUTPUT)
+
+        def dist_out_for_parent(parent_port: str) -> Output:
+            body_port = next(
+                port
+                for port, source_port in distributor_sources.items()
+                if source_port == parent_port
+            )
+            return dist_out(body_port)
 
         for port, node in distributors.items():
             self.R.add_edge(
-                Input(node=r_name, port=port), Input(node=node, port=DISTRIBUTOR_INPUT)
+                Input(node=r_name, port=distributor_sources[port]),
+                Input(node=node, port=DISTRIBUTOR_INPUT),
             )
         for target, source in recipe.input_edges.items():
             if target.port in iterated:
-                src: IO = dist_out(source.port)
+                src: IO = dist_out(target.port)
             else:
                 src = Input(node=r_name, port=source.port)
             self.R.add_edge(src, Input(node=r_body, port=target.port))
         for target, source in recipe.output_edges.items():
             collector = collectors[target.port]
             if isinstance(source, fr.schemas.InputSource):
-                src = dist_out(source.port)
+                src = dist_out_for_parent(source.port)
             else:
                 src = Output(
                     node=r_body, port=_output_port_label(source.port, body_outputs)
@@ -785,11 +803,23 @@ class _GraphBuilder:
 
         if executed:
             self._add_executed_for_each_instances(
-                node_data, r_name, a_name, distributors, collectors, body_labels
+                node_data,
+                r_name,
+                a_name,
+                distributors,
+                distributor_sources,
+                collectors,
+                body_labels,
             )
         else:
             self._add_single_for_each_instance(
-                recipe, r_name, a_name, distributors, collectors, body_outputs
+                recipe,
+                r_name,
+                a_name,
+                distributors,
+                distributor_sources,
+                collectors,
+                body_outputs,
             )
 
     def _add_body(
@@ -806,21 +836,15 @@ class _GraphBuilder:
 
     @staticmethod
     def _iteration_mode(
-        recipe: fr.schemas.ForEachRecipe, parent_port: str
+        recipe: fr.schemas.ForEachRecipe, body_port: str
     ) -> dict[str, Any]:
-        """Whether the body port fed by ``parent_port`` is nested or zipped."""
-        for target, source in recipe.input_edges.items():
-            if source.port != parent_port:
-                continue
-            for mode, ports in (
-                ("nested", recipe.nested_ports),
-                ("zipped", recipe.zipped_ports),
-            ):
-                if target.port in ports:
-                    return {
-                        "iteration": mode,
-                        "iteration_index": ports.index(target.port),
-                    }
+        """Whether a body port is nested or zipped, and its position in that mode."""
+        for mode, ports in (
+            ("nested", recipe.nested_ports),
+            ("zipped", recipe.zipped_ports),
+        ):
+            if body_port in ports:
+                return {"iteration": mode, "iteration_index": ports.index(body_port)}
         return {}
 
     def _add_transfer_node(
@@ -871,6 +895,7 @@ class _GraphBuilder:
         r_name: Node,
         a_name: ANode,
         distributors: dict[str, Node],
+        distributor_sources: dict[str, str],
         collectors: dict[str, Node],
         body_outputs: list[str],
     ) -> None:
@@ -887,7 +912,7 @@ class _GraphBuilder:
         for port, node in distributors.items():
             self._add_a_transfer_node(node, a_distributors[port])
             self.A.add_edge(
-                AInput(node=a_name, port=port),
+                AInput(node=a_name, port=distributor_sources[port]),
                 AInput(node=a_distributors[port], port=DISTRIBUTOR_INPUT),
             )
         for port, node in collectors.items():
@@ -895,19 +920,27 @@ class _GraphBuilder:
 
         iterated = set(recipe.iterated_ports)
 
-        def a_dist_out(port: str) -> AOutput:
-            return AOutput(node=a_distributors[port], port=DISTRIBUTOR_OUTPUT)
+        def a_dist_out(body_port: str) -> AOutput:
+            return AOutput(node=a_distributors[body_port], port=DISTRIBUTOR_OUTPUT)
+
+        def a_dist_out_for_parent(parent_port: str) -> AOutput:
+            body_port = next(
+                port
+                for port, source_port in distributor_sources.items()
+                if source_port == parent_port
+            )
+            return a_dist_out(body_port)
 
         for target, source in recipe.input_edges.items():
             a_src: AIO = (
-                a_dist_out(source.port)
+                a_dist_out(target.port)
                 if target.port in iterated
                 else AInput(node=a_name, port=source.port)
             )
             self.A.add_edge(a_src, AInput(node=a_body, port=target.port))
         for target, source in recipe.output_edges.items():
             if isinstance(source, fr.schemas.InputSource):
-                a_src = a_dist_out(source.port)
+                a_src = a_dist_out_for_parent(source.port)
             else:
                 a_src = AOutput(
                     node=a_body, port=_output_port_label(source.port, body_outputs)
@@ -928,6 +961,7 @@ class _GraphBuilder:
         r_name: Node,
         a_name: ANode,
         distributors: dict[str, Node],
+        distributor_sources: dict[str, str],
         collectors: dict[str, Node],
         body_labels: list[str],
     ) -> None:
@@ -937,6 +971,10 @@ class _GraphBuilder:
         """
         recipe = node_data.recipe
         body_label = recipe.body_node.label
+        distributor_for_parent = {
+            parent_port: body_port
+            for body_port, parent_port in distributor_sources.items()
+        }
         a_inputs: dict[str, Callable[[str], AIO]] = {}
         a_outputs: dict[str, Callable[[str], AIO]] = {}
 
@@ -956,7 +994,7 @@ class _GraphBuilder:
                         node=label, port=transformers.Transform1toN.input_label
                     )
                 ].port
-                r_node = distributors[parent_port]
+                r_node = distributors[distributor_for_parent[parent_port]]
                 a_node = ANode(name=r_node.name, owner=a_name)
                 self._add_a_transfer_node(r_node, a_node, child)
                 a_inputs[label] = _a_port_resolver(
