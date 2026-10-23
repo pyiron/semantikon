@@ -24,6 +24,37 @@ def add_more(x):
 
 
 @fr.workflow
+def zipped_loop(xs, ys, k):
+    out = []
+    for x, y in zip(xs, ys):
+        p = add(x, y)
+        q = add(p, k)
+        out.append(q)
+    return out
+
+
+@fr.workflow
+def nested_loop(xs, ys):
+    out = []
+    for x in xs:
+        for y in ys:
+            p = add(x, y)
+            out.append(p)
+    return out
+
+
+@fr.workflow
+def forwarding_loop(xs, k):
+    out = []
+    kept = []
+    for x in xs:
+        p = add(x, k)
+        out.append(p)
+        kept.append(x)
+    return out, kept
+
+
+@fr.workflow
 def my_workflow(x=1, y=2):
     z = add_one(x)
     q = add_more(z)
@@ -306,6 +337,65 @@ class TestKgToFlowrep(unittest.TestCase):
         self.assertRaises(
             ValueError, kgf._ensure_workflow_name, uri_to_node, "unknown_workflow"
         )
+
+    def test_for_each_round_trip(self):
+        cases = [
+            (zipped_loop, {"xs": [1, 2], "ys": [3, 4], "k": 2}),
+            (nested_loop, {"xs": [1, 2], "ys": [3, 4, 5]}),
+            (forwarding_loop, {"xs": [1, 2], "k": 3}),
+        ]
+        for workflow, inputs in cases:
+            recipe = workflow.flowrep_recipe
+            executed = fr.wfms.run_recipe(recipe, **inputs)
+            for source in (recipe, executed):
+                with self.subTest(
+                    workflow=workflow.__name__, executed=source is executed
+                ):
+                    graph = get_knowledge_graph(source, prefix="W")
+                    self.assertEqual(kg2recipe(graph), recipe)
+
+    def test_for_each_shared_input_round_trip(self):
+        body_label = "body"
+        for_each = fr.schemas.ForEachRecipe(
+            inputs=["xs"],
+            outputs=["result"],
+            body_node=fr.schemas.LabeledRecipe(
+                label=body_label, recipe=my_workflow.flowrep_recipe
+            ),
+            input_edges={
+                fr.schemas.TargetHandle(
+                    node=body_label, port="x"
+                ): fr.schemas.InputSource(port="xs"),
+                fr.schemas.TargetHandle(
+                    node=body_label, port="y"
+                ): fr.schemas.InputSource(port="xs"),
+            },
+            output_edges={
+                fr.schemas.OutputTarget(port="result"): fr.schemas.SourceHandle(
+                    node=body_label, port="result"
+                )
+            },
+            nested_ports=["y", "x"],
+        )
+        recipe = fr.schemas.WorkflowRecipe(
+            inputs=["xs"],
+            outputs=["result"],
+            nodes={"loop": for_each},
+            input_edges={
+                fr.schemas.TargetHandle(node="loop", port="xs"): fr.schemas.InputSource(
+                    port="xs"
+                )
+            },
+            edges={},
+            output_edges={
+                fr.schemas.OutputTarget(port="result"): fr.schemas.SourceHandle(
+                    node="loop", port="result"
+                )
+            },
+        )
+
+        graph = get_knowledge_graph(recipe, prefix="W")
+        self.assertEqual(kg2recipe(graph), recipe)
 
 
 if __name__ == "__main__":

@@ -66,6 +66,41 @@ def double_via_constant(x):
     return doubled
 
 
+def arange(min_value, max_value):
+    result = range(min_value, max_value)
+    return result
+
+
+def sub(a, b):
+    result = a - b
+    return result
+
+
+def mean(values):
+    result = sum(values) / len(values)
+    return result
+
+
+@fr.workflow
+def shift_all(values, x):
+    result = []
+    for v in values:
+        a = sub(v, x)
+        result.append(a)
+    return result
+
+
+@fr.workflow
+def mean_of_loop(min_value=0, max_value=3, x=2):
+    r = arange(min_value=min_value, max_value=max_value)
+    result = []
+    for v in r:
+        a = sub(v, x)
+        result.append(a)
+    mean_value = mean(result)
+    return mean_value
+
+
 class TestFlowrepToNetworkx(unittest.TestCase):
     def test_namespace_fragments_are_base_agnostic(self):
         wf_dict = my_kinetic_energy_workflow.flowrep_recipe
@@ -266,9 +301,8 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         )
         data = fr.schemas.DagData.from_recipe(recipe)
         data.input_ports["x"].value = 1.0
-        recipe_graph, values = ftn._workflow_to_networkx(data)
-        G = ftn._workflow_to_instance_graph(recipe_graph, values)
-        hashed = ftn._get_hashed_node_dict_from_graph(G)
+        A, _ = ftn._workflow_to_instance_graph(data)
+        hashed = ftn._get_hashed_node_dict_from_graph(A)
         self.assertEqual(hashed, {})
 
     def test_recipe_graph_has_no_values(self):
@@ -369,6 +403,80 @@ class TestFlowrepToNetworkx(unittest.TestCase):
         )
         self.assertIn(inp, G.nodes)
         self.assertEqual(G.nodes[inp]["constant_value"], 2)
+
+    def test_for_each_recipe_graph(self):
+        G = ftn.serialize_and_convert_to_networkx(mean_of_loop.flowrep_recipe)
+        types = {n.name: G.get_type(n) for n in G.nodes if isinstance(n, ftn.Node)}
+        self.assertEqual(types["for_each_0"], "for_each")
+        self.assertEqual(types["distributor_r"], "distributor")
+        self.assertEqual(types["collector_result"], "collector")
+        self.assertEqual(types["body"], "workflow")
+        self.assertEqual(
+            sum(isinstance(n, ftn.Node) and n.name == "sub_0" for n in G.nodes), 1
+        )
+        for_each = ftn.Node("for_each_0", ftn.Node("mean_of_loop"))
+        dist = ftn.Node("distributor_r", for_each)
+        coll = ftn.Node("collector_result", for_each)
+        body = ftn.Node("body", for_each)
+        for edge in [
+            (ftn.Input(for_each, "r"), ftn.Input(dist, "items")),
+            (ftn.Output(dist, "item"), ftn.Input(body, "v")),
+            (ftn.Input(for_each, "x"), ftn.Input(body, "x")),
+            (ftn.Output(body, "a"), ftn.Input(coll, "item")),
+            (ftn.Output(coll, "items"), ftn.Output(for_each, "result")),
+        ]:
+            self.assertIn(edge, G.edges)
+
+    def test_for_each_instance_graph(self):
+        recipe = mean_of_loop.flowrep_recipe
+
+        def count(A, name, cls=ftn.ANode):
+            return sum(isinstance(n, cls) and n.name == name for n in A.nodes)
+
+        pending = ftn.serialize_instance_to_networkx(recipe)
+        self.assertEqual(count(pending, "body"), 1)
+        self.assertEqual(count(pending, "sub_0"), 1)
+
+        executed = ftn.serialize_instance_to_networkx(fr.wfms.run_recipe(recipe))
+        for A in (pending, executed):
+            self.assertTrue(all("recipe" in d for _, d in A.nodes.data()))
+            self.assertEqual(A.recipe_graph.nodes, pending.recipe_graph.nodes)
+        self.assertEqual(count(executed, "body"), 3)
+        self.assertEqual(count(executed, "sub_0"), 3)
+        self.assertEqual(count(executed, "distributor_r"), 1)
+        self.assertEqual(
+            sorted(
+                n.counter
+                for n in executed.nodes
+                if isinstance(n, ftn.AOutput) and n.port == "item"
+            ),
+            [0, 1, 2],
+        )
+        collected = {
+            n.counter: d["value"]
+            for n, d in executed.nodes.data()
+            if isinstance(n, ftn.AInput) and n.port == "item"
+        }
+        self.assertEqual(collected, {0: -2, 1: -1, 2: 0})
+        result = next(
+            d["value"]
+            for n, d in executed.nodes.data()
+            if isinstance(n, ftn.AOutput)
+            and n.port == "result"
+            and n.node.name == "for_each_0"
+        )
+        self.assertEqual(result, [-2, -1, 0])
+
+    def test_for_each_without_iterations(self):
+        data = fr.wfms.run_recipe(shift_all.flowrep_recipe, values=[], x=1)
+        A = ftn.serialize_instance_to_networkx(data, hash_data=False)
+        self.assertEqual(
+            sum(isinstance(n, ftn.ANode) and n.name == "body" for n in A), 0
+        )
+        self.assertIn(
+            ftn.Node("body", ftn.Node("for_each_0", ftn.Node("shift_all"))),
+            A.recipe_graph.nodes,
+        )
 
 
 if __name__ == "__main__":
