@@ -275,7 +275,6 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
                         fr.schemas.TargetHandle(node=body.name, port=v.port)
                     ] = fr.schemas.InputSource(port=u.port)
 
-        nested: list[tuple[int, str]] = []
         zipped: list[tuple[int, str]] = []
         for name, dist in distributors.items():
             out = Output(node=dist, port="item")
@@ -284,10 +283,8 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
                     input_edges[
                         fr.schemas.TargetHandle(node=body.name, port=v.port)
                     ] = fr.schemas.InputSource(port=parent_port[name])
-                    mode = G.nodes[dist].get("iteration", "nested")
-                    (zipped if mode == "zipped" else nested).append(
-                        (G.nodes[dist].get("iteration_index", 0), v.port)
-                    )
+                    (dist_in,) = G.predecessors(dist)
+                    zipped.append((G.nodes[dist_in]["position"], v.port))
 
         sorted_output = _sorted_ports(node_name, G.successors(node_name))
         output_edges: fr.schemas.OutputEdges = {}
@@ -318,14 +315,15 @@ def _networkx_to_flowrep(G: SemantikonDiGraph) -> fr.schemas.WorkflowRecipe:
                     )
                 ] = handle
 
+        ports = [p for _, p in sorted(zipped)]
         return fr.schemas.ForEachRecipe(
             inputs=_sorted_ports(node_name, G.predecessors(node_name)),
             outputs=sorted_output,
             body_node=fr.schemas.LabeledRecipe(label=body.name, recipe=body_recipe),
             input_edges=input_edges,
             output_edges=output_edges,
-            nested_ports=[p for _, p in sorted(nested)],
-            zipped_ports=[p for _, p in sorted(zipped)],
+            nested_ports=ports if len(ports) == 1 else [],
+            zipped_ports=ports if len(ports) > 1 else [],
         )
 
     def _process_node(node_name: Node) -> fr.schemas.RecipeDiscrimination:
@@ -634,19 +632,13 @@ def _materialize_node_types(graph: Graph) -> Graph:
 def _append_loop_metadata_to_graph(graph: Graph, workflow_graph: nx.DiGraph) -> None:
     """
     Restore the node type of for-each, distributor and collector nodes, the
-    iteration mode of the distributors, and the port positions of nodes which have
+    and the port positions of nodes which have
     no function metadata.
     """
     for node in workflow_graph.nodes:
         for node_type, cls in _NODE_TYPE_CLASSES.items():
             if (node, RDFS.subClassOf, cls) in graph:
                 workflow_graph.nodes[node]["type"] = node_type
-        mode = graph.value(node, SNS.iteration_mode)
-        if mode is not None:
-            workflow_graph.nodes[node]["iteration"] = mode.toPython()
-            workflow_graph.nodes[node]["iteration_index"] = cast(
-                Literal, graph.value(node, SNS.iteration_index)
-            ).toPython()
         if "position" not in workflow_graph.nodes[node]:
             position = graph.value(node, SNS.has_parameter_position)
             if position is not None:

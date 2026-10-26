@@ -87,8 +87,6 @@ class SNS:
     for_each_node: URIRef = BASE["for_each_node"]
     distributor_node: URIRef = BASE["distributor_node"]
     collector_node: URIRef = BASE["collector_node"]
-    iteration_mode: URIRef = BASE["iteration_mode"]
-    iteration_index: URIRef = BASE["iteration_index"]
 
 
 _NODE_TYPE_CLASSES: dict[str, URIRef] = {
@@ -595,9 +593,6 @@ def _wf_node_to_graph(
             g.add((node, RDFS.subClassOf, _NODE_TYPE_CLASSES[data["type"]]))
         else:
             g.add((node, RDFS.subClassOf, SNS.workflow_node))
-        if "iteration" in data:
-            g.add((node, SNS.iteration_mode, Literal(data["iteration"])))
-            g.add((node, SNS.iteration_index, Literal(data["iteration_index"])))
         if "function" in data:
             g += _to_owl_restriction(
                 node,
@@ -942,6 +937,7 @@ def _wf_io_to_graph(
         g.add((node, RDFS.subClassOf, io_assignment))
         if "function" not in G.get_data(node_name.node):
             # Without function metadata this is the only record of the port order
+            # (for distributors, the position in the zipped ports)
             g.add((node, SNS.has_parameter_position, Literal(data["position"])))
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
         if "hash" in data:

@@ -698,6 +698,17 @@ class _GraphBuilder:
     ) -> None:
         recipe = node_data.recipe
         body_label = recipe.body_node.label
+        # A single iterated port is read back as nested, several as zipped
+        if len(recipe.nested_ports) > 1 or (
+            recipe.nested_ports and recipe.zipped_ports
+        ):
+            raise NotImplementedError(
+                "Nested ports are only supported as the single iterated port"
+            )
+        if len(recipe.zipped_ports) == 1:
+            raise NotImplementedError(
+                "A single iterated port must be given as a nested port"
+            )
         iterated = set(recipe.iterated_ports)
         distributor_sources = {
             target.port: source.port
@@ -735,7 +746,11 @@ class _GraphBuilder:
                 DISTRIBUTOR,
                 DISTRIBUTOR_INPUT,
                 DISTRIBUTOR_OUTPUT,
-                **self._iteration_mode(recipe, port),
+                position=(
+                    recipe.zipped_ports.index(port)
+                    if port in recipe.zipped_ports
+                    else 0
+                ),
             )
         for node in collectors.values():
             self._add_transfer_node(node, COLLECTOR, COLLECTOR_INPUT, COLLECTOR_OUTPUT)
@@ -834,31 +849,19 @@ class _GraphBuilder:
             ),
         )
 
-    @staticmethod
-    def _iteration_mode(
-        recipe: fr.schemas.ForEachRecipe, body_port: str
-    ) -> dict[str, Any]:
-        """Whether a body port is nested or zipped, and its position in that mode."""
-        for mode, ports in (
-            ("nested", recipe.nested_ports),
-            ("zipped", recipe.zipped_ports),
-        ):
-            if body_port in ports:
-                return {"iteration": mode, "iteration_index": ports.index(body_port)}
-        return {}
-
     def _add_transfer_node(
         self,
         r_node: Node,
         node_type: str,
         input_port: str,
         output_port: str,
+        position: int = 0,
         **attrs: Any,
     ) -> None:
         self.R.add_node(r_node, type=node_type, **attrs)
         r_in = Input(node=r_node, port=input_port)
         r_out = Output(node=r_node, port=output_port)
-        self.R.add_node(r_in, position=0)
+        self.R.add_node(r_in, position=position)
         self.R.add_node(r_out, position=0)
         self.R.add_edge(r_in, r_node)
         self.R.add_edge(r_node, r_out)
