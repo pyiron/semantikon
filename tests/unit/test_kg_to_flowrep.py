@@ -3,9 +3,9 @@ import unittest
 import flowrep as fr
 from rdflib import RDFS, Graph, Literal, URIRef
 
+from semantikon import flowrep_to_networkx as ftn
 from semantikon import get_knowledge_graph, kg2recipe
 from semantikon import kg_to_flowrep as kgf
-from semantikon import flowrep_to_networkx as ftn
 from semantikon import ontology as onto
 
 
