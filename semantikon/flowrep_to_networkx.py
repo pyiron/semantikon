@@ -488,6 +488,23 @@ def _output_port_label(port: str, outputs: list[str]) -> str:
     return port
 
 
+def _check_for_each_ports(
+    nested_ports: list[str],
+    zipped_ports: list[str],
+    report_unsupported: Callable[[str], Any],
+) -> None:
+    if len(nested_ports) > 1 or (nested_ports and zipped_ports):
+        report_unsupported(
+            "Nested ports are only supported as the single iterated port"
+        )
+    elif len(zipped_ports) == 1:
+        report_unsupported("A single iterated port must be given as a nested port")
+
+
+def _raise_not_implemented(message: str) -> None:
+    raise NotImplementedError(message)
+
+
 DISTRIBUTOR = "distributor"
 COLLECTOR = "collector"
 FOR_EACH = "for_each"
@@ -699,16 +716,9 @@ class _GraphBuilder:
         recipe = node_data.recipe
         body_label = recipe.body_node.label
         # A single iterated port is read back as nested, several as zipped
-        if len(recipe.nested_ports) > 1 or (
-            recipe.nested_ports and recipe.zipped_ports
-        ):
-            raise NotImplementedError(
-                "Nested ports are only supported as the single iterated port"
-            )
-        if len(recipe.zipped_ports) == 1:
-            raise NotImplementedError(
-                "A single iterated port must be given as a nested port"
-            )
+        _check_for_each_ports(
+            recipe.nested_ports, recipe.zipped_ports, _raise_not_implemented
+        )
         iterated = set(recipe.iterated_ports)
         distributor_sources = {
             target.port: source.port

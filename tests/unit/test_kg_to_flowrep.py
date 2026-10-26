@@ -5,6 +5,7 @@ from rdflib import RDFS, Graph, Literal, URIRef
 
 from semantikon import get_knowledge_graph, kg2recipe
 from semantikon import kg_to_flowrep as kgf
+from semantikon import flowrep_to_networkx as ftn
 from semantikon import ontology as onto
 
 
@@ -356,6 +357,31 @@ class TestKgToFlowrep(unittest.TestCase):
     def test_multiple_nested_ports_raise(self):
         with self.assertRaises(NotImplementedError):
             get_knowledge_graph(nested_loop.flowrep_recipe, prefix="W")
+
+    def test_for_each_port_check_reports_unsupported_modes(self):
+        reported = []
+        for nested, zipped in (
+            (["x", "y"], []),
+            (["x"], ["y"]),
+            ([], ["x"]),
+        ):
+            ftn._check_for_each_ports(nested, zipped, reported.append)
+
+        for nested, zipped in (
+            (["x"], []),
+            ([], ["x", "y"]),
+            ([], []),
+        ):
+            ftn._check_for_each_ports(nested, zipped, reported.append)
+
+        self.assertEqual(
+            reported,
+            [
+                "Nested ports are only supported as the single iterated port",
+                "Nested ports are only supported as the single iterated port",
+                "A single iterated port must be given as a nested port",
+            ],
+        )
 
     def test_for_each_shared_input_round_trip(self):
         body_label = "body"
