@@ -83,9 +83,9 @@ class SNS:
     function_name: URIRef = PMD["0000100"]
     file_data_item: URIRef = NFDI["0000027"]
     local_identifier: URIRef = PMD["0000128"]
-    for_each_node: URIRef = BASE["0000160"]
-    distributor_node: URIRef = BASE["0000161"]
-    collector_node: URIRef = BASE["0000162"]
+    for_each_node: URIRef = PMD["0000160"]
+    distributor_node: URIRef = PMD["0000161"]
+    collector_node: URIRef = PMD["0000162"]
 
 
 _NODE_TYPE_CLASSES: dict[str, URIRef] = {
