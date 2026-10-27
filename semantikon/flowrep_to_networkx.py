@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import unicodedata
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, is_dataclass
 from functools import cached_property
 from hashlib import sha256
@@ -10,6 +11,7 @@ from typing import Annotated, Any, cast, get_args, get_origin
 
 import flowrep as fr
 import networkx as nx
+from flowrep.prospective import transformers
 from pyiron_snippets import retrieve
 from rdflib import BNode
 from rdflib.term import IdentifiedNode
@@ -268,11 +270,10 @@ class SemantikonRecipeGraph(nx.DiGraph):
             io = candidate[0]
 
     def _initialize_type(self):
+        owners = {n.owner for n in self.nodes if isinstance(n, Node) and n.owner}
         for node, data in self.nodes.data():
-            if isinstance(node, Node):
-                data["type"] = data.get("type", "atomic")
-                if node.owner:
-                    self.nodes[node.owner]["type"] = "workflow"
+            if isinstance(node, Node) and "type" not in data:
+                data["type"] = "workflow" if node in owners else "atomic"
 
     def get_type(self, node_name: Node) -> str:
         """
@@ -487,40 +488,104 @@ def _output_port_label(port: str, outputs: list[str]) -> str:
     return port
 
 
-def _workflow_to_networkx(
-    workflow: fr.schemas.DagData,
-    *,
-    prefix: str | None = None,
-) -> tuple[SemantikonRecipeGraph, dict[IO, Any]]:
-    """
-    Build the recipe graph and collect the port values separately (they belong
-    to the instance graph).
-    """
-    root_label = _infer_workflow_label(workflow.recipe)
-    G = SemantikonRecipeGraph(prefix=prefix)
-    values: dict[IO, Any] = {}
-    G.name = prefix if prefix is not None else root_label
+def _check_for_each_ports(
+    nested_ports: list[str],
+    zipped_ports: list[str],
+    report_unsupported: Callable[[str], Any],
+) -> None:
+    if len(nested_ports) > 1 or (nested_ports and zipped_ports):
+        report_unsupported(
+            "Nested ports are only supported as the single iterated port"
+        )
+    elif len(zipped_ports) == 1:
+        report_unsupported("A single iterated port must be given as a nested port")
 
-    def _add_node(
+
+def _raise_not_implemented(message: str) -> None:
+    raise NotImplementedError(message)
+
+
+DISTRIBUTOR = "distributor"
+COLLECTOR = "collector"
+FOR_EACH = "for_each"
+DISTRIBUTOR_INPUT, DISTRIBUTOR_OUTPUT = "items", "item"
+COLLECTOR_INPUT, COLLECTOR_OUTPUT = "item", "items"
+
+_DISTRIBUTOR_FUNCTIONS = (
+    transformers.Transform1toN.iterable_to_outputs,
+    transformers.Transform1toN.iterable_to_output,
+)
+
+
+def _io_attrs(position: int, port: Any) -> dict[str, Any]:
+    attrs: dict[str, Any] = {"position": position}
+    if type_hint := annotation_to_type_hint(port.annotation):
+        attrs["dtype"] = type_hint
+    if type_metadata := annotation_to_type_metadata(port.annotation):
+        attrs.update(type_metadata.to_dictionary())
+    return attrs
+
+
+def _descends_from(node: ANode | AIO, ancestor: ANode) -> bool:
+    current: ANode | None = node.node if isinstance(node, AIO) else node
+    while current is not None:
+        if current == ancestor:
+            return True
+        current = current.owner
+    return False
+
+
+class _GraphBuilder:
+    """
+    Build the recipe graph (T-Box) and the instance graph (A-Box) of a flowrep
+    workflow in one pass.
+
+    The T-Box is derived from the recipes only: a for-each node is a single
+    class made of a ``distributor`` per iterated input, one body node and a
+    ``collector`` per output, irrespective of the number of iterations. The
+    A-Box mirrors the executed data: one body instance (``ANode.counter``) per
+    iteration, and one distributor output / collector input
+    (``AIO.counter``) per scattered / gathered item. A for-each node which has
+    not been executed is represented by a single body instance.
+    """
+
+    def __init__(self, root_label: str, prefix: str | None):
+        self.R = SemantikonRecipeGraph(prefix=prefix)
+        self.R.name = prefix if prefix is not None else root_label
+        self.A = SemantikonInstanceGraph(recipe_graph=self.R)
+        self.constants: dict[IO, Any] = {}
+
+    def link(self, r_edge: tuple[Node | IO, Node | IO], a_edge) -> None:
+        self.R.add_edge(*r_edge)
+        self.A.add_edge(*a_edge)
+
+    def add_node(
+        self,
         node_data: fr.schemas.NodeData,
-        node_name: Node,
+        r_name: Node,
+        a_name: ANode,
         *,
-        parent_name: Node | None = None,
         workflow_label: Node | None = None,
-    ):
+    ) -> None:
         metadata: dict[str, Any] = {}
         function = None
         if isinstance(node_data, fr.schemas.AtomicData):
             function = node_data.function
         elif isinstance(node_data, fr.schemas.ConstantData):
             metadata["type"] = "constant"
-        else:
+        elif isinstance(node_data, fr.schemas.ForEachData):
+            metadata["type"] = FOR_EACH
+        elif isinstance(node_data, fr.schemas.DagData):
             if workflow_label is not None:
                 metadata["label"] = str(workflow_label)
             if node_data.recipe.reference is not None:
                 function = retrieve.import_from_string(
                     node_data.recipe.reference.info.fully_qualified_name
                 )
+        else:
+            raise NotImplementedError(
+                f"{type(node_data).__name__} is not supported yet."
+            )
 
         if function is not None:
             function_data = get_function_dict(function)
@@ -532,107 +597,521 @@ def _workflow_to_networkx(
                 )
             )
             metadata["function"] = function_data
-        G.add_node(node_name, **metadata)
+        self.R.add_node(r_name, **metadata)
+        self.A.add_node(a_name, recipe=r_name)
 
         output_labels = list(node_data.output_ports)
         if len(output_labels) == 1 and output_labels[0] == "output_0":
             output_labels = ["output"]
 
         for position, (label, port) in enumerate(node_data.input_ports.items()):
-            inp_name = Input(node=node_name, port=label)
-            io_data: dict[str, Any] = {"position": position}
-            if not isinstance(port.value, fr.schemas.NotData):
-                values[inp_name] = port.value
-            if type_hint := annotation_to_type_hint(port.annotation):
-                io_data["dtype"] = type_hint
-            if type_metadata := annotation_to_type_metadata(port.annotation):
-                io_data.update(type_metadata.to_dictionary())
+            r_io = Input(node=r_name, port=label)
+            io_data = _io_attrs(position, port)
             if not isinstance(port.default, fr.schemas.NotData):
                 io_data["default"] = port.default
-            G.add_node(inp_name, **io_data)
-            G.add_edge(inp_name, node_name)
+            self.R.add_node(r_io, **io_data)
+            self.R.add_edge(r_io, r_name)
+            a_io = AInput(node=a_name, port=label)
+            self._add_a_io(a_io, r_io, port)
+            self.A.add_edge(a_io, a_name)
         for position, (raw_label, port) in enumerate(node_data.output_ports.items()):
             label = output_labels[position] if raw_label == "output_0" else raw_label
-            out_name = Output(node=node_name, port=label)
-            io_data = {"position": position}
-            if not isinstance(port.value, fr.schemas.NotData):
-                values[out_name] = port.value
-            if type_hint := annotation_to_type_hint(port.annotation):
-                io_data["dtype"] = type_hint
-            if type_metadata := annotation_to_type_metadata(port.annotation):
-                io_data.update(type_metadata.to_dictionary())
-            G.add_node(out_name, **io_data)
-            G.add_edge(node_name, out_name)
+            r_out = Output(node=r_name, port=label)
+            self.R.add_node(r_out, **_io_attrs(position, port))
+            self.R.add_edge(r_name, r_out)
+            a_out = AOutput(node=a_name, port=label)
+            self._add_a_io(a_out, r_out, port)
+            self.A.add_edge(a_name, a_out)
+            if isinstance(node_data, fr.schemas.ConstantData):
+                self.constants.setdefault(r_out, port.value)
 
-        if not isinstance(node_data, fr.schemas.DagData):
-            return
+        if isinstance(node_data, fr.schemas.DagData):
+            self._add_dag(node_data, r_name, a_name)
+        elif isinstance(node_data, fr.schemas.ForEachData):
+            self._add_for_each(node_data, r_name, a_name)
 
+    def _add_a_io(self, a_io: AIO, r_io: IO, port: Any = None) -> None:
+        attrs: dict[str, Any] = {"recipe": r_io}
+        if port is not None and not isinstance(port.value, fr.schemas.NotData):
+            attrs["value"] = port.value
+        self.A.add_node(a_io, **attrs)
+
+    def _add_dag(
+        self, node_data: fr.schemas.DagData, r_name: Node, a_name: ANode
+    ) -> None:
         recipe = node_data.recipe
         for child_label, child in node_data.nodes.items():
-            child_name = Node(name=child_label, owner=node_name)
-            _add_node(
+            self.add_node(
                 child,
-                child_name,
-                parent_name=node_name,
+                Node(name=child_label, owner=r_name),
+                ANode(name=child_label, owner=a_name),
                 workflow_label=(
                     Node(child_label) if isinstance(child, fr.schemas.DagData) else None
                 ),
             )
 
+        def r_child(label: str) -> Node:
+            return Node(owner=r_name, name=label)
+
+        def a_child(label: str) -> ANode:
+            return ANode(owner=a_name, name=label)
+
         child_recipes = recipe.nodes
         for target, source in recipe.input_edges.items():
-            G.add_edge(
-                Input(node=node_name, port=source.port),
-                Input(node=Node(owner=node_name, name=target.node), port=target.port),
+            self.link(
+                (
+                    Input(node=r_name, port=source.port),
+                    Input(node=r_child(target.node), port=target.port),
+                ),
+                (
+                    AInput(node=a_name, port=source.port),
+                    AInput(node=a_child(target.node), port=target.port),
+                ),
             )
         for target, source in recipe.edges.items():
-            child_outputs = list(child_recipes[source.node].outputs)
-            src_port = _output_port_label(source.port, child_outputs)
-            G.add_edge(
-                Output(node=Node(owner=node_name, name=source.node), port=src_port),
-                Input(node=Node(owner=node_name, name=target.node), port=target.port),
+            src_port = _output_port_label(
+                source.port, list(child_recipes[source.node].outputs)
+            )
+            self.link(
+                (
+                    Output(node=r_child(source.node), port=src_port),
+                    Input(node=r_child(target.node), port=target.port),
+                ),
+                (
+                    AOutput(node=a_child(source.node), port=src_port),
+                    AInput(node=a_child(target.node), port=target.port),
+                ),
             )
         for target, source in recipe.output_edges.items():
             target_port = _output_port_label(target.port, list(recipe.outputs))
             if isinstance(source, fr.schemas.InputSource):
-                G.add_edge(
-                    Input(node=node_name, port=source.port),
-                    Output(node=node_name, port=target_port),
+                self.link(
+                    (
+                        Input(node=r_name, port=source.port),
+                        Output(node=r_name, port=target_port),
+                    ),
+                    (
+                        AInput(node=a_name, port=source.port),
+                        AOutput(node=a_name, port=target_port),
+                    ),
                 )
             else:
-                child_outputs = list(child_recipes[source.node].outputs)
-                src_port = _output_port_label(source.port, child_outputs)
-                G.add_edge(
-                    Output(node=Node(owner=node_name, name=source.node), port=src_port),
-                    Output(node=node_name, port=target_port),
+                src_port = _output_port_label(
+                    source.port, list(child_recipes[source.node].outputs)
+                )
+                self.link(
+                    (
+                        Output(node=r_child(source.node), port=src_port),
+                        Output(node=r_name, port=target_port),
+                    ),
+                    (
+                        AOutput(node=a_child(source.node), port=src_port),
+                        AOutput(node=a_name, port=target_port),
+                    ),
                 )
 
-    _add_node(workflow, Node(root_label), workflow_label=Node(root_label))
-    return G, values
+    def _add_for_each(
+        self, node_data: fr.schemas.ForEachData, r_name: Node, a_name: ANode
+    ) -> None:
+        recipe = node_data.recipe
+        body_label = recipe.body_node.label
+        # A single iterated port is read back as nested, several as zipped
+        _check_for_each_ports(
+            recipe.nested_ports, recipe.zipped_ports, _raise_not_implemented
+        )
+        iterated = set(recipe.iterated_ports)
+        distributor_sources = {
+            target.port: source.port
+            for target, source in recipe.input_edges.items()
+            if target.port in iterated
+        }
+        source_counts: dict[str, int] = {}
+        for parent_port in distributor_sources.values():
+            source_counts[parent_port] = source_counts.get(parent_port, 0) + 1
+        distributors = {
+            body_port: Node(
+                name=(
+                    f"{DISTRIBUTOR}_{parent_port}"
+                    if source_counts[parent_port] == 1
+                    else f"{DISTRIBUTOR}_{parent_port}_{body_port}"
+                ),
+                owner=r_name,
+            )
+            for body_port, parent_port in distributor_sources.items()
+        }
+        collectors = {
+            port: Node(name=f"{COLLECTOR}_{port}", owner=r_name)
+            for port in recipe.outputs
+        }
+        r_body = Node(name=body_label, owner=r_name)
+        generated = [n.name for n in (*distributors.values(), *collectors.values())]
+        if body_label in generated:
+            raise ValueError(
+                f"The body label {body_label!r} collides with a generated node name."
+            )
+
+        for port, node in distributors.items():
+            self._add_transfer_node(
+                node,
+                DISTRIBUTOR,
+                DISTRIBUTOR_INPUT,
+                DISTRIBUTOR_OUTPUT,
+                position=(
+                    recipe.zipped_ports.index(port)
+                    if port in recipe.zipped_ports
+                    else 0
+                ),
+            )
+        for node in collectors.values():
+            self._add_transfer_node(node, COLLECTOR, COLLECTOR_INPUT, COLLECTOR_OUTPUT)
+
+        executed = bool(node_data.nodes)
+        body_labels = [
+            label
+            for label, child in node_data.nodes.items()
+            if not _is_transfer_data(child)
+        ]
+        # The class is defined by the recipe, so a body is needed even if no
+        # iteration was spawned (not executed, or an empty iteration)
+        body_data = (
+            node_data.nodes[body_labels[0]]
+            if body_labels
+            else fr.retrospective.datastructures.recipe2data(recipe.body_node.recipe)
+        )
+        if not body_labels:
+            a_body_0 = ANode(name=body_label, owner=a_name)
+            self._add_body(body_data, r_body, a_body_0)
+            if executed:
+                self.A.remove_nodes_from(
+                    [n for n in self.A.nodes if _descends_from(n, a_body_0)]
+                )
+        body_outputs = list(body_data.output_ports)
+
+        def dist_out(body_port: str) -> Output:
+            return Output(node=distributors[body_port], port=DISTRIBUTOR_OUTPUT)
+
+        def dist_out_for_parent(parent_port: str) -> Output:
+            body_port = next(
+                port
+                for port, source_port in distributor_sources.items()
+                if source_port == parent_port
+            )
+            return dist_out(body_port)
+
+        for port, node in distributors.items():
+            self.R.add_edge(
+                Input(node=r_name, port=distributor_sources[port]),
+                Input(node=node, port=DISTRIBUTOR_INPUT),
+            )
+        for target, source in recipe.input_edges.items():
+            if target.port in iterated:
+                src: IO = dist_out(target.port)
+            else:
+                src = Input(node=r_name, port=source.port)
+            self.R.add_edge(src, Input(node=r_body, port=target.port))
+        for target, source in recipe.output_edges.items():
+            collector = collectors[target.port]
+            if isinstance(source, fr.schemas.InputSource):
+                src = dist_out_for_parent(source.port)
+            else:
+                src = Output(
+                    node=r_body, port=_output_port_label(source.port, body_outputs)
+                )
+            self.R.add_edge(src, Input(node=collector, port=COLLECTOR_INPUT))
+            self.R.add_edge(
+                Output(node=collector, port=COLLECTOR_OUTPUT),
+                Output(
+                    node=r_name,
+                    port=_output_port_label(target.port, list(recipe.outputs)),
+                ),
+            )
+
+        if executed:
+            self._add_executed_for_each_instances(
+                node_data,
+                r_name,
+                a_name,
+                distributors,
+                distributor_sources,
+                collectors,
+                body_labels,
+            )
+        else:
+            self._add_single_for_each_instance(
+                recipe,
+                r_name,
+                a_name,
+                distributors,
+                distributor_sources,
+                collectors,
+                body_outputs,
+            )
+
+    def _add_body(
+        self, body_data: fr.schemas.NodeData, r_body: Node, a_body: ANode
+    ) -> None:
+        self.add_node(
+            body_data,
+            r_body,
+            a_body,
+            workflow_label=(
+                Node(r_body.name) if isinstance(body_data, fr.schemas.DagData) else None
+            ),
+        )
+
+    def _add_transfer_node(
+        self,
+        r_node: Node,
+        node_type: str,
+        input_port: str,
+        output_port: str,
+        position: int = 0,
+        **attrs: Any,
+    ) -> None:
+        self.R.add_node(r_node, type=node_type, **attrs)
+        r_in = Input(node=r_node, port=input_port)
+        r_out = Output(node=r_node, port=output_port)
+        self.R.add_node(r_in, position=position)
+        self.R.add_node(r_out, position=0)
+        self.R.add_edge(r_in, r_node)
+        self.R.add_edge(r_node, r_out)
+
+    def _add_a_transfer_node(
+        self,
+        r_node: Node,
+        a_node: ANode,
+        data: fr.schemas.NodeData | None = None,
+    ) -> None:
+        """
+        Instantiate a distributor / collector. Each item is one port counter; without
+        data (not executed) there is exactly one item on either side.
+        """
+        self.A.add_node(a_node, recipe=r_node)
+        input_port, output_port = {
+            DISTRIBUTOR: (DISTRIBUTOR_INPUT, DISTRIBUTOR_OUTPUT),
+            COLLECTOR: (COLLECTOR_INPUT, COLLECTOR_OUTPUT),
+        }[self.R.nodes[r_node]["type"]]
+        inputs = list(data.input_ports.values()) if data else [None]
+        outputs = list(data.output_ports.values()) if data else [None]
+        for counter, in_port in enumerate(inputs):
+            a_in = AInput(node=a_node, port=input_port, counter=counter)
+            self._add_a_io(a_in, Input(node=r_node, port=input_port), in_port)
+            self.A.add_edge(a_in, a_node)
+        for counter, out_port in enumerate(outputs):
+            a_out = AOutput(node=a_node, port=output_port, counter=counter)
+            self._add_a_io(a_out, Output(node=r_node, port=output_port), out_port)
+            self.A.add_edge(a_node, a_out)
+
+    def _add_single_for_each_instance(
+        self,
+        recipe: fr.schemas.ForEachRecipe,
+        r_name: Node,
+        a_name: ANode,
+        distributors: dict[str, Node],
+        distributor_sources: dict[str, str],
+        collectors: dict[str, Node],
+        body_outputs: list[str],
+    ) -> None:
+        """A-Box of a for-each node that has not been executed: the R edges, lifted."""
+        a_body = ANode(name=recipe.body_node.label, owner=a_name)
+        a_distributors = {
+            port: ANode(name=node.name, owner=a_name)
+            for port, node in distributors.items()
+        }
+        a_collectors = {
+            port: ANode(name=node.name, owner=a_name)
+            for port, node in collectors.items()
+        }
+        for port, node in distributors.items():
+            self._add_a_transfer_node(node, a_distributors[port])
+            self.A.add_edge(
+                AInput(node=a_name, port=distributor_sources[port]),
+                AInput(node=a_distributors[port], port=DISTRIBUTOR_INPUT),
+            )
+        for port, node in collectors.items():
+            self._add_a_transfer_node(node, a_collectors[port])
+
+        iterated = set(recipe.iterated_ports)
+
+        def a_dist_out(body_port: str) -> AOutput:
+            return AOutput(node=a_distributors[body_port], port=DISTRIBUTOR_OUTPUT)
+
+        def a_dist_out_for_parent(parent_port: str) -> AOutput:
+            body_port = next(
+                port
+                for port, source_port in distributor_sources.items()
+                if source_port == parent_port
+            )
+            return a_dist_out(body_port)
+
+        for target, source in recipe.input_edges.items():
+            a_src: AIO = (
+                a_dist_out(target.port)
+                if target.port in iterated
+                else AInput(node=a_name, port=source.port)
+            )
+            self.A.add_edge(a_src, AInput(node=a_body, port=target.port))
+        for target, source in recipe.output_edges.items():
+            if isinstance(source, fr.schemas.InputSource):
+                a_src = a_dist_out_for_parent(source.port)
+            else:
+                a_src = AOutput(
+                    node=a_body, port=_output_port_label(source.port, body_outputs)
+                )
+            a_collector = a_collectors[target.port]
+            self.A.add_edge(a_src, AInput(node=a_collector, port=COLLECTOR_INPUT))
+            self.A.add_edge(
+                AOutput(node=a_collector, port=COLLECTOR_OUTPUT),
+                AOutput(
+                    node=a_name,
+                    port=_output_port_label(target.port, list(recipe.outputs)),
+                ),
+            )
+
+    def _add_executed_for_each_instances(
+        self,
+        node_data: fr.schemas.ForEachData,
+        r_name: Node,
+        a_name: ANode,
+        distributors: dict[str, Node],
+        distributor_sources: dict[str, str],
+        collectors: dict[str, Node],
+        body_labels: list[str],
+    ) -> None:
+        """
+        A-Box of an executed for-each node, following the recorded edges. Each
+        recorded child is resolved to an A-Box node and a per-port counter.
+        """
+        recipe = node_data.recipe
+        body_label = recipe.body_node.label
+        distributor_for_parent = {
+            parent_port: body_port
+            for body_port, parent_port in distributor_sources.items()
+        }
+        a_inputs: dict[str, Callable[[str], AIO]] = {}
+        a_outputs: dict[str, Callable[[str], AIO]] = {}
+
+        for counter, label in enumerate(body_labels):
+            child = node_data.nodes[label]
+            a_body = ANode(name=body_label, owner=a_name, counter=counter)
+            self._add_body(child, Node(name=body_label, owner=r_name), a_body)
+            a_inputs[label] = _a_port_resolver(AInput, a_body)
+            a_outputs[label] = _a_port_resolver(
+                AOutput, a_body, outputs=list(child.output_ports)
+            )
+
+        for label, child in node_data.nodes.items():
+            if _is_transfer_data(child, DISTRIBUTOR):
+                parent_port = node_data.input_edges[
+                    fr.schemas.TargetHandle(
+                        node=label, port=transformers.Transform1toN.input_label
+                    )
+                ].port
+                r_node = distributors[distributor_for_parent[parent_port]]
+                a_node = ANode(name=r_node.name, owner=a_name)
+                self._add_a_transfer_node(r_node, a_node, child)
+                a_inputs[label] = _a_port_resolver(
+                    AInput, a_node, port=DISTRIBUTOR_INPUT
+                )
+                a_outputs[label] = _a_port_resolver(
+                    AOutput,
+                    a_node,
+                    port=DISTRIBUTOR_OUTPUT,
+                    counters={p: i for i, p in enumerate(child.output_ports)},
+                )
+            elif _is_transfer_data(child, COLLECTOR):
+                output_port = next(
+                    target.port
+                    for target, source in node_data.output_edges.items()
+                    if source.node == label
+                )
+                r_node = collectors[output_port]
+                a_node = ANode(name=r_node.name, owner=a_name)
+                self._add_a_transfer_node(r_node, a_node, child)
+                a_inputs[label] = _a_port_resolver(
+                    AInput,
+                    a_node,
+                    port=COLLECTOR_INPUT,
+                    counters={p: i for i, p in enumerate(child.input_ports)},
+                )
+                a_outputs[label] = _a_port_resolver(
+                    AOutput, a_node, port=COLLECTOR_OUTPUT
+                )
+
+        for target, source in node_data.input_edges.items():
+            self.A.add_edge(
+                AInput(node=a_name, port=source.port),
+                a_inputs[target.node](target.port),
+            )
+        for target, source in node_data.edges.items():
+            self.A.add_edge(
+                a_outputs[source.node](source.port),
+                a_inputs[target.node](target.port),
+            )
+        for target, source in node_data.output_edges.items():
+            self.A.add_edge(
+                a_outputs[source.node](source.port),
+                AOutput(
+                    node=a_name,
+                    port=_output_port_label(target.port, list(recipe.outputs)),
+                ),
+            )
+
+
+def _a_port_resolver(
+    cls: type[AIO],
+    node: ANode,
+    *,
+    port: str | None = None,
+    counters: dict[str, int] | None = None,
+    outputs: list[str] | None = None,
+) -> Callable[[str], AIO]:
+    """
+    Map a port label recorded by the for-each runtime to the A-Box port: ``port``
+    replaces the label, ``counters`` gives the item counter of each label, and
+    ``outputs`` (all output labels of the node) applies the single-output renaming.
+    """
+
+    def resolve(label: str) -> AIO:
+        name = port if port is not None else label
+        if port is None and outputs is not None:
+            name = _output_port_label(label, outputs)
+        return cls(node=node, port=name, counter=counters[label] if counters else 0)
+
+    return resolve
+
+
+def _is_transfer_data(data: fr.schemas.NodeData, kind: str | None = None) -> bool:
+    """Whether the data is a scatter/gather node created by the for-each runtime."""
+    if not isinstance(data, fr.schemas.AtomicData):
+        return False
+    is_distributor = data.function in _DISTRIBUTOR_FUNCTIONS
+    is_collector = data.function == transformers.TransformNto1.inputs_to_list
+    if kind == DISTRIBUTOR:
+        return is_distributor
+    if kind == COLLECTOR:
+        return is_collector
+    return is_distributor or is_collector
 
 
 def _workflow_to_instance_graph(
-    recipe_graph: SemantikonRecipeGraph, values: dict[IO, Any]
-) -> SemantikonInstanceGraph:
-    def _a_node(node: Node) -> ANode:
-        return ANode(name=node.name, owner=_a_node(node.owner) if node.owner else None)
-
-    def _a_io(io: IO) -> AIO:
-        cls = AInput if isinstance(io, Input) else AOutput
-        return cls(node=_a_node(io.node), port=io.port)
-
-    def _a(node: Node | IO) -> ANode | AIO:
-        return _a_node(node) if isinstance(node, Node) else _a_io(node)
-
-    A = SemantikonInstanceGraph(recipe_graph=recipe_graph)
-    for node in recipe_graph.nodes:
-        attrs: dict[str, Any] = {"recipe": node}
-        if isinstance(node, IO) and node in values:
-            attrs["value"] = values[node]
-        A.add_node(_a(node), **attrs)
-    for u, v in recipe_graph.edges:
-        A.add_edge(_a(u), _a(v))
-    return A
+    workflow: fr.schemas.DagData,
+    *,
+    prefix: str | None = None,
+) -> tuple[SemantikonInstanceGraph, dict[IO, Any]]:
+    """
+    Build the instance graph (A-Box) together with its recipe graph (T-Box), and
+    the values of the constants of the latter.
+    """
+    root_label = _infer_workflow_label(workflow.recipe)
+    builder = _GraphBuilder(root_label, prefix)
+    builder.add_node(
+        workflow,
+        Node(root_label),
+        ANode(root_label),
+        workflow_label=Node(root_label),
+    )
+    return builder.A, builder.constants
 
 
 def _get_hashed_node_dict_from_graph(
@@ -736,8 +1215,8 @@ def serialize_instance_to_networkx(
         SemantikonInstanceGraph: The serialized workflow instance graph.
     """
     dag = _to_dagdata(workflow)
-    R, values = _workflow_to_networkx(dag, prefix=prefix)
-    A = _workflow_to_instance_graph(R, values)
+    A, values = _workflow_to_instance_graph(dag, prefix=prefix)
+    R = A.recipe_graph
     if hash_data:
         try:
             hashed_dict = _get_hashed_node_dict_from_graph(A)

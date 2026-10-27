@@ -158,6 +158,15 @@ def wf_nested_triples(a, b):
     return one
 
 
+@fr.workflow
+def loop_workflow(values=(1, 2, 3), x=2):
+    result = []
+    for v in values:
+        a = add_one(v)
+        result.append(a)
+    return result
+
+
 class Meal:
     pass
 
@@ -1197,6 +1206,33 @@ class TestOntology(unittest.TestCase):
             onto.get_knowledge_graph,
             workflow_with_wrong_derived_from_in_output.flowrep_recipe,
         )
+
+    def test_for_each(self):
+        recipe = loop_workflow.flowrep_recipe
+        typed = {
+            "for_each": onto.SNS.for_each_node,
+            "distributor": onto.SNS.distributor_node,
+            "collector": onto.SNS.collector_node,
+        }
+        for workflow in (recipe, fr.wfms.run_recipe(recipe)):
+            g = onto.get_knowledge_graph(workflow, prefix="W")
+            for name, cls in typed.items():
+                subclasses = list(g.subjects(RDFS.subClassOf, cls))
+                self.assertEqual(len(subclasses), 1, name)
+                self.assertNotIn(
+                    (subclasses[0], RDFS.subClassOf, onto.SNS.workflow_node), g
+                )
+                self.assertIn((cls, RDFS.subClassOf, onto.SNS.workflow_node), g)
+        # one distributor, one collector and three bodies in the A-Box
+        g = onto.get_knowledge_graph(
+            fr.wfms.run_recipe(recipe), include_t_box=False, prefix="W"
+        )
+        body_class = onto.BASE["W_loop_workflow-for_each_0-body"]
+        self.assertEqual(len(list(g.subjects(RDF.type, body_class))), 3)
+        # precedes only ever links nodes to nodes
+        for obj in g.objects(None, onto.SNS.precedes):
+            self.assertNotIn("-inputs-", str(obj))
+            self.assertNotIn("-outputs-", str(obj))
 
 
 if __name__ == "__main__":

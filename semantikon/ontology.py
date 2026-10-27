@@ -83,7 +83,17 @@ class SNS:
     function_name: URIRef = PMD["0000100"]
     file_data_item: URIRef = NFDI["0000027"]
     local_identifier: URIRef = PMD["0000128"]
+    # Placeholder URIs until the corresponding ontology terms exist
+    for_each_node: URIRef = BASE["for_each_node"]
+    distributor_node: URIRef = BASE["distributor_node"]
+    collector_node: URIRef = BASE["collector_node"]
 
+
+_NODE_TYPE_CLASSES: dict[str, URIRef] = {
+    "for_each": SNS.for_each_node,
+    "distributor": SNS.distributor_node,
+    "collector": SNS.collector_node,
+}
 
 ud = UnitsDict()
 
@@ -540,6 +550,13 @@ def _graph_to_function(graph: Graph, f_node: URIRef) -> dict[str, Any]:
     return _graph_to_function_impl(graph, f_node)
 
 
+# This function should be erased as soon as the special node classes are
+# defined in PMDco
+def _declare_node_type_classes(g: Graph) -> None:
+    for cls in _NODE_TYPE_CLASSES.values():
+        g.add((cls, RDFS.subClassOf, SNS.workflow_node))
+
+
 def _wf_node_to_graph(
     node_name: Node,
     data: dict,
@@ -572,7 +589,10 @@ def _wf_node_to_graph(
                     SNS.has_part,
                     BASE[G.t_ns + item],
                 )
-        g.add((BASE[G.t_ns + node_name], RDFS.subClassOf, SNS.workflow_node))
+        if data.get("type") in _NODE_TYPE_CLASSES:
+            g.add((node, RDFS.subClassOf, _NODE_TYPE_CLASSES[data["type"]]))
+        else:
+            g.add((node, RDFS.subClassOf, SNS.workflow_node))
         if "function" in data:
             g += _to_owl_restriction(
                 node,
@@ -915,6 +935,10 @@ def _wf_io_to_graph(
         g += _to_owl_restriction(node, has_specified_io, data_node)
         g.add((node, RDFS.label, Literal(str(node_name))))
         g.add((node, RDFS.subClassOf, io_assignment))
+        if "function" not in G.get_data(node_name.node):
+            # Without function metadata this is the only record of the port order
+            # (for distributors, the position in the zipped ports)
+            g.add((node, SNS.has_parameter_position, Literal(data["position"])))
         g.add((data_node, RDFS.subClassOf, SNS.value_specification))
         if "hash" in data:
             g += _to_owl_restriction(data_node, SNS.denoted_by, SNS.identifier)
@@ -1011,6 +1035,10 @@ def _parse_global_io(
 
 def _nx_to_kg(G: SemantikonRecipeGraph | SemantikonInstanceGraph, t_box: bool) -> Graph:
     g = _get_bound_graph()
+    # The following two lines should be removed as soon as the special node
+    # classes are defined in PMDco
+    if t_box:
+        _declare_node_type_classes(g)
     for node_name, data in G.nodes.data():
         data = G.get_data(node_name)
         if t_box:
@@ -1325,7 +1353,9 @@ def extract_dataclass(
 def _get_successor_nodes(G, node_name):
     for out in G.successors(node_name):
         for inp in G.successors(out):
-            yield from G.successors(inp)
+            for succ in G.successors(inp):
+                if isinstance(succ, Node):
+                    yield succ
 
 
 def _to_owl_restriction(

@@ -3,6 +3,7 @@ import unittest
 import flowrep as fr
 from rdflib import RDFS, Graph, Literal, URIRef
 
+from semantikon import flowrep_to_networkx as ftn
 from semantikon import get_knowledge_graph, kg2recipe
 from semantikon import kg_to_flowrep as kgf
 from semantikon import ontology as onto
@@ -21,6 +22,37 @@ def add_more(x):
     y = add_one(x)
     z = add(x, y)
     return z
+
+
+@fr.workflow
+def zipped_loop(xs, ys, k):
+    out = []
+    for x, y in zip(xs, ys):
+        p = add(x, y)
+        q = add(p, k)
+        out.append(q)
+    return out
+
+
+@fr.workflow
+def nested_loop(xs, ys):
+    out = []
+    for x in xs:
+        for y in ys:
+            p = add(x, y)
+            out.append(p)
+    return out
+
+
+@fr.workflow
+def forwarding_loop(xs, k):
+    out = []
+    kept = []
+    for x in xs:
+        p = add(x, k)
+        out.append(p)
+        kept.append(x)
+    return out, kept
 
 
 @fr.workflow
@@ -306,6 +338,196 @@ class TestKgToFlowrep(unittest.TestCase):
         self.assertRaises(
             ValueError, kgf._ensure_workflow_name, uri_to_node, "unknown_workflow"
         )
+
+    def test_for_each_round_trip(self):
+        cases = [
+            (zipped_loop, {"xs": [1, 2], "ys": [3, 4], "k": 2}),
+            (forwarding_loop, {"xs": [1, 2], "k": 3}),
+        ]
+        for workflow, inputs in cases:
+            recipe = workflow.flowrep_recipe
+            executed = fr.wfms.run_recipe(recipe, **inputs)
+            for source in (recipe, executed):
+                with self.subTest(
+                    workflow=workflow.__name__, executed=source is executed
+                ):
+                    graph = get_knowledge_graph(source, prefix="W")
+                    self.assertEqual(kg2recipe(graph), recipe)
+
+    def test_multiple_nested_ports_raise(self):
+        with self.assertRaises(NotImplementedError):
+            get_knowledge_graph(nested_loop.flowrep_recipe, prefix="W")
+
+    def test_for_each_port_check_reports_unsupported_modes(self):
+        reported = []
+        for nested, zipped in (
+            (["x", "y"], []),
+            (["x"], ["y"]),
+            ([], ["x"]),
+        ):
+            ftn._check_for_each_ports(nested, zipped, reported.append)
+
+        for nested, zipped in (
+            (["x"], []),
+            ([], ["x", "y"]),
+            ([], []),
+        ):
+            ftn._check_for_each_ports(nested, zipped, reported.append)
+
+        self.assertEqual(
+            reported,
+            [
+                "Nested ports are only supported as the single iterated port",
+                "Nested ports are only supported as the single iterated port",
+                "A single iterated port must be given as a nested port",
+            ],
+        )
+
+    def test_for_each_shared_input_round_trip(self):
+        body_label = "body"
+        for_each = fr.schemas.ForEachRecipe(
+            inputs=["xs"],
+            outputs=["result"],
+            body_node=fr.schemas.LabeledRecipe(
+                label=body_label, recipe=my_workflow.flowrep_recipe
+            ),
+            input_edges={
+                fr.schemas.TargetHandle(
+                    node=body_label, port="x"
+                ): fr.schemas.InputSource(port="xs"),
+                fr.schemas.TargetHandle(
+                    node=body_label, port="y"
+                ): fr.schemas.InputSource(port="xs"),
+            },
+            output_edges={
+                fr.schemas.OutputTarget(port="result"): fr.schemas.SourceHandle(
+                    node=body_label, port="result"
+                )
+            },
+            zipped_ports=["y", "x"],
+        )
+        recipe = fr.schemas.WorkflowRecipe(
+            inputs=["xs"],
+            outputs=["result"],
+            nodes={"loop": for_each},
+            input_edges={
+                fr.schemas.TargetHandle(node="loop", port="xs"): fr.schemas.InputSource(
+                    port="xs"
+                )
+            },
+            edges={},
+            output_edges={
+                fr.schemas.OutputTarget(port="result"): fr.schemas.SourceHandle(
+                    node="loop", port="result"
+                )
+            },
+        )
+
+        graph = get_knowledge_graph(recipe, prefix="W")
+        self.assertEqual(kg2recipe(graph), recipe)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+    def test_for_each_nested_round_trip(self):
+        body_label = "body"
+        for_each = fr.schemas.ForEachRecipe(
+            inputs=["xs"],
+            outputs=["result"],
+            body_node=fr.schemas.LabeledRecipe(
+                label=body_label, recipe=my_workflow.flowrep_recipe
+            ),
+            input_edges={
+                fr.schemas.TargetHandle(
+                    node=body_label, port="x"
+                ): fr.schemas.InputSource(port="xs"),
+                fr.schemas.TargetHandle(
+                    node=body_label, port="y"
+                ): fr.schemas.InputSource(port="xs"),
+            },
+            output_edges={
+                fr.schemas.OutputTarget(port="result"): fr.schemas.SourceHandle(
+                    node=body_label, port="result"
+                )
+            },
+            nested_ports=["y"],
+        )
+        recipe = fr.schemas.WorkflowRecipe(
+            inputs=["xs"],
+            outputs=["result"],
+            nodes={"loop": for_each},
+            input_edges={
+                fr.schemas.TargetHandle(node="loop", port="xs"): fr.schemas.InputSource(
+                    port="xs"
+                )
+            },
+            edges={},
+            output_edges={
+                fr.schemas.OutputTarget(port="result"): fr.schemas.SourceHandle(
+                    node="loop", port="result"
+                )
+            },
+        )
+
+        graph = get_knowledge_graph(recipe, prefix="W")
+        self.assertEqual(kg2recipe(graph), recipe)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+    def test_unsupported_iterated_ports_raise(self):
+        body_label = "body"
+        cases = [
+            {"nested_ports": ["y"], "zipped_ports": ["x"]},
+            {"zipped_ports": ["x"]},
+        ]
+        for ports in cases:
+            with self.subTest(**ports):
+                self._assert_for_each_raises(body_label, ports)
+
+    def _assert_for_each_raises(self, body_label, ports):
+        for_each = fr.schemas.ForEachRecipe(
+            inputs=["xs"],
+            outputs=["result"],
+            body_node=fr.schemas.LabeledRecipe(
+                label=body_label, recipe=my_workflow.flowrep_recipe
+            ),
+            input_edges={
+                fr.schemas.TargetHandle(
+                    node=body_label, port="x"
+                ): fr.schemas.InputSource(port="xs"),
+                fr.schemas.TargetHandle(
+                    node=body_label, port="y"
+                ): fr.schemas.InputSource(port="xs"),
+            },
+            output_edges={
+                fr.schemas.OutputTarget(port="result"): fr.schemas.SourceHandle(
+                    node=body_label, port="result"
+                )
+            },
+            **ports,
+        )
+        recipe = fr.schemas.WorkflowRecipe(
+            inputs=["xs"],
+            outputs=["result"],
+            nodes={"loop": for_each},
+            input_edges={
+                fr.schemas.TargetHandle(node="loop", port="xs"): fr.schemas.InputSource(
+                    port="xs"
+                )
+            },
+            edges={},
+            output_edges={
+                fr.schemas.OutputTarget(port="result"): fr.schemas.SourceHandle(
+                    node="loop", port="result"
+                )
+            },
+        )
+
+        with self.assertRaises(NotImplementedError):
+            get_knowledge_graph(recipe, prefix="W")
 
 
 if __name__ == "__main__":
