@@ -83,10 +83,9 @@ class SNS:
     function_name: URIRef = PMD["0000100"]
     file_data_item: URIRef = NFDI["0000027"]
     local_identifier: URIRef = PMD["0000128"]
-    # Placeholder URIs until the corresponding ontology terms exist
-    for_each_node: URIRef = BASE["for_each_node"]
-    distributor_node: URIRef = BASE["distributor_node"]
-    collector_node: URIRef = BASE["collector_node"]
+    for_each_node: URIRef = BASE["0000160"]
+    distributor_node: URIRef = BASE["0000161"]
+    collector_node: URIRef = BASE["0000162"]
 
 
 _NODE_TYPE_CLASSES: dict[str, URIRef] = {
