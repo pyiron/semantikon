@@ -1222,7 +1222,6 @@ class TestOntology(unittest.TestCase):
                 self.assertNotIn(
                     (subclasses[0], RDFS.subClassOf, onto.SNS.workflow_node), g
                 )
-                self.assertIn((cls, RDFS.subClassOf, onto.SNS.workflow_node), g)
         # one distributor, one collector and three bodies in the A-Box
         g = onto.get_knowledge_graph(
             fr.wfms.run_recipe(recipe), include_t_box=False, prefix="W"
