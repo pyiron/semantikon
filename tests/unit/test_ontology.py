@@ -225,9 +225,9 @@ def remove_properties(clothes: Clothes) -> u(
     return clothes
 
 
-def remove_color_by_class(clothes: Clothes) -> u(
-    Clothes, derived_from="inputs.clothes", cancels=(EX.hasProperty, EX.Color)
-):
+def remove_color_by_class(
+    clothes: Clothes,
+) -> u(Clothes, derived_from="inputs.clothes", cancels=(EX.hasProperty, EX.Color)):
     return clothes
 
 
@@ -1314,14 +1314,14 @@ class TestOntology(unittest.TestCase):
                         self.assertNotIn((node, EX.hasProperty, color), graph)
                     self.assertNotIn((node, EX.hasProperty, EX.Color), graph)
                     self.assertTrue(
-                        any((node, EX.otherProperty, color) in graph for color in colors)
+                        any(
+                            (node, EX.otherProperty, color) in graph for color in colors
+                        )
                     )
                     self.assertIn((node, EX.otherProperty, EX.otherValue), graph)
 
     def test_cancels_class_without_reasoner(self):
-        graph = onto.get_knowledge_graph(
-            cancellation_by_class_workflow.flowrep_recipe
-        )
+        graph = onto.get_knowledge_graph(cancellation_by_class_workflow.flowrep_recipe)
         output = next(
             node
             for node in graph.subjects(onto.BASE.cancels, None)
@@ -1352,12 +1352,8 @@ class TestOntology(unittest.TestCase):
         )
         cancellations = list(graph.objects(None, onto.BASE.cancels))
         self.assertEqual(len(cancellations), 2)
-        self.assertTrue(
-            any((c, RDF.object, EX.Color) in graph for c in cancellations)
-        )
-        self.assertTrue(
-            any((c, RDF.object, UNIT.M) in graph for c in cancellations)
-        )
+        self.assertTrue(any((c, RDF.object, EX.Color) in graph for c in cancellations))
+        self.assertTrue(any((c, RDF.object, UNIT.M) in graph for c in cancellations))
 
     def test_cancels_rejects_non_self_subject(self):
         with self.assertRaisesRegex(ValueError, "cancels.*self"):

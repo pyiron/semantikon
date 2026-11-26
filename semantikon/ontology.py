@@ -993,9 +993,7 @@ def _wf_io_to_graph(
         if cancels and not isinstance(cancels[0], list | tuple):
             cancels = [cancels]
         for triple in cancels:
-            subject, predicate, obj = (
-                (None, *triple) if len(triple) == 2 else triple
-            )
+            subject, predicate, obj = (None, *triple) if len(triple) == 2 else triple
             subject = _triple_node_to_rdf(subject, node_name, data_node, G, t_box)
             if subject != data_node:
                 raise ValueError("'cancels' triples must have 'self' as their subject.")
