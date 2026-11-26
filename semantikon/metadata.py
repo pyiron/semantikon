@@ -41,6 +41,7 @@ def u(
     units: str | URIRef | Missing = MISSING,
     shape: ShapeType | Missing = MISSING,
     derived_from: str | Missing = MISSING,
+    cancels: TriplesLike | Missing = MISSING,
     **extra,
 ) -> Any:
     """
@@ -68,6 +69,9 @@ def u(
             describing the derivation (e.g. "inputs.x"). The output argument
             then inherits all the triples of the input argument, but **not**
             the restrictions and the URI.
+        cancels: Triples to exclude from inheritance, in the same format as
+            `triples`. Requires `derived_from`. Explicitly added triples are
+            not removed.
         extra: Additional metadata fields. The key `unit` is accepted as an
             alias for `units`; if provided, it overrides the value of
             `units`.
@@ -108,6 +112,7 @@ def u(
         units=units,
         shape=shape,
         derived_from=derived_from,
+        cancels=cancels,
     )
 
     kwargs = {"extra": extra} if len(extra) > 0 else {}
@@ -120,6 +125,8 @@ def u(
     kwargs.update(presently_requested_metadata.to_dictionary())
     if len(kwargs) == 0:
         raise TypeError("No metadata provided.")
+    if "cancels" in kwargs and "derived_from" not in kwargs:
+        raise ValueError("'cancels' requires 'derived_from' on the same output.")
 
     metadata: TypeMetadata = TypeMetadata.from_dict(kwargs)
     items = tuple([x for k, v in metadata for x in [k, v]])

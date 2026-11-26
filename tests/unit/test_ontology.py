@@ -13,7 +13,7 @@ from rdflib.compare import graph_diff
 
 from semantikon import kg_to_flowrep as kgf
 from semantikon import ontology as onto
-from semantikon.metadata import SemantikonURI, meta
+from semantikon.metadata import SemantikonURI, meta, u
 from semantikon.visualize import visualize_recipe
 
 EX: Namespace = Namespace("http://example.org/")
@@ -202,6 +202,55 @@ uri_cleaned = SemantikonURI(EX.Cleaned)
 
 class Clothes:
     pass
+
+
+def add_properties(clothes: Clothes) -> u(
+    Clothes,
+    triples=(
+        (EX.hasProperty, uri_color),
+        (EX.hasProperty, uri_cleaned),
+        (EX.otherProperty, EX.otherValue),
+    ),
+    units=UNIT.M,
+):
+    return clothes
+
+
+def remove_properties(clothes: Clothes) -> u(
+    Clothes,
+    derived_from="inputs.clothes",
+    cancels=((EX.hasProperty, uri_color), ("self", onto.QUDT.hasUnit, UNIT.M)),
+    triples=(EX.hasProperty, uri_cleaned),
+):
+    return clothes
+
+
+def pass_properties(clothes: Clothes) -> u(Clothes, derived_from="inputs.clothes"):
+    return clothes
+
+
+def readd_properties(clothes: Clothes) -> u(
+    Clothes,
+    derived_from="inputs.clothes",
+    cancels=(EX.hasProperty, uri_color),
+    triples=((EX.hasProperty, uri_color), (EX.newProperty, EX.newValue)),
+):
+    return clothes
+
+
+@fr.workflow
+def cancellation_workflow(clothes):
+    original = add_properties(clothes)
+    removed = remove_properties(original)
+    result = pass_properties(removed)
+    return result
+
+
+@fr.workflow
+def readdition_workflow(clothes):
+    original = add_properties(clothes)
+    result = readd_properties(original)
+    return result
 
 
 def wash(
@@ -1175,6 +1224,31 @@ class TestOntology(unittest.TestCase):
                 {data_node}
                 """),
         )
+
+    def test_cancels_inherited_properties(self):
+        graph = onto.get_knowledge_graph(cancellation_workflow.flowrep_recipe)
+        cancelled = next(graph.subjects(onto.BASE.cancels, None))
+        source = graph.value(cancelled, onto.SNS.derives_from)
+        downstream = next(graph.subjects(onto.SNS.derives_from, cancelled))
+        graph = Graph().parse(data=graph.serialize(format="turtle"), format="turtle")
+        onto._inherit_properties(graph)
+        color = next(graph.subjects(RDF.type, EX.Color))
+        cleaned = next(graph.subjects(RDF.type, EX.Cleaned))
+        self.assertIn((source, EX.hasProperty, color), graph)
+        self.assertIn((source, onto.QUDT.hasUnit, UNIT.M), graph)
+        for node in (cancelled, downstream):
+            self.assertNotIn((node, EX.hasProperty, color), graph)
+            self.assertNotIn((node, onto.QUDT.hasUnit, UNIT.M), graph)
+            self.assertIn((node, EX.hasProperty, cleaned), graph)
+            self.assertIn((node, EX.otherProperty, EX.otherValue), graph)
+        self.assertNotIn((downstream, onto.BASE.cancels, None), graph)
+
+    def test_cancels_does_not_remove_explicit_triples(self):
+        graph = onto.get_knowledge_graph(readdition_workflow.flowrep_recipe)
+        output = next(graph.subjects(onto.BASE.cancels, None))
+        onto.validate_values(graph, copy_graph=False)
+        self.assertIn((output, EX.hasProperty, uri_color.get_instance()), graph)
+        self.assertIn((output, EX.newProperty, EX.newValue), graph)
 
     def test_derived_from_in_inputs(self):
         self.assertRaises(

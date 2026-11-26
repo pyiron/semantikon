@@ -144,6 +144,7 @@ def _inherit_properties(graph: Graph, n_max: int = 1000):
     PREFIX ro: <{RO}>
     PREFIX pmdco: <{PMD}>
     PREFIX obi: <{OBI}>
+    PREFIX sns: <{BASE}>
     INSERT {{
         ?subject ?p ?o .
     }}
@@ -157,6 +158,11 @@ def _inherit_properties(graph: Graph, n_max: int = 1000):
         FILTER(?p != rdf:type)
         FILTER(?p != owl:sameAs)
         FILTER(?p != obi:0001927)
+        FILTER(?p != sns:cancels)
+        FILTER NOT EXISTS {{
+            ?subject sns:cancels ?cancellation .
+            ?cancellation rdf:predicate ?p ; rdf:object ?o .
+        }}
     }}
     """
     n = 0
@@ -278,6 +284,8 @@ def _remove_data(graph: Graph) -> Graph:
 
 def _check_consistency_of_digraph(G: SemantikonDiGraph):
     for node, data in G.nodes.data():
+        if "cancels" in data and "derived_from" not in data:
+            raise ValueError("'cancels' requires 'derived_from' on the same output.")
         if "derived_from" not in data:
             continue
         expected_input = Input(
@@ -960,6 +968,8 @@ def _wf_io_to_graph(
     triples = data.get("triples", [])
     if triples != [] and not isinstance(triples[0], list | tuple):
         triples = [triples]
+    else:
+        triples = list(triples)
     if "derived_from" in data:
         triples.append(("self", SNS.derives_from, data["derived_from"]))
     if len(triples) > 0:
@@ -970,6 +980,22 @@ def _wf_io_to_graph(
             G=G,
             t_box=t_box,
         )
+    if not t_box and "cancels" in data:
+        cancels = data["cancels"]
+        if cancels and not isinstance(cancels[0], list | tuple):
+            cancels = [cancels]
+        cancelled_graph = _translate_triples(
+            triples=cancels,
+            node_name=node_name,
+            data_node=data_node,
+            G=G,
+            t_box=False,
+        )
+        for predicate, obj in cancelled_graph.predicate_objects(data_node):
+            cancellation = BNode()
+            g.add((data_node, BASE.cancels, cancellation))
+            g.add((cancellation, RDF.predicate, predicate))
+            g.add((cancellation, RDF.object, obj))
     return g
 
 
