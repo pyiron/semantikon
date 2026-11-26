@@ -706,6 +706,25 @@ def _detect_io_from_str(
     return G._get_data_node(io=full_io)
 
 
+def _triple_node_to_rdf(
+    term: URIRef | BNode | str | None,
+    node_name: IO,
+    data_node: URIRef,
+    G: SemantikonDiGraph,
+    t_box: bool,
+) -> IdentifiedNode:
+    if isinstance(term, SemantikonURI):
+        return term.get_class() if t_box else term.get_instance()
+    elif isinstance(term, (URIRef, BNode)):
+        return term
+    elif term == "self" or term is None:
+        return data_node
+    else:
+        assert isinstance(term, str)
+        io = _detect_io_from_str(G=G, seeked_io=term, ref_io=node_name)
+        return BASE[G.t_ns + io] if t_box else BASE[G.a_ns + io]
+
+
 def _translate_triples(
     triples: TripleList,
     node_name: IO,
@@ -713,18 +732,6 @@ def _translate_triples(
     G: SemantikonDiGraph,
     t_box: bool,
 ) -> Graph:
-    def _local_str_to_uriref(t: URIRef | BNode | str | None) -> IdentifiedNode:
-        if isinstance(t, SemantikonURI):
-            return t.get_instance() if not t_box else t.get_class()
-        elif isinstance(t, (URIRef, BNode)):
-            return t
-        elif t == "self" or t is None:
-            return data_node
-        else:
-            assert isinstance(t, str)
-            io = _detect_io_from_str(G=G, seeked_io=t, ref_io=node_name)
-            return BASE[G.t_ns + io] if t_box else BASE[G.a_ns + io]
-
     g = _get_bound_graph()
     for triple in triples:
         if len(triple) == 2:
@@ -732,8 +739,8 @@ def _translate_triples(
             p, o = triple
         else:
             s, p, o = triple
-        s_n = _local_str_to_uriref(s)
-        o_n = _local_str_to_uriref(o)
+        s_n = _triple_node_to_rdf(s, node_name, data_node, G, t_box)
+        o_n = _triple_node_to_rdf(o, node_name, data_node, G, t_box)
         if t_box:
             assert isinstance(s_n, URIRef | None)
             assert isinstance(o_n, URIRef)
@@ -966,7 +973,7 @@ def _wf_io_to_graph(
             g.add((hash_bnode, SNS.has_value, Literal(data["hash"])))
             g.add((hash_bnode, RDFS.label, Literal(f"{G.a_ns_short}{node_name}_hash")))
     triples = data.get("triples", [])
-    if triples != [] and not isinstance(triples[0], list | tuple):
+    if triples and not isinstance(triples[0], list | tuple):
         triples = [triples]
     else:
         triples = list(triples)
@@ -980,18 +987,18 @@ def _wf_io_to_graph(
             G=G,
             t_box=t_box,
         )
-    if not t_box and "cancels" in data:
+    if "cancels" in data:
         cancels = data["cancels"]
         if cancels and not isinstance(cancels[0], list | tuple):
             cancels = [cancels]
-        cancelled_graph = _translate_triples(
-            triples=cancels,
-            node_name=node_name,
-            data_node=data_node,
-            G=G,
-            t_box=False,
-        )
-        for predicate, obj in cancelled_graph.predicate_objects(data_node):
+        for triple in cancels:
+            subject, predicate, obj = (
+                (None, *triple) if len(triple) == 2 else triple
+            )
+            subject = _triple_node_to_rdf(subject, node_name, data_node, G, t_box)
+            if subject != data_node:
+                raise ValueError("'cancels' triples must have 'self' as their subject.")
+            obj = _triple_node_to_rdf(obj, node_name, data_node, G, t_box)
             cancellation = BNode()
             g.add((data_node, BASE.cancels, cancellation))
             g.add((cancellation, RDF.predicate, predicate))

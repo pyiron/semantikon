@@ -70,7 +70,8 @@ def u(
             then inherits all the triples of the input argument, but **not**
             the restrictions and the URI.
         cancels: Triples to exclude from inheritance, in the same format as
-            `triples`. Requires `derived_from`. Explicitly added triples are
+            `triples`, with an implicit or explicit `self` subject. Requires
+            `derived_from`. Explicitly added triples and other inferences are
             not removed.
         extra: Additional metadata fields. The key `unit` is accepted as an
             alias for `units`; if provided, it overrides the value of
