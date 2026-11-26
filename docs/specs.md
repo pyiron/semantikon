@@ -27,7 +27,7 @@ The input and output arguments must be given by a dictionary whose key is the ar
 - `restrictions`: owl-type restrictions. See below for the syntax
 - `units`: URI or str that can be understood by pint in which case it is translated to the corresponding QUDT URI
 - `derived_from`: To indicate that (typically) an output is derived from an input. For example painting a car where the output is basically the same car as the input with a different color.
-- `cancels`: Triples, in the same format as `triples`, excluded from inheritance by `derived_from`. The subject must be implicit or `self`. It requires `derived_from` on the same output and does not remove explicitly added triples or other inferences.
+- `cancels`: Triples, in the same format as `triples`, excluded from inheritance by `derived_from`. The subject must be implicit or `self`. A URI or `SemantikonURI` object matches both that URI and objects with that RDF type. It requires `derived_from` on the same output and does not remove explicitly added triples or other inferences.
 
 ### Atomic node
 An atomic node is represented by a dictionary whose key represents the name of the node and the value is given by a dictionary containing the following arguments:

@@ -161,7 +161,8 @@ def _inherit_properties(graph: Graph, n_max: int = 1000):
         FILTER(?p != sns:cancels)
         FILTER NOT EXISTS {{
             ?subject sns:cancels ?cancellation .
-            ?cancellation rdf:predicate ?p ; rdf:object ?o .
+            ?cancellation rdf:predicate ?p ; rdf:object ?cancelled .
+            FILTER(?o = ?cancelled || EXISTS {{ ?o rdf:type ?cancelled }})
         }}
     }}
     """
@@ -998,7 +999,11 @@ def _wf_io_to_graph(
             subject = _triple_node_to_rdf(subject, node_name, data_node, G, t_box)
             if subject != data_node:
                 raise ValueError("'cancels' triples must have 'self' as their subject.")
-            obj = _triple_node_to_rdf(obj, node_name, data_node, G, t_box)
+            obj = (
+                obj.get_class()
+                if isinstance(obj, SemantikonURI)
+                else _triple_node_to_rdf(obj, node_name, data_node, G, t_box)
+            )
             cancellation = BNode()
             g.add((data_node, BASE.cancels, cancellation))
             g.add((cancellation, RDF.predicate, predicate))
