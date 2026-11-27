@@ -93,6 +93,28 @@ def u(
     with an appropriate namespace `EX`. The `x` in `inputs.x` refers to the
     input variable.
 
+    Use `derived_from` and `cancels` to exclude inherited properties by
+    class URI. For example, removing the color of a garment:
+
+    >>> from rdflib import Namespace
+    >>> from semantikon import u
+    >>> EX = Namespace("http://example.org/")
+    >>> def remove_color(clothes: object) -> u(
+    ...     object, derived_from="inputs.clothes",
+    ...     cancels=(EX.hasProperty, EX.Color)
+    ... ):
+    ...     return clothes
+
+    Multiple properties can be cancelled together, while `triples` adds a
+    property to the output:
+
+    >>> def wash(clothes: object) -> u(
+    ...     object, derived_from="inputs.clothes",
+    ...     cancels=((EX.hasProperty, EX.Color), (EX.hasProperty, EX.Dirt)),
+    ...     triples=(EX.hasProperty, EX.Clean)
+    ... ):
+    ...     return clothes
+
     The `restrictions` argument must consist of doubles without the blank
     nodes and it can be used only for the input arguments, e.g.:
 
