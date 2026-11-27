@@ -71,9 +71,9 @@ def u(
             the restrictions and the URI.
         cancels: Triples to exclude from inheritance, in the same format as
             `triples`, with an implicit or explicit `self` subject. Requires
-            `derived_from`. A URI or SemantikonURI also matches objects with
-            that RDF type. Explicitly added triples and other inferences are
-            not removed.
+            `derived_from`. A class URI matches both the URI itself and
+            objects with that RDF type. Explicitly added triples and other
+            inferences are not removed.
         extra: Additional metadata fields. The key `unit` is accepted as an
             alias for `units`; if provided, it overrides the value of
             `units`.
