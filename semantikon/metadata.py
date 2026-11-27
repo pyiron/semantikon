@@ -41,6 +41,7 @@ def u(
     units: str | URIRef | Missing = MISSING,
     shape: ShapeType | Missing = MISSING,
     derived_from: str | Missing = MISSING,
+    cancels: TriplesLike | Missing = MISSING,
     **extra,
 ) -> Any:
     """
@@ -68,6 +69,11 @@ def u(
             describing the derivation (e.g. "inputs.x"). The output argument
             then inherits all the triples of the input argument, but **not**
             the restrictions and the URI.
+        cancels: Triples to exclude from inheritance, in the same format as
+            `triples`, with an implicit or explicit `self` subject. Requires
+            `derived_from`. A class URI matches both the URI itself and
+            objects with that RDF type. Explicitly added triples and other
+            inferences are not removed.
         extra: Additional metadata fields. The key `unit` is accepted as an
             alias for `units`; if provided, it overrides the value of
             `units`.
@@ -86,6 +92,47 @@ def u(
 
     with an appropriate namespace `EX`. The `x` in `inputs.x` refers to the
     input variable.
+
+    Use `derived_from` and `cancels` to exclude inherited properties by
+    class URI. For example, first attach a color to a garment:
+
+    >>> from rdflib import Namespace
+    >>> from semantikon import SemantikonURI, u
+    >>> EX = Namespace("http://example.org/")
+    >>> color = SemantikonURI(EX.Color)
+    >>> def dye(clothes: object) -> u(
+    ...     object, triples=(EX.hasProperty, color)
+    ... ):
+    ...     return clothes
+
+    A subsequent step can exclude the inherited color using its class URI:
+
+    >>> def remove_color(clothes: object) -> u(
+    ...     object, derived_from="inputs.clothes",
+    ...     cancels=(EX.hasProperty, EX.Color)
+    ... ):
+    ...     return clothes
+
+    When the steps are connected in a workflow, the output of `remove_color`
+    inherits properties from its input except the color added by `dye`:
+
+    >>> def process(clothes):
+    ...     dyed = dye(clothes)
+    ...     result = remove_color(dyed)
+    ...     return result
+
+    Use `flowrep.workflow` to represent this function as a workflow before
+    generating its knowledge graph.
+
+    Multiple properties can be cancelled together, while `triples` adds a
+    property to the output:
+
+    >>> def wash(clothes: object) -> u(
+    ...     object, derived_from="inputs.clothes",
+    ...     cancels=((EX.hasProperty, EX.Color), (EX.hasProperty, EX.Dirt)),
+    ...     triples=(EX.hasProperty, EX.Clean)
+    ... ):
+    ...     return clothes
 
     The `restrictions` argument must consist of doubles without the blank
     nodes and it can be used only for the input arguments, e.g.:
@@ -108,6 +155,7 @@ def u(
         units=units,
         shape=shape,
         derived_from=derived_from,
+        cancels=cancels,
     )
 
     kwargs = {"extra": extra} if len(extra) > 0 else {}
@@ -120,6 +168,8 @@ def u(
     kwargs.update(presently_requested_metadata.to_dictionary())
     if len(kwargs) == 0:
         raise TypeError("No metadata provided.")
+    if "cancels" in kwargs and "derived_from" not in kwargs:
+        raise ValueError("'cancels' requires 'derived_from' on the same output.")
 
     metadata: TypeMetadata = TypeMetadata.from_dict(kwargs)
     items = tuple([x for k, v in metadata for x in [k, v]])

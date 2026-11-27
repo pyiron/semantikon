@@ -13,7 +13,7 @@ from rdflib.compare import graph_diff
 
 from semantikon import kg_to_flowrep as kgf
 from semantikon import ontology as onto
-from semantikon.metadata import SemantikonURI, meta
+from semantikon.metadata import SemantikonURI, meta, u
 from semantikon.visualize import visualize_recipe
 
 EX: Namespace = Namespace("http://example.org/")
@@ -202,6 +202,95 @@ uri_cleaned = SemantikonURI(EX.Cleaned)
 
 class Clothes:
     pass
+
+
+def add_properties(clothes: Clothes) -> u(
+    Clothes,
+    triples=(
+        (EX.hasProperty, uri_color),
+        (EX.hasProperty, uri_cleaned),
+        (EX.otherProperty, EX.otherValue),
+    ),
+    units=UNIT.M,
+):
+    return clothes
+
+
+def remove_properties(clothes: Clothes) -> u(
+    Clothes,
+    derived_from="inputs.clothes",
+    cancels=((EX.hasProperty, uri_color), ("self", onto.QUDT.hasUnit, UNIT.M)),
+    triples=(EX.hasProperty, uri_cleaned),
+):
+    return clothes
+
+
+def remove_color_by_class(
+    clothes: Clothes,
+) -> u(Clothes, derived_from="inputs.clothes", cancels=(EX.hasProperty, EX.Color)):
+    return clothes
+
+
+def pass_properties(clothes: Clothes) -> u(Clothes, derived_from="inputs.clothes"):
+    return clothes
+
+
+def readd_properties(clothes: Clothes) -> u(
+    Clothes,
+    derived_from="inputs.clothes",
+    cancels=(EX.hasProperty, uri_color),
+    triples=((EX.hasProperty, uri_color), (EX.newProperty, EX.newValue)),
+):
+    return clothes
+
+
+def invalid_cancellation(clothes: Clothes) -> u(
+    Clothes,
+    derived_from="inputs.clothes",
+    cancels=("inputs.clothes", EX.hasProperty, uri_color),
+):
+    return clothes
+
+
+def missing_derivation(
+    clothes: Clothes,
+) -> Annotated[Clothes, {"cancels": (EX.hasProperty, uri_color)}]:
+    return clothes
+
+
+@fr.workflow
+def cancellation_workflow(clothes):
+    original = add_properties(clothes)
+    removed = remove_properties(original)
+    result = pass_properties(removed)
+    return result
+
+
+@fr.workflow
+def cancellation_by_class_workflow(clothes):
+    original = add_properties(clothes)
+    removed = remove_color_by_class(original)
+    result = pass_properties(removed)
+    return result
+
+
+@fr.workflow
+def readdition_workflow(clothes):
+    original = add_properties(clothes)
+    result = readd_properties(original)
+    return result
+
+
+@fr.workflow
+def invalid_cancellation_workflow(clothes):
+    result = invalid_cancellation(clothes)
+    return result
+
+
+@fr.workflow
+def missing_derivation_workflow(clothes):
+    result = missing_derivation(clothes)
+    return result
 
 
 def wash(
@@ -1175,6 +1264,104 @@ class TestOntology(unittest.TestCase):
                 {data_node}
                 """),
         )
+
+    def test_cancels_inherited_properties(self):
+        graph = onto.get_knowledge_graph(cancellation_workflow.flowrep_recipe)
+        cancelled = next(
+            node
+            for node in graph.subjects(onto.BASE.cancels, None)
+            if graph.value(node, onto.SNS.derives_from) is not None
+        )
+        source = graph.value(cancelled, onto.SNS.derives_from)
+        downstream = next(graph.subjects(onto.SNS.derives_from, cancelled))
+        graph = Graph().parse(data=graph.serialize(format="turtle"), format="turtle")
+        onto.validate_values(graph, copy_graph=False)
+        color = next(graph.subjects(RDF.type, EX.Color))
+        cleaned = next(graph.subjects(RDF.type, EX.Cleaned))
+        self.assertIn((source, EX.hasProperty, color), graph)
+        self.assertIn((source, onto.QUDT.hasUnit, UNIT.M), graph)
+        for node in (cancelled, downstream):
+            self.assertNotIn((node, EX.hasProperty, color), graph)
+            self.assertNotIn((node, onto.QUDT.hasUnit, UNIT.M), graph)
+            self.assertIn((node, EX.hasProperty, cleaned), graph)
+            self.assertIn((node, EX.otherProperty, EX.otherValue), graph)
+        self.assertNotIn((downstream, onto.BASE.cancels, None), graph)
+
+    def test_cancels_class_uri_matches_instances(self):
+        for workflow in (cancellation_workflow, cancellation_by_class_workflow):
+            with self.subTest(workflow=workflow):
+                graph = onto.get_knowledge_graph(workflow.flowrep_recipe)
+                output = next(
+                    node
+                    for node in graph.subjects(onto.BASE.cancels, None)
+                    if graph.value(node, onto.SNS.derives_from) is not None
+                )
+                source = graph.value(output, onto.SNS.derives_from)
+                downstream = next(graph.subjects(onto.SNS.derives_from, output))
+                second_color = SemantikonURI(EX.Color)
+                graph.add((source, EX.hasProperty, second_color.get_instance()))
+                graph.add((second_color.get_instance(), RDF.type, EX.Color))
+                graph.add((source, EX.otherProperty, second_color.get_instance()))
+                graph.add((source, EX.hasProperty, EX.Color))
+                graph = Graph().parse(
+                    data=graph.serialize(format="turtle"), format="turtle"
+                )
+                onto.validate_values(graph, copy_graph=False)
+                colors = set(graph.subjects(RDF.type, EX.Color))
+                self.assertEqual(len(colors), 2)
+                for node in (output, downstream):
+                    for color in colors:
+                        self.assertNotIn((node, EX.hasProperty, color), graph)
+                    self.assertNotIn((node, EX.hasProperty, EX.Color), graph)
+                    self.assertTrue(
+                        any(
+                            (node, EX.otherProperty, color) in graph for color in colors
+                        )
+                    )
+                    self.assertIn((node, EX.otherProperty, EX.otherValue), graph)
+
+    def test_cancels_class_without_reasoner(self):
+        graph = onto.get_knowledge_graph(cancellation_by_class_workflow.flowrep_recipe)
+        output = next(
+            node
+            for node in graph.subjects(onto.BASE.cancels, None)
+            if graph.value(node, onto.SNS.derives_from) is not None
+        )
+        source = graph.value(output, onto.SNS.derives_from)
+        graph.add((source, EX.hasProperty, EX.namedColor))
+        graph.add((EX.namedColor, RDF.type, EX.Color))
+        onto._inherit_properties(graph)
+        self.assertNotIn((output, EX.hasProperty, EX.namedColor), graph)
+        self.assertNotIn((output, EX.hasProperty, uri_color.get_instance()), graph)
+        self.assertIn((output, EX.hasProperty, uri_cleaned.get_instance()), graph)
+
+    def test_cancels_does_not_remove_explicit_triples(self):
+        graph = onto.get_knowledge_graph(readdition_workflow.flowrep_recipe)
+        output = next(
+            node
+            for node in graph.subjects(onto.BASE.cancels, None)
+            if graph.value(node, onto.SNS.derives_from) is not None
+        )
+        onto.validate_values(graph, copy_graph=False)
+        self.assertIn((output, EX.hasProperty, uri_color.get_instance()), graph)
+        self.assertIn((output, EX.newProperty, EX.newValue), graph)
+
+    def test_cancels_in_recipe_graph(self):
+        graph = onto.get_knowledge_graph(
+            cancellation_workflow.flowrep_recipe, include_a_box=False
+        )
+        cancellations = list(graph.objects(None, onto.BASE.cancels))
+        self.assertEqual(len(cancellations), 2)
+        self.assertTrue(any((c, RDF.object, EX.Color) in graph for c in cancellations))
+        self.assertTrue(any((c, RDF.object, UNIT.M) in graph for c in cancellations))
+
+    def test_cancels_rejects_non_self_subject(self):
+        with self.assertRaisesRegex(ValueError, "cancels.*self"):
+            onto.get_knowledge_graph(invalid_cancellation_workflow.flowrep_recipe)
+
+    def test_cancels_requires_derivation_in_dict_metadata(self):
+        with self.assertRaisesRegex(ValueError, "cancels.*requires.*derived_from"):
+            onto.get_knowledge_graph(missing_derivation_workflow.flowrep_recipe)
 
     def test_derived_from_in_inputs(self):
         self.assertRaises(

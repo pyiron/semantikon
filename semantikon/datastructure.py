@@ -79,6 +79,7 @@ class TypeMetadata(CoreMetadata):
     derived_from: str | Missing = MISSING
     extra: dict[str, Any] | Missing = MISSING
     restrictions: RestrictionLike | Missing = MISSING
+    cancels: TriplesLike | Missing = MISSING
 
 
 @dataclasses.dataclass(slots=True)

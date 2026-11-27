@@ -3,6 +3,8 @@ import warnings
 from typing import TYPE_CHECKING, Annotated
 from unittest import mock
 
+from rdflib import Namespace
+
 from semantikon.converter import (
     NotAstNameError,
     get_function_dict,
@@ -129,6 +131,17 @@ class TestParser(unittest.TestCase):
         with self.assertRaises(TypeError) as context:
             u(float)
         self.assertEqual(str(context.exception), "No metadata provided.")
+
+    def test_cancels_metadata(self):
+        ex = Namespace("http://example.org/")
+        with self.assertRaisesRegex(ValueError, "cancels.*requires.*derived_from"):
+            u(float, cancels=(ex.property, ex.value))
+        derived = u(float, derived_from="inputs.x")
+        cancelled = u(derived, cancels=(ex.property, ex.value))
+        result = parse_metadata(cancelled).to_dictionary()
+        self.assertEqual(result["derived_from"], "inputs.x")
+        self.assertEqual(result["cancels"], (ex.property, ex.value))
+        self.assertNotIn("cancels", result.get("extra", {}))
 
     def test_optional_args(self):
         def get_speed_multiple_args(
