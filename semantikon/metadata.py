@@ -94,16 +94,35 @@ def u(
     input variable.
 
     Use `derived_from` and `cancels` to exclude inherited properties by
-    class URI. For example, removing the color of a garment:
+    class URI. For example, first attach a color to a garment:
 
     >>> from rdflib import Namespace
-    >>> from semantikon import u
+    >>> from semantikon import SemantikonURI, u
     >>> EX = Namespace("http://example.org/")
+    >>> color = SemantikonURI(EX.Color)
+    >>> def dye(clothes: object) -> u(
+    ...     object, triples=(EX.hasProperty, color)
+    ... ):
+    ...     return clothes
+
+    A subsequent step can exclude the inherited color using its class URI:
+
     >>> def remove_color(clothes: object) -> u(
     ...     object, derived_from="inputs.clothes",
     ...     cancels=(EX.hasProperty, EX.Color)
     ... ):
     ...     return clothes
+
+    When the steps are connected in a workflow, the output of `remove_color`
+    inherits properties from its input except the color added by `dye`:
+
+    >>> def process(clothes):
+    ...     dyed = dye(clothes)
+    ...     result = remove_color(dyed)
+    ...     return result
+
+    Use `flowrep.workflow` to represent this function as a workflow before
+    generating its knowledge graph.
 
     Multiple properties can be cancelled together, while `triples` adds a
     property to the output:
